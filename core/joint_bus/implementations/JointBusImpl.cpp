@@ -22,14 +22,17 @@ namespace arm
         }
     }
 
-    JointBusImpl::JointBusImpl(can::FocMotorCategoryClient& client, const JointNodeIds& nodes, uint8_t missedRequestsBeforeSilent, infra::Duration commandTimeout)
+    JointBusImpl::JointBusImpl(can::FocMotorCategoryClient& client, const JointNodeIds& nodes, const JointTransmissions& transmissions, uint8_t missedRequestsBeforeSilent,
+        infra::Duration commandTimeout)
         : can::FocMotorCategoryClientObserver(client)
         , client(client)
         , nodes(nodes)
+        , transmissions(transmissions)
         , missedRequestsBeforeSilent(missedRequestsBeforeSilent)
         , commandTimeout(commandTimeout)
     {
         really_assert(ValidNodeMap(nodes));
+        really_assert(std::ranges::all_of(transmissions, &JointTransmission::Valid));
         really_assert(missedRequestsBeforeSilent != 0);
         really_assert(commandTimeout > infra::Duration{});
     }
@@ -92,7 +95,7 @@ namespace arm
     {
         return ForEachJoint([this, &positions](std::size_t joint, uint16_t node)
             {
-                return client.SendSetpoint(node, can::FocSetpoint{ can::FocSetpointKind::position, positions[joint].Value() });
+                return client.SendSetpoint(node, can::FocSetpoint{ can::FocSetpointKind::position, transmissions[joint].MotorPosition(positions[joint]).Value() });
             });
     }
 
@@ -147,8 +150,8 @@ namespace arm
         if (!joint.has_value())
             return;
 
-        readings[*joint].speed = speed;
-        readings[*joint].position = position;
+        readings[*joint].speed = transmissions[*joint].JointSpeed(speed);
+        readings[*joint].position = transmissions[*joint].JointPosition(position);
         readings[*joint].silent = false;
         liveness[*joint] = Liveness{ true, 0, false };
     }

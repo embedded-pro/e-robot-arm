@@ -38,7 +38,7 @@ namespace integration
     struct ArmFixture
         : infra::ClockFixture
     {
-        ArmFixture();
+        explicit ArmFixture(const arm::JointTransmissions& transmissions = {});
 
         simulation::SimulatedJoint& Joint(std::size_t number);
         void StartInPositionMode();

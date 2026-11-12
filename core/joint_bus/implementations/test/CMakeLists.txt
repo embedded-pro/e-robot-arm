@@ -12,4 +12,5 @@ target_link_libraries(e_robot_arm.joint_bus_test PUBLIC
 
 target_sources(e_robot_arm.joint_bus_test PRIVATE
     TestJointBusImpl.cpp
+    TestJointTransmission.cpp
 )

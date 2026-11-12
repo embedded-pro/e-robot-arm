@@ -32,3 +32,9 @@
   shall: >
     The arm shall deliver each joint command to all six joints, even when it is issued while other traffic is
     waiting on the bus, or else report that the command was not delivered.
+
+- id: REQ-ARM-007
+  title: Joint-space positions and limits
+  shall: >
+    The arm shall take and report joint positions and speeds, and check position limits, in joint space, converting
+    to and from each motor's shaft through that joint's gear ratio, direction and zero offset.

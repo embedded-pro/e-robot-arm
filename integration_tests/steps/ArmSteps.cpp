@@ -23,6 +23,13 @@ GIVEN(R"(an arm with six simulated joints on one CAN bus)")
     context.Emplace<ArmFixture>();
 }
 
+GIVEN(R"(an arm whose joint {int} turns its motor {float} times, reversed, with its zero at {float} rad)", (std::int32_t joint, float ratio, float offset))
+{
+    arm::JointTransmissions transmissions{};
+    transmissions[static_cast<std::size_t>(joint - 1)] = { ratio, arm::JointDirection::negative, foc::Radians{ offset } };
+    context.Emplace<ArmFixture>(transmissions);
+}
+
 GIVEN(R"(the control loop is running)")
 {
     auto& fixture = context.Get<ArmFixture>();
@@ -113,6 +120,18 @@ THEN(R"(every joint shall be at its target)")
     auto& fixture = context.Get<ArmFixture>();
     for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
         EXPECT_NEAR(fixture.target[joint].Value(), fixture.Joint(joint + 1).Position().Value(), positionTolerance) << "joint " << joint + 1;
+}
+
+THEN(R"(the arm shall report every joint at its target)")
+{
+    auto& fixture = context.Get<ArmFixture>();
+    for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+        EXPECT_NEAR(fixture.target[joint].Value(), fixture.arm.Safety().Reading(joint).position.Value(), positionTolerance) << "joint " << joint + 1;
+}
+
+THEN(R"(motor {int} shall be at {float} rad)", (std::int32_t motor, float position))
+{
+    EXPECT_NEAR(position, context.Get<ArmFixture>().Joint(static_cast<std::size_t>(motor)).Position().Value(), positionTolerance);
 }
 
 THEN(R"(the move shall be refused and no joint shall move)")

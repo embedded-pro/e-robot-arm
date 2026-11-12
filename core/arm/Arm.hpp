@@ -19,6 +19,7 @@ namespace arm
         JointMotionLimits motionLimits;
         infra::Duration controlPeriod;
         uint8_t commandTimeoutPeriods{ 3 };
+        JointTransmissions transmissions{};
     };
 
     class Arm

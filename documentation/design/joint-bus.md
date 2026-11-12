@@ -2,7 +2,7 @@
 title: "Joint Bus Design"
 type: design
 status: draft
-version: 0.5.0
+version: 0.6.0
 component: "joint_bus"
 date: 2026-11-12
 ---
@@ -12,7 +12,7 @@ date: 2026-11-12
 | Title     | Joint Bus Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.5.0            |
+| Version   | 0.6.0            |
 | Component | joint_bus        |
 | Date      | 2026-11-12       |
 
@@ -32,6 +32,8 @@ date: 2026-11-12
 - Keeping the latest position, speed, state and fault reported by each joint.
 - Reporting a joint that enters a fault, naming the joint.
 - Requesting telemetry from every joint and reporting a joint that stops answering.
+- Converting between joint space and each motor's shaft through the joint's transmission, so that everything
+  above the bus speaks joint angles.
 
 **Is NOT responsible for:**
 
@@ -72,7 +74,8 @@ check itself is never refused. A command that has failed is not
 retracted from the joints that already accepted it: the caller decides what to do, and the safety component
 stops the arm on any fault.
 
-Setpoints are sent as position setpoints in radians, once per control period and never held: the next period
+Setpoints are joint positions, converted to motor positions (Part F) and sent as position setpoints in radians,
+once per control period and never held: the next period
 sends newer ones. A non-finite value is refused by the client and makes the whole call report failure.
 
 ### Part C — Contract check
@@ -87,7 +90,7 @@ node is incompatible, compatible if all six are, unknown otherwise.
 
 ### Part D — Readings and faults
 
-Motion telemetry updates the joint's position and speed; status telemetry updates its state and fault code. A
+Motion telemetry updates the joint's position and speed, converted to joint space (Part F); status telemetry updates its state and fault code. A
 joint that moves into the fault state is reported once, with its fault code; it is reported again only after it
 has left the fault state.
 
@@ -100,6 +103,23 @@ Before it sends a request, the bus counts, per joint, whether motion telemetry a
 A joint that has not answered the configured number of requests in a row is silent: it is reported once, naming
 the joint, and reported again only after it has answered once more. The first request starts the count, so
 nothing is missed before the caller starts asking. Motion telemetry from the joint resets its count.
+
+### Part F — Transmission
+
+Each joint has a transmission between its motor's shaft and the joint: a gear ratio, a direction and a zero offset.
+
+| Quantity | Joint to motor                                                 | Motor to joint                                               |
+|----------|----------------------------------------------------------------|--------------------------------------------------------------|
+| Position | motor = direction · ratio · (joint − offset)                   | joint = motor / (direction · ratio) + offset                 |
+| Speed    | motor speed = direction · ratio · joint speed                  | joint speed = motor speed / (direction · ratio)              |
+| Torque   | motor torque = joint torque / (direction · ratio · efficiency) | joint torque = direction · ratio · efficiency · motor torque |
+
+The ratio is positive (motor turns per joint turn), the direction is +1 or −1 and the offset is the joint angle
+at the motor's zero, in radians. Torque is not sent or read yet; its row fixes the convention for when it is. The
+bus converts every setpoint on the way out and every motion reading on the way in, so position limits, motion
+limits and trajectories stay in joint space. The e-foc node's own position limits are in motor space: whoever
+brings a joint up sets them from the joint limits through the same transformation. An identity transmission
+(ratio 1, direction +1, offset 0) sends joint angles unchanged.
 
 ---
 
@@ -122,18 +142,21 @@ nothing is missed before the caller starts asking. Motion telemetry from the joi
 
 ## Data Model
 
-| Entity        | Field    | Type / Unit     | Range                         | Notes                                                                                  |
-|---------------|----------|-----------------|-------------------------------|----------------------------------------------------------------------------------------|
-| Node map      | node     | CAN node id     | 1 … 4095, distinct            | One per joint, base joint first                                                        |
-| Joint reading | position | radians         | finite                        | From motion telemetry                                                                  |
-| Joint reading | speed    | radians/second  | finite                        | From motion telemetry                                                                  |
-| Joint reading | state    | FOC motor state | idle … ready                  | From status telemetry; idle at start                                                   |
-| Joint reading | fault    | FOC fault code  | none … other                  | From status telemetry; none at start                                                   |
-| Joint reading | silent   | flag            | —                             | Set when the joint is reported silent, cleared when its motion telemetry arrives again |
-| Liveness      | missed   | count           | 1 … 255                       | Requests in a row a joint may miss                                                     |
-| Held command  | command  | kind            | check contracts … clear fault | At most one; select mode keeps its mode                                                |
-| Held command  | accepted | flag per joint  | —                             | Set when the joint's frame is accepted for transmission                                |
-| Held command  | timeout  | duration        | > 0                           | Configured; the arm uses a number of control periods                                   |
+| Entity        | Field     | Type / Unit                | Range                         | Notes                                                                                  |
+|---------------|-----------|----------------------------|-------------------------------|----------------------------------------------------------------------------------------|
+| Node map      | node      | CAN node id                | 1 … 4095, distinct            | One per joint, base joint first                                                        |
+| Joint reading | position  | radians                    | finite                        | From motion telemetry, in joint space                                                  |
+| Joint reading | speed     | radians/second             | finite                        | From motion telemetry, in joint space                                                  |
+| Joint reading | state     | FOC motor state            | idle … ready                  | From status telemetry; idle at start                                                   |
+| Joint reading | fault     | FOC fault code             | none … other                  | From status telemetry; none at start                                                   |
+| Joint reading | silent    | flag                       | —                             | Set when the joint is reported silent, cleared when its motion telemetry arrives again |
+| Liveness      | missed    | count                      | 1 … 255                       | Requests in a row a joint may miss                                                     |
+| Transmission  | ratio     | motor turns per joint turn | > 0, finite                   | One per joint; 1 sends joint angles unchanged                                          |
+| Transmission  | direction | sign                       | +1 or −1                      | −1 when the motor turns opposite to the joint                                          |
+| Transmission  | offset    | radians                    | finite                        | Joint angle at the motor's zero                                                        |
+| Held command  | command   | kind                       | check contracts … clear fault | At most one; select mode keeps its mode                                                |
+| Held command  | accepted  | flag per joint             | —                             | Set when the joint's frame is accepted for transmission                                |
+| Held command  | timeout   | duration                   | > 0                           | Configured; the arm uses a number of control periods                                   |
 
 ---
 
