@@ -2,7 +2,7 @@
 title: "Simulator Design"
 type: design
 status: draft
-version: 0.2.0
+version: 0.3.0
 component: "simulator"
 date: 2026-11-12
 ---
@@ -12,7 +12,7 @@ date: 2026-11-12
 | Title     | Simulator Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.2.0            |
+| Version   | 0.3.0            |
 | Component | simulator        |
 | Date      | 2026-11-12       |
 
@@ -85,7 +85,8 @@ They meet in `ArmHost` only:
 
 A target switch builds everything anew; nothing carries over:
 
-1. It is refused while a move is running, with that reason.
+1. It is refused while a move is running, with that reason. During the switch every command is refused with
+   "switching target", except the emergency stop, which still reaches the old target.
 2. The control loop stops, every joint of the old target is sent Stop, and the host waits until the transmit queue
    drains or 100 ms pass.
 3. The arm, its client and the adapter are destroyed; the new target, client and arm are built.

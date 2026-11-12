@@ -94,7 +94,7 @@ The architecture is described in [system.md](architecture/system.md#configurabil
 
 | Decision                                                    | Phase | Recommendation                                                                                       |
 |-------------------------------------------------------------|-------|------------------------------------------------------------------------------------------------------|
-| How a command is kept from reaching only some joints        | 1     | The joint bus holds one pending command until the burst drains                                       |
+| How a command is kept from reaching only some joints        | 1     | Decided: the joint bus holds one pending command until the burst drains                              |
 | The arm's geometry, gear ratios and mass properties         | 1, 3  | A generic six-joint arm with a spherical wrist until real numbers exist                              |
 | Profile file format                                         | 2     | A format already in the dev container's libraries                                                    |
 | Combined and unacknowledged setpoints in e-foc-protocol     | 5     | Combined setpoint first; drop acknowledgements if the bus needs it                                   |

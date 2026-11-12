@@ -6,6 +6,8 @@
 #include <QApplication>
 #include <QElapsedTimer>
 #include <QImage>
+#include <QKeyEvent>
+#include <QMessageBox>
 #include <QQuickItem>
 #include <QQuickWidget>
 #include <QQuickWindow>
@@ -162,4 +164,25 @@ int main(int argc, char* argv[])
     ui::backend::qt::ApplyTheme(ui::theme::Instrument());
     testing::InitGoogleMock(&argc, argv);
     return RUN_ALL_TESTS();
+}
+
+TEST_F(SimulatorWindowTest, escape_stops_the_arm_even_while_a_modal_dialog_is_open)
+{
+    BringUpAndMove(arm::JointPositions{});
+
+    QMessageBox dialog{ QMessageBox::Question, "Re-arm", "Re-arm?", QMessageBox::Cancel, &window };
+    dialog.setWindowModality(Qt::ApplicationModal);
+    dialog.show();
+    ASSERT_TRUE(Eventually([&dialog]()
+        {
+            return dialog.isVisible() && QApplication::activeModalWidget() == &dialog;
+        }));
+
+    QKeyEvent press{ QEvent::KeyPress, Qt::Key_Escape, Qt::NoModifier };
+    QApplication::sendEvent(&dialog, &press);
+
+    EXPECT_TRUE(Eventually([this]()
+        {
+            return Logged(window.Presenter(), "mergency stop: accepted");
+        }));
 }

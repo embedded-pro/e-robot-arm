@@ -160,6 +160,7 @@ namespace arm
 
         readings[*joint].speed = speed;
         readings[*joint].position = position;
+        readings[*joint].silent = false;
         liveness[*joint] = Liveness{ true, 0, false };
     }
 
@@ -223,6 +224,7 @@ namespace arm
             if (state.missed == missedRequestsBeforeSilent)
             {
                 state.silent = true;
+                readings[joint].silent = true;
                 NotifyObservers([joint](auto& observer)
                     {
                         observer.OnJointSilent(joint);

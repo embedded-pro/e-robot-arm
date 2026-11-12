@@ -23,6 +23,7 @@ namespace simulator
         : QToolBar{ "Status", parent }
         , targets{ new QComboBox{ this } }
         , connection{ StatusLabel(this, "Connection") }
+        , stage{ StatusLabel(this, "Arm stage") }
         , contracts{ StatusLabel(this, "Contracts") }
         , trip{ StatusLabel(this, "Trip") }
         , emergencyStop{ new QPushButton{ "EMERGENCY STOP\nEsc", this } }
@@ -50,6 +51,7 @@ namespace simulator
         addWidget(new QLabel{ " Target ", this });
         addWidget(targets);
         addWidget(connection);
+        addWidget(stage);
         addWidget(contracts);
         addWidget(trip);
         addWidget(spacer);
@@ -72,6 +74,8 @@ namespace simulator
 
         connection->setText(ToQt(status.connection));
         StyleStatusLabel(*connection, status.connectionLevel);
+        stage->setText(ToQt("Arm: " + status.stage));
+        StyleStatusLabel(*stage, status.stageLevel);
         contracts->setText(ToQt(status.contracts));
         trip->setText(ToQt(status.trip));
         StyleStatusLabel(*trip, status.tripLevel);

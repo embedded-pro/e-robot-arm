@@ -39,6 +39,7 @@ namespace arm
         foc::RadiansPerSecond speed{ 0.0f };
         can::FocMotorState state{ can::FocMotorState::idle };
         can::FocFaultCode fault{ can::FocFaultCode::none };
+        bool silent{ false };
     };
 
     class JointBus;

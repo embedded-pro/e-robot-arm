@@ -111,7 +111,7 @@ namespace arm_console
         {
             const auto& reading = snapshot.readings[joint];
             output << "joint " << joint + 1 << ": position " << reading.position.Value() << " rad, speed " << reading.speed.Value()
-                   << " rad/s, state " << Name(stateNames, reading.state) << ", fault " << Name(faultNames, reading.fault) << "\n";
+                   << " rad/s, state " << Name(stateNames, reading.state) << ", fault " << Name(faultNames, reading.fault) << (reading.silent ? ", silent" : "") << "\n";
         }
         output << "safety: " << (snapshot.tripped ? "tripped" : "armed") << "\n";
         output << "motion: " << (snapshot.moving ? "moving" : "idle") << "\n";

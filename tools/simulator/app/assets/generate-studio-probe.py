@@ -1,10 +1,4 @@
 #!/usr/bin/env python3
-"""Writes studio.hdr: a small neutral studio light probe (equirectangular Radiance RGBE).
-
-Soft boxes left and right and a broad overhead panel give metal parts clean highlights; the
-horizon is mid grey and the floor dark, so the probe fills shadows without flattening the key
-light. Generated rather than downloaded so the asset has no third-party licence.
-"""
 import math
 import pathlib
 import sys

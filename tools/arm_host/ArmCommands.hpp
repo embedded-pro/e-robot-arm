@@ -11,6 +11,7 @@ namespace arm_host
     {
     public:
         virtual uint32_t Post(const ArmCommand& command) = 0;
+        virtual uint32_t SwitchTarget(const ArmTarget& target) = 0;
         virtual ArmSnapshot Snapshot() const = 0;
 
     protected:

@@ -3,6 +3,7 @@
 #include "ui/backend/qt/QtTheme.hpp"
 #include <QAction>
 #include <QCloseEvent>
+#include <QCoreApplication>
 #include <QDockWidget>
 #include <QFileDialog>
 #include <QGroupBox>
@@ -61,6 +62,10 @@ namespace simulator
         , scope{ new ScopePanel{ this } }
         , presenter{ host, shell, operate->Form(), move->Form(), limits, start }
         , logPanel{ new EventLogPanel{ presenter.Log(), this } }
+        , emergencyStopKey{ *QCoreApplication::instance(), [this]()
+            {
+                presenter.EmergencyStop();
+            } }
     {
         setMinimumSize(1280, 720);
         ArmSceneState::Use(sceneState);
@@ -207,13 +212,10 @@ namespace simulator
     void SimulatorWindow::BuildArmMenu()
     {
         auto* armMenu = menuBar()->addMenu("&Arm");
-        auto* emergencyStop = armMenu->addAction("&Emergency Stop", this, [this]()
+        armMenu->addAction("&Emergency Stop\tEsc", this, [this]()
             {
                 presenter.EmergencyStop();
             });
-        emergencyStop->setShortcut(Qt::Key_Escape);
-        emergencyStop->setShortcutContext(Qt::ApplicationShortcut);
-        addAction(emergencyStop);
 
         armMenu->addSeparator();
         auto* moveAction = armMenu->addAction("&Move", this, [this]()
@@ -303,14 +305,14 @@ namespace simulator
         bool accepted = false;
 
         if (choice == StatusStripBar::simulatedJoints)
-            host.SwitchTarget({ arm_host::TargetKind::simulated, "" });
+            presenter.SwitchTarget({ arm_host::TargetKind::simulated, "" });
         else if (choice == StatusStripBar::virtualBus)
         {
             const auto bus = QInputDialog::getText(this, "Virtual Bus", "Virtual CAN bus:", QLineEdit::Normal, settings.value("virtualBus", "virtual:arm").toString(), &accepted);
             if (accepted && !bus.isEmpty())
             {
                 settings.setValue("virtualBus", bus);
-                host.SwitchTarget({ arm_host::TargetKind::virtualBus, bus.toStdString() });
+                presenter.SwitchTarget({ arm_host::TargetKind::virtualBus, bus.toStdString() });
             }
         }
         else
@@ -328,7 +330,7 @@ namespace simulator
             if (confirm.clickedButton() == connectButton)
             {
                 settings.setValue("realAdapter", adapter);
-                host.SwitchTarget({ arm_host::TargetKind::real, adapter.toStdString() });
+                presenter.SwitchTarget({ arm_host::TargetKind::real, adapter.toStdString() });
             }
         }
     }

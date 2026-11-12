@@ -18,15 +18,23 @@ namespace simulator
             return std::string{ text };
         }
 
+        std::string SentenceCase(std::string_view text)
+        {
+            std::string sentence{ text };
+            if (!sentence.empty() && sentence.front() >= 'a' && sentence.front() <= 'z')
+                sentence.front() = static_cast<char>(sentence.front() - 'a' + 'A');
+            return sentence;
+        }
+
         std::pair<LogLevel, std::string> Message(const arm_host::ArmEvent& event)
         {
             using enum arm_host::ArmEventKind;
             switch (event.kind)
             {
                 case accepted:
-                    return { LogLevel::info, Text(event.commandName) + ": accepted" };
+                    return { LogLevel::info, std::format("{}: accepted", SentenceCase(event.commandName)) };
                 case refused:
-                    return { LogLevel::warning, Text(event.commandName) + " refused: " + Text(event.reason) };
+                    return { LogLevel::warning, std::format("{} refused: {}", SentenceCase(event.commandName), event.reason) };
                 case contractsResolved:
                     return event.contracts == can::ContractCompatibility::compatible ? std::pair{ LogLevel::info, Text("Contracts compatible") }
                                                                                      : std::pair{ LogLevel::fault, Text("Contracts incompatible") };

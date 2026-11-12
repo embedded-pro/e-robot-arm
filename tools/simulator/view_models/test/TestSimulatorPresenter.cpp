@@ -182,3 +182,70 @@ TEST_F(SimulatorPresenterTest, a_picked_joint_becomes_the_selection)
     EXPECT_TRUE(presenter.SelectJoint(4));
     EXPECT_EQ(4u, presenter.Scene().Selected());
 }
+
+TEST_F(SimulatorPresenterTest, shows_the_arm_stage_from_the_snapshot)
+{
+    EXPECT_EQ("Disconnected", presenter.Status().stage);
+
+    presenter.Refresh(simulator::test::Connected(), {});
+    EXPECT_EQ("Contracts unchecked", presenter.Status().stage);
+
+    presenter.Refresh(simulator::test::Compatible(), {});
+    EXPECT_EQ("Ready", presenter.Status().stage);
+
+    presenter.Refresh(simulator::test::Running(), {});
+    EXPECT_EQ("Running", presenter.Status().stage);
+    EXPECT_EQ(ui::theme::StatusLevel::Ok, presenter.Status().stageLevel);
+
+    auto moving = simulator::test::Running();
+    moving.moving = true;
+    presenter.Refresh(moving, {});
+    EXPECT_EQ("Moving", presenter.Status().stage);
+
+    moving.tripped = true;
+    presenter.Refresh(moving, {});
+    EXPECT_EQ("Tripped", presenter.Status().stage);
+    EXPECT_EQ(ui::theme::StatusLevel::Fault, presenter.Status().stageLevel);
+}
+
+TEST_F(SimulatorPresenterTest, a_snapshot_that_stops_changing_is_shown_as_no_data)
+{
+    auto snapshot = simulator::test::Running();
+    snapshot.sequence = 5;
+    for (std::size_t frame = 0; frame != SimulatorPresenter::staleFrames; ++frame)
+        presenter.Refresh(snapshot, {});
+    EXPECT_EQ("Connected", presenter.Status().connection);
+
+    presenter.Refresh(snapshot, {});
+    EXPECT_EQ("No data from the arm", presenter.Status().connection);
+    EXPECT_EQ(ui::theme::StatusLevel::Warning, presenter.Status().connectionLevel);
+
+    snapshot.sequence = 6;
+    presenter.Refresh(snapshot, {});
+    EXPECT_EQ("Connected", presenter.Status().connection);
+}
+
+TEST_F(SimulatorPresenterTest, a_target_switch_shows_requested_then_its_outcome)
+{
+    const arm_host::ArmTarget realArm{ arm_host::TargetKind::real, "socketcan:can0" };
+    EXPECT_CALL(arm, SwitchTarget(realArm)).WillOnce(Return(12));
+    presenter.SwitchTarget(realArm);
+    EXPECT_EQ("Switch to REAL ARM — socketcan:can0 requested…", shell.Statuses().back());
+
+    const std::array events{ arm_host::ArmEvent{ .kind = ArmEventKind::targetFailed, .command = 12, .commandName = "switch target", .reason = "the adapter could not be opened" } };
+    presenter.Refresh(simulator::test::Running(), events);
+
+    EXPECT_EQ("Switch to REAL ARM — socketcan:can0 failed: the adapter could not be opened", shell.Statuses().back());
+}
+
+TEST_F(SimulatorPresenterTest, a_rearm_prompt_without_a_known_source_says_so)
+{
+    std::string prompt;
+    presenter.SetRearmPrompt([&prompt](std::string_view text)
+        {
+            prompt = text;
+        });
+    Trigger(OperateAction::rearm);
+
+    EXPECT_EQ("Re-arm after the trip by an unknown source?", prompt);
+}

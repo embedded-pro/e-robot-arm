@@ -2,7 +2,7 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.2.0
+version: 0.3.0
 component: "tool-simulator"
 date: 2026-11-12
 ---
@@ -12,7 +12,7 @@ date: 2026-11-12
 | Title     | Simulator Screen Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.2.0                   |
+| Version   | 0.3.0                   |
 | Component | tool-simulator          |
 | Date      | 2026-11-12              |
 
@@ -75,8 +75,14 @@ Layout** restores this one.
 └───────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-- **Status strip** (top, not a dock, cannot be hidden): target selector, connection, contracts, the last trip with
-  its source, and the emergency stop at the far right, apart from every other button.
+- **Status strip** (top, not a dock, cannot be hidden): target selector, connection, the arm's stage, contracts,
+  the last trip with its source, and the emergency stop at the far right, apart from every other button.
+  - **Connection** reads Connected, Disconnected, or **No data from the arm** (`Warning`) when the snapshot has not
+    changed for 30 frames (half a second): a stalled arm thread is never shown as live.
+  - **Arm stage** is derived from the snapshot until the lifecycle exists (phase 1c): Disconnected, Contracts
+    unchecked, Contracts incompatible (`Fault`), Ready, Running (`Ok`), Moving (`Ok`), Tripped (`Fault`).
+- **Silent joints:** a joint that stopped answering shows **Silent** at `Fault` level, with position and speed as
+  "—", until it answers again; its last values are never shown as live.
 - **Real-arm banner:** on the real target a full-width strip under the menu reads **REAL ARM — `<adapter>`** in the
   theme's `Warning` colour with an icon, and the window title gains the same text. It cannot be hidden.
 - **Centre:** the 3-D view (Part E).
@@ -115,7 +121,8 @@ joints. A remembered real target is not reconnected on launch: the simulator ope
 selector shows the real adapter as the last used.
 
 **Choose a target.** The selector lists *Simulated joints*, *Virtual bus…* (asks for the bus name) and *Real arm…*
-(asks for the adapter, `socketcan:<interface>` or `slcan:<port>`; the last one used is offered). Choosing *Real arm*
+(asks for the adapter, `socketcan:<interface>` or `slcan:<port>`; the last one used is offered). The switch shows
+"Switch to … requested…" and then "done" or "failed: <reason>" in the status bar. Choosing *Real arm*
 opens a confirmation: "Connect to the real arm on `<adapter>`? Joints start stopped." with **Connect** and
 **Cancel** (default). A failed adapter is logged as a fault with its reason, and the arm returns to the previous
 target.
@@ -131,15 +138,15 @@ source.
 
 ### Part D — Keyboard
 
-| Key           | Action                                                                          |
-|---------------|---------------------------------------------------------------------------------|
-| Esc           | Emergency stop (application-wide; it pre-empts a dialog's cancel, deliberately) |
-| Ctrl+Enter    | Move                                                                            |
-| Ctrl+.        | Abort                                                                           |
-| 1 / 2 / 3 / 4 | Camera front, side, top, iso (3-D view focused)                                 |
-| F             | Frame the arm (3-D view focused)                                                |
-| Ctrl+S        | Save the event log                                                              |
-| Ctrl+Shift+R  | Reset layout                                                                    |
+| Key           | Action                                                                                                                                             |
+|---------------|----------------------------------------------------------------------------------------------------------------------------------------------------|
+| Esc           | Emergency stop from every window, modal dialogs included: an application event filter sees the key before any dialog, and the dialog still cancels |
+| Ctrl+Enter    | Move                                                                                                                                               |
+| Ctrl+.        | Abort                                                                                                                                              |
+| 1 / 2 / 3 / 4 | Camera front, side, top, iso (3-D view focused)                                                                                                    |
+| F             | Frame the arm (3-D view focused)                                                                                                                   |
+| Ctrl+S        | Save the event log                                                                                                                                 |
+| Ctrl+Shift+R  | Reset layout                                                                                                                                       |
 
 ### Part E — 3-D view: look
 
@@ -267,8 +274,10 @@ sequenceDiagram
 
 ## Open Questions
 
-| # | Question                                                                                     | Options                                               | Status      |
-|---|----------------------------------------------------------------------------------------------|-------------------------------------------------------|-------------|
-| 1 | Esc as the emergency-stop key                                                                | Esc, a function key, a dedicated USB button too       | open        |
-| 2 | Joint-limit defaults before the arm profile exists                                           | ±π for every joint, per-joint guesses                 | decided: ±π |
-| 3 | Default-role buttons (Check Contracts, Position Mode) draw flat in ui-cpp's Instrument theme | Give `ButtonRole::Default` a raised surface in ui-cpp | open        |
+| # | Question                                                                                     | Options                                               | Status                                                             |
+|---|----------------------------------------------------------------------------------------------|-------------------------------------------------------|--------------------------------------------------------------------|
+| 1 | Esc as the emergency-stop key                                                                | Esc, a function key, a dedicated USB button too       | open                                                               |
+| 2 | Joint-limit defaults before the arm profile exists                                           | ±π for every joint, per-joint guesses                 | decided: ±π                                                        |
+| 3 | Default-role buttons (Check Contracts, Position Mode) draw flat in ui-cpp's Instrument theme | Give `ButtonRole::Default` a raised surface in ui-cpp | resolved: ui-cpp#24 gives Default buttons a raised fill and border |
+| 4 | Naming every joint an emergency stop did not reach                                           | Per-joint delivery reports from the joint bus         | phase 1a (#17)                                                     |
+| 5 | Bus load and period overruns in the status strip                                             | Control-loop overrun count, bus-load estimate         | phase 1d (#17)                                                     |

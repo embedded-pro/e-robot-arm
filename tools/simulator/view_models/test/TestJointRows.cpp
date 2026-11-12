@@ -60,3 +60,17 @@ TEST_F(JointRowsTest, the_limit_bar_stays_within_its_ends)
     EXPECT_NEAR(1.0f, rows[0].limitFraction, 1.0e-5f);
     EXPECT_NEAR(0.0f, rows[1].limitFraction, 1.0e-5f);
 }
+
+TEST_F(JointRowsTest, a_silent_joint_shows_no_values_and_says_it_is_silent)
+{
+    auto snapshot = simulator::test::Running();
+    snapshot.readings[4].position = foc::Radians{ 0.7f };
+    snapshot.readings[4].silent = true;
+
+    const auto rows = simulator::JointRows(snapshot, simulator::test::Limits());
+
+    EXPECT_EQ("—", rows[4].position);
+    EXPECT_EQ("—", rows[4].speed);
+    EXPECT_EQ("Silent", rows[4].state);
+    EXPECT_EQ(ui::theme::StatusLevel::Fault, rows[4].level);
+}

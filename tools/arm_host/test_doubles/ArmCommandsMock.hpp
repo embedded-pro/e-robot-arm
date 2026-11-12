@@ -11,6 +11,7 @@ namespace arm_host
     {
     public:
         MOCK_METHOD(uint32_t, Post, (const ArmCommand& command), (override));
+        MOCK_METHOD(uint32_t, SwitchTarget, (const ArmTarget& target), (override));
         MOCK_METHOD(ArmSnapshot, Snapshot, (), (const, override));
     };
 }

@@ -21,6 +21,8 @@ namespace simulator
     {
         std::string target;
         std::string connection;
+        std::string stage;
+        ui::theme::StatusLevel stageLevel{ ui::theme::StatusLevel::Neutral };
         ui::theme::StatusLevel connectionLevel{ ui::theme::StatusLevel::Neutral };
         std::string contracts;
         std::string trip;
@@ -47,6 +49,8 @@ namespace simulator
     class SimulatorPresenter
     {
     public:
+        static constexpr std::size_t staleFrames{ 30 };
+
         SimulatorPresenter(arm_host::ArmCommands& arm, ui::shell::ShellView& shell, ui::shell::FormView& operateView, ui::shell::FormView& moveView,
             const arm::JointLimits& limits, infra::TimePoint start);
         SimulatorPresenter(const SimulatorPresenter& other) = delete;
@@ -54,6 +58,7 @@ namespace simulator
 
         void Refresh(const arm_host::ArmSnapshot& snapshot, std::span<const arm_host::ArmEvent> events);
         void EmergencyStop();
+        void SwitchTarget(const arm_host::ArmTarget& target);
         void ConfirmRearm();
         bool InjectFault(std::size_t joint);
         bool SilenceJoint(std::size_t joint);
@@ -90,6 +95,7 @@ namespace simulator
         void Handle(const arm_host::ArmEvent& event);
         void UpdateControls();
         void UpdateStatus();
+        void TrackSequence();
         std::string TargetProblem() const;
         std::string Hint(std::span<const std::pair<Control, std::string_view>> controls) const;
 
@@ -110,6 +116,8 @@ namespace simulator
         std::string moveHint;
         std::map<uint32_t, std::string> pending;
         ui::Callback<void(std::string_view prompt)> rearmPrompt;
+        uint64_t lastSequence{ 0 };
+        std::size_t unchangedFrames{ 0 };
     };
 }
 
