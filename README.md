@@ -49,8 +49,8 @@ ctest --preset host
 
 The e-robot-arm Simulator runs the arm stack against six simulated joints, a `virtual:` bus or the real arm, with a
 lit, shadowed 3-D arm (Qt Quick 3D), the joint table, the bring-up and move controls, a scope and an event log. It
-needs Qt 6.4 or later with Qt Quick 3D (`qt6-quick3d-dev`, `qml6-module-quick3d`, `qt6-declarative-dev`,
-`qt6-shadertools-dev`):
+needs Qt 6.4 or later with Qt Quick 3D (`qt6-quick3d-dev`, `qml6-module-qtquick3d` — `qml6-module-quick3d` on
+Ubuntu 24.04 — `qt6-declarative-dev`, `qt6-shadertools-dev`):
 
 ```bash
 cmake --preset host-qt
