@@ -36,8 +36,9 @@ date: 2026-11-12
 - **Assumption**: the controller runs on a PC for now; a desktop operating system adds jitter, so the arm loop
   runs at a few hundred hertz and leaves the fast loops to the nodes.
 - **Assumption**: the bus runs at 1 Mbit/s. An e-foc node answers telemetry only when asked, so each period carries
-  six requests, twelve answers and six setpoints, about 2.9 ms of bus time: the arm loop runs at 200 Hz (5 ms),
-  about 57 % bus load ([control loop](../design/control-loop.md)).
+  six requests, twelve answers and six setpoints, and the node acknowledges every request and every setpoint: 36
+  frames, about 4.3 ms of bus time. The arm loop runs at 100 Hz (10 ms), about 43 % bus load
+  ([control loop](../design/control-loop.md)).
 
 ---
 
@@ -124,8 +125,9 @@ sequenceDiagram
 
 - **Timing**: the arm loop period is fixed and measured; a missed period is reported, never silently skipped.
 - **Faults**: a fault on any node stops the arm; the joint bus reports which node and why.
-- **Testing**: the core is unit-tested on the host; integration scenarios run the controller against virtual
-  motors.
+- **Testing**: the core is unit-tested on the host; integration scenarios run the controller against six simulated
+  e-foc nodes (e-foc-protocol's motor server) on an in-process CAN bus, tagged with the arm requirements; runs
+  against e-foc's virtual motors come next.
 
 ---
 

@@ -55,8 +55,9 @@ loop ends both phases; a phase that has not run yet does not run.
 
 A telemetry request and a setpoint set are six frames each, and can-lite's transmit queue holds eight, so the two
 bursts must not be queued together. Half a period also gives the joints time to answer before positions are
-sampled: the request and its twelve answers take about 2.1 ms of a 1 Mbit/s bus, so the period is at least
-5 ms (200 Hz).
+sampled: the request, its six acknowledgements and its twelve answers take about 2.8 ms of a 1 Mbit/s bus, and the
+setpoints with their six acknowledgements about 1.5 ms, so each half period is at least 3 ms. The arm runs at
+10 ms (100 Hz), which leaves the bus about 57 % idle.
 
 ---
 
@@ -80,9 +81,9 @@ sampled: the request and its twelve answers take about 2.1 ms of a 1 Mbit/s bus,
 
 ## Data Model
 
-| Entity       | Field          | Type / Unit | Range  | Notes                                   |
-|--------------|----------------|-------------|--------|-----------------------------------------|
-| Control loop | control period | duration    | ≥ 5 ms | Telemetry and setpoint phases each half |
+| Entity       | Field          | Type / Unit | Range                    | Notes                                   |
+|--------------|----------------|-------------|--------------------------|-----------------------------------------|
+| Control loop | control period | duration    | ≥ 6 ms, 10 ms by default | Telemetry and setpoint phases each half |
 
 ---
 
@@ -121,16 +122,17 @@ sequenceDiagram
 
 ## Constraints & Limitations
 
-| Constraint | Value / Description                                                                                |
-|------------|----------------------------------------------------------------------------------------------------|
-| Bus load   | About 24 frames per period (6 requests, 12 answers, 6 setpoints): about 57 % of 1 Mbit/s at 200 Hz |
-| Timing     | Event-loop timers: on a PC the phases jitter with the operating system's scheduling                |
-| Memory     | No heap; all state is fixed-size                                                                   |
+| Constraint | Value / Description                                                                                                                        |
+|------------|--------------------------------------------------------------------------------------------------------------------------------------------|
+| Bus load   | 36 frames per period (6 requests and 6 acknowledgements, 12 answers, 6 setpoints and 6 acknowledgements): about 43 % of 1 Mbit/s at 100 Hz |
+| Timing     | Event-loop timers: on a PC the phases jitter with the operating system's scheduling                                                        |
+| Memory     | No heap; all state is fixed-size                                                                                                           |
 
 ---
 
 ## Open Questions
 
-| # | Question                                      | Options                             | Status |
-|---|-----------------------------------------------|-------------------------------------|--------|
-| 1 | Whether to measure and report period overruns | Report a late phase, count overruns | open   |
+| # | Question                                                    | Options                                                                                 | Status |
+|---|-------------------------------------------------------------|-----------------------------------------------------------------------------------------|--------|
+| 1 | Whether to measure and report period overruns               | Report a late phase, count overruns                                                     | open   |
+| 2 | Whether setpoints and telemetry requests need acknowledging | Keep the acknowledgements, an unacknowledged form in a new e-foc-protocol minor version | open   |

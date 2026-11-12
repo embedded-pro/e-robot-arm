@@ -7,6 +7,7 @@ is on (the `host` preset enables it) and run via CTest.
 ```
 integration_tests/
 ├── features/        # Gherkin .feature files (the specification)
+│   ├── arm.feature  #   the arm against six simulated e-foc joints (REQ-ARM-*)
 │   └── accumulator.feature
 ├── support/         # Fixtures shared across steps (the system under test)
 ├── hooks/           # Before/After scenario hooks
@@ -30,6 +31,15 @@ ctest --preset host -R e_robot_arm.integration_tests
   regex matches lines in the `.feature` files.
 - The **feature** files are the human-readable spec; keep them in sync with the
   product requirements.
+
+## The arm scenarios
+
+`arm.feature` runs the real `arm::Arm` (joint bus, safety supervisor, joint motion, control loop) against six
+`SimulatedJoint`s on one in-process `VirtualCanBus`. Each simulated joint is a node built on e-foc-protocol's
+`FocMotorCategoryServer`: it answers contract queries, telemetry requests and commands as an e-foc node does, and
+follows its position setpoints exactly. A scenario can make a joint fault or go silent. Time is the test clock
+(`infra::ClockFixture`), so the scenarios are deterministic and run in milliseconds. Each scenario is tagged with
+the requirement it verifies (`documentation/requirements/arm/arm.yaml`).
 
 ## Add a scenario
 

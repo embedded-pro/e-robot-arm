@@ -25,7 +25,7 @@ namespace
 
     arm::ArmConfig ArmConfigFor(const arm::JointNodeIds& nodes)
     {
-        arm::ArmConfig config{ nodes, 3, {}, {}, 5ms };
+        arm::ArmConfig config{ nodes, 3, {}, {}, 10ms };
         for (auto& limit : config.positionLimits)
             limit = { foc::Radians{ -std::numbers::pi_v<float> }, foc::Radians{ std::numbers::pi_v<float> } };
         for (auto& limit : config.motionLimits)
