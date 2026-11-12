@@ -2,7 +2,7 @@
 title: "Joint Motion Design"
 type: design
 status: draft
-version: 0.1.0
+version: 0.2.0
 component: "motion"
 date: 2026-11-12
 ---
@@ -12,7 +12,7 @@ date: 2026-11-12
 | Title     | Joint Motion Design |
 | Type      | design              |
 | Status    | draft               |
-| Version   | 0.1.0               |
+| Version   | 0.2.0               |
 | Component | motion              |
 | Date      | 2026-11-12          |
 
@@ -56,9 +56,10 @@ A move is refused if a target is not finite or another move is still running.
 
 ### Part B — Streaming
 
-Once a move is planned, the joint positions are sampled at the end of every control period, measured from the
-start of the move, and sent to the joint bus as one setpoint set. The first set goes out one period after the
-start. The set sampled at or after the move's end is the target itself; it is sent once and the move is done.
+Joint motion has no clock of its own: the control loop runs its step once per control period, in the setpoint
+phase. While a move is running, each step advances the move by one period, samples the joint positions at that
+time, measured from the start of the move, and sends them to the joint bus as one setpoint set; with no move
+running a step does nothing. The first set goes out at the first step after the start. The set sampled at or after the move's end is the target itself; it is sent once and the move is done.
 
 If the joint bus refuses a set, the move is aborted: nothing more is sent and the abort is reported. Aborting a
 move by request stops the streaming the same way; the joints hold the last position they were sent.
@@ -79,7 +80,7 @@ move by request stops the streaming the same way; the joints hold the last posit
 | Interface | Purpose                                     | Contract                                       |
 |-----------|---------------------------------------------|------------------------------------------------|
 | Joint bus | Latest positions; setpoint sets each period | The safety supervisor, so refusals abort moves |
-| Timer     | The control period                          | The event loop's timer service                 |
+| Step      | One step per control period                 | Run by the control loop's setpoint phase       |
 
 ---
 
@@ -115,7 +116,7 @@ sequenceDiagram
     participant B as Joint bus (safety supervisor)
     C->>M: move to target
     M->>B: latest positions
-    loop each control period
+    loop each control loop step
         M->>B: sampled positions
     end
     M->>B: target

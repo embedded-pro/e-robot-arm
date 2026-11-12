@@ -1,6 +1,5 @@
 #include "core/joint_bus/test_doubles/JointBusMock.hpp"
 #include "core/motion/implementations/JointMotionImpl.hpp"
-#include "infra/timer/test_helper/ClockFixture.hpp"
 #include "gmock/gmock.h"
 #include <chrono>
 #include <limits>
@@ -33,7 +32,6 @@ namespace
 
     class JointMotionImplTest
         : public Test
-        , public infra::ClockFixture
     {
     public:
         JointMotionImplTest()
@@ -52,6 +50,12 @@ namespace
                 target[joint] = readings[joint].position;
             target[0] = foc::Radians{ firstJoint };
             return target;
+        }
+
+        void Step(std::size_t periods)
+        {
+            for (std::size_t period = 0; period != periods; ++period)
+                motion.Step();
         }
 
         void RecordSetpoints(bool accepted = true)
@@ -79,18 +83,18 @@ TEST_F(JointMotionImplTest, streams_one_setpoint_set_per_period_and_the_target_l
     EXPECT_TRUE(motion.MoveTo(target));
     EXPECT_TRUE(motion.Moving());
 
-    ForwardTime(1500ms);
+    Step(15);
     EXPECT_EQ(15u, sent.size());
     EXPECT_TRUE(motion.Moving());
 
     EXPECT_CALL(observer, OnMoveDone());
-    ForwardTime(500ms);
+    Step(5);
 
     ASSERT_EQ(20u, sent.size());
     EXPECT_EQ(target, sent.back());
     EXPECT_FALSE(motion.Moving());
 
-    ForwardTime(1s);
+    Step(10);
     EXPECT_EQ(20u, sent.size());
 }
 
@@ -99,7 +103,7 @@ TEST_F(JointMotionImplTest, starts_from_the_latest_reported_positions)
     RecordSetpoints();
 
     EXPECT_TRUE(motion.MoveTo(Target(1.0f)));
-    ForwardTime(100ms);
+    Step(1);
 
     ASSERT_EQ(1u, sent.size());
     EXPECT_NEAR(0.005f, sent.front()[0].Value(), tolerance);
@@ -112,7 +116,7 @@ TEST_F(JointMotionImplTest, refuses_a_target_that_is_not_finite)
     EXPECT_FALSE(motion.MoveTo(Target(std::numeric_limits<float>::infinity())));
 
     EXPECT_FALSE(motion.Moving());
-    ForwardTime(1s);
+    Step(10);
 }
 
 TEST_F(JointMotionImplTest, refuses_a_second_move_while_moving)
@@ -123,7 +127,7 @@ TEST_F(JointMotionImplTest, refuses_a_second_move_while_moving)
     EXPECT_FALSE(motion.MoveTo(Target(-1.0f)));
 
     EXPECT_CALL(observer, OnMoveDone());
-    ForwardTime(2s);
+    Step(20);
     EXPECT_EQ(Target(1.0f), sent.back());
 }
 
@@ -133,7 +137,7 @@ TEST_F(JointMotionImplTest, a_refused_setpoint_set_aborts_the_move)
     EXPECT_TRUE(motion.MoveTo(Target(1.0f)));
 
     EXPECT_CALL(observer, OnMoveAborted());
-    ForwardTime(2s);
+    Step(20);
 
     EXPECT_EQ(1u, sent.size());
     EXPECT_FALSE(motion.Moving());
@@ -143,13 +147,13 @@ TEST_F(JointMotionImplTest, abort_stops_streaming_and_reports_it_once)
 {
     RecordSetpoints();
     EXPECT_TRUE(motion.MoveTo(Target(1.0f)));
-    ForwardTime(300ms);
+    Step(3);
 
     EXPECT_CALL(observer, OnMoveAborted());
     motion.Abort();
     motion.Abort();
 
-    ForwardTime(2s);
+    Step(20);
     EXPECT_EQ(3u, sent.size());
     EXPECT_FALSE(motion.Moving());
 }
@@ -160,8 +164,15 @@ TEST_F(JointMotionImplTest, a_move_to_where_the_joints_are_sends_the_target_once
     EXPECT_TRUE(motion.MoveTo(Target(0.0f)));
 
     EXPECT_CALL(observer, OnMoveDone());
-    ForwardTime(100ms);
+    Step(1);
 
     ASSERT_EQ(1u, sent.size());
     EXPECT_EQ(Target(0.0f), sent.front());
+}
+
+TEST_F(JointMotionImplTest, a_step_without_a_move_sends_nothing)
+{
+    Step(5);
+
+    EXPECT_FALSE(motion.Moving());
 }

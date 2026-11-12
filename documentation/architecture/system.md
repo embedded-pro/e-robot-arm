@@ -2,7 +2,7 @@
 title: "System Architecture"
 type: architecture
 status: draft
-version: 0.5.0
+version: 0.6.0
 component: "system"
 date: 2026-11-12
 ---
@@ -12,15 +12,16 @@ date: 2026-11-12
 | Title     | System Architecture |
 | Type      | architecture        |
 | Status    | draft               |
-| Version   | 0.5.0               |
+| Version   | 0.6.0               |
 | Component | system              |
 | Date      | 2026-11-12          |
 
 > Target architecture of e-robot-arm. The repository is bootstrapped from embedded-scaffold: the joint bus
 > (`core/joint_bus/`, [design](../design/joint-bus.md)), the safety supervisor (`core/safety/`,
-> [design](../design/safety.md)) and joint-space motion (`core/motion/`, [design](../design/joint-motion.md))
-> exist; the other components below are planned, and the scaffold's `example_*` components stay until they are
-> replaced. Diagrams are Mermaid or ASCII art only.
+> [design](../design/safety.md)), joint-space motion (`core/motion/`, [design](../design/joint-motion.md)) and the
+> control loop (`core/control_loop/`, [design](../design/control-loop.md)) exist; the other components below are
+> planned, and the scaffold's `example_*` components stay until they are replaced. Diagrams are Mermaid or ASCII
+> art only.
 
 ---
 
@@ -33,8 +34,9 @@ date: 2026-11-12
   controller can move from the PC to a microcontroller without rewriting it.
 - **Assumption**: the controller runs on a PC for now; a desktop operating system adds jitter, so the arm loop
   runs at a few hundred hertz and leaves the fast loops to the nodes.
-- **Assumption**: the bus runs at 1 Mbit/s; six joints exchanging one setpoint and one telemetry frame each at
-  500 Hz use about 6 000 frames/s, within the budget of a CAN 2.0B bus.
+- **Assumption**: the bus runs at 1 Mbit/s. An e-foc node answers telemetry only when asked, so each period carries
+  six requests, twelve answers and six setpoints, about 2.9 ms of bus time: the arm loop runs at 200 Hz (5 ms),
+  about 57 % bus load ([control loop](../design/control-loop.md)).
 
 ---
 
@@ -59,14 +61,15 @@ flowchart LR
 
 ## Component Decomposition
 
-| Sub-component | Responsibility                                                                          |
-|---------------|-----------------------------------------------------------------------------------------|
-| arm model     | Kinematic and dynamic parameters of the six joints, the tool frame and the base mount   |
-| joint bus     | Six e-foc nodes on one client: node map, contract check, fault fan-out, liveness        |
-| motion        | Synchronised joint moves today; trajectories and time-optimal path parameterisation     |
-| control       | Joint-space and Cartesian control with dynamics feed-forward                            |
-| safety        | Guards the joint bus: joint limits, contract gate, emergency stop on a fault or silence |
-| simulator     | Qt operator UI and 3-D view, running the same core against virtual motors or the arm    |
+| Sub-component | Responsibility                                                                           |
+|---------------|------------------------------------------------------------------------------------------|
+| arm model     | Kinematic and dynamic parameters of the six joints, the tool frame and the base mount    |
+| joint bus     | Six e-foc nodes on one client: node map, contract check, fault fan-out, liveness         |
+| motion        | Synchronised joint moves today; trajectories and time-optimal path parameterisation      |
+| control loop  | The fixed control period: telemetry requests, then the setpoint step half a period later |
+| control       | Joint-space and Cartesian control with dynamics feed-forward                             |
+| safety        | Guards the joint bus: joint limits, contract gate, emergency stop on a fault or silence  |
+| simulator     | Qt operator UI and 3-D view, running the same core against virtual motors or the arm     |
 
 ```mermaid
 flowchart TD

@@ -19,9 +19,10 @@ namespace arm
         void Abort() override;
         bool Moving() const override;
 
+        void Step();
+
     private:
         JointPositions LatestPositions() const;
-        void Step();
         void Finish();
 
         JointBus& bus;
@@ -30,7 +31,7 @@ namespace arm
         JointMovePlan plan;
         JointPositions target{};
         uint32_t periodsElapsed{ 0 };
-        infra::TimerRepeating timer;
+        bool moving{ false };
     };
 }
 
