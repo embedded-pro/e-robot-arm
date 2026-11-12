@@ -88,19 +88,19 @@ Layout** restores this one.
 Every disabled control carries its reason as a tooltip and in a one-line hint under its group. "Connected" means
 the target is built and at least one joint has answered. Joints are numbered 1–6, base first.
 
-| Control          | Enabled when                                                         | Disabled reason shown                                                | Action                                             |
-|------------------|----------------------------------------------------------------------|----------------------------------------------------------------------|----------------------------------------------------|
-| Emergency stop   | A target is built                                                    | "No target"                                                          | Emergency stop to all joints, ahead of all else    |
-| Check Contracts  | Connected, no move running                                           | "Not connected", "Moving"                                            | Query every joint's contract                       |
-| Position Mode    | Contracts compatible, not tripped, no move running                   | "Contracts not checked", "Joint N incompatible", "Tripped", "Moving" | Select position mode on all joints                 |
-| Start            | Contracts compatible, not tripped, every joint in position mode      | as above, "Joint N not in position mode"                             | Start all joints                                   |
-| Stop             | Any joint running                                                    | "No joint running"                                                   | Stop all joints                                    |
-| Clear Faults     | Any joint in fault                                                   | "No joint in fault"                                                  | Clear faults on all joints                         |
-| Re-arm…          | Tripped, no joint in fault                                           | "Not tripped", "Joint N in fault: clear it first"                    | Confirmation naming the trip's source, then re-arm |
-| Move target J1–6 | Always editable                                                      | —                                                                    | Validated as typed against the joint limits        |
-| Move             | Every joint running, not tripped, no move running, all targets valid | "Joint N not running", "Tripped", "Moving", "J N outside limits"     | Move to the six targets                            |
-| Abort            | A move running                                                       | "No move running"                                                    | Abort the move                                     |
-| Target selector  | No move running                                                      | "Moving"                                                             | Part C                                             |
+| Control          | Enabled when                                                         | Disabled reason shown                                                  | Action                                             |
+|------------------|----------------------------------------------------------------------|------------------------------------------------------------------------|----------------------------------------------------|
+| Emergency stop   | A target is built                                                    | "No target"                                                            | Emergency stop to all joints, ahead of all else    |
+| Check Contracts  | Connected, no move running                                           | "Not connected", "Moving"                                              | Query every joint's contract                       |
+| Position Mode    | Contracts compatible, not tripped, no move running                   | "Contracts not checked", "Contracts incompatible", "Tripped", "Moving" | Select position mode on all joints                 |
+| Start            | Contracts compatible, not tripped, every joint in position mode      | as above, "Joint N not in position mode"                               | Start all joints                                   |
+| Stop             | Any joint running                                                    | "No joint running"                                                     | Stop all joints                                    |
+| Clear Faults     | Any joint in fault                                                   | "No joint in fault"                                                    | Clear faults on all joints                         |
+| Re-arm…          | Tripped, no joint in fault                                           | "Not tripped", "Joint N in fault: clear it first"                      | Confirmation naming the trip's source, then re-arm |
+| Move target J1–6 | Always editable                                                      | —                                                                      | Validated as typed against the joint limits        |
+| Move             | Every joint running, not tripped, no move running, all targets valid | "Joint N not running", "Tripped", "Moving", "J N outside limits"       | Move to the six targets                            |
+| Abort            | A move running                                                       | "No move running"                                                      | Abort the move                                     |
+| Target selector  | No move running                                                      | "Moving"                                                               | Part C                                             |
 
 - A clicked action shows "requested…" in the status strip within 100 ms and is replaced by the result event.
 - Spin boxes have keyboard tracking off; Enter in a target field does not move — only **Move** or Ctrl+Enter does.

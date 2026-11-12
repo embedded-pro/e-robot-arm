@@ -1,13 +1,14 @@
-#include "integration_tests/support/SimulatedJoint.hpp"
+#include "tools/simulated_arm/SimulatedJoint.hpp"
+#include "tools/simulated_arm/FirstOrderLag.hpp"
 
-namespace integration
+namespace simulation
 {
-    SimulatedJoint::SimulatedJoint(VirtualCanBus& bus, uint16_t nodeId)
+    SimulatedJoint::SimulatedJoint(VirtualCanBus& bus, uint16_t nodeId, infra::Duration timeConstant)
         : port(bus)
         , config{ nodeId }
         , protocolServer(port, config)
         , server(protocolServer.Transport())
-        , node(server)
+        , node(server, timeConstant)
     {
         protocolServer.RegisterCategory(server);
     }
@@ -21,6 +22,7 @@ namespace integration
     {
         node.state = can::FocMotorState::fault;
         node.fault = code;
+        node.Hold();
     }
 
     void SimulatedJoint::Silence()
@@ -43,15 +45,38 @@ namespace integration
         return node.position;
     }
 
+    foc::Radians SimulatedJoint::Target() const
+    {
+        return node.target;
+    }
+
     uint32_t SimulatedJoint::EmergencyStops() const
     {
         return node.emergencyStops;
     }
 
-    SimulatedJoint::Node::Node(can::FocMotorCategoryServer& server)
+    SimulatedJoint::Node::Node(can::FocMotorCategoryServer& server, infra::Duration timeConstant)
         : can::FocMotorCategoryServerObserver(server)
         , server(server)
+        , timeConstant(timeConstant)
+        , lastUpdate(infra::Now())
     {}
+
+    void SimulatedJoint::Node::Advance()
+    {
+        const auto now = infra::Now();
+        const auto followed = FollowWithLag(position, target, now - lastUpdate, timeConstant);
+        position = followed.position;
+        speed = followed.speed;
+        lastUpdate = now;
+    }
+
+    void SimulatedJoint::Node::Hold()
+    {
+        Advance();
+        target = position;
+        speed = foc::RadiansPerSecond{ 0.0f };
+    }
 
     void SimulatedJoint::Node::OnStart(const infra::Function<void(services::CanAckStatus)>& onDone)
     {
@@ -69,6 +94,7 @@ namespace integration
     {
         if (state == can::FocMotorState::running)
             state = can::FocMotorState::ready;
+        Hold();
         onDone(services::CanAckStatus::success);
     }
 
@@ -87,6 +113,7 @@ namespace integration
         ++emergencyStops;
         if (state == can::FocMotorState::running)
             state = can::FocMotorState::ready;
+        Hold();
         onDone(services::CanAckStatus::success);
     }
 
@@ -99,7 +126,11 @@ namespace integration
     void SimulatedJoint::Node::OnSetSetpoint(const can::FocSetpoint& setpoint, const infra::Function<void()>& onDone)
     {
         if (state == can::FocMotorState::running && mode == can::FocMotorMode::position && setpoint.kind == can::FocSetpointKind::position)
-            position = foc::Radians{ setpoint.value };
+        {
+            Advance();
+            target = foc::Radians{ setpoint.value };
+            Advance();
+        }
         onDone();
     }
 
@@ -115,8 +146,9 @@ namespace integration
 
     void SimulatedJoint::Node::OnRequestTelemetry(const infra::Function<void()>& onDone)
     {
+        Advance();
         server.BroadcastTelemetryStatus(state, fault);
-        server.BroadcastTelemetryMotion(foc::RadiansPerSecond{ 0.0f }, position);
+        server.BroadcastTelemetryMotion(speed, position);
         onDone();
     }
 

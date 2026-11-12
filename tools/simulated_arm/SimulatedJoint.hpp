@@ -1,17 +1,18 @@
-#ifndef INTEGRATION_TESTS_SUPPORT_SIMULATED_JOINT_HPP
-#define INTEGRATION_TESTS_SUPPORT_SIMULATED_JOINT_HPP
+#ifndef TOOLS_SIMULATED_ARM_SIMULATED_JOINT_HPP
+#define TOOLS_SIMULATED_ARM_SIMULATED_JOINT_HPP
 
 #include "can-lite/server/CanProtocolServer.hpp"
 #include "e-foc-protocol/server/FocMotorCategoryServer.hpp"
-#include "integration_tests/support/VirtualCanBus.hpp"
+#include "infra/timer/Timer.hpp"
+#include "tools/simulated_arm/VirtualCanBus.hpp"
 #include <cstdint>
 
-namespace integration
+namespace simulation
 {
     class SimulatedJoint
     {
     public:
-        SimulatedJoint(VirtualCanBus& bus, uint16_t nodeId);
+        SimulatedJoint(VirtualCanBus& bus, uint16_t nodeId, infra::Duration timeConstant = {});
         SimulatedJoint(const SimulatedJoint& other) = delete;
         SimulatedJoint& operator=(const SimulatedJoint& other) = delete;
         ~SimulatedJoint();
@@ -22,6 +23,7 @@ namespace integration
         can::FocMotorState State() const;
         can::FocMotorMode Mode() const;
         foc::Radians Position() const;
+        foc::Radians Target() const;
         uint32_t EmergencyStops() const;
 
     private:
@@ -29,12 +31,17 @@ namespace integration
             : private can::FocMotorCategoryServerObserver
         {
         public:
-            explicit Node(can::FocMotorCategoryServer& server);
+            Node(can::FocMotorCategoryServer& server, infra::Duration timeConstant);
+
+            void Advance();
+            void Hold();
 
             can::FocMotorState state{ can::FocMotorState::ready };
             can::FocFaultCode fault{ can::FocFaultCode::none };
             can::FocMotorMode mode{ can::FocMotorMode::torque };
             foc::Radians position{ 0.0f };
+            foc::RadiansPerSecond speed{ 0.0f };
+            foc::Radians target{ 0.0f };
             uint32_t emergencyStops{ 0 };
 
         private:
@@ -60,6 +67,8 @@ namespace integration
             void OnResetModel(const infra::Function<void(bool stored)>& onDone) override;
 
             can::FocMotorCategoryServer& server;
+            infra::Duration timeConstant;
+            infra::TimePoint lastUpdate;
         };
 
         VirtualCanBus::Port port;

@@ -18,6 +18,7 @@ namespace arm
         bool MoveTo(const JointPositions& target) override;
         void Abort() override;
         bool Moving() const override;
+        std::optional<JointPositions> Setpoint() const override;
 
         void Step();
 
@@ -31,6 +32,7 @@ namespace arm
         infra::Duration period;
         JointMovePlan plan;
         JointPositions target{};
+        std::optional<JointPositions> setpoint;
         uint32_t periodsElapsed{ 0 };
         bool moving{ false };
     };

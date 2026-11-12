@@ -111,21 +111,38 @@ A `SimulatedJoint` is an e-foc node on the in-process bus (a `FocMotorCategorySe
 | `Post(command)`        | One of: check contracts, select position mode, start, stop, clear faults, emergency stop, re-arm, move, abort, inject fault, silence joint. Its result arrives as an event |
 | `SwitchTarget(target)` | Part C; its result arrives as an event                                                                                                                                     |
 | `Snapshot()`           | A copy of the latest snapshot                                                                                                                                              |
-| `DrainEvents(sink)`    | Every event since the last drain, in order                                                                                                                                 |
-| `DrainTrace(sink)`     | Every trace sample since the last drain, in order                                                                                                                          |
+| `TakeEvents()`         | Every event since the last call, in order                                                                                                                                  |
+| `TakeTrace()`          | Every trace sample since the last call, in order                                                                                                                           |
 
-The emergency stop is posted ahead of any other queued command, so a burst of moves cannot delay it.
+It is built in layers, each tested on its own:
 
-The console moves onto `ArmHost` too: its `Session` thread code in `tools/arm_console/main/Main.cpp` goes away, and
-its synchronous `Execute` waits for the command's result event.
+| Layer             | Thread    | Does                                                                                                |
+|-------------------|-----------|-----------------------------------------------------------------------------------------------------|
+| `ArmRequestQueue` | any       | Holds posted requests in order; an emergency stop goes ahead of everything queued                   |
+| `ArmHost`         | owns both | The arm thread with EMIL's event loop and timer service; turns each post into one queued request    |
+| `ArmRuntime`      | arm       | Opens the target through a `TargetOpener`, owns the session, switches targets (Part C)              |
+| `ArmSession`      | arm       | The FOC motor client and `arm::Arm` on one target link; runs commands; publishes snapshot and trace |
+| `ArmMailbox`      | any       | The snapshot under a mutex and the two bounded queues; numbers the snapshots                        |
+
+Every command answers with exactly one event, `accepted` or `refused` with a reason, carrying the id `Post`
+returned. Until phase 1 makes a command reach all joints or none
+([#17](https://github.com/embedded-pro/e-robot-arm/issues/17)), a command posted while the control loop's burst
+fills the CAN transmit queue is refused by the joint bus. The session therefore retries a refused bus command every
+millisecond for up to 20 attempts before reporting it refused. Only idempotent commands are retried: check
+contracts, select mode, start, stop, clear faults and emergency stop. A joint that already received one receives
+it again, harmlessly.
+
+The console runs on `ArmHost` too ([arm-console.md](arm-console.md)): it posts each typed command and waits for its
+answer.
 
 ### Part F — Snapshot, events and traces
 
 The snapshot is what the screen shows; events are what the log shows; traces are what the scopes plot.
 
-- **Snapshot** — published after each telemetry phase, with a sequence number so the GUI can tell a stale copy.
-- **Events** — contracts resolved, joint fault, joint silent, trip with its source, re-arm, move done, move aborted,
-  command refused (with the command and the reason), target switched; each with the arm-thread time.
+- **Snapshot** — published once per control period, with a sequence number so the GUI can tell a stale copy.
+- **Events** — command accepted or refused (with its id, its name and the reason), contracts resolved, joint fault,
+  joint silent, tripped (with the joint and the fault that caused it, once per trip), move done, move aborted, target
+  ready, target failed; each with the arm-thread time.
 - **Trace samples** — one per control period: the time, the six commanded positions and the six measured positions.
 
 The commanded positions are joint motion's last sampled setpoint. Joint motion gains a read-only accessor for it
@@ -204,7 +221,7 @@ sequenceDiagram
         A->>J: setpoints
     end
     Note over G: every display frame (≤ 60 Hz)
-    G->>H: Snapshot(), DrainEvents(), DrainTrace()
+    G->>H: Snapshot(), TakeEvents(), TakeTrace()
     H-->>G: copies
 ```
 

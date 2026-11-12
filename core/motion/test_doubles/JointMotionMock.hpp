@@ -13,6 +13,7 @@ namespace arm
         MOCK_METHOD(bool, MoveTo, (const JointPositions& target), (override));
         MOCK_METHOD(void, Abort, (), (override));
         MOCK_METHOD(bool, Moving, (), (const, override));
+        MOCK_METHOD(std::optional<JointPositions>, Setpoint, (), (const, override));
     };
 }
 

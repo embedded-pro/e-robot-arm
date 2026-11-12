@@ -4,9 +4,7 @@
 #include "core/arm/Arm.hpp"
 #include "e-foc-protocol/client/FocMotorCanClient.hpp"
 #include "infra/timer/test_helper/ClockFixture.hpp"
-#include "integration_tests/support/SimulatedJoint.hpp"
-#include "integration_tests/support/VirtualCanBus.hpp"
-#include <memory>
+#include "tools/simulated_arm/SimulatedArm.hpp"
 #include <optional>
 #include <vector>
 
@@ -38,13 +36,11 @@ namespace integration
     {
         ArmFixture();
 
-        SimulatedJoint& Joint(std::size_t number);
+        simulation::SimulatedJoint& Joint(std::size_t number);
         void StartInPositionMode();
 
-        VirtualCanBus bus;
-        std::vector<std::unique_ptr<SimulatedJoint>> joints;
-        VirtualCanBus::Port armPort{ bus };
-        can::FocMotorCanClient client{ armPort };
+        simulation::SimulatedArm simulatedArm;
+        can::FocMotorCanClient client{ simulatedArm.ArmSide() };
         arm::Arm arm;
         ArmEvents events{ arm.Safety(), arm.Motion() };
         arm::JointPositions start{};

@@ -2,7 +2,7 @@
 title: "Joint Motion Design"
 type: design
 status: draft
-version: 0.3.0
+version: 0.4.0
 component: "motion"
 date: 2026-11-12
 ---
@@ -12,7 +12,7 @@ date: 2026-11-12
 | Title     | Joint Motion Design |
 | Type      | design              |
 | Status    | draft               |
-| Version   | 0.3.0               |
+| Version   | 0.4.0               |
 | Component | motion              |
 | Date      | 2026-11-12          |
 
@@ -72,10 +72,11 @@ move by request stops the streaming the same way; the joints hold the last posit
 
 ### Provided
 
-| Interface           | Purpose                                 | Contract                                         |
-|---------------------|-----------------------------------------|--------------------------------------------------|
-| Joint motion        | Move to a target, abort, whether moving | One move at a time; refused targets send nothing |
-| Joint motion events | Move done, move aborted                 | Exactly one of the two per accepted move         |
+| Interface           | Purpose                                      | Contract                                                        |
+|---------------------|----------------------------------------------|-----------------------------------------------------------------|
+| Joint motion        | Move to a target, abort, whether moving      | One move at a time; refused targets send nothing                |
+| Joint motion events | Move done, move aborted                      | Exactly one of the two per accepted move                        |
+| Setpoint            | The last setpoint set the joint bus accepted | Empty until the first; kept after a move ends; for display only |
 
 ### Required
 

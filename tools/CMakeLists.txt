@@ -3,6 +3,8 @@
 # The top-level CMakeLists only adds this directory for non-embedded builds, so
 # everything here targets the host.
 add_subdirectory(arm_console)
+add_subdirectory(simulated_arm)
+add_subdirectory(arm_host)
 add_subdirectory(example_tool)
 
 # Qt-based GUI tools (simulators, dashboards): provide Qt6 and enable here.

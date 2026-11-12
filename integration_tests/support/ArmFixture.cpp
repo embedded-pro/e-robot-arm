@@ -21,13 +21,6 @@ namespace integration
             return config;
         }
 
-        std::vector<std::unique_ptr<SimulatedJoint>> Joints(VirtualCanBus& bus)
-        {
-            std::vector<std::unique_ptr<SimulatedJoint>> joints;
-            for (const auto node : nodes)
-                joints.push_back(std::make_unique<SimulatedJoint>(bus, node));
-            return joints;
-        }
     }
 
     ArmEvents::ArmEvents(arm::SafetySupervisor& safety, arm::JointMotion& motion)
@@ -61,13 +54,13 @@ namespace integration
     }
 
     ArmFixture::ArmFixture()
-        : joints(Joints(bus))
+        : simulatedArm(nodes, infra::Duration{})
         , arm(client.CategoryClient(), Config())
     {}
 
-    SimulatedJoint& ArmFixture::Joint(std::size_t number)
+    simulation::SimulatedJoint& ArmFixture::Joint(std::size_t number)
     {
-        return *joints.at(number - 1);
+        return simulatedArm.Joint(number - 1);
     }
 
     void ArmFixture::StartInPositionMode()

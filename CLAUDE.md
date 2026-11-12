@@ -43,9 +43,15 @@ simulator runs the same core against e-foc virtual motors or the real arm.
     `platform::Platform` implementations (host stubs; EK-TM4C123GXL; STM32F429I-DISC1).
   - The active platform is chosen by `E_ROBOT_ARM_TARGET_PLATFORM`.
 - `tools/` — host-side developer tools that reuse `core/` libraries. Built only for the host.
-  - `tools/arm_console/` — `e-robot-arm-console`: opens a can-lite adapter
-    (`virtual:<bus>` hosts or joins the virtual hub), builds `arm::Arm` and takes
-    text commands. Design: `documentation/design/arm-console.md`.
+  - `tools/arm_console/` — `e-robot-arm-console`: text commands to an
+    `ArmHost` on simulated joints (`--bus simulated`), a `virtual:<bus>` (hosts or
+    joins the virtual hub) or a real adapter. Design: `documentation/design/arm-console.md`.
+  - `tools/simulated_arm/` — six simulated e-foc joints on an in-process
+    `VirtualCanBus`, with a first-order lag and fault injection; used by the
+    integration tests, the console and the simulator.
+  - `tools/arm_host/` — `arm_host::ArmHost`: the arm on its own thread with its
+    target (simulated, `virtual:` or a real adapter); commands in, snapshot,
+    events and traces out. Design: `documentation/design/simulator.md`.
   - `tools/example_tool/` — the scaffold's example.
 - `integration_tests/` — BDD tests (cucumber-cpp / Gherkin): `features/`, `steps/`,
   `support/`, `hooks/`, `main/`.
