@@ -110,7 +110,7 @@ one thread.
 | Configuration | position limits    | radians         | −π … π        | Every joint                       |
 | Configuration | speed limit        | radians/second  | 1             | Every joint                       |
 | Configuration | acceleration limit | radians/second² | 2             | Every joint                       |
-| Configuration | control period     | duration        | 5 ms          | 200 Hz                            |
+| Configuration | control period     | duration        | 10 ms         | 100 Hz                            |
 | Console       | bus                | adapter name    | `virtual:arm` | `--bus`                           |
 | Console       | bit rate           | bits/second     | 1 000 000     | `--bitrate`                       |
 

@@ -1,0 +1,28 @@
+- id: REQ-ARM-001
+  title: Compatible joints before motion
+  shall: >
+    The arm shall not move any joint until every one of its six joints has reported a compatible motor protocol
+    contract.
+
+- id: REQ-ARM-002
+  title: Coordinated joint move
+  shall: >
+    When commanded to a joint-space target within the joint limits, the arm shall move all six joints so that they
+    start together and arrive together at the target.
+
+- id: REQ-ARM-003
+  title: Targets outside the joint limits
+  shall: >
+    The arm shall refuse a target outside any joint's position limits without moving any joint.
+
+- id: REQ-ARM-004
+  title: Stop on a joint fault
+  shall: >
+    When any joint reports a fault, the arm shall emergency-stop all six joints and refuse further motion until it
+    is re-armed with no joint faulted.
+
+- id: REQ-ARM-005
+  title: Stop on a silent joint
+  shall: >
+    When any joint stops answering, the arm shall emergency-stop all six joints within the configured number of
+    control periods.

@@ -2,7 +2,7 @@
 title: "Joint Bus Design"
 type: design
 status: draft
-version: 0.2.0
+version: 0.3.0
 component: "joint_bus"
 date: 2026-11-12
 ---
@@ -12,7 +12,7 @@ date: 2026-11-12
 | Title     | Joint Bus Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.2.0            |
+| Version   | 0.3.0            |
 | Component | joint_bus        |
 | Date      | 2026-11-12       |
 
@@ -164,19 +164,20 @@ sequenceDiagram
 
 ## Constraints & Limitations
 
-| Constraint        | Value / Description                                                                                                                                |
-|-------------------|----------------------------------------------------------------------------------------------------------------------------------------------------|
-| Joints            | Exactly six                                                                                                                                        |
-| Burst size        | Six frames per command; can-lite's transmit queue holds eight, so a telemetry request and a setpoint burst go out at different times in the period |
-| Contract tracking | The e-foc-protocol client remembers eight nodes, enough for the six joints                                                                         |
-| Single observer   | The bus observes the category client; nothing else may observe the same client                                                                     |
-| Memory            | No heap; all state is fixed-size                                                                                                                   |
+| Constraint        | Value / Description                                                                                                                                                                       |
+|-------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Joints            | Exactly six                                                                                                                                                                               |
+| Burst size        | Six frames per command; can-lite's transmit queue holds eight, two of them kept for emergency frames, so a telemetry request and a setpoint burst go out at different times in the period |
+| Contract tracking | The e-foc-protocol client remembers eight nodes, enough for the six joints                                                                                                                |
+| Single observer   | The bus observes the category client; nothing else may observe the same client                                                                                                            |
+| Memory            | No heap; all state is fixed-size                                                                                                                                                          |
 
 ---
 
 ## Open Questions
 
-| # | Question                                         | Options                                        | Status |
-|---|--------------------------------------------------|------------------------------------------------|--------|
-| 1 | How the bus detects a silent node                | Requests missed in a row, counted per joint    | closed |
-| 2 | Whether setpoints carry speed and torque as well | Position only, combined command (contract 3.x) | open   |
+| # | Question                                                                                                                                                                                                                                                                         | Options                                                                                                                                 | Status |
+|---|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------|--------|
+| 1 | How the bus detects a silent node                                                                                                                                                                                                                                                | Requests missed in a row, counted per joint                                                                                             | closed |
+| 2 | Whether setpoints carry speed and torque as well                                                                                                                                                                                                                                 | Position only, combined command (contract 3.x)                                                                                          | open   |
+| 3 | A command issued while a control-loop burst is queued reaches only some joints: can-lite gives ordinary frames six of its eight queue slots, so a second six-frame burst is refused until the first drains (an emergency stop displaces ordinary frames and always gets through) | Queue commands in the joint bus until the burst drains, send commands only in a control-loop phase, a deeper transmit queue in can-lite | open   |
