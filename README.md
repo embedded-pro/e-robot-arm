@@ -7,8 +7,9 @@ The repository was bootstrapped from
 [`embedded-pro/embedded-scaffold`](https://github.com/embedded-pro/embedded-scaffold) and carries its structure,
 build system, dev container, CI and documentation scaffolding.
 
-> **Status**: the joint bus (`core/joint_bus/`) drives the six e-foc nodes over CAN, and the safety supervisor
-> (`core/safety/`) guards it; the rest of the arm is planned. The `example_*` components and `example_tool` are the scaffold's worked examples and will be
+> **Status**: the joint bus (`core/joint_bus/`) drives the six e-foc nodes over CAN, the safety supervisor
+> (`core/safety/`) guards it, and joint motion (`core/motion/`) moves all six joints together to a target; the
+> rest of the arm is planned. The `example_*` components and `example_tool` are the scaffold's worked examples and will be
 > replaced by the arm's own components.
 
 ## Overview
@@ -53,6 +54,7 @@ e-robot-arm/
 ├── core/                      # Reusable libraries only — no entry points
 │   ├── joint_bus/             #   the six e-foc joints as one set of commands and readings
 │   ├── safety/                #   joint limits and emergency stop in front of the joint bus
+│   ├── motion/                #   synchronised point-to-point joint moves
 │   ├── platform_abstraction/  #   platform::Platform interface (+ mock)
 │   └── example_component/     #   scaffold example, to be replaced
 ├── targets/                   # Application entry points + platform implementations (host, st, ti)
@@ -87,6 +89,7 @@ copies of embedded-infra-lib, can-lite and numerical-toolbox rather than fetchin
 | [System Architecture](documentation/architecture/system.md)                        | Planned components, interfaces and decisions      |
 | [Joint Bus Design](documentation/design/joint-bus.md)                              | The six e-foc joints as one set of commands       |
 | [Safety Supervisor Design](documentation/design/safety.md)                         | Limits and emergency stop in front of the bus     |
+| [Joint Motion Design](documentation/design/joint-motion.md)                        | Synchronised point-to-point joint moves           |
 | [Documentation Templates](documentation/templates/)                                | Starting points for new documents                 |
 | [Performance Optimization Guide](documentation/performance-optimization/README.md) | Embedded performance techniques and cycle budgets |
 | [AI Agent Instructions](CLAUDE.md)                                                 | Development guidelines, patterns and constraints  |
