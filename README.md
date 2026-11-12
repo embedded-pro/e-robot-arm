@@ -101,6 +101,7 @@ copies of embedded-infra-lib, can-lite and numerical-toolbox rather than fetchin
 
 | Document                                                                           | Description                                       |
 |------------------------------------------------------------------------------------|---------------------------------------------------|
+| [Roadmap](documentation/roadmap.md)                                                | Phases, issues and decisions still open           |
 | [System Architecture](documentation/architecture/system.md)                        | Planned components, interfaces and decisions      |
 | [Joint Bus Design](documentation/design/joint-bus.md)                              | The six e-foc joints as one set of commands       |
 | [Safety Supervisor Design](documentation/design/safety.md)                         | Limits and emergency stop in front of the bus     |
