@@ -30,6 +30,8 @@ target_sources(e_robot_arm.tool.arm_host PRIVATE
     ArmTarget.hpp
     ArmTargetLink.cpp
     ArmTargetLink.hpp
+    DefaultArmConfig.cpp
+    DefaultArmConfig.hpp
 )
 
 if (TARGET can_lite.drivers.platform)

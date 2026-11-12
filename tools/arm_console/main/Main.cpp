@@ -2,13 +2,13 @@
 #include "tools/arm_console/ConsoleOptions.hpp"
 #include "tools/arm_host/AdapterTargetLink.hpp"
 #include "tools/arm_host/ArmHost.hpp"
+#include "tools/arm_host/DefaultArmConfig.hpp"
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <cstdlib>
 #include <iostream>
 #include <mutex>
-#include <numbers>
 #include <set>
 #include <string>
 #include <thread>
@@ -17,16 +17,6 @@
 namespace
 {
     using namespace std::chrono_literals;
-
-    arm::ArmConfig ArmConfigFor(const arm::JointNodeIds& nodes)
-    {
-        arm::ArmConfig config{ nodes, 3, {}, {}, 10ms };
-        for (auto& limit : config.positionLimits)
-            limit = { foc::Radians{ -std::numbers::pi_v<float> }, foc::Radians{ std::numbers::pi_v<float> } };
-        for (auto& limit : config.motionLimits)
-            limit = { foc::RadiansPerSecond{ 1.0f }, foc::RadiansPerSecondSquared{ 2.0f } };
-        return config;
-    }
 
     arm_host::ArmTarget TargetFor(const std::string& bus)
     {
@@ -95,7 +85,8 @@ int main(int argc, const char* const argv[])
         return EXIT_FAILURE;
     }
 
-    arm_host::ArmHost host{ ArmConfigFor(options->nodes), arm_host::HostTargetOpener(options->nodes, 50ms, options->bitrate), TargetFor(options->bus) };
+    arm_host::ArmHost host{ arm_host::DefaultArmConfig(options->nodes), arm_host::HostTargetOpener(options->nodes, arm_host::simulatedTimeConstant, options->bitrate),
+        TargetFor(options->bus) };
     arm_console::ArmConsole console{ host, std::cout };
     EventPrinter printer{ host, console };
 

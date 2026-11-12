@@ -19,3 +19,6 @@
 [submodule "infra/e-foc-protocol"]
 	path = infra/e-foc-protocol
 	url = https://github.com/embedded-pro/e-foc-protocol.git
+[submodule "infra/ui-cpp"]
+	path = infra/ui-cpp
+	url = https://github.com/embedded-pro/ui-cpp.git

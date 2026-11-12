@@ -76,7 +76,7 @@ flowchart LR
 | arm model          | Kinematics and dynamics of the six joints, the tool frame and the base mount                                                                                                       | phase 3                 |
 | virtual arm        | Six e-foc virtual motors with selectable motor characteristics, coupled to the arm's dynamics                                                                                      | phase 7                 |
 | arm host           | The arm on its own thread with its target: simulated joints, `virtual:` bus or real adapter; commands in, snapshot, events and traces out; shared by the console and the simulator | exists (8a)             |
-| simulator          | Qt operator station on ui-cpp with a Qt Quick 3D arm view: scopes, configuration forms; runs the same core on any back end                                                         | phase 8a first          |
+| simulator          | Qt operator station on ui-cpp with a Qt Quick 3D arm view: scopes, configuration forms; runs the same core on any back end                                                         | exists (8a); 8b–8d      |
 
 ```mermaid
 flowchart TD

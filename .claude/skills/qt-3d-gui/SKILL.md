@@ -75,7 +75,9 @@ it looks**. Load both for any simulator work.
   - `shadowMapQuality: Light.ShadowMapQualityVeryHigh` (High on weak GPUs);
   - `shadowMapFar` just past the scene bounds, because tight bounds give sharp shadows;
   - `shadowFactor` 60–80, so the shadow does not go pure black;
-  - `shadowBias` tuned until there is no acne and no peter-panning (start around 5–10 in scene units of 1 cm);
+  - `shadowBias` tuned until there is no acne and no peter-panning: from Qt 6.5 on it is a distance (start around
+    5–10 in scene units of 1 cm), but in 6.4 it is a fraction in [−1, 1] and a value like 8 clamps to 1 and removes
+    the shadow entirely; leave it at its default unless the version is known;
   - `shadowFilter` 5–15 for soft PCF edges.
   - With Qt 6.8 or later, prefer cascaded shadow maps (`csmNumSplits`) and the soft-shadow quality settings.
 - **Floor:**
@@ -187,6 +189,19 @@ Normal maps and occlusion maps are optional polish. Prefer good geometry and AO 
   6. never drop below 30 fps, and never drop the shadows entirely without a user toggle.
 - **The control loop must never wait for rendering.** The arm runs on its own event loop and thread, as in the
   console. The GUI reads a snapshot, and exchanges data through a lock-free or mutex-protected snapshot struct.
+
+## Pitfalls seen with Qt 6.4
+
+- `SceneEnvironment.aoEnabled` arrives in 6.5. In 6.4 ambient occlusion is on whenever `aoStrength` is above 0; an
+  unknown property makes the whole QML file fail to load.
+- A `QML_SINGLETON` class that is default-constructible is constructed by the engine, which then ignores the static
+  `create()` returning the application's instance. The scene binds to an object nobody updates and shows the zero
+  pose forever. Give the class no default constructor.
+- `QQuickWidget::grabFramebuffer()` forces a render, so a captured frame proves nothing about live updates. Count
+  `QQuickWindow::afterRendering` while the arm moves; zero means the scene does not see the data.
+- Qt Quick renders only on change: an arm at rest renders no frames, so measure frame rate during motion.
+- `qmllint` resolves a C++ type only through a QML module (`qt_add_qml_module`); a context property is invisible to
+  it. `Connections` needs `import QtQml`. Set `OUTPUT_DIRECTORY` to a path ending in the module URI.
 
 ## Testing
 

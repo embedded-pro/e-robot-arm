@@ -2,7 +2,7 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.1.0
+version: 0.2.0
 component: "tool-simulator"
 date: 2026-11-12
 ---
@@ -12,7 +12,7 @@ date: 2026-11-12
 | Title     | Simulator Screen Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.1.0                   |
+| Version   | 0.2.0                   |
 | Component | tool-simulator          |
 | Date      | 2026-11-12              |
 
@@ -80,12 +80,14 @@ Layout** restores this one.
 - **Real-arm banner:** on the real target a full-width strip under the menu reads **REAL ARM — `<adapter>`** in the
   theme's `Warning` colour with an icon, and the window title gains the same text. It cannot be hidden.
 - **Centre:** the 3-D view (Part E).
-- **Right:** joint table, Operate, Move.
+- **Right:** one scrollable **Arm** dock with three groups: Joints (the table and a limit bar per joint), Operate
+  and Move.
 - **Bottom:** scope and event log, side by side.
 
 ### Part B — Controls and their states
 
-Every disabled control carries its reason as a tooltip and in a one-line hint under its group. "Connected" means
+Every disabled control carries its reason: in a hint under its group, one line per disabled control, and as a
+tooltip on the status strip's controls. "Connected" means
 the target is built and at least one joint has answered. Joints are numbered 1–6, base first.
 
 | Control          | Enabled when                                                         | Disabled reason shown                                                  | Action                                             |
@@ -93,7 +95,7 @@ the target is built and at least one joint has answered. Joints are numbered 1�
 | Emergency stop   | A target is built                                                    | "No target"                                                            | Emergency stop to all joints, ahead of all else    |
 | Check Contracts  | Connected, no move running                                           | "Not connected", "Moving"                                              | Query every joint's contract                       |
 | Position Mode    | Contracts compatible, not tripped, no move running                   | "Contracts not checked", "Contracts incompatible", "Tripped", "Moving" | Select position mode on all joints                 |
-| Start            | Contracts compatible, not tripped, every joint in position mode      | as above, "Joint N not in position mode"                               | Start all joints                                   |
+| Start            | Contracts compatible, not tripped                                    | "Contracts not checked", "Contracts incompatible", "Tripped"           | Start all joints                                   |
 | Stop             | Any joint running                                                    | "No joint running"                                                     | Stop all joints                                    |
 | Clear Faults     | Any joint in fault                                                   | "No joint in fault"                                                    | Clear faults on all joints                         |
 | Re-arm…          | Tripped, no joint in fault                                           | "Not tripped", "Joint N in fault: clear it first"                      | Confirmation naming the trip's source, then re-arm |
@@ -113,9 +115,10 @@ joints. A remembered real target is not reconnected on launch: the simulator ope
 selector shows the real adapter as the last used.
 
 **Choose a target.** The selector lists *Simulated joints*, *Virtual bus…* (asks for the bus name) and *Real arm…*
-(lists the adapters). Choosing *Real arm* opens a confirmation: "Connect to the real arm on `<adapter>`? Joints
-start stopped." with **Connect** and **Cancel** (default). A failed adapter shows a banner with the reason and the
-selector returns to the previous target.
+(asks for the adapter, `socketcan:<interface>` or `slcan:<port>`; the last one used is offered). Choosing *Real arm*
+opens a confirmation: "Connect to the real arm on `<adapter>`? Joints start stopped." with **Connect** and
+**Cancel** (default). A failed adapter is logged as a fault with its reason, and the arm returns to the previous
+target.
 
 **Bring up and move.** Check Contracts → Position Mode → Start → set targets → Move. The ghost shows the commanded
 arm while moving; the scope shows the selected joint.
@@ -253,18 +256,19 @@ sequenceDiagram
 
 ## Constraints & Limitations
 
-| Constraint   | Value / Description                                                                                       |
-|--------------|-----------------------------------------------------------------------------------------------------------|
-| Frame rate   | 60 fps target at 1080p on an integrated GPU with the loop at 100 Hz; never below 30 fps                   |
-| Measured     | To be filled in by the 8a implementation: frame time with the loop running, GPU and Qt version            |
-| Qt           | 6.4.2 in the dev container; `ExtendedSceneEnvironment`, `InfiniteGrid`, `DebugView` only on 6.5+, guarded |
-| Minimum size | 1280 × 720 at 100 %; no clipped text at 150 %                                                             |
+| Constraint   | Value / Description                                                                                                                                                                            |
+|--------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Frame rate   | 60 fps target at 1080p on an integrated GPU with the loop at 100 Hz; never below 30 fps                                                                                                        |
+| Measured     | Mesa llvmpipe (software, 4 cores), Qt 6.4.2, 1600 × 900, MSAA High, shadows, AO, loop at 100 Hz: 9–11 fps while the arm moves, no frames while it rests. A GPU desktop is still to be measured |
+| Qt           | 6.4.2 in the dev container; `ExtendedSceneEnvironment`, `InfiniteGrid`, `DebugView` only on 6.5+, guarded                                                                                      |
+| Minimum size | 1280 × 720 at 100 %; no clipped text at 150 %                                                                                                                                                  |
 
 ---
 
 ## Open Questions
 
-| # | Question                                           | Options                                         | Status      |
-|---|----------------------------------------------------|-------------------------------------------------|-------------|
-| 1 | Esc as the emergency-stop key                      | Esc, a function key, a dedicated USB button too | open        |
-| 2 | Joint-limit defaults before the arm profile exists | ±π for every joint, per-joint guesses           | decided: ±π |
+| # | Question                                                                                     | Options                                               | Status      |
+|---|----------------------------------------------------------------------------------------------|-------------------------------------------------------|-------------|
+| 1 | Esc as the emergency-stop key                                                                | Esc, a function key, a dedicated USB button too       | open        |
+| 2 | Joint-limit defaults before the arm profile exists                                           | ±π for every joint, per-joint guesses                 | decided: ±π |
+| 3 | Default-role buttons (Check Contracts, Position Mode) draw flat in ui-cpp's Instrument theme | Give `ButtonRole::Default` a raised surface in ui-cpp | open        |
