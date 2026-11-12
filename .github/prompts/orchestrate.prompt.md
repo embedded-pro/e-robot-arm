@@ -1,12 +1,12 @@
 ---
-description: "Start an orchestrated plan-execute-review workflow for an embedded-scaffold development task. Routes through planning, implementation, and code review stages with handoff buttons between each step."
+description: "Start an orchestrated plan-execute-review workflow for an e-robot-arm development task. Routes through planning, implementation, and code review stages with handoff buttons between each step."
 agent: "orchestrator"
 argument-hint: "Describe the feature, algorithm, bug fix, or change you want to implement"
 model: "Claude Sonnet 4.6"
 ---
 
-Analyze the following task for the **embedded-scaffold** project — a template for
-embedded C++ projects with strict real-time and memory constraints targeting
+Analyze the following task for the **e-robot-arm** project — the controller of a six-joint robot arm, written as
+embedded C++ with strict real-time and memory constraints targeting
 resource-constrained microcontrollers, with a host build for off-target testing.
 Gather relevant context from the codebase — identify affected layers
 (`core/<component>/interfaces/`, `core/<component>/implementations/`, `targets/`,

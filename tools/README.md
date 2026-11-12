@@ -13,7 +13,7 @@ tools/
 how tools share code with the application instead of duplicating it:
 
 ```
-embedded_scaffold.tool.example 2 3 4   # -> total = 9
+e_robot_arm.tool.example 2 3 4   # -> total = 9
 ```
 
 ## Qt GUI tools

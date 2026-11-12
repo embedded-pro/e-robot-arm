@@ -3,7 +3,7 @@
 
 #include "core/platform_abstraction/Platform.hpp"
 #include "hal_st/instantiations/StmEventInfrastructure.hpp"
-#include SCAFFOLD_ST_CLOCK_HEADER
+#include E_ROBOT_ARM_ST_CLOCK_HEADER
 #include "hal_st/stm32fxxx/GpioStm.hpp"
 #include "hal_st/stm32fxxx/UartStm.hpp"
 #include "infra/stream/OutputStream.hpp"
@@ -14,7 +14,7 @@ namespace application
 {
     // STM32 implementation of platform::Platform, shared by all supported ST board
     // presets (see CMakePresets.json). The default clock configuration is selected
-    // per board via SCAFFOLD_ST_CLOCK_HEADER/SCAFFOLD_ST_CLOCK_INIT (set in
+    // per board via E_ROBOT_ARM_ST_CLOCK_HEADER/E_ROBOT_ARM_ST_CLOCK_INIT (set in
     // targets/platform_implementations/st/CMakeLists.txt based on TARGET_MCU).
     //
     // - Status LED  : LD3 (green) on PG13
@@ -38,7 +38,7 @@ namespace application
             ClockInit()
             {
                 HAL_Init();
-                SCAFFOLD_ST_CLOCK_INIT();
+                E_ROBOT_ARM_ST_CLOCK_INIT();
             }
         };
 

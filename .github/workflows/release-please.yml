@@ -60,7 +60,7 @@ jobs:
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: host-install-package
-          path: build/host/embedded_scaffold-*.*
+          path: build/host/e_robot_arm-*.*
           if-no-files-found: error
 
   build_embedded:
@@ -89,8 +89,8 @@ jobs:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: host-install-package
-      - run: tar -zxvf embedded_scaffold-*.tar.gz
-      - run: mkdir -p install && mv embedded_scaffold-*/* install/ || true
+      - run: tar -zxvf e_robot_arm-*.tar.gz
+      - run: mkdir -p install && mv e_robot_arm-*/* install/ || true
       - uses: lukka/run-cmake@5d55ea7949e25f69f0ecb516d8d572297e03a956 # v10.9
         with:
           configurePreset: ${{ matrix.target }}
@@ -109,11 +109,11 @@ jobs:
           find "build/${{ matrix.target }}" \( -name "*.elf" -o -name "*.hex" \) -path "*/${{ matrix.configuration }}/*" -type f | while read -r f; do
             cp "$f" "$staging/"
           done
-          tar -czf "embedded_scaffold-firmware-${{ matrix.target }}-${version}.tar.gz" -C staging "${{ matrix.target }}"
+          tar -czf "e_robot_arm-firmware-${{ matrix.target }}-${version}.tar.gz" -C staging "${{ matrix.target }}"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: firmware-${{ matrix.target }}
-          path: embedded_scaffold-firmware-${{ matrix.target }}-*.tar.gz
+          path: e_robot_arm-firmware-${{ matrix.target }}-*.tar.gz
           if-no-files-found: error
 
   build_documentation:
@@ -141,7 +141,7 @@ jobs:
           requirements-dir: documentation/requirements
           features-dir: integration_tests/features
           matrix-output: docs-pdf/traceability-matrix.md
-          matrix-pdf-output: docs-pdf/embedded_scaffold-traceability-matrix-${{ needs.release_please.outputs.tag_name }}.pdf
+          matrix-pdf-output: docs-pdf/e_robot_arm-traceability-matrix-${{ needs.release_please.outputs.tag_name }}.pdf
 
   publish_release_assets:
     name: Publish Release Assets
@@ -162,7 +162,7 @@ jobs:
           path: release-assets
           merge-multiple: true
       - name: Remove host install package
-        run: rm -f release-assets/embedded_scaffold-0*.* release-assets/embedded_scaffold-*-Linux.*
+        run: rm -f release-assets/e_robot_arm-0*.* release-assets/e_robot_arm-*-Linux.*
       - name: Upload release assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -6,7 +6,7 @@
   "packages": {
     ".": {
       "release-type": "simple",
-      "package-name": "embedded-scaffold",
+      "package-name": "e-robot-arm",
       "extra-files": [
         "CMakeLists.txt",
         "sonar-project.properties"

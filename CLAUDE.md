@@ -1,15 +1,17 @@
-# embedded-scaffold — Claude Code Instructions
+# e-robot-arm — Claude Code Instructions
 
 This file is a concise, task-oriented guide for Claude and AI agents to be
-immediately productive in this repository. **embedded-scaffold is a template** —
-the `example_*` components exist to demonstrate conventions; replace them with real
-code for your project.
+immediately productive in this repository. e-robot-arm was bootstrapped from
+embedded-scaffold: the `example_*` components, `blinky_cli` and `example_tool` are the
+scaffold's worked examples and are replaced by the arm's own components as they arrive.
+The planned architecture is in `documentation/architecture/system.md`.
 
 ## 1. Big-Picture Architecture
 
-**Purpose**: a baseline for embedded C++ projects with strict real-time and memory
-constraints targeting resource-constrained microcontrollers (ARM Cortex-M), with a
-host build for off-target testing.
+**Purpose**: the controller of a six-joint robot arm whose joints are e-foc motor
+nodes on one CAN bus. It runs on a PC for now; `core/` stays heap-free and
+hardware-agnostic so it can move to a microcontroller (ARM Cortex-M) later. A Qt
+simulator runs the same core against e-foc virtual motors or the real arm.
 
 **Major components**:
 - `core/` — reusable libraries only (no application entry points).
@@ -25,7 +27,7 @@ host build for off-target testing.
     `targets/CMakeLists.txt`) to construct the selected `PlatformImpl`.
   - `targets/platform_implementations/{host,st,ti}/PlatformImpl.*` — concrete
     `platform::Platform` implementations (host stubs; EK-TM4C123GXL; STM32F429I-DISC1).
-  - The active platform is chosen by `SCAFFOLD_TARGET_PLATFORM`.
+  - The active platform is chosen by `E_ROBOT_ARM_TARGET_PLATFORM`.
 - `tools/` — host-side developer tools that reuse `core/` libraries
   (`tools/example_tool/`). Built only for the host.
 - `integration_tests/` — BDD tests (cucumber-cpp / Gherkin): `features/`, `steps/`,
@@ -34,8 +36,15 @@ host build for off-target testing.
   fixed-point helpers).
 - `infra/embedded-infra-lib/` — infrastructure: bounded containers, build helpers
   (`emil_*` CMake functions), toolchain cmake pieces.
-- `infra/can-lite/`, `infra/hal/` — CAN protocol library and hardware abstraction
-  layer (st, ti).
+- `infra/robotics-toolbox/` — kinematics, dynamics, trajectories and manipulator
+  control (`robotics/...` includes).
+- `infra/e-foc-protocol/` — the e-foc motor CAN contract and `FocMotorCanClient`
+  (`e-foc-protocol/...` includes).
+- `infra/can-lite/`, `infra/hal/` — CAN protocol library with host bus adapters, and
+  hardware abstraction layer (st, ti).
+- Every dependency is a submodule pinned to its `main`. e-foc-protocol and
+  robotics-toolbox reuse this repository's embedded-infra-lib, can-lite and
+  numerical-toolbox instead of fetching their own copies.
 
 ## 2. Critical Developer Workflows
 
@@ -101,7 +110,7 @@ path. Host tools, simulators, and test code may use normal heap patterns.
 - **Classes/Methods**: `PascalCase` (`AccumulatorImpl`, `Add()`, `Total()`)
 - **Member variables**: `camelCase` (`total`, `initialized`)
 - **Namespaces**: lowercase (`example`, `platform`, `integration`)
-- **CMake libraries**: `embedded_scaffold.<area>.<layer>`
+- **CMake libraries**: `e_robot_arm.<area>.<layer>`
 
 ## 5. Brace Style — Allman, 4-Space Indent
 

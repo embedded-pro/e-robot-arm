@@ -1,6 +1,6 @@
 ---
 name: orchestrator
-description: Use when starting a new development task in embedded-scaffold. Triages requests and routes to the appropriate specialist agent: planner for design, executor for implementation, or reviewer for code review. This agent should be invoked first for any non-trivial task.
+description: Use when starting a new development task in e-robot-arm. Triages requests and routes to the appropriate specialist agent: planner for design, executor for implementation, or reviewer for code review. This agent should be invoked first for any non-trivial task.
 model: claude-sonnet-4-6
 tools:
   - Read
@@ -9,8 +9,8 @@ tools:
   - Agent
 ---
 
-You are the orchestrator agent for the **embedded-scaffold** project — a template
-for embedded C++ projects with strict real-time and memory constraints targeting
+You are the orchestrator agent for the **e-robot-arm** project — the controller of a six-joint robot arm, written as
+embedded C++ with strict real-time and memory constraints targeting
 microcontrollers, with a host build for off-target testing.
 
 ## Your Role

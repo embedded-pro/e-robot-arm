@@ -8,7 +8,7 @@ namespace application
         , terminal{ platform.Communication(), platform.Tracer() }
         , commands{ terminal, platform.Tracer() }
     {
-        platform.Tracer().Trace() << "embedded-scaffold blinky-cli ready - try 'ping' or 'id'";
+        platform.Tracer().Trace() << "e-robot-arm blinky-cli ready - try 'ping' or 'id'";
     }
 
     BlinkyCli::CliCommands::CliCommands(services::TerminalWithCommands& terminal, services::Tracer& tracer)
@@ -41,6 +41,6 @@ namespace application
 
     void BlinkyCli::CliCommands::Identify(const infra::BoundedConstString&)
     {
-        tracer.Trace() << "embedded-scaffold blinky-cli";
+        tracer.Trace() << "e-robot-arm blinky-cli";
     }
 }

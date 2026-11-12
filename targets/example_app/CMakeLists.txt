@@ -1,15 +1,15 @@
-add_executable(embedded_scaffold.example_app)
+add_executable(e_robot_arm.example_app)
 
-target_include_directories(embedded_scaffold.example_app PUBLIC
+target_include_directories(e_robot_arm.example_app PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../../>"
     "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
 )
 
-target_link_libraries(embedded_scaffold.example_app PUBLIC
+target_link_libraries(e_robot_arm.example_app PUBLIC
     infra.util
-    embedded_scaffold.example.implementations
+    e_robot_arm.example.implementations
 )
 
-target_sources(embedded_scaffold.example_app PRIVATE
+target_sources(e_robot_arm.example_app PRIVATE
     Main.cpp
 )

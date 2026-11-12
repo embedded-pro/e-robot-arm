@@ -1,7 +1,7 @@
 # integration_tests
 
 BDD integration tests using [cucumber-cpp](https://github.com/philips-software/amp-cucumber-cpp-runner)
-(Gherkin features + C++ step definitions). Built only when `SCAFFOLD_BUILD_TESTS`
+(Gherkin features + C++ step definitions). Built only when `E_ROBOT_ARM_BUILD_TESTS`
 is on (the `host` preset enables it) and run via CTest.
 
 ```
@@ -19,7 +19,7 @@ Run them:
 ```bash
 cmake --preset host
 cmake --build --preset host-Debug
-ctest --preset host -R embedded_scaffold.integration_tests
+ctest --preset host -R e_robot_arm.integration_tests
 ```
 
 ## How it fits together

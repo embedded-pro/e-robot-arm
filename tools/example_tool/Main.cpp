@@ -4,7 +4,7 @@
 
 // Example host tool: sums its integer arguments using the shared core library.
 //
-//     embedded_scaffold.tool.example 2 3 4   ->  total = 9
+//     e_robot_arm.tool.example 2 3 4   ->  total = 9
 //
 // Tools live on the host and may use the heap / standard library freely; they
 // reuse core libraries rather than duplicating logic.

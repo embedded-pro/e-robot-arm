@@ -25,8 +25,8 @@ once and runs on the host (tested with `PlatformMock`) and on every board.
 
 - **Interfaces vs implementations**: keep pure interfaces in `interfaces/` as
   `INTERFACE` CMake libraries; put compiled code in `implementations/`.
-- **Library naming**: `embedded_scaffold.<area>.<layer>` (e.g.
-  `embedded_scaffold.example.implementations`).
+- **Library naming**: `e_robot_arm.<area>.<layer>` (e.g.
+  `e_robot_arm.example.implementations`).
 - **Include paths** are rooted at the repository root, so headers are included as
   `#include "core/example_component/implementations/AccumulatorImpl.hpp"`.
 - **No heap in runtime/embedded code**: use `infra::BoundedVector`/`infra::BoundedString`

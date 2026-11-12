@@ -17,12 +17,12 @@ targets/
 
 ## How platform selection works
 
-`SCAFFOLD_TARGET_PLATFORM` (set per preset in `CMakePresets.json`) picks which
+`E_ROBOT_ARM_TARGET_PLATFORM` (set per preset in `CMakePresets.json`) picks which
 `platform_implementations/<platform>` subdirectory is compiled. Each provides a
 `PlatformImpl : platform::Platform` (see `core/platform_abstraction/`) exposing the
 peripherals the application needs.
 
-`targets/CMakeLists.txt` builds an interface library `embedded_scaffold.platform_impl`
+`targets/CMakeLists.txt` builds an interface library `e_robot_arm.platform_impl`
 that (a) defines `PLATFORM_IMPL_HEADER` pointing at the selected platform's
 `PlatformImpl.hpp` and (b) links its library. A target's `Main.cpp` includes that
 macro and constructs `application::PlatformImpl`, so the entry point stays
