@@ -1,16 +1,11 @@
 {
   "include-component-in-tag": false,
-  "plugins": [
-    "sentence-case"
-  ],
+  "plugins": ["sentence-case"],
   "packages": {
     ".": {
       "release-type": "simple",
-      "package-name": "embedded-scaffold",
-      "extra-files": [
-        "CMakeLists.txt",
-        "sonar-project.properties"
-      ]
+      "package-name": "e-robot-arm",
+      "extra-files": ["CMakeLists.txt", "sonar-project.properties"]
     }
   },
   "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json"

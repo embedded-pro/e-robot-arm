@@ -1,149 +1,91 @@
-# embedded-scaffold
+# e-robot-arm
 
-A template for embedded C++ projects with strict real-time and memory
-constraints. It provides a ready-made structure, build system, dev container, CI,
-and documentation scaffolding so a new firmware project can start from a working,
-testable baseline instead of an empty repository.
+Real-time controller for a six-joint robot arm that drives e-foc motor nodes over CAN, with a Qt simulator that
+runs the same code against virtual motors or the real hardware.
 
-> **Using this template**: click *Use this template* on GitHub (or clone), then
-> replace the `example_*` placeholders in `core/`, `targets/`, `tools/`, and
-> `integration_tests/` with your own components. Search the repo for
-> `embedded_scaffold` / `embedded-scaffold` / `SCAFFOLD` to rename the project.
+The repository was bootstrapped from
+[`embedded-pro/embedded-scaffold`](https://github.com/embedded-pro/embedded-scaffold) and carries its structure,
+build system, dev container, CI and documentation scaffolding.
+
+> **Status**: the structure and dependencies are in place. The `example_*` components and
+> `example_tool` are the scaffold's worked examples and will be replaced by the arm's own components.
 
 ## Overview
 
-The scaffold separates **portable logic** from **hardware** through one key seam:
-an abstract `platform::Platform` interface in `core/platform_abstraction/`.
-Application logic in `core/` depends only on that interface; each board provides a
-concrete `PlatformImpl` in `targets/platform_implementations/`. The same
-application is therefore compiled once and runs on the host (for testing) and on
-each microcontroller.
+Each joint is an [e-foc](https://github.com/embedded-pro/e-foc) motor node that closes its own current, speed and
+position loops. The arm controller runs on a PC for now: it plans and coordinates the six joints and talks to them
+over CAN through [e-foc-protocol](https://github.com/embedded-pro/e-foc-protocol). Kinematics, dynamics and
+trajectories come from [robotics-toolbox-cpp](https://github.com/embedded-pro/robotics-toolbox-cpp).
 
-The headline example is **`blinky_cli`**: blink a status LED and serve a tiny UART
-command-line interface (`ping`, `id`). It is written once against the interface and
-builds for the host, the **TI EK-TM4C123GXL**, and the **STM32F429I-DISC1**.
+The controller is written once in `core/` against abstractions, so the same code runs against:
 
-## Features
+- a simulated arm, for fast development;
+- six e-foc virtual motors on can-lite's `virtual:` bus, running the real motor firmware;
+- the real arm, through a SocketCAN, slcan, PCAN or Kvaser adapter.
 
-- **Platform abstraction**: application logic depends on the `platform::Platform`
-  interface, not on an MCU — so it is built once and unit-tested on the host against
-  a `PlatformMock`, then run on real hardware.
-- **Real firmware examples**: `blinky_cli` builds to flashable `.elf`/`.hex` for the
-  TI EK-TM4C123GXL and STM32F429I-DISC1 boards (LED blink + UART CLI).
-- **No heap allocation** in runtime/embedded code — bounded containers from
-  `infra/embedded-infra-lib` (`infra::BoundedVector`, `infra::BoundedString`).
-- **Worked examples** in every top-level folder showing the conventions to follow.
-- **Unit tests** (GoogleTest) and **BDD integration tests** (cucumber-cpp / Gherkin).
-- **Dev container** with the full toolchain (CMake, Ninja, ccache, ARM GCC, Qt6).
-- **CI** for build, linting/formatting, static analysis, documentation and
-  requirements validation, and release-please versioning.
+See the [system architecture](documentation/architecture/system.md) for the planned components.
 
 ## Getting Started
 
 ### Prerequisites
 
-- Docker (the project is developed inside a Dev Container) **or** a local toolchain
-  with CMake ≥ 3.24, Ninja, a C++20 compiler, and (for embedded) ARM GCC.
-- VS Code with the Dev Containers extension is the recommended workflow.
+- Docker (the project is developed inside a Dev Container) **or** a local toolchain with CMake ≥ 3.24, Ninja, a
+  C++20 compiler, Qt 6 and, for embedded targets, ARM GCC.
 
 ### Quick Start
 
-1. Clone with submodules:
-   ```bash
-   git clone --recursive https://github.com/embedded-pro/embedded-scaffold.git
-   cd embedded-scaffold
-   ```
+```bash
+git clone --recursive https://github.com/embedded-pro/e-robot-arm.git
+cd e-robot-arm
+cmake --preset host
+cmake --build --preset host-Debug
+ctest --preset host
+```
 
-2. Configure & build for the host:
-   ```bash
-   cmake --preset host
-   cmake --build --preset host-Debug
-   ```
-
-3. Run unit + integration tests:
-   ```bash
-   ctest --preset host
-   ```
-
-4. Run the example tool / app on the host:
-   ```bash
-   ./build/host/bin/Debug/embedded_scaffold.tool.example 2 3 4   # -> total = 9
-   ./build/host/bin/Debug/embedded_scaffold.example_app          # -> accumulator total = 5
-   ```
-
-5. Build the `blinky_cli` firmware for a board (produces `.elf`/`.hex`):
-   ```bash
-   cmake --preset EK-TM4C123GXL          # TI Tiva C LaunchPad
-   cmake --build --preset EK-TM4C123GXL-Debug
-
-   cmake --preset STM32F429I-DISC1       # ST Discovery
-   cmake --build --preset STM32F429I-DISC1-Debug
-   ```
-   On hardware the status LED blinks and a UART command-line interface (115200 8N1)
-   accepts `ping` and `id`. On TI this is the on-board ICDI virtual COM port; on the
-   F429 Discovery, wire a USB-UART adapter to PA9 (TX) / PA10 (RX) / GND.
-
-All presets are defined in `CMakePresets.json` (`host`, `coverage`,
-`EK-TM4C1294XL`, `EK-TM4C123GXL`, `STM32F407G-DISC1`, `STM32F429I-DISC1`,
-`NUCLEO-H563ZI`).
+All presets are defined in `CMakePresets.json`. The scaffold's board presets (`EK-TM4C1294XL`, `EK-TM4C123GXL`,
+`STM32F407G-DISC1`, `STM32F429I-DISC1`, `NUCLEO-H563ZI`) stay available for a later microcontroller target.
 
 ## Project Structure
 
-```
-embedded-scaffold/
+```text
+e-robot-arm/
 ├── core/                      # Reusable libraries only — no entry points
-│   ├── platform_abstraction/  #   platform::Platform interface (+ mock) — the seam
-│   ├── blinky_cli/            #   portable app: LED blink + UART CLI (+ unit test)
-│   └── example_component/     #   trivial interfaces/ + implementations/ (+ unit test)
-├── targets/                   # Application entry points + platform implementations
-│   ├── blinky_cli/            #   one Main.cpp reused across host/st/ti
-│   ├── example_app/           #   a trivial host-only entry point
-│   └── platform_implementations/
-│       ├── host/              #   PlatformImpl: stubs + loopback serial (host build)
-│       ├── st/                #   PlatformImpl: STM32F429I-DISC1 (LED PG13, USART1)
-│       └── ti/                #   PlatformImpl: EK-TM4C123GXL (LaunchPad LED, UART0)
-├── tools/                     # Host-side developer tools
-│   └── example_tool/          #   a CLI reusing a core library
+│   ├── platform_abstraction/  #   platform::Platform interface (+ mock)
+│   └── example_component/     #   scaffold example, to be replaced
+├── targets/                   # Application entry points + platform implementations (host, st, ti)
+├── tools/                     # Host-side tools (the Qt simulator will live here)
 ├── integration_tests/         # BDD integration tests (cucumber-cpp / Gherkin)
-├── infra/                     # Infrastructure submodules
+├── infra/                     # Submodules
 │   ├── embedded-infra-lib/    #   bounded containers, build helpers, toolchains
-│   ├── numerical-toolbox/     #   PID, filters, fixed-point algorithms
-│   ├── can-lite/              #   CAN protocol library
+│   ├── numerical-toolbox/     #   numerical algorithms
+│   ├── robotics-toolbox/      #   kinematics, dynamics, trajectories, manipulator control
+│   ├── can-lite/              #   CAN protocol and host bus adapters
+│   ├── e-foc-protocol/        #   e-foc motor CAN contract and client
 │   └── hal/                   #   hardware abstraction layer (st, ti)
-├── documentation/             # Architecture/design/theory/requirements (+ templates)
-├── scripts/                   # Build and utility scripts
-└── build/                     # Build artifacts (generated, not committed)
+└── documentation/             # Architecture, design, theory, requirements (+ templates)
 ```
 
-Each top-level folder has its own `README.md` describing its conventions and how to
-add new components.
+Every dependency is a submodule pinned to its `main`; e-foc-protocol and robotics-toolbox reuse this repository's
+copies of embedded-infra-lib, can-lite and numerical-toolbox rather than fetching their own.
 
 ## Key Design Principles
 
-- **No heap in runtime code**: all memory statically allocated; bounded containers
-  instead of STL containers. Host tools and tests may use the heap.
-- **Interface-driven design + dependency injection**: hardware is injected via the
-  `platform::Platform` interface through constructors, never global state.
-- **Documentation-first**: update the relevant `documentation/` doc before or
-  alongside behavioural changes. Diagrams use Mermaid or ASCII art only.
-- **SOLID / DRY**: reuse `infra/numerical-toolbox/` algorithms; do not duplicate.
+- **No heap in runtime code**: bounded containers instead of STL containers. Host tools and tests may use the heap.
+- **Interface-driven design + dependency injection**: hardware and buses are injected through constructors.
+- **Documentation-first**: update the relevant `documentation/` document before or alongside behavioural changes.
+  Diagrams use Mermaid or ASCII art only.
+- **Reuse**: kinematics, dynamics and control from robotics-toolbox; numerics from numerical-toolbox; the joint
+  protocol from e-foc-protocol.
 
 ## Documentation
 
-| Document | Description |
-|---|---|
-| [System Architecture](documentation/architecture/system.md) | Example architecture document |
-| [Example Component Design](documentation/design/example-component.md) | Example design document |
-| [Running Sum (Theory)](documentation/theory/example-topic.md) | Example theory document |
-| [Example Requirements](documentation/requirements/example/example.yaml) | Example requirements (validated against `documentation/tools/requirement.schema.json`) |
-| [Documentation Templates](documentation/templates/) | Starting points for new architecture/design/theory/requirements docs |
-| [Performance Optimization Guide](documentation/performance-optimization/README.md) | Embedded performance techniques, assembly analysis, cycle budgets |
-| [AI Agent Instructions](CLAUDE.md) | Development guidelines, patterns, and constraints |
+| Document                                                                           | Description                                       |
+|------------------------------------------------------------------------------------|---------------------------------------------------|
+| [System Architecture](documentation/architecture/system.md)                        | Planned components, interfaces and decisions      |
+| [Documentation Templates](documentation/templates/)                                | Starting points for new documents                 |
+| [Performance Optimization Guide](documentation/performance-optimization/README.md) | Embedded performance techniques and cycle budgets |
+| [AI Agent Instructions](CLAUDE.md)                                                 | Development guidelines, patterns and constraints  |
 
 ## License
 
-This project is licensed under the terms in the [LICENSE](LICENSE) file. Replace it
-with the license appropriate for your project.
-
-Third-party components and submodules keep their own license terms as documented in
-their respective directories.
+See [LICENSE](LICENSE). Third-party components and submodules keep their own license terms.

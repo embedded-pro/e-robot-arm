@@ -5,7 +5,7 @@
 # submodule and FetchContent additions -- otherwise dependencies such as cucumber_cpp are
 # missed -- and before add_subdirectory(core), or it marks this project's own targets SYSTEM
 # and silences the warnings the flags exist to catch.
-function(scaffold_mark_includes_system directory)
+function(e_robot_arm_mark_includes_system directory)
     get_property(targets DIRECTORY "${directory}" PROPERTY BUILDSYSTEM_TARGETS)
     foreach(target IN LISTS targets)
         get_target_property(type ${target} TYPE)
@@ -19,6 +19,6 @@ function(scaffold_mark_includes_system directory)
 
     get_property(children DIRECTORY "${directory}" PROPERTY SUBDIRECTORIES)
     foreach(child IN LISTS children)
-        scaffold_mark_includes_system("${child}")
+        e_robot_arm_mark_includes_system("${child}")
     endforeach()
 endfunction()

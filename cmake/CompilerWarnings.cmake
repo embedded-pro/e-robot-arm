@@ -3,7 +3,7 @@
 # -Wmaybe-uninitialized does not exist in Clang, which the windows preset uses, so passing
 # -Wno-maybe-uninitialized there raises -Wunknown-warning-option and CMAKE_COMPILE_WARNING_AS_ERROR
 # turns that into a failed build.
-function(scaffold_enable_project_warnings)
+function(e_robot_arm_enable_project_warnings)
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
         add_compile_options(-Wall -Wextra)
     endif()

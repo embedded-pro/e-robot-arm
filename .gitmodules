@@ -13,3 +13,9 @@
 [submodule "infra/can-lite"]
 	path = infra/can-lite
 	url = https://github.com/embedded-pro/can-lite.git
+[submodule "infra/robotics-toolbox"]
+	path = infra/robotics-toolbox
+	url = https://github.com/embedded-pro/robotics-toolbox-cpp.git
+[submodule "infra/e-foc-protocol"]
+	path = infra/e-foc-protocol
+	url = https://github.com/embedded-pro/e-foc-protocol.git

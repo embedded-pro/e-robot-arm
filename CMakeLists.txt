@@ -1,17 +1,17 @@
 cmake_minimum_required(VERSION 3.24)
 
 if (CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
-    set(SCAFFOLD_STANDALONE On)
+    set(E_ROBOT_ARM_STANDALONE On)
 endif()
 
 option(CMAKE_COMPILE_WARNING_AS_ERROR "Enable warnings-as-error" On)
-option(SCAFFOLD_INCLUDE_DEFAULT_INIT "Include default initialization code; turn off when providing custom initialization" On)
-option(SCAFFOLD_BUILD_TESTS "Enable build of the examples" Off)
-option(SCAFFOLD_BUILD_SIMULATOR "Enable build of the Qt simulator applications" Off)
-option(SCAFFOLD_BUILD_HIL_TESTS "Build hardware-in-the-loop tests" Off)
-option(SCAFFOLD_EMBEDDED_BUILD "Building for an embedded target" Off)
+option(E_ROBOT_ARM_INCLUDE_DEFAULT_INIT "Include default initialization code; turn off when providing custom initialization" On)
+option(E_ROBOT_ARM_BUILD_TESTS "Enable build of the examples" Off)
+option(E_ROBOT_ARM_BUILD_SIMULATOR "Enable build of the Qt simulator applications" Off)
+option(E_ROBOT_ARM_BUILD_HIL_TESTS "Build hardware-in-the-loop tests" Off)
+option(E_ROBOT_ARM_EMBEDDED_BUILD "Building for an embedded target" Off)
 
-if (SCAFFOLD_BUILD_TESTS)
+if (E_ROBOT_ARM_BUILD_TESTS)
     set(BUILD_TESTING On)
 endif()
 
@@ -24,13 +24,13 @@ endif()
 
 add_definitions(-DEMIL_ENABLE_TRACING=1)
 
-if(DEFINED SCAFFOLD_TARGET_BOARD)
-    add_definitions(-DSCAFFOLD_TARGET_BOARD="${SCAFFOLD_TARGET_BOARD}")
+if(DEFINED E_ROBOT_ARM_TARGET_BOARD)
+    add_definitions(-DE_ROBOT_ARM_TARGET_BOARD="${E_ROBOT_ARM_TARGET_BOARD}")
 else()
-    add_definitions(-DSCAFFOLD_TARGET_BOARD="host")
+    add_definitions(-DE_ROBOT_ARM_TARGET_BOARD="host")
 endif()
 
-project(embedded_scaffold LANGUAGES C CXX ASM VERSION 0.0.1) # x-release-please-version
+project(e_robot_arm LANGUAGES C CXX ASM VERSION 0.0.1) # x-release-please-version
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED On)
@@ -47,7 +47,7 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/CompilerWarnings.cmake")
 
 set_directory_properties(PROPERTY USE_FOLDERS ON)
 
-set(SCAFFOLD_EXCLUDE_FROM_ALL "")
+set(E_ROBOT_ARM_EXCLUDE_FROM_ALL "")
 
 set(EMIL_INCLUDE_ECHO Off CACHE BOOL "" FORCE)
 set(EMIL_FETCH_ECHO_COMPILERS Off CACHE BOOL "" FORCE)
@@ -57,7 +57,7 @@ set(EMIL_INCLUDE_MBEDTLS Off CACHE BOOL "" FORCE)
 
 add_subdirectory(infra/embedded-infra-lib)
 
-if (SCAFFOLD_BUILD_TESTS)
+if (E_ROBOT_ARM_BUILD_TESTS)
     set(CCR_FETCH_DEPS On CACHE BOOL "" FORCE)
     set(CCR_BUILD_TESTS Off CACHE BOOL "" FORCE)
 
@@ -78,7 +78,7 @@ endif()
 
 add_subdirectory(infra/can-lite)
 
-if (SCAFFOLD_BUILD_TESTS)
+if (E_ROBOT_ARM_BUILD_TESTS)
     include(CTest)
     emil_enable_testing()
 endif()
@@ -89,30 +89,32 @@ if (DEFINED TARGET_MCU_VENDOR)
 endif()
 
 add_subdirectory(infra/numerical-toolbox)
+add_subdirectory(infra/e-foc-protocol)
+add_subdirectory(infra/robotics-toolbox)
 
 # Ordering is load-bearing. Both calls must sit after every submodule and FetchContent
 # addition -- otherwise dependencies such as cucumber_cpp are missed -- and before
 # add_subdirectory(core), or this project's own targets get marked SYSTEM and the warnings
 # these flags exist to catch are silenced. See cmake/MarkIncludesSystem.cmake.
-scaffold_mark_includes_system("${CMAKE_CURRENT_SOURCE_DIR}")
-scaffold_enable_project_warnings()
+e_robot_arm_mark_includes_system("${CMAKE_CURRENT_SOURCE_DIR}")
+e_robot_arm_enable_project_warnings()
 
 add_subdirectory(core)
 add_subdirectory(targets)
 
-if (SCAFFOLD_BUILD_TESTS)
+if (E_ROBOT_ARM_BUILD_TESTS)
     add_subdirectory(integration_tests)
 endif()
 
-set(SCAFFOLD_CLANGFORMAT_DIRS core targets)
+set(E_ROBOT_ARM_CLANGFORMAT_DIRS core targets)
 
-if (NOT SCAFFOLD_EMBEDDED_BUILD)
+if (NOT E_ROBOT_ARM_EMBEDDED_BUILD)
     add_subdirectory(tools)
-    list(APPEND SCAFFOLD_CLANGFORMAT_DIRS tools)
+    list(APPEND E_ROBOT_ARM_CLANGFORMAT_DIRS tools)
 endif()
 
 
-emil_clangformat_directories(embedded_scaffold DIRECTORIES ${SCAFFOLD_CLANGFORMAT_DIRS})
+emil_clangformat_directories(e_robot_arm DIRECTORIES ${E_ROBOT_ARM_CLANGFORMAT_DIRS})
 emil_folderize_all_targets()
 emil_exclude_directory_from_coverage(infra/embedded-infra-lib)
 emil_coverage_targets(DIRECTORIES .)

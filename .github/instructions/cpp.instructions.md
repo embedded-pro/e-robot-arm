@@ -1,9 +1,9 @@
 ---
-description: "embedded-scaffold C++ coding rules for embedded/real-time code: no heap allocation, bounded containers, real-time determinism, embedded compiler optimizations, Allman brace style, PascalCase naming, SOLID principles, const correctness, documentation alignment."
+description: "e-robot-arm C++ coding rules for embedded/real-time code: no heap allocation, bounded containers, real-time determinism, embedded compiler optimizations, Allman brace style, PascalCase naming, SOLID principles, const correctness, documentation alignment."
 applyTo: core/**,targets/**
 ---
 
-# embedded-scaffold C++ Rules
+# e-robot-arm C++ Rules
 
 > **Scope**: These rules apply to embedded and real-time code paths (`core/`
 > runtime libraries, `targets/`). Host-side tooling (`tools/`) and test code may use

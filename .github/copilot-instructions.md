@@ -1,8 +1,9 @@
-# embedded-scaffold — Copilot / AI agent instructions
+# e-robot-arm — Copilot / AI agent instructions
 
-Concise, task-oriented guidance for AI coding agents. This repository is a
-**template** for embedded C++ projects; the `example_*` components demonstrate
-conventions and are meant to be replaced. See [`CLAUDE.md`](../CLAUDE.md) for the
+Concise, task-oriented guidance for AI coding agents. This repository is the
+controller of a six-joint robot arm driving e-foc motor nodes over CAN, bootstrapped
+from embedded-scaffold; the `example_*` components are the scaffold's examples and
+are replaced by the arm's own components. See [`CLAUDE.md`](../CLAUDE.md) for the
 full guide — this file is a short summary.
 
 ## 1. Architecture (short)
@@ -11,11 +12,12 @@ full guide — this file is a short summary.
   `implementations/` (+ `test/`). See `core/example_component/`.
 - `targets/` — application entry points (`example_app`) and platform
   implementations (`platform_implementations/{host,st,ti}`), selected by
-  `SCAFFOLD_TARGET_PLATFORM`.
+  `E_ROBOT_ARM_TARGET_PLATFORM`.
 - `tools/` — host-side developer tools that reuse `core/` libraries.
 - `integration_tests/` — cucumber-cpp / Gherkin BDD tests.
 - `infra/` — submodules: `embedded-infra-lib` (bounded containers, `emil_*` CMake
-  helpers), `numerical-toolbox`, `can-lite`, `hal`.
+  helpers), `numerical-toolbox`, `robotics-toolbox`, `can-lite`, `e-foc-protocol`,
+  `hal`.
 
 ## 2. Developer workflow
 

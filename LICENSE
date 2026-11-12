@@ -1,4 +1,4 @@
-embedded-scaffold Non-Commercial License
+e-robot-arm Non-Commercial License
 
 Version 1.0
 
@@ -20,7 +20,7 @@ consulting, integration, manufacturing, or support services.
 The above license notice and this permission notice must be included in all
 copies or substantial portions of the software.
 
-This license applies only to files owned by the embedded-scaffold project. Third-party
+This license applies only to files owned by the e-robot-arm project. Third-party
 components, submodules, and vendored dependencies remain under their own license
 terms as documented in their respective directories.
 

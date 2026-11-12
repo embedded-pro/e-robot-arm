@@ -1,9 +1,9 @@
 ---
-description: "embedded-scaffold testing guidelines: prefer TEST_F for fixture-based tests, TYPED_TEST for multi-type tests, host simulation for integration, Arrange-Act-Assert pattern. StrictMock required; NiceMock forbidden."
+description: "e-robot-arm testing guidelines: prefer TEST_F for fixture-based tests, TYPED_TEST for multi-type tests, host simulation for integration, Arrange-Act-Assert pattern. StrictMock required; NiceMock forbidden."
 applyTo: "**/test/**"
 ---
 
-# embedded-scaffold Testing Guidelines
+# e-robot-arm Testing Guidelines
 
 ## File Structure
 

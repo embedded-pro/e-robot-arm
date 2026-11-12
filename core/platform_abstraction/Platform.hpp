@@ -13,7 +13,7 @@ namespace platform
     // Application code depends ONLY on this interface, so the same logic runs on
     // the host (for testing) and on each supported microcontroller. Each board
     // provides a `PlatformImpl : Platform` that wires real peripherals; the host
-    // provides stubs. This is the single most important pattern in the scaffold.
+    // provides stubs. This is the single most important pattern in this project.
     class Platform
     {
     public:
