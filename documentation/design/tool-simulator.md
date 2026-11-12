@@ -274,10 +274,10 @@ sequenceDiagram
 
 ## Open Questions
 
-| # | Question                                                                                     | Options                                               | Status         |
-|---|----------------------------------------------------------------------------------------------|-------------------------------------------------------|----------------|
-| 1 | Esc as the emergency-stop key                                                                | Esc, a function key, a dedicated USB button too       | open           |
-| 2 | Joint-limit defaults before the arm profile exists                                           | ±π for every joint, per-joint guesses                 | decided: ±π    |
-| 3 | Default-role buttons (Check Contracts, Position Mode) draw flat in ui-cpp's Instrument theme | Give `ButtonRole::Default` a raised surface in ui-cpp | open           |
-| 4 | Naming every joint an emergency stop did not reach                                           | Per-joint delivery reports from the joint bus         | phase 1a (#17) |
-| 5 | Bus load and period overruns in the status strip                                             | Control-loop overrun count, bus-load estimate         | phase 1d (#17) |
+| # | Question                                                                                     | Options                                               | Status                                                             |
+|---|----------------------------------------------------------------------------------------------|-------------------------------------------------------|--------------------------------------------------------------------|
+| 1 | Esc as the emergency-stop key                                                                | Esc, a function key, a dedicated USB button too       | open                                                               |
+| 2 | Joint-limit defaults before the arm profile exists                                           | ±π for every joint, per-joint guesses                 | decided: ±π                                                        |
+| 3 | Default-role buttons (Check Contracts, Position Mode) draw flat in ui-cpp's Instrument theme | Give `ButtonRole::Default` a raised surface in ui-cpp | resolved: ui-cpp#24 gives Default buttons a raised fill and border |
+| 4 | Naming every joint an emergency stop did not reach                                           | Per-joint delivery reports from the joint bus         | phase 1a (#17)                                                     |
+| 5 | Bus load and period overruns in the status strip                                             | Control-loop overrun count, bus-load estimate         | phase 1d (#17)                                                     |
