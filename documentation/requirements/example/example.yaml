@@ -1,0 +1,22 @@
+- id: REQ-EXAMPLE-001
+  title: Accumulator starts at zero
+  shall: >
+    On construction, the accumulator shall report a total of zero before any value
+    is added.
+
+- id: REQ-EXAMPLE-002
+  title: Accumulator sums added values
+  shall: >
+    After one or more values are added, the accumulator shall report a total equal
+    to the sum of all values added since the last reset.
+
+- id: REQ-EXAMPLE-003
+  title: Reset clears the total
+  shall: >
+    When reset, the accumulator shall return its total to zero.
+
+- id: REQ-EXAMPLE-004
+  title: No heap allocation
+  shall: >
+    Adding, reading, and resetting the total shall execute without dynamic memory
+    allocation.

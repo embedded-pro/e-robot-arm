@@ -1,0 +1,14 @@
+.cache
+.vs/
+.vscode/.cortex-debug*
+build/
+out/
+megalinter-reports/
+.megalinter_github_conf/
+install/
+.venv/
+output/
+cucumber.toml
+__pycache__/
+*.py[cod]
+.claude/plans/

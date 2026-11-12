@@ -1,0 +1,65 @@
+---
+name: Documentation Validation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "documentation/**"
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "documentation/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.ref }}-${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  validate-architecture:
+    name: Validate Architecture Documents
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate architecture documents
+        uses: embedded-pro/project-documentation@54fca1cb9925af16e53bd9d2640d1285560d295b # v0.2.0
+        with:
+          run-validate-documents: 'true'
+          documents-dir: documentation
+          doc-type: architecture
+
+  validate-design:
+    name: Validate Design Documents
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate design documents
+        uses: embedded-pro/project-documentation@54fca1cb9925af16e53bd9d2640d1285560d295b # v0.2.0
+        with:
+          run-validate-documents: 'true'
+          documents-dir: documentation
+          doc-type: design
+
+  validate-theory:
+    name: Validate Theory Documents
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate theory documents
+        uses: embedded-pro/project-documentation@54fca1cb9925af16e53bd9d2640d1285560d295b # v0.2.0
+        with:
+          run-validate-documents: 'true'
+          documents-dir: documentation
+          doc-type: theory

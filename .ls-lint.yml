@@ -1,0 +1,15 @@
+ls:
+  .dir: snake_case | kebab-case | regex:^[A-Z0-9][A-Z0-9-]+$
+  .hpp: PascalCase
+  .cpp: PascalCase
+ignore:
+  - .claude
+  - .devcontainer
+  - .git
+  - .github
+  - .vscode
+  - megalinter-reports
+  - infra
+  - hal
+  - source/hardware/Host
+  - .megalinter_github_conf
