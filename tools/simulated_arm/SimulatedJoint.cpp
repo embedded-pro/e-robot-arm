@@ -59,7 +59,6 @@ namespace simulation
         : can::FocMotorCategoryServerObserver(server)
         , server(server)
         , timeConstant(timeConstant)
-        , lastUpdate(infra::Now())
     {}
 
     void SimulatedJoint::Node::Advance()

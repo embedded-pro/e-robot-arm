@@ -1,6 +1,6 @@
 #include "tools/simulator/view_models/JointRows.hpp"
 #include <algorithm>
-#include <cstdio>
+#include <format>
 
 namespace simulator
 {
@@ -10,9 +10,7 @@ namespace simulator
 
         std::string Fixed(float value, int decimals, std::string_view unit)
         {
-            std::array<char, 32> text{};
-            std::snprintf(text.data(), text.size(), "%.*f %.*s", decimals, static_cast<double>(value), static_cast<int>(unit.size()), unit.data());
-            return text.data();
+            return std::format("{:.{}f} {}", value, decimals, unit);
         }
 
         float LimitFraction(foc::Radians position, const arm::JointLimit& limit)
@@ -64,7 +62,10 @@ namespace simulator
             row.number = std::to_string(joint + 1);
             if (!snapshot.targetReady)
             {
-                row.position = row.speed = row.state = row.fault = placeholder;
+                row.position = placeholder;
+                row.speed = placeholder;
+                row.state = placeholder;
+                row.fault = placeholder;
                 continue;
             }
 

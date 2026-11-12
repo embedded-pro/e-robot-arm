@@ -2,7 +2,7 @@
 #include "tools/simulator/view_models/JointRows.hpp"
 #include <array>
 #include <chrono>
-#include <cstdio>
+#include <format>
 
 namespace simulator
 {
@@ -10,7 +10,7 @@ namespace simulator
     {
         std::string Joint(std::size_t joint)
         {
-            return "Joint " + std::to_string(joint + 1);
+            return std::format("Joint {}", joint + 1);
         }
 
         std::string Text(std::string_view text)
@@ -82,16 +82,14 @@ namespace simulator
     {
         if (line.level < filter.minimum)
             return false;
-        return !filter.joint || line.joint == *filter.joint;
+        return !filter.joint.has_value() || line.joint == *filter.joint;
     }
 
     std::string EventLog::Format(const LogLine& line) const
     {
         static constexpr std::array<const char*, 3> levels{ "Info", "Warning", "Fault" };
-        std::array<char, 32> time{};
-        std::snprintf(time.data(), time.size(), "%10.3f", static_cast<double>(line.seconds));
-        const auto joint = line.joint == arm_host::noJoint ? std::string{ "arm" } : "J" + std::to_string(line.joint + 1);
-        return std::string{ time.data() } + "  " + levels[static_cast<std::size_t>(line.level)] + "  " + joint + "  " + line.message;
+        const auto joint = line.joint == arm_host::noJoint ? std::string{ "arm" } : std::format("J{}", line.joint + 1);
+        return std::format("{:10.3f}  {}  {}  {}", line.seconds, levels[static_cast<std::size_t>(line.level)], joint, line.message);
     }
 
     std::string EventLog::Text(const LogFilter& filter) const

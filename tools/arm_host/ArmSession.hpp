@@ -48,6 +48,11 @@ namespace arm_host
 
         struct Pending
         {
+            Pending(uint32_t id, const ArmCommand& command)
+                : id(id)
+                , command(command)
+            {}
+
             uint32_t id;
             ArmCommand command;
         };

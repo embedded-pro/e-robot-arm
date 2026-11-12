@@ -1,5 +1,6 @@
 #include "tools/simulator/view_models/SimulatorPresenter.hpp"
 #include <cctype>
+#include <format>
 
 namespace simulator
 {
@@ -9,17 +10,17 @@ namespace simulator
         using ui::theme::ButtonRole;
 
         constexpr std::array<ActionSpec, 6> operateActions{ {
-            { SimulatorPresenter::checkContracts, "Check Contracts" },
-            { SimulatorPresenter::positionMode, "Position Mode" },
-            { SimulatorPresenter::start, "Start", ButtonRole::Start },
-            { SimulatorPresenter::stop, "Stop", ButtonRole::Stop },
-            { SimulatorPresenter::clearFaults, "Clear Faults", ButtonRole::Reset },
-            { SimulatorPresenter::rearm, "Re-arm…" },
+            { OperateAction::checkContracts, "Check Contracts" },
+            { OperateAction::positionMode, "Position Mode" },
+            { OperateAction::start, "Start", ButtonRole::Start },
+            { OperateAction::stop, "Stop", ButtonRole::Stop },
+            { OperateAction::clearFaults, "Clear Faults", ButtonRole::Reset },
+            { OperateAction::rearm, "Re-arm…" },
         } };
 
         constexpr std::array<ActionSpec, 2> moveActions{ {
-            { SimulatorPresenter::move, "Move", ButtonRole::Primary },
-            { SimulatorPresenter::abort, "Abort", ButtonRole::Stop },
+            { MoveAction::move, "Move", ButtonRole::Primary },
+            { MoveAction::abort, "Abort", ButtonRole::Stop },
         } };
 
         constexpr std::array<std::string_view, arm::jointCount> jointLabels{ "J1", "J2", "J3", "J4", "J5", "J6" };
@@ -94,26 +95,29 @@ namespace simulator
         , operateView(operateView)
         , moveView(moveView)
         , limits(limits)
-        , moveFields(MoveFields(limits))
-        , operateSpec{ {}, {}, operateActions, {} }
-        , moveSpec{ {}, moveFields, moveActions, {} }
-        , operateModel(operateSpec, {}, {})
-        , moveModel(moveSpec, moveValues, {})
         , log(start)
     {
-        operateModel.onActionTriggered = [this](ui::model::ActionId action)
+        forms.operateModel.onActionTriggered = [this](ui::model::ActionId action)
         {
             OnOperateAction(action);
         };
-        moveModel.onActionTriggered = [this](ui::model::ActionId action)
+        forms.moveModel.onActionTriggered = [this](ui::model::ActionId action)
         {
             OnMoveAction(action);
         };
 
-        operateView.Build(operateModel);
-        moveView.Build(moveModel);
+        operateView.Build(forms.operateModel);
+        moveView.Build(forms.moveModel);
         Refresh(snapshot, {});
     }
+
+    SimulatorPresenter::Forms::Forms(const arm::JointLimits& limits)
+        : moveFields(MoveFields(limits))
+        , operateSpec{ {}, {}, operateActions, {} }
+        , moveSpec{ {}, moveFields, moveActions, {} }
+        , operateModel(operateSpec, {}, {})
+        , moveModel(moveSpec, moveValues, {})
+    {}
 
     void SimulatorPresenter::Refresh(const arm_host::ArmSnapshot& newSnapshot, std::span<const arm_host::ArmEvent> events)
     {
@@ -197,36 +201,36 @@ namespace simulator
 
     ui::model::FormModel& SimulatorPresenter::MoveForm()
     {
-        return moveModel;
+        return forms.moveModel;
     }
 
     void SimulatorPresenter::OnOperateAction(ui::model::ActionId action)
     {
-        if (action == checkContracts)
+        if (action == OperateAction::checkContracts)
             Post(arm_host::CheckContracts{});
-        else if (action == positionMode)
+        else if (action == OperateAction::positionMode)
             Post(arm_host::SelectMode{ can::FocMotorMode::position });
-        else if (action == start)
+        else if (action == OperateAction::start)
             Post(arm_host::StartJoints{});
-        else if (action == stop)
+        else if (action == OperateAction::stop)
             Post(arm_host::StopJoints{});
-        else if (action == clearFaults)
+        else if (action == OperateAction::clearFaults)
             Post(arm_host::ClearFaults{});
-        else if (action == rearm && onRearmRequested)
-            onRearmRequested("Re-arm after the trip by " + tripSource + "?");
+        else if (action == OperateAction::rearm && onRearmRequested)
+            onRearmRequested(std::format("Re-arm after the trip by {}?", tripSource));
     }
 
     void SimulatorPresenter::OnMoveAction(ui::model::ActionId action)
     {
-        if (action == abort)
+        if (action == MoveAction::abort)
             return Post(arm_host::AbortMove{});
 
-        if (action != move || !State(Control::move).enabled)
+        if (action != MoveAction::move || !State(Control::move).enabled)
             return;
 
         arm::JointPositions target{};
         for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
-            target[joint] = foc::Radians{ moveModel.Float(moveFields[joint].id) };
+            target[joint] = foc::Radians{ forms.moveModel.Float(forms.moveFields[joint].id) };
         Post(arm_host::MoveTo{ target });
     }
 
@@ -234,7 +238,7 @@ namespace simulator
     {
         const auto name = SentenceCase(arm_host::CommandName(command));
         pending[arm.Post(command)] = name;
-        shell.SetStatus(name + " requested…");
+        shell.SetStatus(std::format("{} requested…", name));
     }
 
     void SimulatorPresenter::Handle(const arm_host::ArmEvent& event)
@@ -242,15 +246,16 @@ namespace simulator
         log.Add(event);
 
         if (event.kind == arm_host::ArmEventKind::tripped)
-            tripSource = "Joint " + std::to_string(event.joint + 1) +
-                         (event.fault == can::FocFaultCode::none ? std::string{ " (silent)" } : " (" + std::string{ FaultName(event.fault) } + ")");
+            tripSource = std::format("Joint {} ({})", event.joint + 1, event.fault == can::FocFaultCode::none ? std::string_view{ "silent" } : FaultName(event.fault));
 
         const auto request = pending.find(event.command);
         if (request == pending.end() || (event.kind != arm_host::ArmEventKind::accepted && event.kind != arm_host::ArmEventKind::refused))
             return;
 
-        shell.SetStatus(event.kind == arm_host::ArmEventKind::accepted ? request->second + ": accepted"
-                                                                       : request->second + " refused: " + std::string{ event.reason });
+        if (event.kind == arm_host::ArmEventKind::accepted)
+            shell.SetStatus(std::format("{}: accepted", request->second));
+        else
+            shell.SetStatus(std::format("{} refused: {}", request->second, event.reason));
         pending.erase(request);
     }
 
@@ -261,7 +266,8 @@ namespace simulator
         status.connection = snapshot.targetReady ? "Connected" : "Disconnected";
         status.connectionLevel = snapshot.targetReady ? ui::theme::StatusLevel::Ok : ui::theme::StatusLevel::Neutral;
         status.contracts = ContractsText(snapshot.contracts);
-        status.trip = snapshot.tripped ? "Tripped — " + (tripSource.empty() ? std::string{ "unknown source" } : tripSource) : "Trip: —";
+        const std::string_view source = tripSource.empty() ? std::string_view{ "unknown source" } : std::string_view{ tripSource };
+        status.trip = snapshot.tripped ? std::format("Tripped — {}", source) : std::string{ "Trip: —" };
         status.tripLevel = snapshot.tripped ? ui::theme::StatusLevel::Fault : ui::theme::StatusLevel::Neutral;
     }
 
@@ -282,10 +288,10 @@ namespace simulator
 
     std::string SimulatorPresenter::TargetProblem() const
     {
-        const auto violation = moveModel.Validate();
+        const auto violation = forms.moveModel.Validate();
         if (!violation)
             return {};
-        return std::string{ jointLabels[violation->field.value] } + " outside its limits";
+        return std::format("{} outside its limits", jointLabels[violation->field.value]);
     }
 
     std::string SimulatorPresenter::Hint(std::span<const std::pair<Control, std::string_view>> controls) const
@@ -293,7 +299,7 @@ namespace simulator
         std::string hint;
         for (const auto& [control, label] : controls)
             if (!State(control).enabled)
-                hint += (hint.empty() ? "" : "\n") + std::string{ label } + ": " + State(control).reason;
+                hint += std::format("{}{}: {}", hint.empty() ? "" : "\n", label, State(control).reason);
         return hint;
     }
 }

@@ -62,7 +62,7 @@ namespace arm_host
         ArmRequestQueue requests;
         std::atomic<uint32_t> nextId{ 1 };
         std::atomic<bool> stopping{ false };
-        std::thread thread;
+        std::jthread thread;
     };
 }
 

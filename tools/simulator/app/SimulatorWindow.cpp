@@ -218,12 +218,12 @@ namespace simulator
         armMenu->addSeparator();
         auto* moveAction = armMenu->addAction("&Move", this, [this]()
             {
-                presenter.MoveForm().TriggerAction(SimulatorPresenter::move);
+                presenter.MoveForm().TriggerAction(MoveAction::move);
             });
         moveAction->setShortcut(QKeySequence{ "Ctrl+Return" });
         auto* abortAction = armMenu->addAction("&Abort Move", this, [this]()
             {
-                presenter.MoveForm().TriggerAction(SimulatorPresenter::abort);
+                presenter.MoveForm().TriggerAction(MoveAction::abort);
             });
         abortAction->setShortcut(QKeySequence{ "Ctrl+." });
     }

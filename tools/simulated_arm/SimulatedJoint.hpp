@@ -36,15 +36,9 @@ namespace simulation
             void Advance();
             void Hold();
 
-            can::FocMotorState state{ can::FocMotorState::ready };
-            can::FocFaultCode fault{ can::FocFaultCode::none };
-            can::FocMotorMode mode{ can::FocMotorMode::torque };
-            foc::Radians position{ 0.0f };
-            foc::RadiansPerSecond speed{ 0.0f };
-            foc::Radians target{ 0.0f };
-            uint32_t emergencyStops{ 0 };
-
         private:
+            friend class SimulatedJoint;
+
             void OnStart(const infra::Function<void(services::CanAckStatus)>& onDone) override;
             void OnStop(const infra::Function<void(services::CanAckStatus)>& onDone) override;
             void OnClearFault(const infra::Function<void(services::CanAckStatus)>& onDone) override;
@@ -66,9 +60,16 @@ namespace simulation
             void OnRecalibrate(const infra::Function<void()>& onAccepted) override;
             void OnResetModel(const infra::Function<void(bool stored)>& onDone) override;
 
+            can::FocMotorState state{ can::FocMotorState::ready };
+            can::FocFaultCode fault{ can::FocFaultCode::none };
+            can::FocMotorMode mode{ can::FocMotorMode::torque };
+            foc::Radians position{ 0.0f };
+            foc::RadiansPerSecond speed{ 0.0f };
+            foc::Radians target{ 0.0f };
+            uint32_t emergencyStops{ 0 };
             can::FocMotorCategoryServer& server;
             infra::Duration timeConstant;
-            infra::TimePoint lastUpdate;
+            infra::TimePoint lastUpdate{ infra::Now() };
         };
 
         VirtualCanBus::Port port;

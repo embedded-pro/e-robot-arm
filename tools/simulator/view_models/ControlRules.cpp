@@ -1,4 +1,5 @@
 #include "tools/simulator/view_models/ControlRules.hpp"
+#include <format>
 #include <optional>
 
 namespace simulator
@@ -15,7 +16,8 @@ namespace simulator
             return { false, std::move(reason) };
         }
 
-        std::optional<std::size_t> FirstJoint(const arm_host::ArmSnapshot& snapshot, bool (*matches)(const arm::JointReading&))
+        template<class Predicate>
+        std::optional<std::size_t> FirstJoint(const arm_host::ArmSnapshot& snapshot, Predicate matches)
         {
             for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
                 if (matches(snapshot.readings[joint]))
@@ -40,7 +42,7 @@ namespace simulator
 
         std::string JointText(std::size_t joint, std::string_view what)
         {
-            return "Joint " + std::to_string(joint + 1) + " " + std::string{ what };
+            return std::format("Joint {} {}", joint + 1, what);
         }
 
         std::optional<std::string> MotionBlocked(const arm_host::ArmSnapshot& snapshot)
@@ -67,7 +69,7 @@ namespace simulator
                 return Disabled(std::move(*blocked));
             if (snapshot.moving)
                 return Disabled("Moving");
-            if (const auto joint = FirstJoint(snapshot, NotRunning))
+            if (const auto joint = FirstJoint(snapshot, NotRunning); joint.has_value())
                 return Disabled(JointText(*joint, "not running"));
             if (!targetProblem.empty())
                 return Disabled(std::string{ targetProblem });
@@ -78,7 +80,7 @@ namespace simulator
         {
             if (!snapshot.tripped)
                 return Disabled("Not tripped");
-            if (const auto joint = FirstJoint(snapshot, Faulted))
+            if (const auto joint = FirstJoint(snapshot, Faulted); joint.has_value())
                 return Disabled(JointText(*joint, "in fault: clear it first"));
             return Enabled();
         }
@@ -106,9 +108,9 @@ namespace simulator
             case Control::start:
                 return Check(MotionBlocked(snapshot));
             case Control::stop:
-                return FirstJoint(snapshot, Running) ? Enabled() : Disabled("No joint running");
+                return FirstJoint(snapshot, Running).has_value() ? Enabled() : Disabled("No joint running");
             case Control::clearFaults:
-                return FirstJoint(snapshot, Faulted) ? Enabled() : Disabled("No joint in fault");
+                return FirstJoint(snapshot, Faulted).has_value() ? Enabled() : Disabled("No joint in fault");
             case Control::rearm:
                 return Rearm(snapshot);
             case Control::move:

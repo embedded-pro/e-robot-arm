@@ -28,18 +28,25 @@ namespace simulator
         bool realArm{ false };
     };
 
-    class SimulatorPresenter
+    struct OperateAction
     {
-    public:
         static constexpr ui::model::ActionId checkContracts{ 0 };
         static constexpr ui::model::ActionId positionMode{ 1 };
         static constexpr ui::model::ActionId start{ 2 };
         static constexpr ui::model::ActionId stop{ 3 };
         static constexpr ui::model::ActionId clearFaults{ 4 };
         static constexpr ui::model::ActionId rearm{ 5 };
+    };
+
+    struct MoveAction
+    {
         static constexpr ui::model::ActionId move{ 0 };
         static constexpr ui::model::ActionId abort{ 1 };
+    };
 
+    class SimulatorPresenter
+    {
+    public:
         SimulatorPresenter(arm_host::ArmCommands& arm, ui::shell::ShellView& shell, ui::shell::FormView& operateView, ui::shell::FormView& moveView,
             const arm::JointLimits& limits, infra::TimePoint start);
         SimulatorPresenter(const SimulatorPresenter& other) = delete;
@@ -64,6 +71,20 @@ namespace simulator
         ui::Callback<void(std::string_view prompt)> onRearmRequested;
 
     private:
+        struct Forms
+        {
+            explicit Forms(const arm::JointLimits& limits);
+            Forms(const Forms& other) = delete;
+            Forms& operator=(const Forms& other) = delete;
+
+            std::array<ui::model::FieldSpec, arm::jointCount> moveFields;
+            ui::model::FormSpec operateSpec;
+            ui::model::FormSpec moveSpec;
+            std::array<ui::model::FieldValue, arm::jointCount> moveValues{};
+            ui::model::FormModel operateModel;
+            ui::model::FormModel moveModel;
+        };
+
         void OnOperateAction(ui::model::ActionId action);
         void OnMoveAction(ui::model::ActionId action);
         void Post(const arm_host::ArmCommand& command);
@@ -78,12 +99,7 @@ namespace simulator
         ui::shell::FormView& operateView;
         ui::shell::FormView& moveView;
         arm::JointLimits limits;
-        std::array<ui::model::FieldSpec, arm::jointCount> moveFields;
-        ui::model::FormSpec operateSpec;
-        ui::model::FormSpec moveSpec;
-        std::array<ui::model::FieldValue, arm::jointCount> moveValues{};
-        ui::model::FormModel operateModel;
-        ui::model::FormModel moveModel;
+        Forms forms{ limits };
         arm_host::ArmSnapshot snapshot;
         std::array<ControlState, 10> states;
         std::array<JointRow, arm::jointCount> rows;

@@ -10,6 +10,8 @@ namespace
 {
     using namespace testing;
     using arm_host::ArmEventKind;
+    using simulator::MoveAction;
+    using simulator::OperateAction;
     using simulator::SimulatorPresenter;
     using ui::backend::recording::FormCommandKind;
 
@@ -59,8 +61,8 @@ TEST_F(SimulatorPresenterTest, builds_the_operate_and_move_forms_from_their_spec
 
 TEST_F(SimulatorPresenterTest, without_a_target_disables_the_operations_and_says_why)
 {
-    EXPECT_FALSE(ActionEnabled(operateView, SimulatorPresenter::start));
-    EXPECT_FALSE(ActionEnabled(moveView, SimulatorPresenter::move));
+    EXPECT_FALSE(ActionEnabled(operateView, OperateAction::start));
+    EXPECT_FALSE(ActionEnabled(moveView, MoveAction::move));
     EXPECT_THAT(presenter.OperateHint(), HasSubstr("Start: Not connected"));
     EXPECT_THAT(presenter.MoveHint(), HasSubstr("Move: Not connected"));
     EXPECT_EQ("Disconnected", presenter.Status().connection);
@@ -70,16 +72,16 @@ TEST_F(SimulatorPresenterTest, enables_the_bring_up_steps_as_the_arm_allows_them
 {
     presenter.Refresh(simulator::test::Compatible(), {});
 
-    EXPECT_TRUE(ActionEnabled(operateView, SimulatorPresenter::positionMode));
-    EXPECT_TRUE(ActionEnabled(operateView, SimulatorPresenter::start));
-    EXPECT_FALSE(ActionEnabled(operateView, SimulatorPresenter::stop));
+    EXPECT_TRUE(ActionEnabled(operateView, OperateAction::positionMode));
+    EXPECT_TRUE(ActionEnabled(operateView, OperateAction::start));
+    EXPECT_FALSE(ActionEnabled(operateView, OperateAction::stop));
     EXPECT_EQ("Contracts: compatible", presenter.Status().contracts);
 }
 
 TEST_F(SimulatorPresenterTest, an_operation_posts_its_command_and_shows_it_requested_until_answered)
 {
     EXPECT_CALL(arm, Post(Holds(arm_host::StartJoints{}))).WillOnce(Return(42));
-    Trigger(SimulatorPresenter::start);
+    Trigger(OperateAction::start);
     EXPECT_EQ("Start requested…", shell.Statuses().back());
 
     const std::array events{ arm_host::ArmEvent{ .kind = ArmEventKind::refused, .command = 42, .commandName = "start", .reason = "tripped" } };
@@ -97,10 +99,10 @@ TEST_F(SimulatorPresenterTest, each_operate_action_posts_its_command)
     EXPECT_CALL(arm, Post(Holds(arm_host::StopJoints{}))).WillOnce(Return(3));
     EXPECT_CALL(arm, Post(Holds(arm_host::ClearFaults{}))).WillOnce(Return(4));
 
-    Trigger(SimulatorPresenter::checkContracts);
-    Trigger(SimulatorPresenter::positionMode);
-    Trigger(SimulatorPresenter::stop);
-    Trigger(SimulatorPresenter::clearFaults);
+    Trigger(OperateAction::checkContracts);
+    Trigger(OperateAction::positionMode);
+    Trigger(OperateAction::stop);
+    Trigger(OperateAction::clearFaults);
 }
 
 TEST_F(SimulatorPresenterTest, move_posts_the_six_targets_from_the_form)
@@ -114,14 +116,14 @@ TEST_F(SimulatorPresenterTest, move_posts_the_six_targets_from_the_form)
                 EXPECT_NEAR(1.25f, std::get<arm_host::MoveTo>(command).target[2].Value(), 1.0e-5f);
                 return 7u;
             }));
-    moveView.PressAction(SimulatorPresenter::move);
+    moveView.PressAction(MoveAction::move);
 }
 
 TEST_F(SimulatorPresenterTest, move_is_not_posted_while_the_rules_forbid_it)
 {
     presenter.Refresh(simulator::test::Compatible(), {});
 
-    moveView.PressAction(SimulatorPresenter::move);
+    moveView.PressAction(MoveAction::move);
 }
 
 TEST_F(SimulatorPresenterTest, the_emergency_stop_posts_whatever_the_state)
@@ -143,7 +145,7 @@ TEST_F(SimulatorPresenterTest, a_trip_names_its_source_in_the_status_and_in_the_
     {
         prompt = text;
     };
-    Trigger(SimulatorPresenter::rearm);
+    Trigger(OperateAction::rearm);
 
     EXPECT_EQ("Tripped — Joint 3 (Overcurrent)", presenter.Status().trip);
     EXPECT_EQ(ui::theme::StatusLevel::Fault, presenter.Status().tripLevel);

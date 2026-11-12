@@ -54,7 +54,7 @@ namespace simulation
         frames.pop_front();
 
         if (!frame.from->muted)
-            for (auto* port : ports)
+            for (const auto* port : ports)
                 if (port != frame.from && !port->muted && port->receive)
                     port->receive(frame.id, frame.data);
 

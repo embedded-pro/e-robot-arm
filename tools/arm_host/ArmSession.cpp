@@ -40,11 +40,11 @@ namespace arm_host
     {
         if (std::holds_alternative<EmergencyStop>(command))
         {
-            backlog.push_front({ id, command });
+            backlog.emplace_front(id, command);
             attempts = 0;
         }
         else
-            backlog.push_back({ id, command });
+            backlog.emplace_back(id, command);
 
         if (!retryTimer.Armed())
             Pump();
@@ -57,8 +57,9 @@ namespace arm_host
             const auto& [id, command] = backlog.front();
             if (Run(command))
                 Emit({ .kind = ArmEventKind::accepted, .command = id, .commandName = CommandName(command) });
-            else if (QueueRefused(command) && ++attempts < maxAttempts)
+            else if (QueueRefused(command) && attempts + 1 < maxAttempts)
             {
+                ++attempts;
                 retryTimer.Start(retryInterval, [this]()
                     {
                         Pump();

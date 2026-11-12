@@ -28,7 +28,7 @@ namespace arm_host
     ArmHost::ArmHost(const arm::ArmConfig& config, const TargetOpener& opener, const ArmTarget& initial)
     {
         runtime.emplace(config, opener, mailbox, initial);
-        thread = std::thread{ [this]()
+        thread = std::jthread{ [this]()
             {
                 dispatcher.ExecuteUntil([this]()
                     {
