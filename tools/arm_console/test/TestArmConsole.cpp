@@ -93,12 +93,13 @@ TEST_F(ArmConsoleTest, status_prints_every_joint_the_trip_and_the_move)
 TEST_F(ArmConsoleTest, events_are_printed_as_they_happen)
 {
     safety.GetObserver().OnContractsResolved(can::ContractCompatibility::compatible);
+    safety.GetObserver().OnContractsResolved(can::ContractCompatibility::incompatible);
     safety.GetObserver().OnJointFault(2, can::FocFaultCode::stall);
     safety.GetObserver().OnJointSilent(5);
     motion.GetObserver().OnMoveDone();
     motion.GetObserver().OnMoveAborted();
 
-    EXPECT_EQ("contracts compatible\njoint 3 faulted: stall\njoint 6 silent\nmove done\nmove aborted\n", output.str());
+    EXPECT_EQ("contracts compatible\ncontracts incompatible\njoint 3 faulted: stall\njoint 6 silent\nmove done\nmove aborted\n", output.str());
 }
 
 TEST_F(ArmConsoleTest, quit_ends_the_console)

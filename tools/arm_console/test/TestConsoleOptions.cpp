@@ -47,3 +47,12 @@ TEST_F(ConsoleOptionsTest, refuses_unknown_options_missing_values_and_a_node_lis
     EXPECT_FALSE(Parse({ "--nodes", "0,2,3,4,5,6" }).has_value());
     EXPECT_FALSE(Parse({ "--nodes", "1,2,3,4,5,4096" }).has_value());
 }
+
+TEST_F(ConsoleOptionsTest, the_usage_names_every_option)
+{
+    const auto usage = arm_console::OptionsUsage();
+
+    EXPECT_THAT(usage, testing::HasSubstr("--bus"));
+    EXPECT_THAT(usage, testing::HasSubstr("--bitrate"));
+    EXPECT_THAT(usage, testing::HasSubstr("--nodes"));
+}

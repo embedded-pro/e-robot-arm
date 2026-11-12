@@ -31,7 +31,7 @@ if (TARGET can_lite.drivers.platform)
     )
 
     target_sources(e_robot_arm.tool.arm_console PRIVATE
-        Main.cpp
+        main/Main.cpp
     )
 endif()
 
