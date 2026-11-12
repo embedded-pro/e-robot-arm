@@ -2,7 +2,7 @@
 
 This file is a concise, task-oriented guide for Claude and AI agents to be
 immediately productive in this repository. e-robot-arm was bootstrapped from
-embedded-scaffold: the `example_*` components, `blinky_cli` and `example_tool` are the
+embedded-scaffold: the `example_*` components and `example_tool` are the
 scaffold's worked examples and are replaced by the arm's own components as they arrive.
 The planned architecture is in `documentation/architecture/system.md`.
 
@@ -17,14 +17,12 @@ simulator runs the same core against e-foc virtual motors or the real arm.
 - `core/` — reusable libraries only (no application entry points).
   - `core/platform_abstraction/` — the `platform::Platform` interface (the seam
     between portable logic and hardware) plus a `PlatformMock` for tests.
-  - `core/blinky_cli/` — the headline portable application (LED blink + UART CLI),
-    written against `platform::Platform` and unit-tested on the host with the mock.
   - `core/example_component/` — a trivial `interfaces/` + `implementations/` +
     `test/` example showing the component conventions.
 - `targets/` — application entry points and platform-specific implementations.
-  - `targets/blinky_cli/Main.cpp` — one platform-agnostic entry point reused for
-    host/st/ti; it includes `PLATFORM_IMPL_HEADER` (set per platform in
-    `targets/CMakeLists.txt`) to construct the selected `PlatformImpl`.
+  - An application's `Main.cpp` includes `PLATFORM_IMPL_HEADER` (set per platform in
+    `targets/CMakeLists.txt`) to construct the selected `PlatformImpl`, so one entry
+    point serves host/st/ti. No application is defined yet.
   - `targets/platform_implementations/{host,st,ti}/PlatformImpl.*` — concrete
     `platform::Platform` implementations (host stubs; EK-TM4C123GXL; STM32F429I-DISC1).
   - The active platform is chosen by `E_ROBOT_ARM_TARGET_PLATFORM`.
@@ -59,7 +57,7 @@ cmake --build --preset host-Debug
 # Run unit + integration tests
 ctest --preset host
 
-# Build the blinky_cli firmware for a board (.elf/.hex)
+# Build for a board (compiles the platform libraries; no firmware application yet)
 cmake --preset EK-TM4C123GXL
 cmake --build --preset EK-TM4C123GXL-Debug
 cmake --preset STM32F429I-DISC1
@@ -135,8 +133,8 @@ namespace example
 - **New core component**: copy `core/example_component/`; keep interfaces in
   `interfaces/`, implementations in `implementations/`, tests in
   `implementations/test/`.
-- **New application**: write the logic in `core/` against `platform::Platform` (see
-  `core/blinky_cli/`); add a thin `targets/<app>/Main.cpp` that includes
+- **New application**: write the logic in `core/` against `platform::Platform`; add a
+  thin `targets/<app>/Main.cpp` that includes
   `PLATFORM_IMPL_HEADER` and constructs it. Unit-test the logic on the host with
   `core/platform_abstraction/test_doubles/PlatformMock.hpp`.
 - **New platform peripheral**: add a method to `platform::Platform`, implement it in

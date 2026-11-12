@@ -7,7 +7,7 @@ The repository was bootstrapped from
 [`embedded-pro/embedded-scaffold`](https://github.com/embedded-pro/embedded-scaffold) and carries its structure,
 build system, dev container, CI and documentation scaffolding.
 
-> **Status**: the structure and dependencies are in place. The `example_*` components, `blinky_cli` and
+> **Status**: the structure and dependencies are in place. The `example_*` components and
 > `example_tool` are the scaffold's worked examples and will be replaced by the arm's own components.
 
 ## Overview
@@ -51,7 +51,6 @@ All presets are defined in `CMakePresets.json`. The scaffold's board presets (`E
 e-robot-arm/
 ├── core/                      # Reusable libraries only — no entry points
 │   ├── platform_abstraction/  #   platform::Platform interface (+ mock)
-│   ├── blinky_cli/            #   scaffold example, to be replaced
 │   └── example_component/     #   scaffold example, to be replaced
 ├── targets/                   # Application entry points + platform implementations (host, st, ti)
 ├── tools/                     # Host-side tools (the Qt simulator will live here)
