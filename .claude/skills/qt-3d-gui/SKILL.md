@@ -200,9 +200,10 @@ Normal maps and occlusion maps are optional polish. Prefer good geometry and AO 
 - `QQuickWidget::grabFramebuffer()` forces a render, so a captured frame proves nothing about live updates. Count
   `QQuickWindow::afterRendering` while the arm moves; zero means the scene does not see the data.
 - Qt Quick renders only on change: an arm at rest renders no frames, so measure frame rate during motion.
-- A QML module on a static backing library gets a generated plugin that calls into the backing library (Qt 6.10
-  emits `qInitResources_qmlcache_*` there). Link the plugin **before** the backing library, or a single-pass linker
-  leaves the symbol undefined; Qt 6.4 does not need it, so the mistake only shows on a newer Qt.
+- A QML module on a static backing library: from Qt 6.10 the generated plugin calls `qInitResources_qmlcache_*`,
+  whose object library is not propagated to the executables, so they fail to link (Qt 6.4 links fine, so the
+  mistake only shows on a newer Qt). Use `NO_CACHEGEN` on such a module, link the plugin before the backing library,
+  and keep the scene small enough that compiling QML at load time costs nothing noticeable.
 - `qmllint` resolves a C++ type only through a QML module (`qt_add_qml_module`); a context property is invisible to
   it. `Connections` needs `import QtQml`. Set `OUTPUT_DIRECTORY` to a path ending in the module URI.
 

@@ -163,6 +163,8 @@ The commanded positions are joint motion's last sampled setpoint. Joint motion g
   - ambient occlusion is on whenever `aoStrength` is above 0 in 6.4; from 6.5 on it also needs `aoEnabled`, which
     6.4 rejects, so the window sets it at run time when the environment has it;
   - `shadowBias` is a fraction in 6.4 and a distance from 6.5 on, so the scene leaves it at its default;
+  - from Qt 6.10 the QML cache of a module on a static library does not reach the executables' link, so the
+    module is built with `NO_CACHEGEN` and its four QML files compile at load time;
   - a `QML_SINGLETON` that is default-constructible is created by the engine, which ignores the static `create()`.
     `ArmSceneState` therefore has no default constructor.
 - **Window test.** `e_robot_arm.tool.simulator_window_test` opens the window on simulated joints, brings the arm up,

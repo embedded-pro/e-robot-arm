@@ -10,6 +10,7 @@ qt_add_qml_module(e_robot_arm.tool.simulator.app
     CLASS_NAME SimulatorPlugin
     OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/Simulator
     DEPENDENCIES QtQuick
+    NO_CACHEGEN
     QML_FILES
         qml/ArmHousing.qml
         qml/ArmModel.qml
