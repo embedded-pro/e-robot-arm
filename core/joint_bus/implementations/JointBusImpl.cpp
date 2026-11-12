@@ -14,7 +14,7 @@ namespace arm
                 const auto node = nodes[joint];
                 if (node == services::canBroadcastNodeId || node > services::canIdNodeIdMask)
                     return false;
-                if (std::find(nodes.begin() + joint + 1, nodes.end(), node) != nodes.end())
+                if (std::ranges::find(nodes.begin() + joint + 1, nodes.end(), node) != nodes.end())
                     return false;
             }
 
@@ -120,7 +120,7 @@ namespace arm
     void JointBusImpl::OnTelemetryStatus(uint16_t sourceNodeId, can::FocMotorState state, can::FocFaultCode fault)
     {
         const auto joint = JointOf(sourceNodeId);
-        if (!joint)
+        if (!joint.has_value())
             return;
 
         auto& reading = readings[*joint];
@@ -138,7 +138,7 @@ namespace arm
     void JointBusImpl::OnTelemetryMotion(uint16_t sourceNodeId, foc::RadiansPerSecond speed, foc::Radians position)
     {
         const auto joint = JointOf(sourceNodeId);
-        if (!joint)
+        if (!joint.has_value())
             return;
 
         readings[*joint].speed = speed;
@@ -151,14 +151,14 @@ namespace arm
     void JointBusImpl::OnContractVersionResponse(uint16_t sourceNodeId, uint8_t, uint8_t)
     {
         const auto joint = JointOf(sourceNodeId);
-        if (!joint || !contractCheckPending)
+        if (!joint.has_value() || !contractCheckPending)
             return;
 
         answered[*joint] = true;
 
         if (client.Compatibility(sourceNodeId) == can::ContractCompatibility::incompatible)
             ResolveContracts(can::ContractCompatibility::incompatible);
-        else if (std::find(answered.begin(), answered.end(), false) == answered.end())
+        else if (std::ranges::find(answered, false) == answered.end())
             ResolveContracts(can::ContractCompatibility::compatible);
     }
 
@@ -186,7 +186,7 @@ namespace arm
 
     std::optional<std::size_t> JointBusImpl::JointOf(uint16_t node) const
     {
-        const auto found = std::find(nodes.begin(), nodes.end(), node);
+        const auto found = std::ranges::find(nodes, node);
         if (found == nodes.end())
             return std::nullopt;
 
