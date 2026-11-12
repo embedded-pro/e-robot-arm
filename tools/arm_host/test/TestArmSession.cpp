@@ -158,3 +158,20 @@ TEST_F(ArmSessionTest, emergency_stop_aborts_a_running_move)
     EXPECT_FALSE(sink.snapshot.moving);
     EXPECT_EQ(1u, simulatedArm.Joint(0).EmergencyStops());
 }
+
+TEST_F(ArmSessionTest, commands_replaced_before_every_joint_accepted_them_are_refused_and_the_newest_is_accepted)
+{
+    session.Execute(1, arm_host::StopJoints{});
+    session.Execute(2, arm_host::StopJoints{});
+    session.Execute(3, arm_host::ClearFaults{});
+    ForwardTime(30ms);
+
+    std::vector<uint32_t> replaced;
+    for (const auto& event : sink.events)
+        if (event.kind == ArmEventKind::refused && event.reason == "replaced by a newer command")
+            replaced.push_back(event.command);
+
+    EXPECT_EQ((std::vector<uint32_t>{ 1, 2 }), replaced);
+    EXPECT_EQ(3u, sink.events.back().command);
+    EXPECT_EQ(ArmEventKind::accepted, sink.events.back().kind);
+}

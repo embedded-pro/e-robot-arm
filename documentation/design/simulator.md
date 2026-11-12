@@ -2,7 +2,7 @@
 title: "Simulator Design"
 type: design
 status: draft
-version: 0.3.0
+version: 0.4.0
 component: "simulator"
 date: 2026-11-12
 ---
@@ -12,7 +12,7 @@ date: 2026-11-12
 | Title     | Simulator Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.3.0            |
+| Version   | 0.4.0            |
 | Component | simulator        |
 | Date      | 2026-11-12       |
 
@@ -126,12 +126,10 @@ It is built in layers, each tested on its own:
 | `ArmMailbox`      | any       | The snapshot under a mutex and the two bounded queues; numbers the snapshots                        |
 
 Every command answers with exactly one event, `accepted` or `refused` with a reason, carrying the id `Post`
-returned. Until phase 1 makes a command reach all joints or none
-([#17](https://github.com/embedded-pro/e-robot-arm/issues/17)), a command posted while the control loop's burst
-fills the CAN transmit queue is refused by the joint bus. The session therefore retries a refused bus command every
-millisecond for up to 20 attempts before reporting it refused. Only idempotent commands are retried: check
-contracts, select mode, start, stop, clear faults and emergency stop. A joint that already received one receives
-it again, harmlessly.
+returned. Check contracts, select mode, start, stop and clear faults are delivered by the joint bus
+([joint-bus.md](joint-bus.md) Part B): the session answers `accepted` once all six joints have the command, and
+`refused` when the joint bus reports it failed, with the reason "replaced by a newer command", "emergency stop" or
+"not delivered to every joint in time". The other commands are answered as soon as they run.
 
 The console runs on `ArmHost` too ([arm-console.md](arm-console.md)): it posts each typed command and waits for its
 answer.

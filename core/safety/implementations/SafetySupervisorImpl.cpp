@@ -111,6 +111,22 @@ namespace arm
             });
     }
 
+    void SafetySupervisorImpl::OnCommandDelivered(JointCommand command)
+    {
+        NotifyObservers([command](auto& observer)
+            {
+                observer.OnCommandDelivered(command);
+            });
+    }
+
+    void SafetySupervisorImpl::OnCommandFailed(JointCommand command, CommandFailure failure)
+    {
+        NotifyObservers([command, failure](auto& observer)
+            {
+                observer.OnCommandFailed(command, failure);
+            });
+    }
+
     bool SafetySupervisorImpl::MayCommandMotion() const
     {
         return !tripped && bus.Contracts() == can::ContractCompatibility::compatible;

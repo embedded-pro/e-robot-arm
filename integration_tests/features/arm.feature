@@ -47,3 +47,10 @@ Feature: Arm on six e-foc joints
     When joint 5 stops answering
     Then the arm shall report joint 5 silent
     And every joint but joint 5 shall have been emergency stopped
+
+  @REQ-ARM-006
+  Scenario: A command issued during a telemetry burst reaches every joint
+    Given the contracts are compatible and position mode is selected
+    When the arm requests telemetry and starts the joints in the same turn
+    Then every joint shall be running within 20 ms
+    And the start shall be reported delivered and no command shall have failed

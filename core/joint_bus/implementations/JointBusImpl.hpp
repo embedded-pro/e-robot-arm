@@ -3,6 +3,7 @@
 
 #include "core/joint_bus/interfaces/JointBus.hpp"
 #include "e-foc-protocol/client/FocMotorCategoryClient.hpp"
+#include "infra/timer/Timer.hpp"
 #include "infra/util/Function.hpp"
 #include <array>
 #include <optional>
@@ -14,7 +15,9 @@ namespace arm
         , private can::FocMotorCategoryClientObserver
     {
     public:
-        JointBusImpl(can::FocMotorCategoryClient& client, const JointNodeIds& nodes, uint8_t missedRequestsBeforeSilent);
+        static constexpr infra::Duration retryInterval{ std::chrono::milliseconds{ 1 } };
+
+        JointBusImpl(can::FocMotorCategoryClient& client, const JointNodeIds& nodes, uint8_t missedRequestsBeforeSilent, infra::Duration commandTimeout);
 
         bool QueryContracts() override;
         can::ContractCompatibility Contracts() const override;
@@ -41,6 +44,19 @@ namespace arm
         void OnFaultRecordResponse(uint16_t sourceNodeId, uint8_t age, can::FocFaultCode code, can::FocMotorMode mode, uint32_t uptimeMs) override;
         void OnFaultConditionsResponse(uint16_t sourceNodeId, uint8_t age, int16_t powerUp, foc::Volts busVoltage, foc::Ampere peakCurrent) override;
 
+        struct HeldCommand
+        {
+            JointCommand command;
+            can::FocMotorMode mode;
+            std::array<bool, jointCount> accepted{};
+        };
+
+        bool Deliver(JointCommand command, can::FocMotorMode mode);
+        void SendHeld();
+        bool Send(const HeldCommand& command, uint16_t node);
+        void Release();
+        void Fail(CommandFailure failure);
+        bool AnyJointIncompatible() const;
         bool ForEachJoint(const infra::Function<bool(std::size_t joint, uint16_t node)>& send);
         std::optional<std::size_t> JointOf(uint16_t node) const;
         void ResolveContracts(can::ContractCompatibility compatibility);
@@ -62,6 +78,11 @@ namespace arm
         uint8_t missedRequestsBeforeSilent;
         std::array<Liveness, jointCount> liveness{};
         bool telemetryRequested{ false };
+
+        infra::Duration commandTimeout;
+        std::optional<HeldCommand> held;
+        infra::TimerRepeating retryTimer;
+        infra::TimerSingleShot timeoutTimer;
     };
 }
 

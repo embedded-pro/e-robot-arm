@@ -64,9 +64,9 @@ THEN(R"(the arm shall start every joint in position mode)")
 {
     auto& fixture = context.Get<ArmFixture>();
     EXPECT_TRUE(fixture.arm.Safety().SelectMode(can::FocMotorMode::position));
-    fixture.ForwardTime(20ms);
     EXPECT_TRUE(fixture.arm.Safety().Start());
     fixture.ForwardTime(20ms);
+    EXPECT_TRUE(fixture.events.failedCommands.empty());
 
     for (std::size_t joint = 1; joint <= arm::jointCount; ++joint)
     {
@@ -170,6 +170,40 @@ THEN(R"(the arm shall refuse to move)")
     auto& fixture = context.Get<ArmFixture>();
     EXPECT_TRUE(fixture.arm.Safety().Tripped());
     EXPECT_FALSE(fixture.arm.Safety().Start());
+}
+
+GIVEN(R"(the contracts are compatible and position mode is selected)")
+{
+    auto& fixture = context.Get<ArmFixture>();
+    EXPECT_TRUE(fixture.arm.Safety().QueryContracts());
+    fixture.ForwardTime(20ms);
+    EXPECT_TRUE(fixture.arm.Safety().SelectMode(can::FocMotorMode::position));
+    fixture.ForwardTime(1ms);
+    fixture.events.deliveredCommands.clear();
+}
+
+WHEN(R"(the arm requests telemetry and starts the joints in the same turn)")
+{
+    auto& fixture = context.Get<ArmFixture>();
+    EXPECT_TRUE(fixture.arm.Safety().RequestTelemetry());
+    fixture.lastAccepted = fixture.arm.Safety().Start();
+}
+
+THEN(R"(every joint shall be running within {int} ms)", (std::int32_t milliseconds))
+{
+    auto& fixture = context.Get<ArmFixture>();
+    EXPECT_TRUE(fixture.lastAccepted);
+    fixture.ForwardTime(std::chrono::milliseconds{ milliseconds });
+
+    for (std::size_t joint = 1; joint <= arm::jointCount; ++joint)
+        EXPECT_EQ(can::FocMotorState::running, fixture.Joint(joint).State()) << "joint " << joint;
+}
+
+THEN(R"(the start shall be reported delivered and no command shall have failed)")
+{
+    const auto& events = context.Get<ArmFixture>().events;
+    EXPECT_EQ((std::vector<arm::JointCommand>{ arm::JointCommand::start }), events.deliveredCommands);
+    EXPECT_TRUE(events.failedCommands.empty());
 }
 
 WHEN(R"(the faults are cleared, the arm is re-armed and the joints are started again)")

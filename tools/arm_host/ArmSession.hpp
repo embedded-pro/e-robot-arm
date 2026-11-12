@@ -7,16 +7,13 @@
 #include "tools/arm_host/ArmCommand.hpp"
 #include "tools/arm_host/ArmSnapshot.hpp"
 #include "tools/simulated_arm/SimulatedArm.hpp"
-#include <deque>
+#include <optional>
 
 namespace arm_host
 {
     class ArmSession
     {
     public:
-        static constexpr infra::Duration retryInterval{ std::chrono::milliseconds{ 1 } };
-        static constexpr uint8_t maxAttempts{ 20 };
-
         ArmSession(hal::Can& can, const arm::ArmConfig& config, const ArmTarget& target, ArmSessionSink& sink, simulation::SimulatedArm* simulation);
         ArmSession(const ArmSession& other) = delete;
         ArmSession& operator=(const ArmSession& other) = delete;
@@ -38,6 +35,8 @@ namespace arm_host
             void OnContractsResolved(can::ContractCompatibility compatibility) override;
             void OnJointFault(std::size_t joint, can::FocFaultCode fault) override;
             void OnJointSilent(std::size_t joint) override;
+            void OnCommandDelivered(arm::JointCommand command) override;
+            void OnCommandFailed(arm::JointCommand command, arm::CommandFailure failure) override;
             void OnMoveDone() override;
             void OnMoveAborted() override;
 
@@ -57,8 +56,9 @@ namespace arm_host
             ArmCommand command;
         };
 
-        void Pump();
-        bool QueueRefused(const ArmCommand& command) const;
+        void Deliver(uint32_t id, const ArmCommand& command);
+        void Delivered();
+        void Failed(arm::CommandFailure failure);
         bool Run(const ArmCommand& command);
         bool Simulate(std::size_t joint, const infra::Function<void(simulation::SimulatedJoint&)>& action);
         std::string_view RefusalReason(const ArmCommand& command) const;
@@ -73,9 +73,8 @@ namespace arm_host
         simulation::SimulatedArm* simulation;
         Events events{ *this, arm };
         infra::TimerRepeating publishTimer;
-        infra::TimerSingleShot retryTimer;
-        std::deque<Pending> backlog;
-        uint8_t attempts{ 0 };
+        std::optional<Pending> issuing;
+        std::optional<Pending> held;
         bool tripReported{ false };
     };
 }

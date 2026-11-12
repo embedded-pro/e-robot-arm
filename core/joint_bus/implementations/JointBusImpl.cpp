@@ -22,14 +22,16 @@ namespace arm
         }
     }
 
-    JointBusImpl::JointBusImpl(can::FocMotorCategoryClient& client, const JointNodeIds& nodes, uint8_t missedRequestsBeforeSilent)
+    JointBusImpl::JointBusImpl(can::FocMotorCategoryClient& client, const JointNodeIds& nodes, uint8_t missedRequestsBeforeSilent, infra::Duration commandTimeout)
         : can::FocMotorCategoryClientObserver(client)
         , client(client)
         , nodes(nodes)
         , missedRequestsBeforeSilent(missedRequestsBeforeSilent)
+        , commandTimeout(commandTimeout)
     {
         really_assert(ValidNodeMap(nodes));
         really_assert(missedRequestsBeforeSilent != 0);
+        really_assert(commandTimeout > infra::Duration{});
     }
 
     bool JointBusImpl::QueryContracts()
@@ -37,10 +39,7 @@ namespace arm
         contractAnswered.fill(false);
         contractCheckPending = true;
 
-        return ForEachJoint([this](std::size_t, uint16_t node)
-            {
-                return client.SendQueryContractVersion(node);
-            });
+        return Deliver(JointCommand::queryContracts, can::FocMotorMode::torque);
     }
 
     can::ContractCompatibility JointBusImpl::Contracts() const
@@ -61,38 +60,28 @@ namespace arm
 
     bool JointBusImpl::SelectMode(can::FocMotorMode mode)
     {
-        return ForEachJoint([this, mode](std::size_t, uint16_t node)
-            {
-                return client.SendSelectControlMode(node, mode);
-            });
+        return Deliver(JointCommand::selectMode, mode);
     }
 
     bool JointBusImpl::Start()
     {
-        return ForEachJoint([this](std::size_t, uint16_t node)
-            {
-                return client.SendStart(node);
-            });
+        return Deliver(JointCommand::start, can::FocMotorMode::torque);
     }
 
     bool JointBusImpl::Stop()
     {
-        return ForEachJoint([this](std::size_t, uint16_t node)
-            {
-                return client.SendStop(node);
-            });
+        return Deliver(JointCommand::stop, can::FocMotorMode::torque);
     }
 
     bool JointBusImpl::ClearFault()
     {
-        return ForEachJoint([this](std::size_t, uint16_t node)
-            {
-                return client.SendClearFault(node);
-            });
+        return Deliver(JointCommand::clearFault, can::FocMotorMode::torque);
     }
 
     bool JointBusImpl::EmergencyStop()
     {
+        Fail(CommandFailure::emergencyStop);
+
         return ForEachJoint([this](std::size_t, uint16_t node)
             {
                 return client.SendEmergencyStop(node);
@@ -192,6 +181,94 @@ namespace arm
 
     void JointBusImpl::OnFaultConditionsResponse(uint16_t, uint8_t, int16_t, foc::Volts, foc::Ampere)
     {}
+
+    bool JointBusImpl::Deliver(JointCommand command, can::FocMotorMode mode)
+    {
+        if (command != JointCommand::queryContracts && AnyJointIncompatible())
+            return false;
+
+        Fail(CommandFailure::replaced);
+        held = HeldCommand{ command, mode };
+        SendHeld();
+
+        if (held.has_value())
+        {
+            retryTimer.Start(retryInterval, [this]()
+                {
+                    SendHeld();
+                });
+            timeoutTimer.Start(commandTimeout, [this]()
+                {
+                    Fail(CommandFailure::timedOut);
+                });
+        }
+
+        return true;
+    }
+
+    void JointBusImpl::SendHeld()
+    {
+        for (std::size_t joint = 0; joint != jointCount; ++joint)
+            if (!held->accepted[joint])
+                held->accepted[joint] = Send(*held, nodes[joint]);
+
+        if (std::ranges::find(held->accepted, false) != held->accepted.end())
+            return;
+
+        const auto command = held->command;
+        Release();
+        NotifyObservers([command](auto& observer)
+            {
+                observer.OnCommandDelivered(command);
+            });
+    }
+
+    bool JointBusImpl::Send(const HeldCommand& command, uint16_t node)
+    {
+        switch (command.command)
+        {
+            case JointCommand::queryContracts:
+                return client.SendQueryContractVersion(node);
+            case JointCommand::selectMode:
+                return client.SendSelectControlMode(node, command.mode);
+            case JointCommand::start:
+                return client.SendStart(node);
+            case JointCommand::stop:
+                return client.SendStop(node);
+            case JointCommand::clearFault:
+                return client.SendClearFault(node);
+        }
+
+        return false;
+    }
+
+    void JointBusImpl::Release()
+    {
+        held.reset();
+        retryTimer.Cancel();
+        timeoutTimer.Cancel();
+    }
+
+    void JointBusImpl::Fail(CommandFailure failure)
+    {
+        if (!held.has_value())
+            return;
+
+        const auto command = held->command;
+        Release();
+        NotifyObservers([command, failure](auto& observer)
+            {
+                observer.OnCommandFailed(command, failure);
+            });
+    }
+
+    bool JointBusImpl::AnyJointIncompatible() const
+    {
+        return std::ranges::any_of(nodes, [this](uint16_t node)
+            {
+                return client.Compatibility(node) == can::ContractCompatibility::incompatible;
+            });
+    }
 
     bool JointBusImpl::ForEachJoint(const infra::Function<bool(std::size_t joint, uint16_t node)>& send)
     {

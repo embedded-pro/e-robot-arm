@@ -26,3 +26,9 @@
   shall: >
     When any joint stops answering, the arm shall emergency-stop all six joints within the configured number of
     control periods.
+
+- id: REQ-ARM-006
+  title: Commands reach every joint
+  shall: >
+    The arm shall deliver each joint command to all six joints, even when it is issued while other traffic is
+    waiting on the bus, or else report that the command was not delivered.

@@ -184,3 +184,12 @@ TEST_F(SafetySupervisorImplTest, passes_contract_outcomes_and_readings_on)
     EXPECT_CALL(bus, Contracts()).WillOnce(Return(can::ContractCompatibility::incompatible));
     EXPECT_EQ(can::ContractCompatibility::incompatible, supervisor.Contracts());
 }
+
+TEST_F(SafetySupervisorImplTest, passes_command_delivery_outcomes_on)
+{
+    EXPECT_CALL(observer, OnCommandDelivered(arm::JointCommand::start));
+    bus.GetObserver().OnCommandDelivered(arm::JointCommand::start);
+
+    EXPECT_CALL(observer, OnCommandFailed(arm::JointCommand::stop, arm::CommandFailure::timedOut));
+    bus.GetObserver().OnCommandFailed(arm::JointCommand::stop, arm::CommandFailure::timedOut);
+}

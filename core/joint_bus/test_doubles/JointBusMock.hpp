@@ -31,6 +31,8 @@ namespace arm
         MOCK_METHOD(void, OnContractsResolved, (can::ContractCompatibility compatibility), (override));
         MOCK_METHOD(void, OnJointFault, (std::size_t joint, can::FocFaultCode fault), (override));
         MOCK_METHOD(void, OnJointSilent, (std::size_t joint), (override));
+        MOCK_METHOD(void, OnCommandDelivered, (arm::JointCommand command), (override));
+        MOCK_METHOD(void, OnCommandFailed, (arm::JointCommand command, arm::CommandFailure failure), (override));
     };
 }
 
