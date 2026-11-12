@@ -12,6 +12,7 @@
 #include <QMessageBox>
 #include <QPushButton>
 #include <QQmlEngine>
+#include <QQuickItem>
 #include <QQuickWidget>
 #include <QScrollArea>
 #include <QSettings>
@@ -68,6 +69,7 @@ namespace simulator
         armView->setFocusPolicy(Qt::StrongFocus);
         armView->engine()->addImportPath(":/");
         armView->setSource(QUrl{ "qrc:/Simulator/qml/ArmScene.qml" });
+        EnableAmbientOcclusion();
         shell.SetContent(armView);
 
         addToolBar(Qt::TopToolBarArea, strip);
@@ -90,6 +92,14 @@ namespace simulator
         connect(&frameTimer, &QTimer::timeout, this, &SimulatorWindow::Frame);
         frameTimer.start();
         Frame();
+    }
+
+    void SimulatorWindow::EnableAmbientOcclusion()
+    {
+        auto* root = armView->rootObject();
+        auto* environment = root != nullptr ? root->findChild<QObject*>("environment") : nullptr;
+        if (environment != nullptr && environment->metaObject()->indexOfProperty("aoEnabled") >= 0)
+            environment->setProperty("aoEnabled", true);
     }
 
     QQuickWidget& SimulatorWindow::ArmView()

@@ -37,6 +37,7 @@ namespace simulator
         void closeEvent(QCloseEvent* event) override;
 
     private:
+        void EnableAmbientOcclusion();
         void BuildDocks();
         void BuildMenus();
         void BuildArmMenu();

@@ -25,6 +25,7 @@ Rectangle {
         camera: camera
 
         environment: SceneEnvironment {
+            objectName: "environment"
             backgroundMode: SceneEnvironment.Color
             clearColor: ArmSceneState.backgroundColor
             lightProbe: Texture { source: "qrc:/Simulator/assets/studio.hdr" }
