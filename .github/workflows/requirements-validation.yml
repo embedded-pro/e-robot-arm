@@ -24,7 +24,7 @@ jobs:
           persist-credentials: false
 
       - name: Validate requirements and generate PDF
-        uses: embedded-pro/project-documentation@54fca1cb9925af16e53bd9d2640d1285560d295b # v0.2.0
+        uses: embedded-pro/project-documentation@e1b8b6866333964f2e02b29bba322cbee211819b # v0.2.0
         with:
           run-validate-requirements: 'true'
           run-generate-requirements-pdf: 'true'
