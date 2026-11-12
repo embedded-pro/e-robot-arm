@@ -1,18 +1,15 @@
 #include "core/safety/implementations/SafetySupervisorImpl.hpp"
 #include "infra/util/ReallyAssert.hpp"
 #include "numerical/math/Math.hpp"
+#include <algorithm>
 
 namespace arm
 {
     namespace
     {
-        bool ValidLimits(const JointLimits& limits)
+        bool ValidLimit(const JointLimit& limit)
         {
-            for (const auto& limit : limits)
-                if (!math::IsFinite(limit.lower.Value()) || !math::IsFinite(limit.upper.Value()) || !(limit.lower < limit.upper))
-                    return false;
-
-            return true;
+            return math::IsFinite(limit.lower.Value()) && math::IsFinite(limit.upper.Value()) && limit.lower < limit.upper;
         }
     }
 
@@ -21,7 +18,7 @@ namespace arm
         , bus(bus)
         , limits(limits)
     {
-        really_assert(ValidLimits(limits));
+        really_assert(std::ranges::all_of(limits, ValidLimit));
     }
 
     bool SafetySupervisorImpl::QueryContracts()
