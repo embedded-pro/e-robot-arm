@@ -210,3 +210,9 @@ Use the agents in `.claude/agents/` for structured development workflows:
 - **planner** — create detailed implementation plans before writing code
 - **executor** — implement code changes following all project constraints
 - **reviewer** — review code changes against project standards
+
+Skills in `.claude/skills/`:
+
+- **ux-ui-expert** (`.claude/skills/ux-ui-expert/SKILL.md`) — load before designing, reviewing or changing
+  anything a person sees or operates under `tools/` (the simulator, the console): layouts, safety controls,
+  configuration flows, the 3-D view, scopes. The simulator is built on ui-cpp primitives.

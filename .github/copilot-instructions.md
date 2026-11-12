@@ -65,3 +65,9 @@ Embedded builds use the board presets in `CMakePresets.json`.
   options differ from its caller's. The consumer sets optimisation flags per translation unit.
 - `OPTIMIZE_FOR_SPEED` (`numerical/math/CompilerOptimizations.hpp`) only on hot functions
   defined in a header (class body or template), never on one defined in a `.cpp`.
+
+## 7. Operator tools (UI)
+
+Before designing, reviewing or changing anything a person sees or operates under `tools/` (the simulator,
+the console), follow `.claude/skills/ux-ui-expert/SKILL.md`: safety first, then state visibility, then the
+common task; logic in view models tested without Qt; ui-cpp primitives only.
