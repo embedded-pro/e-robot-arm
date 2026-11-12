@@ -6,6 +6,7 @@
 #include <ostream>
 #include <sstream>
 #include <string>
+#include <string_view>
 
 namespace arm_console
 {
@@ -25,7 +26,7 @@ namespace arm_console
         void OnMoveDone() override;
         void OnMoveAborted() override;
 
-        bool Dispatch(const std::string& command, std::istringstream& arguments);
+        bool Dispatch(std::string_view command, std::istringstream& arguments);
         bool Mode(std::istringstream& arguments);
         bool Move(std::istringstream& arguments);
         void Status();

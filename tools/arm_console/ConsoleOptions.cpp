@@ -2,13 +2,14 @@
 #include <algorithm>
 #include <charconv>
 #include <sstream>
+#include <string_view>
 
 namespace arm_console
 {
     namespace
     {
         template<class T>
-        std::optional<T> Number(const std::string& text)
+        std::optional<T> Number(std::string_view text)
         {
             T value{};
             const auto [end, error] = std::from_chars(text.data(), text.data() + text.size(), value);
@@ -26,7 +27,7 @@ namespace arm_console
             while (std::getline(stream, item, ','))
             {
                 const auto node = Number<uint16_t>(item);
-                if (count == nodes.size() || !node || *node == 0 || *node > 0xfff || std::ranges::find(nodes.begin(), nodes.begin() + count, *node) != nodes.begin() + count)
+                if (count == nodes.size() || !node.has_value() || *node == 0 || *node > 0xfff || std::ranges::find(nodes.begin(), nodes.begin() + count, *node) != nodes.begin() + count)
                     return std::nullopt;
                 nodes[count++] = *node;
             }
@@ -36,21 +37,21 @@ namespace arm_console
             return nodes;
         }
 
-        bool Apply(ConsoleOptions& options, const std::string& name, const std::string& value)
+        bool Apply(ConsoleOptions& options, std::string_view name, const std::string& value)
         {
             if (name == "--bus")
                 options.bus = value;
             else if (name == "--bitrate")
             {
                 const auto bitrate = Number<uint32_t>(value);
-                if (!bitrate)
+                if (!bitrate.has_value())
                     return false;
                 options.bitrate = *bitrate;
             }
             else if (name == "--nodes")
             {
                 const auto nodes = Nodes(value);
-                if (!nodes)
+                if (!nodes.has_value())
                     return false;
                 options.nodes = *nodes;
             }

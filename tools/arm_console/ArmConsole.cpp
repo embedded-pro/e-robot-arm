@@ -41,7 +41,7 @@ namespace arm_console
         return true;
     }
 
-    bool ArmConsole::Dispatch(const std::string& command, std::istringstream& arguments)
+    bool ArmConsole::Dispatch(std::string_view command, std::istringstream& arguments)
     {
         if (command == "contracts")
             Answer(safety.QueryContracts());

@@ -7,9 +7,10 @@
 #include "infra/timer/Timer.hpp"
 #include "tools/arm_console/ArmConsole.hpp"
 #include "tools/arm_console/ConsoleOptions.hpp"
+#include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <cstdlib>
-#include <deque>
 #include <iostream>
 #include <mutex>
 #include <numbers>
@@ -34,19 +35,23 @@ namespace
     class Session
     {
     public:
-        explicit Session(arm_console::ArmConsole& console)
+        Session(arm_console::ArmConsole& console, const infra::Function<void()>& onEnded)
             : console(console)
+            , onEnded(onEnded)
         {}
 
-        void Push(const std::string& line)
+        void Execute(const std::string& line)
         {
-            {
-                std::scoped_lock lock{ mutex };
-                lines.push_back(line);
-            }
+            std::unique_lock lock{ mutex };
+            pending = line;
+            done = false;
             infra::EventDispatcher::Instance().Schedule([this]()
                 {
                     ExecutePending();
+                });
+            executed.wait(lock, [this]()
+                {
+                    return done;
                 });
         }
 
@@ -61,20 +66,29 @@ namespace
             std::string line;
             {
                 std::scoped_lock lock{ mutex };
-                if (lines.empty())
-                    return;
-                line = lines.front();
-                lines.pop_front();
+                line = pending;
             }
 
-            if (!ended && !console.Execute(line))
+            if (!console.Execute(line))
+            {
+                onEnded();
                 ended = true;
+            }
+
+            {
+                std::scoped_lock lock{ mutex };
+                done = true;
+            }
+            executed.notify_one();
         }
 
         arm_console::ArmConsole& console;
+        infra::Function<void()> onEnded;
         std::mutex mutex;
-        std::deque<std::string> lines;
-        bool ended{ false };
+        std::condition_variable executed;
+        std::string pending;
+        bool done{ false };
+        std::atomic<bool> ended{ false };
     };
 }
 
@@ -105,7 +119,6 @@ int main(int argc, const char* const argv[])
     can::FocMotorCanClient client{ adapter };
     arm::Arm arm{ client.CategoryClient(), ArmConfigFor(options->nodes) };
     arm_console::ArmConsole console{ arm.Safety(), arm.Motion(), std::cout };
-    Session session{ console };
 
     infra::TimerRepeating poll{ 1ms, [&hub, &adapter]()
         {
@@ -114,21 +127,29 @@ int main(int argc, const char* const argv[])
         } };
     arm.Loop().Start();
 
-    std::thread reader{ [&session]()
+    Session session{ console, [&poll, &arm]()
         {
-            std::string line;
-            while (std::getline(std::cin, line))
-                session.Push(line);
-            session.Push("quit");
+            arm.Loop().Stop();
+            poll.Cancel();
         } };
-    reader.detach();
 
-    eventDispatcher.ExecuteUntil([&session]()
-        {
-            return session.Ended();
-        });
+    {
+        std::jthread eventLoop{ [&session]()
+            {
+                eventDispatcher.ExecuteUntil([&session]()
+                    {
+                        return session.Ended();
+                    });
+            } };
 
-    arm.Loop().Stop();
+        std::string line;
+        while (!session.Ended() && std::getline(std::cin, line))
+            session.Execute(line);
+
+        if (!session.Ended())
+            session.Execute("quit");
+    }
+
     adapter.Disconnect();
     return EXIT_SUCCESS;
 }
