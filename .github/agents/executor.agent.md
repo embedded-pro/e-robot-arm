@@ -39,14 +39,14 @@ Host-side tools (`tools/`) and test code may use normal STL/heap patterns.
 **FORBIDDEN in the hot path**: virtual dispatch, heap allocation, blocking calls /
 `sleep` / busy-wait, unguarded expensive transcendental calls (prefer lookup tables).
 
-**REQUIRED for hot-path methods:**
-```cpp
-#if defined(__GNUC__) || defined(__clang__)
-#pragma GCC optimize("O3", "fast-math")
-#endif
-```
-plus `OPTIMIZE_FOR_SPEED` (from `numerical/math/CompilerOptimizations.hpp`). State an
-explicit cycle budget and verify with `arm-none-eabi-objdump -d -C`.
+**FORBIDDEN everywhere**: `#pragma GCC optimize` and the `optimize` attribute. GCC does
+not inline a callee whose options differ from its caller's; the consumer sets optimisation
+flags per translation unit.
+
+**REQUIRED for hot-path methods:** `OPTIMIZE_FOR_SPEED` (from
+`numerical/math/CompilerOptimizations.hpp`), only on functions defined in a header (class
+body or template), never on one defined in a `.cpp`. State an explicit cycle budget and
+verify with `arm-none-eabi-objdump -d -C`.
 
 ### Naming Conventions
 
@@ -135,7 +135,7 @@ Follow TDD Red-Green-Refactor. **Ask clarifying questions before writing any cod
 4. Reuse `infra/numerical-toolbox/` algorithms
 5. **Red** — write failing tests first
 6. **Green** — minimum production code, one file at a time
-7. Add `#pragma GCC optimize` and `OPTIMIZE_FOR_SPEED` to hot-path code
+7. Add `OPTIMIZE_FOR_SPEED` to hot-path code defined in headers (never `#pragma GCC optimize`)
 8. **Refactor** while keeping tests green
 9. Update `CMakeLists.txt` for new files
 10. Update `documentation/` for behavioural changes

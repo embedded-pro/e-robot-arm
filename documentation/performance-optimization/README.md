@@ -78,7 +78,7 @@ The GCC/Clang compiler applies transformations that can drastically change cycle
    propagation and dead-code elimination.
 
 2. **Loop unrolling**: The compiler repeats loop body $k$ times to reduce branch overhead and expose
-   more instruction-level parallelism.  Controlled by `-funroll-loops` or `#pragma GCC optimize("O3")`.
+   more instruction-level parallelism.  Controlled by `-funroll-loops` or `-O3`.
 
 3. **Constant propagation / folding**: Compile-time evaluation of constant expressions eliminates
    runtime computation.  Use `constexpr` aggressively for lookup tables and configuration constants.
@@ -86,7 +86,7 @@ The GCC/Clang compiler applies transformations that can drastically change cycle
 4. **Auto-vectorisation**: Cortex-M4 SIMD (DSP extensions) can process two 16-bit or four 8-bit
    operands per cycle.  Q15/Q31 fixed-point code benefits; floating-point does not (no NEON on M4).
 
-5. **Fast-math transformations** (`-ffast-math`, `#pragma GCC optimize("fast-math")`):
+5. **Fast-math transformations** (`-ffast-math`):
    - Allows re-association of floating-point expressions.
    - Enables FMA generation (avoids separate multiply + add).
    - Assumes no NaN/Inf inputs.
@@ -204,28 +204,17 @@ result = a * b + c;
 // Becomes: vfma.f32 s0, s1, s2  (1 cycle, full precision)
 ```
 
-### 8. Per-File Optimisation Pragmas
+### 8. Set Optimisation Options per Translation Unit, Never per Function
 
-For performance-critical translation units (FOC implementations, SVM, transforms):
+Do not use `#pragma GCC optimize` or `__attribute__((optimize(...)))`. GCC does not inline a callee
+whose optimisation options differ from its caller's, so a hot function with options of its own calls
+every small helper it uses (unit accessors, matrix element access, toolbox wrappers) out of line, and
+ends up slower than without them.
 
-```cpp
-#if defined(__GNUC__) || defined(__clang__)
-#pragma GCC optimize("O3", "fast-math")
-#endif
-```
-
-Place at the top of the `.cpp` file, before any includes that define affected functions.
-
-### 9. Per-Function Attributes
-
-```cpp
-__attribute__((optimize("-O3")))
-void CriticalFunction() {
-    // Always compiled at -O3 regardless of TU-level flags
-}
-```
-
-Note: function attributes do not propagate to callees.  Use file-level pragmas for transitive effect.
+The consumer sets the options for the whole build or per translation unit in CMake (the numerical
+toolbox's `numerical_toolbox_enable_embedded_optimizations()` adds `-ffast-math -fno-finite-math-only`).
+`OPTIMIZE_FOR_SPEED` (`numerical/math/CompilerOptimizations.hpp`) forces inlining; it goes only on hot
+functions defined in a header (class body or template), never on one defined in a `.cpp`.
 
 ---
 
@@ -243,18 +232,13 @@ set(CMAKE_CXX_FLAGS_DEBUG "-Og -g" CACHE STRING "Debug flags" FORCE)
 `-Og` provides: basic inlining, dead-code elimination, register allocation — while keeping full
 debuggability (variable inspection, correct stack trace).
 
-**Solution 2 — File-level pragma** (when specific files must remain fast even at -O0):
+**Solution 2 — Per-file flags in CMake** (when specific files must remain fast in a debug build):
 
-```cpp
-#pragma GCC optimize("O3", "fast-math")
+```cmake
+set_source_files_properties(HotPath.cpp PROPERTIES COMPILE_OPTIONS "-O2")
 ```
 
-**Solution 3 — Function attribute** (for a single bottleneck function):
-
-```cpp
-__attribute__((optimize("-O3")))
-void CriticalFunction() { /* ... */ }
-```
+Never a `#pragma GCC optimize` or an `optimize` attribute: they block inlining (see technique 8).
 
 ---
 
@@ -384,16 +368,6 @@ GPIO_ClearPin(DEBUG_PIN);
 ---
 
 ## Quick Reference
-
-### GCC Optimisation Pragmas
-
-```cpp
-#pragma GCC optimize("O3")        // Maximum speed
-#pragma GCC optimize("Os")        // Minimum size
-#pragma GCC optimize("fast-math") // Aggressive FP
-#pragma GCC push_options          // Save current options
-#pragma GCC pop_options           // Restore options
-```
 
 ### Function Attributes
 

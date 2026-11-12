@@ -48,19 +48,14 @@ For control loops and ISR-reachable code, every cycle counts.
 **FORBIDDEN in the hot path:** virtual dispatch, heap allocation, blocking calls /
 `sleep` / busy-wait, unguarded expensive transcendental calls (prefer lookup tables).
 
-**REQUIRED for hot-path methods:**
+**FORBIDDEN everywhere**: `#pragma GCC optimize` and the `optimize` attribute. GCC does
+not inline a callee whose options differ from its caller's; the consumer sets optimisation
+flags per translation unit.
 
-1. File-level pragma (in every `.cpp`/`.hpp` with hot-path code):
-```cpp
-#if defined(__GNUC__) || defined(__clang__)
-#pragma GCC optimize("O3", "fast-math")
-#endif
-```
-2. `OPTIMIZE_FOR_SPEED` (from `numerical/math/CompilerOptimizations.hpp`) on
-   hot-path methods.
-
-State an explicit cycle budget for each timing-critical loop and verify it with
-`arm-none-eabi-objdump -d -C`.
+**REQUIRED for hot-path methods:** `OPTIMIZE_FOR_SPEED` (from
+`numerical/math/CompilerOptimizations.hpp`), only on functions defined in a header (class
+body or template), never on one defined in a `.cpp`. State an explicit cycle budget and
+verify with `arm-none-eabi-objdump -d -C`.
 
 ### Naming Conventions
 
@@ -157,7 +152,7 @@ Follow the TDD Red-Green-Refactor cycle. **Ask clarifying questions before writi
 4. **Reuse `infra/numerical-toolbox/` algorithms** rather than reimplementing.
 5. **Red** — write failing tests first.
 6. **Green** — implement the minimum production code, one file at a time.
-7. **Add `#pragma GCC optimize` and `OPTIMIZE_FOR_SPEED`** to hot-path code.
+7. **Add `OPTIMIZE_FOR_SPEED`** to hot-path code defined in headers (never `#pragma GCC optimize`).
 8. **Refactor** — clean up while keeping tests green.
 9. **Update `CMakeLists.txt`** if new files were added.
 10. **Update documentation** in `documentation/` for changed behaviour.

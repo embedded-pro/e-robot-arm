@@ -65,8 +65,8 @@ tools, simulators, and tests, do not raise CRITICAL solely for STL/heap usage.
 - [ ] Hot path contains no virtual dispatch
 - [ ] No blocking calls (`sleep`, busy-wait) in ISR-reachable code
 - [ ] No heap allocation reachable from the hot path
-- [ ] `#pragma GCC optimize("O3", "fast-math")` present (guarded by `#if defined(__GNUC__) || defined(__clang__)`) in files with hot-path code
-- [ ] `OPTIMIZE_FOR_SPEED` applied to hot-path methods, with `#include "numerical/math/CompilerOptimizations.hpp"`
+- [ ] No `#pragma GCC optimize` and no `optimize` attribute anywhere (they block inlining)
+- [ ] `OPTIMIZE_FOR_SPEED` only on hot functions defined in a header, never on one defined in a `.cpp`, with `#include "numerical/math/CompilerOptimizations.hpp"`
 
 ### 3. Interface Compliance (CRITICAL)
 

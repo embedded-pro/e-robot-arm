@@ -90,8 +90,13 @@ path. Host tools, simulators, and test code may use normal heap patterns.
 ### Real-Time — Hot Paths
 
 - No virtual dispatch or blocking calls in ISR-reachable hot paths.
-- Apply `OPTIMIZE_FOR_SPEED` (from `numerical/math/CompilerOptimizations.hpp`) and,
-  where appropriate, `#pragma GCC optimize("O3", "fast-math")` to hot-path files.
+- Never give a function optimisation options of its own: no `#pragma GCC optimize`,
+  no `optimize` attribute. GCC does not inline a callee whose options differ from its
+  caller's, so such a function calls every small helper it uses out of line. The
+  consumer sets optimisation flags per translation unit.
+- `OPTIMIZE_FOR_SPEED` (from `numerical/math/CompilerOptimizations.hpp`) forces
+  inlining. Put it only on hot functions whose definition every caller sees (defined
+  in the class body or as a template in a header), never on one defined in a `.cpp`.
 - State explicit cycle budgets for timing-critical loops and verify with
   `arm-none-eabi-objdump -d -C`.
 
