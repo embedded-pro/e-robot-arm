@@ -36,10 +36,7 @@ namespace arm
         target = newTarget;
         plan.Plan(LatestPositions(), target, limits);
         periodsElapsed = 0;
-        timer.Start(period, [this]()
-            {
-                Step();
-            });
+        moving = true;
         return true;
     }
 
@@ -57,7 +54,7 @@ namespace arm
 
     bool JointMotionImpl::Moving() const
     {
-        return timer.Armed();
+        return moving;
     }
 
     JointPositions JointMotionImpl::LatestPositions() const
@@ -70,6 +67,9 @@ namespace arm
 
     void JointMotionImpl::Step()
     {
+        if (!moving)
+            return;
+
         ++periodsElapsed;
         const auto elapsed = std::chrono::duration<float>(period * periodsElapsed).count();
         const bool arrived = elapsed >= plan.Duration();
@@ -88,6 +88,6 @@ namespace arm
 
     void JointMotionImpl::Finish()
     {
-        timer.Cancel();
+        moving = false;
     }
 }
