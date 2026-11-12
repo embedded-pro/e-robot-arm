@@ -15,6 +15,9 @@ simulator runs the same core against e-foc virtual motors or the real arm.
 
 **Major components**:
 - `core/` — reusable libraries only (no application entry points).
+  - `core/joint_bus/` — `arm::JointBus`: the six e-foc joints on one
+    `FocMotorCategoryClient` (node map, contract check, commands, setpoints,
+    readings, fault reports). Design: `documentation/design/joint-bus.md`.
   - `core/platform_abstraction/` — the `platform::Platform` interface (the seam
     between portable logic and hardware) plus a `PlatformMock` for tests.
   - `core/example_component/` — a trivial `interfaces/` + `implementations/` +

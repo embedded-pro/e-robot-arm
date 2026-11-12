@@ -2,7 +2,7 @@
 title: "System Architecture"
 type: architecture
 status: draft
-version: 0.2.0
+version: 0.3.0
 component: "system"
 date: 2026-11-12
 ---
@@ -12,13 +12,13 @@ date: 2026-11-12
 | Title     | System Architecture |
 | Type      | architecture        |
 | Status    | draft               |
-| Version   | 0.2.0               |
+| Version   | 0.3.0               |
 | Component | system              |
 | Date      | 2026-11-12          |
 
-> Target architecture of e-robot-arm. The repository is bootstrapped from embedded-scaffold: the components
-> below are planned, and the scaffold's `example_*` components stay until they are replaced. Diagrams are
-> Mermaid or ASCII art only.
+> Target architecture of e-robot-arm. The repository is bootstrapped from embedded-scaffold: the joint bus
+> exists (`core/joint_bus/`, [design](../design/joint-bus.md)); the other components below are planned, and the
+> scaffold's `example_*` components stay until they are replaced. Diagrams are Mermaid or ASCII art only.
 
 ---
 
@@ -60,7 +60,7 @@ flowchart LR
 | Sub-component | Responsibility                                                                        |
 |---------------|---------------------------------------------------------------------------------------|
 | arm model     | Kinematic and dynamic parameters of the six joints, the tool frame and the base mount |
-| joint bus     | One e-foc client per node: node map, contract-version check, liveness, fault fan-out  |
+| joint bus     | Six e-foc nodes on one client: node map, contract check, fault fan-out, liveness      |
 | motion        | Trajectory generation and time-optimal path parameterisation                          |
 | control       | Joint-space and Cartesian control with dynamics feed-forward                          |
 | safety        | Joint limits, emergency stop, watchdogs                                               |

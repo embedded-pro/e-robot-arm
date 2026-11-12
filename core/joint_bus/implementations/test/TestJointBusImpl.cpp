@@ -1,0 +1,230 @@
+#include "can-lite/core/CanPayload.hpp"
+#include "can-lite/core/CanProtocolDefinitions.hpp"
+#include "can-lite/core/test/CanMock.hpp"
+#include "core/joint_bus/implementations/JointBusImpl.hpp"
+#include "e-foc-protocol/client/FocMotorCanClient.hpp"
+#include "e-foc-protocol/contract/FocMotorWireContract.hpp"
+#include "infra/timer/test_helper/ClockFixture.hpp"
+#include "gmock/gmock.h"
+#include <vector>
+
+namespace
+{
+    using namespace testing;
+
+    constexpr arm::JointNodeIds nodes{ 11, 12, 13, 14, 15, 16 };
+    constexpr uint16_t foreignNode{ 99 };
+    constexpr float tolerance{ 1.0e-6f };
+
+    struct SentFrame
+    {
+        uint16_t node;
+        uint8_t messageType;
+        services::CanPriority priority;
+        hal::Can::Message payload;
+    };
+
+    class JointBusObserverMock
+        : public arm::JointBusObserver
+    {
+    public:
+        using arm::JointBusObserver::JointBusObserver;
+
+        MOCK_METHOD(void, OnContractsResolved, (can::ContractCompatibility compatibility), (override));
+        MOCK_METHOD(void, OnJointFault, (std::size_t joint, can::FocFaultCode fault), (override));
+    };
+
+    class JointBusImplTest
+        : public Test
+        , public infra::ClockFixture
+    {
+    public:
+        void Receive(uint16_t node, uint8_t messageType, const services::CanPayloadWriter& payload)
+        {
+            receive(hal::Can::Id::Create29BitId(services::MakeCanId(services::CanPriority::response, can::focMotorCategoryId, messageType, node)), payload.Message());
+        }
+
+        void AnswerContract(uint16_t node, uint8_t major, uint8_t minor)
+        {
+            Receive(node, can::focContractVersionResponseId, services::CanPayloadWriter{}.WriteUInt8(major).WriteUInt8(minor));
+        }
+
+        void AnswerCompatible(uint16_t node)
+        {
+            AnswerContract(node, can::focContractVersionMajor, can::focContractVersionMinor);
+        }
+
+        void AnswerIncompatible(uint16_t node)
+        {
+            AnswerContract(node, can::focContractVersionMajor + 1, 0);
+        }
+
+        void ReportStatus(uint16_t node, can::FocMotorState state, can::FocFaultCode fault)
+        {
+            Receive(node, can::focTelemetryStatusResponseId, services::CanPayloadWriter{}.WriteUInt8(static_cast<uint8_t>(state)).WriteUInt8(static_cast<uint8_t>(fault)));
+        }
+
+        void ReportMotion(uint16_t node, float speed, float position)
+        {
+            Receive(node, can::focTelemetryMotionId, services::CanPayloadWriter{}.WriteFloat32(speed).WriteFloat32(position));
+        }
+
+        void ExpectOneFramePerJoint(uint8_t messageType) const
+        {
+            ASSERT_EQ(arm::jointCount, sent.size());
+            for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+            {
+                EXPECT_EQ(nodes[joint], sent[joint].node);
+                EXPECT_EQ(messageType, sent[joint].messageType);
+            }
+        }
+
+        StrictMock<hal::CanMock> canMock;
+        infra::Function<void(hal::Can::Id, const hal::Can::Message&)> receive;
+        std::vector<SentFrame> sent;
+        infra::Execute setupBus{ [this]()
+            {
+                EXPECT_CALL(canMock, ReceiveData(_)).WillRepeatedly(SaveArg<0>(&receive));
+                EXPECT_CALL(canMock, SendData(_, _, _))
+                    .WillRepeatedly(Invoke([this](hal::Can::Id id, const hal::Can::Message& data, const infra::Function<void(bool)>& onDone)
+                        {
+                            const auto canId = id.Get29BitId();
+                            sent.push_back({ services::ExtractCanNodeId(canId), services::ExtractCanMessageType(canId), services::ExtractCanPriority(canId), data });
+                            onDone(true);
+                        }));
+            } };
+        can::FocMotorCanClient client{ canMock };
+        arm::JointBusImpl bus{ client.CategoryClient(), nodes };
+        StrictMock<JointBusObserverMock> observer{ bus };
+    };
+}
+
+TEST_F(JointBusImplTest, selects_the_control_mode_of_every_joint_in_joint_order)
+{
+    EXPECT_TRUE(bus.SelectMode(can::FocMotorMode::position));
+
+    ExpectOneFramePerJoint(can::focSelectControlModeId);
+    for (const auto& frame : sent)
+    {
+        services::CanPayloadReader reader{ frame.payload };
+        reader.Skip(1);
+        EXPECT_EQ(static_cast<uint8_t>(can::FocMotorMode::position), reader.ReadUInt8());
+    }
+}
+
+TEST_F(JointBusImplTest, start_stop_and_clear_fault_reach_every_joint)
+{
+    const std::array<std::pair<bool (arm::JointBus::*)(), uint8_t>, 3> commands{ { { &arm::JointBus::Start, can::focStartId },
+        { &arm::JointBus::Stop, can::focStopId },
+        { &arm::JointBus::ClearFault, can::focClearFaultId } } };
+
+    for (const auto& [command, messageType] : commands)
+    {
+        sent.clear();
+        EXPECT_TRUE((bus.*command)());
+        ExpectOneFramePerJoint(messageType);
+    }
+}
+
+TEST_F(JointBusImplTest, emergency_stop_reaches_every_joint_at_emergency_priority)
+{
+    EXPECT_TRUE(bus.EmergencyStop());
+
+    ExpectOneFramePerJoint(can::focEmergencyStopId);
+    for (const auto& frame : sent)
+        EXPECT_EQ(services::CanPriority::emergency, frame.priority);
+}
+
+TEST_F(JointBusImplTest, sends_one_position_setpoint_per_joint)
+{
+    const arm::JointPositions positions{ foc::Radians{ 0.1f }, foc::Radians{ -0.2f }, foc::Radians{ 0.3f },
+        foc::Radians{ -0.4f }, foc::Radians{ 0.5f }, foc::Radians{ -0.6f } };
+
+    EXPECT_TRUE(bus.SendPositions(positions));
+
+    ExpectOneFramePerJoint(can::SetpointCommandId(can::FocSetpointKind::position));
+    for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+    {
+        services::CanPayloadReader reader{ sent[joint].payload };
+        reader.Skip(1);
+        EXPECT_NEAR(positions[joint].Value(), reader.ReadFloat32(), tolerance);
+    }
+}
+
+TEST_F(JointBusImplTest, a_refused_joint_fails_the_command_but_the_others_are_still_commanded)
+{
+    EXPECT_TRUE(bus.QueryContracts());
+    EXPECT_CALL(observer, OnContractsResolved(can::ContractCompatibility::incompatible));
+    AnswerIncompatible(nodes[2]);
+    sent.clear();
+
+    EXPECT_FALSE(bus.EmergencyStop());
+
+    ASSERT_EQ(arm::jointCount - 1, sent.size());
+    EXPECT_EQ(nodes[3], sent[2].node);
+}
+
+TEST_F(JointBusImplTest, contract_check_resolves_compatible_after_all_six_joints_answer)
+{
+    EXPECT_TRUE(bus.QueryContracts());
+    ExpectOneFramePerJoint(can::focQueryContractVersionId);
+
+    for (std::size_t joint = 0; joint != arm::jointCount - 1; ++joint)
+        AnswerCompatible(nodes[joint]);
+    EXPECT_EQ(can::ContractCompatibility::unknown, bus.Contracts());
+
+    EXPECT_CALL(observer, OnContractsResolved(can::ContractCompatibility::compatible));
+    AnswerCompatible(nodes.back());
+    EXPECT_EQ(can::ContractCompatibility::compatible, bus.Contracts());
+}
+
+TEST_F(JointBusImplTest, first_incompatible_answer_resolves_the_contract_check_once)
+{
+    EXPECT_TRUE(bus.QueryContracts());
+    AnswerCompatible(nodes[0]);
+
+    EXPECT_CALL(observer, OnContractsResolved(can::ContractCompatibility::incompatible));
+    AnswerIncompatible(nodes[1]);
+
+    for (std::size_t joint = 2; joint != arm::jointCount; ++joint)
+        AnswerCompatible(nodes[joint]);
+    EXPECT_EQ(can::ContractCompatibility::incompatible, bus.Contracts());
+}
+
+TEST_F(JointBusImplTest, telemetry_updates_the_reading_of_its_joint)
+{
+    ReportMotion(nodes[4], 1.5f, -0.75f);
+    ReportStatus(nodes[4], can::FocMotorState::running, can::FocFaultCode::none);
+
+    const auto& reading = bus.Reading(4);
+    EXPECT_NEAR(1.5f, reading.speed.Value(), tolerance);
+    EXPECT_NEAR(-0.75f, reading.position.Value(), tolerance);
+    EXPECT_EQ(can::FocMotorState::running, reading.state);
+    EXPECT_NEAR(0.0f, bus.Reading(3).position.Value(), tolerance);
+}
+
+TEST_F(JointBusImplTest, frames_from_nodes_outside_the_map_are_ignored)
+{
+    EXPECT_TRUE(bus.QueryContracts());
+    for (const auto node : nodes)
+        AnswerCompatible(node == nodes.back() ? foreignNode : node);
+
+    ReportMotion(foreignNode, 1.0f, 1.0f);
+    ReportStatus(foreignNode, can::FocMotorState::fault, can::FocFaultCode::overCurrent);
+
+    EXPECT_EQ(can::ContractCompatibility::unknown, bus.Contracts());
+    for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+        EXPECT_NEAR(0.0f, bus.Reading(joint).position.Value(), tolerance);
+}
+
+TEST_F(JointBusImplTest, a_joint_entering_fault_is_reported_once_per_episode)
+{
+    EXPECT_CALL(observer, OnJointFault(2, can::FocFaultCode::overCurrent));
+    ReportStatus(nodes[2], can::FocMotorState::fault, can::FocFaultCode::overCurrent);
+    ReportStatus(nodes[2], can::FocMotorState::fault, can::FocFaultCode::overCurrent);
+    EXPECT_EQ(can::FocFaultCode::overCurrent, bus.Reading(2).fault);
+
+    ReportStatus(nodes[2], can::FocMotorState::idle, can::FocFaultCode::none);
+    EXPECT_CALL(observer, OnJointFault(2, can::FocFaultCode::stall));
+    ReportStatus(nodes[2], can::FocMotorState::fault, can::FocFaultCode::stall);
+}
