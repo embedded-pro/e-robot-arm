@@ -2,7 +2,7 @@
 title: "Joint Bus Design"
 type: design
 status: draft
-version: 0.3.0
+version: 0.4.0
 component: "joint_bus"
 date: 2026-11-12
 ---
@@ -12,7 +12,7 @@ date: 2026-11-12
 | Title     | Joint Bus Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.3.0            |
+| Version   | 0.4.0            |
 | Component | joint_bus        |
 | Date      | 2026-11-12       |
 
@@ -106,14 +106,15 @@ nothing is missed before the caller starts asking. Motion telemetry from the joi
 
 ## Data Model
 
-| Entity        | Field    | Type / Unit     | Range              | Notes                                |
-|---------------|----------|-----------------|--------------------|--------------------------------------|
-| Node map      | node     | CAN node id     | 1 … 4095, distinct | One per joint, base joint first      |
-| Joint reading | position | radians         | finite             | From motion telemetry                |
-| Joint reading | speed    | radians/second  | finite             | From motion telemetry                |
-| Joint reading | state    | FOC motor state | idle … ready       | From status telemetry; idle at start |
-| Joint reading | fault    | FOC fault code  | none … other       | From status telemetry; none at start |
-| Liveness      | missed   | count           | 1 … 255            | Requests in a row a joint may miss   |
+| Entity        | Field    | Type / Unit     | Range              | Notes                                                                                  |
+|---------------|----------|-----------------|--------------------|----------------------------------------------------------------------------------------|
+| Node map      | node     | CAN node id     | 1 … 4095, distinct | One per joint, base joint first                                                        |
+| Joint reading | position | radians         | finite             | From motion telemetry                                                                  |
+| Joint reading | speed    | radians/second  | finite             | From motion telemetry                                                                  |
+| Joint reading | state    | FOC motor state | idle … ready       | From status telemetry; idle at start                                                   |
+| Joint reading | fault    | FOC fault code  | none … other       | From status telemetry; none at start                                                   |
+| Joint reading | silent   | flag            | —                  | Set when the joint is reported silent, cleared when its motion telemetry arrives again |
+| Liveness      | missed   | count           | 1 … 255            | Requests in a row a joint may miss                                                     |
 
 ---
 
@@ -176,8 +177,8 @@ sequenceDiagram
 
 ## Open Questions
 
-| # | Question                                                                                                                                                                                                                                                                         | Options                                                                                                                                 | Status |
-|---|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------|--------|
-| 1 | How the bus detects a silent node                                                                                                                                                                                                                                                | Requests missed in a row, counted per joint                                                                                             | closed |
-| 2 | Whether setpoints carry speed and torque as well                                                                                                                                                                                                                                 | Position only, combined command (contract 3.x)                                                                                          | open   |
-| 3 | A command issued while a control-loop burst is queued reaches only some joints: can-lite gives ordinary frames six of its eight queue slots, so a second six-frame burst is refused until the first drains (an emergency stop displaces ordinary frames and always gets through) | Queue commands in the joint bus until the burst drains, send commands only in a control-loop phase, a deeper transmit queue in can-lite | open   |
+| # | Question                                                                                                                                                                                                                                                                         | Options                                                                                                                                 | Status                                                           |
+|---|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------|
+| 1 | How the bus detects a silent node                                                                                                                                                                                                                                                | Requests missed in a row, counted per joint                                                                                             | closed                                                           |
+| 2 | Whether setpoints carry speed and torque as well                                                                                                                                                                                                                                 | Position only, combined command (contract 3.x)                                                                                          | open                                                             |
+| 3 | A command issued while a control-loop burst is queued reaches only some joints: can-lite gives ordinary frames six of its eight queue slots, so a second six-frame burst is refused until the first drains (an emergency stop displaces ordinary frames and always gets through) | Queue commands in the joint bus until the burst drains, send commands only in a control-loop phase, a deeper transmit queue in can-lite | decided: the joint bus holds one pending command; phase 1a (#17) |

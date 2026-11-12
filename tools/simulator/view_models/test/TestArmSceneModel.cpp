@@ -80,3 +80,13 @@ TEST_F(ArmSceneModelTest, status_levels_follow_the_joints_and_are_neutral_withou
     scene.Update(snapshot);
     EXPECT_EQ(ui::theme::StatusLevel::Neutral, scene.Level(1));
 }
+
+TEST_F(ArmSceneModelTest, a_silent_joint_is_shown_at_fault_level)
+{
+    auto snapshot = simulator::test::Running();
+    snapshot.readings[3].silent = true;
+
+    scene.Update(snapshot);
+
+    EXPECT_EQ(ui::theme::StatusLevel::Fault, scene.Level(3));
+}

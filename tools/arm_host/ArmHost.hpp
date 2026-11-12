@@ -45,7 +45,7 @@ namespace arm_host
         ~ArmHost();
 
         uint32_t Post(const ArmCommand& command) override;
-        uint32_t SwitchTarget(const ArmTarget& target);
+        uint32_t SwitchTarget(const ArmTarget& target) override;
 
         ArmSnapshot Snapshot() const override;
         std::vector<ArmEvent> TakeEvents();

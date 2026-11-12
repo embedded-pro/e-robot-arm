@@ -265,3 +265,17 @@ TEST_F(JointBusImplTest, a_silent_joint_that_answers_again_is_reported_again_whe
     EXPECT_CALL(observer, OnJointSilent(5));
     EXPECT_TRUE(bus.RequestTelemetry());
 }
+
+TEST_F(JointBusImplTest, a_silent_joint_reading_is_marked_silent_until_the_joint_answers_again)
+{
+    EXPECT_CALL(observer, OnJointSilent(_)).Times(arm::jointCount);
+    for (uint8_t request = 0; request != missedRequestsBeforeSilent + 1; ++request)
+        EXPECT_TRUE(bus.RequestTelemetry());
+
+    EXPECT_TRUE(bus.Reading(2).silent);
+
+    ReportMotion(nodes[2], 0.0f, 0.5f);
+
+    EXPECT_FALSE(bus.Reading(2).silent);
+    EXPECT_TRUE(bus.Reading(3).silent);
+}

@@ -39,6 +39,9 @@ namespace simulator
 
     ui::theme::StatusLevel LevelOf(const arm::JointReading& reading)
     {
+        if (reading.silent)
+            return ui::theme::StatusLevel::Fault;
+
         switch (reading.state)
         {
             case can::FocMotorState::running:
@@ -70,6 +73,16 @@ namespace simulator
             }
 
             const auto& reading = snapshot.readings[joint];
+            if (reading.silent)
+            {
+                row.position = placeholder;
+                row.speed = placeholder;
+                row.state = "Silent";
+                row.fault = FaultName(reading.fault);
+                row.level = ui::theme::StatusLevel::Fault;
+                continue;
+            }
+
             row.position = Fixed(reading.position.Value(), 3, "rad");
             row.speed = Fixed(reading.speed.Value(), 2, "rad/s");
             row.state = StateName(reading.state);

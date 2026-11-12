@@ -17,7 +17,9 @@ namespace arm_host
 
     void ArmRuntime::Execute(uint32_t id, const ArmCommand& command)
     {
-        if (switching)
+        if (switching && session && std::holds_alternative<EmergencyStop>(command))
+            session->Execute(id, command);
+        else if (switching)
             sink.OnEvent({ .kind = ArmEventKind::refused, .time = infra::Now(), .command = id, .commandName = CommandName(command), .reason = "switching target" });
         else if (!session)
             sink.OnEvent({ .kind = ArmEventKind::refused, .time = infra::Now(), .command = id, .commandName = CommandName(command), .reason = "no target" });

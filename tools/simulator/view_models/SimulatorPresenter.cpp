@@ -1,4 +1,5 @@
 #include "tools/simulator/view_models/SimulatorPresenter.hpp"
+#include <algorithm>
 #include <cctype>
 #include <format>
 
@@ -74,6 +75,28 @@ namespace simulator
             return "Unknown target";
         }
 
+        std::pair<std::string, ui::theme::StatusLevel> Stage(const arm_host::ArmSnapshot& snapshot)
+        {
+            using ui::theme::StatusLevel;
+
+            if (!snapshot.targetReady)
+                return { "Disconnected", StatusLevel::Neutral };
+            if (snapshot.tripped)
+                return { "Tripped", StatusLevel::Fault };
+            if (snapshot.contracts == can::ContractCompatibility::unknown)
+                return { "Contracts unchecked", StatusLevel::Neutral };
+            if (snapshot.contracts == can::ContractCompatibility::incompatible)
+                return { "Contracts incompatible", StatusLevel::Fault };
+            if (snapshot.moving)
+                return { "Moving", StatusLevel::Ok };
+            if (std::ranges::any_of(snapshot.readings, [](const arm::JointReading& reading)
+                    {
+                        return reading.state == can::FocMotorState::running;
+                    }))
+                return { "Running", StatusLevel::Ok };
+            return { "Ready", StatusLevel::Neutral };
+        }
+
         std::string ContractsText(can::ContractCompatibility contracts)
         {
             switch (contracts)
@@ -122,6 +145,7 @@ namespace simulator
     void SimulatorPresenter::Refresh(const arm_host::ArmSnapshot& newSnapshot, std::span<const arm_host::ArmEvent> events)
     {
         snapshot = newSnapshot;
+        TrackSequence();
         for (const auto& event : events)
             Handle(event);
 
@@ -134,6 +158,13 @@ namespace simulator
     void SimulatorPresenter::EmergencyStop()
     {
         Post(arm_host::EmergencyStop{});
+    }
+
+    void SimulatorPresenter::SwitchTarget(const arm_host::ArmTarget& target)
+    {
+        const auto name = std::format("Switch to {}", TargetName(target));
+        pending[arm.SwitchTarget(target)] = name;
+        shell.SetStatus(std::format("{} requested…", name));
     }
 
     void SimulatorPresenter::ConfirmRearm()
@@ -222,7 +253,7 @@ namespace simulator
         else if (action == OperateAction::clearFaults)
             Post(arm_host::ClearFaults{});
         else if (action == OperateAction::rearm && rearmPrompt)
-            rearmPrompt(std::format("Re-arm after the trip by {}?", tripSource));
+            rearmPrompt(std::format("Re-arm after the trip by {}?", tripSource.empty() ? std::string{ "an unknown source" } : tripSource));
     }
 
     void SimulatorPresenter::OnMoveAction(ui::model::ActionId action)
@@ -253,12 +284,17 @@ namespace simulator
         if (event.kind == arm_host::ArmEventKind::tripped)
             tripSource = std::format("Joint {} ({})", event.joint + 1, event.fault == can::FocFaultCode::none ? std::string_view{ "silent" } : FaultName(event.fault));
 
+        using enum arm_host::ArmEventKind;
         const auto request = pending.find(event.command);
-        if (request == pending.end() || (event.kind != arm_host::ArmEventKind::accepted && event.kind != arm_host::ArmEventKind::refused))
+        if (request == pending.end() || (event.kind != accepted && event.kind != refused && event.kind != targetReady && event.kind != targetFailed))
             return;
 
-        if (event.kind == arm_host::ArmEventKind::accepted)
+        if (event.kind == accepted)
             shell.SetStatus(std::format("{}: accepted", request->second));
+        else if (event.kind == targetReady)
+            shell.SetStatus(std::format("{}: done", request->second));
+        else if (event.kind == targetFailed)
+            shell.SetStatus(std::format("{} failed: {}", request->second, event.reason));
         else
             shell.SetStatus(std::format("{} refused: {}", request->second, event.reason));
         pending.erase(request);
@@ -268,8 +304,18 @@ namespace simulator
     {
         status.target = TargetName(snapshot.target);
         status.realArm = snapshot.target.kind == arm_host::TargetKind::real;
-        status.connection = snapshot.targetReady ? "Connected" : "Disconnected";
-        status.connectionLevel = snapshot.targetReady ? ui::theme::StatusLevel::Ok : ui::theme::StatusLevel::Neutral;
+        const bool stale = snapshot.targetReady && unchangedFrames >= staleFrames;
+        if (stale)
+        {
+            status.connection = "No data from the arm";
+            status.connectionLevel = ui::theme::StatusLevel::Warning;
+        }
+        else
+        {
+            status.connection = snapshot.targetReady ? "Connected" : "Disconnected";
+            status.connectionLevel = snapshot.targetReady ? ui::theme::StatusLevel::Ok : ui::theme::StatusLevel::Neutral;
+        }
+        std::tie(status.stage, status.stageLevel) = Stage(snapshot);
         status.contracts = ContractsText(snapshot.contracts);
         const std::string_view source = tripSource.empty() ? std::string_view{ "unknown source" } : std::string_view{ tripSource };
         status.trip = snapshot.tripped ? std::format("Tripped — {}", source) : std::string{ "Trip: —" };
@@ -289,6 +335,18 @@ namespace simulator
 
         operateHint = Hint(operateControls);
         moveHint = Hint(moveControls);
+    }
+
+    void SimulatorPresenter::TrackSequence()
+    {
+        if (snapshot.sequence == lastSequence)
+        {
+            ++unchangedFrames;
+            return;
+        }
+
+        lastSequence = snapshot.sequence;
+        unchangedFrames = 0;
     }
 
     std::string SimulatorPresenter::TargetProblem() const

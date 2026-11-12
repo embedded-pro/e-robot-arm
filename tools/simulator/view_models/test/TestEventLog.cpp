@@ -26,7 +26,7 @@ TEST_F(EventLogTest, describes_events_in_plain_language_with_joints_from_one)
 {
     EXPECT_EQ("Joint 3 fault: Stall", simulator::Describe({ .kind = ArmEventKind::jointFault, .joint = 2, .fault = can::FocFaultCode::stall }, start).message);
     EXPECT_EQ("Tripped by Joint 6", simulator::Describe({ .kind = ArmEventKind::tripped, .joint = 5 }, start).message);
-    EXPECT_EQ("start refused: tripped", simulator::Describe({ .kind = ArmEventKind::refused, .commandName = "start", .reason = "tripped" }, start).message);
+    EXPECT_EQ("Start refused: tripped", simulator::Describe({ .kind = ArmEventKind::refused, .commandName = "start", .reason = "tripped" }, start).message);
     EXPECT_EQ(simulator::LogLevel::fault, simulator::Describe({ .kind = ArmEventKind::jointSilent, .joint = 0 }, start).level);
     EXPECT_EQ(simulator::LogLevel::warning, simulator::Describe({ .kind = ArmEventKind::moveAborted }, start).level);
 }
@@ -56,4 +56,9 @@ TEST_F(EventLogTest, filters_by_level_and_by_joint)
     EXPECT_EQ(2, std::ranges::count(log.Text({ .minimum = simulator::LogLevel::warning }), '\n'));
     EXPECT_EQ(1, std::ranges::count(log.Text({ .joint = 4 }), '\n'));
     EXPECT_EQ(3, std::ranges::count(log.Text({}), '\n'));
+}
+
+TEST_F(EventLogTest, command_results_start_with_a_capital)
+{
+    EXPECT_EQ("Check contracts: accepted", simulator::Describe({ .kind = ArmEventKind::accepted, .commandName = "check contracts" }, start).message);
 }

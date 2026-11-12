@@ -123,3 +123,14 @@ TEST_F(ArmRuntimeTest, a_failed_switch_returns_to_the_previous_target)
     EXPECT_EQ(simulated, sink.snapshot.target);
     EXPECT_TRUE(sink.snapshot.targetReady);
 }
+
+TEST_F(ArmRuntimeTest, an_emergency_stop_still_reaches_the_old_target_while_switching)
+{
+    runtime.emplace(arm_host::test::Config(), Opener(), sink, simulated);
+    Execute(1, arm_host::CheckContracts{});
+    runtime->SwitchTarget(9, virtualBus);
+    runtime->Execute(10, arm_host::EmergencyStop{});
+
+    EXPECT_EQ(ArmEventKind::accepted, sink.Last()->kind);
+    EXPECT_EQ(10u, sink.Last()->command);
+}

@@ -36,6 +36,7 @@ namespace simulator
     private:
         QComboBox* targets;
         QLabel* connection;
+        QLabel* stage;
         QLabel* contracts;
         QLabel* trip;
         QPushButton* emergencyStop;

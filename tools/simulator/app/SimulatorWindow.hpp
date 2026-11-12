@@ -3,6 +3,7 @@
 
 #include "tools/arm_host/ArmHost.hpp"
 #include "tools/simulator/app/ArmSceneState.hpp"
+#include "tools/simulator/app/EmergencyStopKey.hpp"
 #include "tools/simulator/app/JointTable.hpp"
 #include "tools/simulator/app/Panels.hpp"
 #include "tools/simulator/app/StatusStripBar.hpp"
@@ -68,6 +69,7 @@ namespace simulator
         ArmSceneState sceneState{ nullptr };
         SimulatorPresenter presenter;
         EventLogPanel* logPanel;
+        EmergencyStopKey emergencyStopKey;
         QMenu* simulationMenu{ nullptr };
         QTimer frameTimer;
         QByteArray defaultLayout;
