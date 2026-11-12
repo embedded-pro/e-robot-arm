@@ -14,7 +14,7 @@ namespace arm
         , private can::FocMotorCategoryClientObserver
     {
     public:
-        JointBusImpl(can::FocMotorCategoryClient& client, const JointNodeIds& nodes);
+        JointBusImpl(can::FocMotorCategoryClient& client, const JointNodeIds& nodes, uint8_t missedRequestsBeforeSilent);
 
         bool QueryContracts() override;
         can::ContractCompatibility Contracts() const override;
@@ -25,6 +25,7 @@ namespace arm
         bool ClearFault() override;
         bool EmergencyStop() override;
         bool SendPositions(const JointPositions& positions) override;
+        bool RequestTelemetry() override;
 
         const JointReading& Reading(std::size_t joint) const override;
 
@@ -43,12 +44,24 @@ namespace arm
         bool ForEachJoint(const infra::Function<bool(std::size_t joint, uint16_t node)>& send);
         std::optional<std::size_t> JointOf(uint16_t node) const;
         void ResolveContracts(can::ContractCompatibility compatibility);
+        void CountMissedTelemetry();
 
         can::FocMotorCategoryClient& client;
         JointNodeIds nodes;
         std::array<JointReading, jointCount> readings{};
-        std::array<bool, jointCount> answered{};
+        std::array<bool, jointCount> contractAnswered{};
         bool contractCheckPending{ false };
+
+        struct Liveness
+        {
+            bool answered{ false };
+            uint8_t missed{ 0 };
+            bool silent{ false };
+        };
+
+        uint8_t missedRequestsBeforeSilent;
+        std::array<Liveness, jointCount> liveness{};
+        bool telemetryRequested{ false };
     };
 }
 

@@ -2,6 +2,7 @@
 #include "can-lite/core/CanProtocolDefinitions.hpp"
 #include "can-lite/core/test/CanMock.hpp"
 #include "core/joint_bus/implementations/JointBusImpl.hpp"
+#include "core/joint_bus/test_doubles/JointBusMock.hpp"
 #include "e-foc-protocol/client/FocMotorCanClient.hpp"
 #include "e-foc-protocol/contract/FocMotorWireContract.hpp"
 #include "infra/timer/test_helper/ClockFixture.hpp"
@@ -15,6 +16,7 @@ namespace
     constexpr arm::JointNodeIds nodes{ 11, 12, 13, 14, 15, 16 };
     constexpr uint16_t foreignNode{ 99 };
     constexpr float tolerance{ 1.0e-6f };
+    constexpr uint8_t missedRequestsBeforeSilent{ 3 };
 
     struct SentFrame
     {
@@ -22,16 +24,6 @@ namespace
         uint8_t messageType;
         services::CanPriority priority;
         hal::Can::Message payload;
-    };
-
-    class JointBusObserverMock
-        : public arm::JointBusObserver
-    {
-    public:
-        using arm::JointBusObserver::JointBusObserver;
-
-        MOCK_METHOD(void, OnContractsResolved, (can::ContractCompatibility compatibility), (override));
-        MOCK_METHOD(void, OnJointFault, (std::size_t joint, can::FocFaultCode fault), (override));
     };
 
     class JointBusImplTest
@@ -94,8 +86,8 @@ namespace
                         }));
             } };
         can::FocMotorCanClient client{ canMock };
-        arm::JointBusImpl bus{ client.CategoryClient(), nodes };
-        StrictMock<JointBusObserverMock> observer{ bus };
+        arm::JointBusImpl bus{ client.CategoryClient(), nodes, missedRequestsBeforeSilent };
+        StrictMock<arm::JointBusObserverMock> observer{ bus };
     };
 }
 
@@ -227,4 +219,49 @@ TEST_F(JointBusImplTest, a_joint_entering_fault_is_reported_once_per_episode)
     ReportStatus(nodes[2], can::FocMotorState::idle, can::FocFaultCode::none);
     EXPECT_CALL(observer, OnJointFault(2, can::FocFaultCode::stall));
     ReportStatus(nodes[2], can::FocMotorState::fault, can::FocFaultCode::stall);
+}
+
+TEST_F(JointBusImplTest, requests_telemetry_from_every_joint)
+{
+    EXPECT_TRUE(bus.RequestTelemetry());
+
+    ExpectOneFramePerJoint(can::focRequestTelemetryId);
+}
+
+TEST_F(JointBusImplTest, a_joint_missing_the_configured_number_of_requests_in_a_row_is_reported_silent_once)
+{
+    const auto answerAllBut = [this](std::size_t silentJoint)
+    {
+        for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+            if (joint != silentJoint)
+                ReportMotion(nodes[joint], 0.0f, 0.0f);
+    };
+
+    EXPECT_TRUE(bus.RequestTelemetry());
+    for (uint8_t missed = 1; missed != missedRequestsBeforeSilent; ++missed)
+    {
+        answerAllBut(1);
+        EXPECT_TRUE(bus.RequestTelemetry());
+    }
+
+    answerAllBut(1);
+    EXPECT_CALL(observer, OnJointSilent(1));
+    EXPECT_TRUE(bus.RequestTelemetry());
+
+    answerAllBut(1);
+    EXPECT_TRUE(bus.RequestTelemetry());
+}
+
+TEST_F(JointBusImplTest, a_silent_joint_that_answers_again_is_reported_again_when_it_next_goes_silent)
+{
+    EXPECT_CALL(observer, OnJointSilent(_)).Times(arm::jointCount);
+    for (uint8_t request = 0; request != missedRequestsBeforeSilent + 1; ++request)
+        EXPECT_TRUE(bus.RequestTelemetry());
+
+    ReportMotion(nodes[5], 0.0f, 0.0f);
+    for (uint8_t request = 0; request != missedRequestsBeforeSilent; ++request)
+        EXPECT_TRUE(bus.RequestTelemetry());
+
+    EXPECT_CALL(observer, OnJointSilent(5));
+    EXPECT_TRUE(bus.RequestTelemetry());
 }
