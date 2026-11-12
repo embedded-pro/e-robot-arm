@@ -7,8 +7,9 @@ The repository was bootstrapped from
 [`embedded-pro/embedded-scaffold`](https://github.com/embedded-pro/embedded-scaffold) and carries its structure,
 build system, dev container, CI and documentation scaffolding.
 
-> **Status**: the structure and dependencies are in place. The `example_*` components and
-> `example_tool` are the scaffold's worked examples and will be replaced by the arm's own components.
+> **Status**: the joint bus (`core/joint_bus/`) drives the six e-foc nodes over CAN; the rest of the arm is
+> planned. The `example_*` components and `example_tool` are the scaffold's worked examples and will be
+> replaced by the arm's own components.
 
 ## Overview
 
@@ -50,6 +51,7 @@ All presets are defined in `CMakePresets.json`. The scaffold's board presets (`E
 ```text
 e-robot-arm/
 ├── core/                      # Reusable libraries only — no entry points
+│   ├── joint_bus/             #   the six e-foc joints as one set of commands and readings
 │   ├── platform_abstraction/  #   platform::Platform interface (+ mock)
 │   └── example_component/     #   scaffold example, to be replaced
 ├── targets/                   # Application entry points + platform implementations (host, st, ti)
@@ -82,6 +84,7 @@ copies of embedded-infra-lib, can-lite and numerical-toolbox rather than fetchin
 | Document                                                                           | Description                                       |
 |------------------------------------------------------------------------------------|---------------------------------------------------|
 | [System Architecture](documentation/architecture/system.md)                        | Planned components, interfaces and decisions      |
+| [Joint Bus Design](documentation/design/joint-bus.md)                              | The six e-foc joints as one set of commands       |
 | [Documentation Templates](documentation/templates/)                                | Starting points for new documents                 |
 | [Performance Optimization Guide](documentation/performance-optimization/README.md) | Embedded performance techniques and cycle budgets |
 | [AI Agent Instructions](CLAUDE.md)                                                 | Development guidelines, patterns and constraints  |

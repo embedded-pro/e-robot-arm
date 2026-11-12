@@ -60,5 +60,8 @@ Embedded builds use the board presets in `CMakePresets.json`.
 ## 6. Performance
 
 - See `documentation/performance-optimization/README.md`.
-- Avoid virtual dispatch in hot paths; use `#pragma GCC optimize("O3", "fast-math")`
-  and `OPTIMIZE_FOR_SPEED` for critical files; analyse with `arm-none-eabi-objdump -d -C`.
+- Avoid virtual dispatch in hot paths; analyse with `arm-none-eabi-objdump -d -C`.
+- No `#pragma GCC optimize` and no `optimize` attribute: GCC does not inline a callee whose
+  options differ from its caller's. The consumer sets optimisation flags per translation unit.
+- `OPTIMIZE_FOR_SPEED` (`numerical/math/CompilerOptimizations.hpp`) only on hot functions
+  defined in a header (class body or template), never on one defined in a `.cpp`.

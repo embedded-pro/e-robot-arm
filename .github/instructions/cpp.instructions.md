@@ -38,16 +38,12 @@ Hot paths (control loops, ISR-reachable code) run under tight cycle budgets.
 - State an explicit cycle budget for each timing-critical loop and verify it
 - Prefer lookup tables / fixed-point over expensive transcendental calls
 
-Implementation files with hot-path code should enable aggressive optimization:
+Never give a function optimisation options of its own: no `#pragma GCC optimize`, no
+`optimize` attribute. GCC does not inline a callee whose options differ from its caller's;
+the consumer sets optimisation flags per translation unit.
 
-```cpp
-#if defined(__GNUC__) || defined(__clang__)
-#pragma GCC optimize("O3", "fast-math")
-#endif
-```
-
-Apply `OPTIMIZE_FOR_SPEED` (from `numerical/math/CompilerOptimizations.hpp`) on
-hot-path methods.
+Apply `OPTIMIZE_FOR_SPEED` (from `numerical/math/CompilerOptimizations.hpp`) only on hot
+functions defined in a header (class body or template), never on one defined in a `.cpp`.
 
 ## Naming
 

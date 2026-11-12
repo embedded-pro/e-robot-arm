@@ -1,2 +1,3 @@
 add_subdirectory(example_component)
+add_subdirectory(joint_bus)
 add_subdirectory(platform_abstraction)

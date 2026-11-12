@@ -60,7 +60,7 @@ normal host STL/heap patterns.
 
 ### Real-Time — Hot-Path Constraints
 - [ ] Hot path free of virtual dispatch and blocking calls
-- [ ] Cycle budget documented; `#pragma GCC optimize` (guarded) and `OPTIMIZE_FOR_SPEED` applied
+- [ ] Cycle budget documented; `OPTIMIZE_FOR_SPEED` on hot functions defined in headers; no `#pragma GCC optimize` or `optimize` attribute
 
 ### Design — SOLID + DRY
 - [ ] Single Responsibility; extend via new implementations; constructor injection; reuse `infra/numerical-toolbox/`

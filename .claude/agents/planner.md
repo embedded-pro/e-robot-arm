@@ -57,7 +57,7 @@ to do (classes, methods, signatures), and rationale tied to project conventions.
 #### Interface Design
 - Class declarations with single-responsibility ownership and method signatures
 - Constructor parameters for hardware dependency injection via the platform Board/factory
-- Hot-path methods marked for `#pragma GCC optimize("O3", "fast-math")` and `OPTIMIZE_FOR_SPEED`
+- Hot-path methods defined in headers and marked `OPTIMIZE_FOR_SPEED`
 
 #### Test Strategy (TDD Red-Green-Refactor)
 - Describe each behaviour as a failing test first; implement to pass; refactor.
@@ -98,7 +98,7 @@ simulators, and tests may use normal host STL/heap patterns.
 ### Real-Time — Hot-Path Constraints
 - [ ] Hot path free of virtual dispatch and blocking calls
 - [ ] Target cycle budget documented for timing-critical loops
-- [ ] `#pragma GCC optimize("O3", "fast-math")` (guarded) and `OPTIMIZE_FOR_SPEED` on hot-path methods
+- [ ] `OPTIMIZE_FOR_SPEED` on hot functions defined in headers; no `#pragma GCC optimize` or `optimize` attribute
 
 ### Design — SOLID + DRY
 - [ ] Single Responsibility; extend via new implementations; constructor injection

@@ -48,7 +48,8 @@ solely for STL/heap usage.
 ### 2. Real-Time Safety — Hot Path (CRITICAL)
 
 - [ ] No virtual dispatch or blocking calls in the hot path; no heap reachable from it
-- [ ] `#pragma GCC optimize("O3", "fast-math")` (guarded) and `OPTIMIZE_FOR_SPEED` on hot-path methods, with `#include "numerical/math/CompilerOptimizations.hpp"`
+- [ ] No `#pragma GCC optimize` and no `optimize` attribute anywhere (they block inlining)
+- [ ] `OPTIMIZE_FOR_SPEED` only on hot functions defined in a header, never on one defined in a `.cpp`, with `#include "numerical/math/CompilerOptimizations.hpp"`
 
 ### 3. Interface Compliance (CRITICAL)
 
