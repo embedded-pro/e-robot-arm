@@ -15,6 +15,7 @@
 #include <mutex>
 #include <numbers>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <vector>
 
@@ -40,10 +41,10 @@ namespace
             , onEnded(onEnded)
         {}
 
-        void Execute(const std::string& line)
+        void Execute(std::string_view line)
         {
             std::unique_lock lock{ mutex };
-            pending = line;
+            pending = std::string{ line };
             done = false;
             infra::EventDispatcher::Instance().Schedule([this]()
                 {
