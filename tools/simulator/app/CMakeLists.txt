@@ -58,7 +58,7 @@ target_sources(e_robot_arm.tool.simulator PRIVATE
 )
 
 target_link_libraries(e_robot_arm.tool.simulator PRIVATE
-    e_robot_arm.tool.simulator.app
     e_robot_arm.tool.simulator.qml_plugin
+    e_robot_arm.tool.simulator.app
 )
 add_subdirectory(test)
