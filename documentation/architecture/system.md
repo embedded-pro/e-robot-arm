@@ -2,7 +2,7 @@
 title: "System Architecture"
 type: architecture
 status: draft
-version: 0.3.0
+version: 0.4.0
 component: "system"
 date: 2026-11-12
 ---
@@ -12,13 +12,14 @@ date: 2026-11-12
 | Title     | System Architecture |
 | Type      | architecture        |
 | Status    | draft               |
-| Version   | 0.3.0               |
+| Version   | 0.4.0               |
 | Component | system              |
 | Date      | 2026-11-12          |
 
 > Target architecture of e-robot-arm. The repository is bootstrapped from embedded-scaffold: the joint bus
-> exists (`core/joint_bus/`, [design](../design/joint-bus.md)); the other components below are planned, and the
-> scaffold's `example_*` components stay until they are replaced. Diagrams are Mermaid or ASCII art only.
+> (`core/joint_bus/`, [design](../design/joint-bus.md)) and the safety supervisor (`core/safety/`,
+> [design](../design/safety.md)) exist; the other components below are planned, and the scaffold's `example_*`
+> components stay until they are replaced. Diagrams are Mermaid or ASCII art only.
 
 ---
 
@@ -57,21 +58,21 @@ flowchart LR
 
 ## Component Decomposition
 
-| Sub-component | Responsibility                                                                        |
-|---------------|---------------------------------------------------------------------------------------|
-| arm model     | Kinematic and dynamic parameters of the six joints, the tool frame and the base mount |
-| joint bus     | Six e-foc nodes on one client: node map, contract check, fault fan-out, liveness      |
-| motion        | Trajectory generation and time-optimal path parameterisation                          |
-| control       | Joint-space and Cartesian control with dynamics feed-forward                          |
-| safety        | Joint limits, emergency stop, watchdogs                                               |
-| simulator     | Qt operator UI and 3-D view, running the same core against virtual motors or the arm  |
+| Sub-component | Responsibility                                                                          |
+|---------------|-----------------------------------------------------------------------------------------|
+| arm model     | Kinematic and dynamic parameters of the six joints, the tool frame and the base mount   |
+| joint bus     | Six e-foc nodes on one client: node map, contract check, fault fan-out, liveness        |
+| motion        | Trajectory generation and time-optimal path parameterisation                            |
+| control       | Joint-space and Cartesian control with dynamics feed-forward                            |
+| safety        | Guards the joint bus: joint limits, contract gate, emergency stop on a fault or silence |
+| simulator     | Qt operator UI and 3-D view, running the same core against virtual motors or the arm    |
 
 ```mermaid
 flowchart TD
     Control[control] --> Motion[motion]
     Control --> Model[arm model]
-    Control --> JointBus[joint bus]
-    Safety[safety] --> JointBus
+    Control --> Safety[safety]
+    Safety --> JointBus[joint bus]
     Motion --> Model
     JointBus --> Protocol[e-foc-protocol client]
     Model --> Robotics[robotics-toolbox]

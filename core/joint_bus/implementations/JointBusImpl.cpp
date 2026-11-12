@@ -22,17 +22,19 @@ namespace arm
         }
     }
 
-    JointBusImpl::JointBusImpl(can::FocMotorCategoryClient& client, const JointNodeIds& nodes)
+    JointBusImpl::JointBusImpl(can::FocMotorCategoryClient& client, const JointNodeIds& nodes, uint8_t missedRequestsBeforeSilent)
         : can::FocMotorCategoryClientObserver(client)
         , client(client)
         , nodes(nodes)
+        , missedRequestsBeforeSilent(missedRequestsBeforeSilent)
     {
         really_assert(ValidNodeMap(nodes));
+        really_assert(missedRequestsBeforeSilent != 0);
     }
 
     bool JointBusImpl::QueryContracts()
     {
-        answered.fill(false);
+        contractAnswered.fill(false);
         contractCheckPending = true;
 
         return ForEachJoint([this](std::size_t, uint16_t node)
@@ -105,6 +107,21 @@ namespace arm
             });
     }
 
+    bool JointBusImpl::RequestTelemetry()
+    {
+        if (telemetryRequested)
+            CountMissedTelemetry();
+
+        telemetryRequested = true;
+        for (auto& joint : liveness)
+            joint.answered = false;
+
+        return ForEachJoint([this](std::size_t, uint16_t node)
+            {
+                return client.SendRequestTelemetry(node);
+            });
+    }
+
     const JointReading& JointBusImpl::Reading(std::size_t joint) const
     {
         really_assert(joint < jointCount);
@@ -143,6 +160,7 @@ namespace arm
 
         readings[*joint].speed = speed;
         readings[*joint].position = position;
+        liveness[*joint] = Liveness{ true, 0, false };
     }
 
     void JointBusImpl::OnTelemetryCurrents(uint16_t, uint8_t, foc::Ampere, foc::Ampere, foc::Radians)
@@ -154,11 +172,11 @@ namespace arm
         if (!joint.has_value() || !contractCheckPending)
             return;
 
-        answered[*joint] = true;
+        contractAnswered[*joint] = true;
 
         if (client.Compatibility(sourceNodeId) == can::ContractCompatibility::incompatible)
             ResolveContracts(can::ContractCompatibility::incompatible);
-        else if (std::ranges::find(answered, false) == answered.end())
+        else if (std::ranges::find(contractAnswered, false) == contractAnswered.end())
             ResolveContracts(can::ContractCompatibility::compatible);
     }
 
@@ -191,6 +209,26 @@ namespace arm
             return std::nullopt;
 
         return static_cast<std::size_t>(std::distance(nodes.begin(), found));
+    }
+
+    void JointBusImpl::CountMissedTelemetry()
+    {
+        for (std::size_t joint = 0; joint != jointCount; ++joint)
+        {
+            auto& state = liveness[joint];
+            if (state.answered || state.silent)
+                continue;
+
+            ++state.missed;
+            if (state.missed == missedRequestsBeforeSilent)
+            {
+                state.silent = true;
+                NotifyObservers([joint](auto& observer)
+                    {
+                        observer.OnJointSilent(joint);
+                    });
+            }
+        }
     }
 
     void JointBusImpl::ResolveContracts(can::ContractCompatibility compatibility)
