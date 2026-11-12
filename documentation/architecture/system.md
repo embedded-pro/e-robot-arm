@@ -2,7 +2,7 @@
 title: "System Architecture"
 type: architecture
 status: draft
-version: 0.7.0
+version: 0.8.0
 component: "system"
 date: 2026-11-12
 ---
@@ -12,7 +12,7 @@ date: 2026-11-12
 | Title     | System Architecture |
 | Type      | architecture        |
 | Status    | draft               |
-| Version   | 0.7.0               |
+| Version   | 0.8.0               |
 | Component | system              |
 | Date      | 2026-11-12          |
 
@@ -20,9 +20,9 @@ date: 2026-11-12
 > (`core/joint_bus/`, [design](../design/joint-bus.md)), the safety supervisor (`core/safety/`,
 > [design](../design/safety.md)), joint-space motion (`core/motion/`, [design](../design/joint-motion.md)) and the
 > control loop (`core/control_loop/`, [design](../design/control-loop.md)) exist, put together by `core/arm/` and
-> driven from a terminal by `tools/arm_console/` ([design](../design/arm-console.md)); the other components below
-> are planned, and the scaffold's `example_*` components stay until they are replaced. Diagrams are Mermaid or ASCII
-> art only.
+> driven from a terminal by `tools/arm_console/` ([design](../design/arm-console.md)). The other components below
+> are planned in the [roadmap](../roadmap.md), one GitHub issue per phase. The scaffold's `example_*` components
+> stay until phase 1 removes them. Diagrams are Mermaid or ASCII art only.
 
 ---
 
@@ -63,26 +63,66 @@ flowchart LR
 
 ## Component Decomposition
 
-| Sub-component | Responsibility                                                                           |
-|---------------|------------------------------------------------------------------------------------------|
-| arm model     | Kinematic and dynamic parameters of the six joints, the tool frame and the base mount    |
-| joint bus     | Six e-foc nodes on one client: node map, contract check, fault fan-out, liveness         |
-| motion        | Synchronised joint moves today; trajectories and time-optimal path parameterisation      |
-| control loop  | The fixed control period: telemetry requests, then the setpoint step half a period later |
-| control       | Joint-space and Cartesian control with dynamics feed-forward                             |
-| safety        | Guards the joint bus: joint limits, contract gate, emergency stop on a fault or silence  |
-| simulator     | Qt operator UI and 3-D view, running the same core against virtual motors or the arm     |
+| Sub-component      | Responsibility                                                                                                                | Status                  |
+|--------------------|-------------------------------------------------------------------------------------------------------------------------------|-------------------------|
+| joint bus          | Six e-foc nodes on one client: node map, contract check, fault fan-out, liveness; joint ↔ motor transmission                  | exists; phase 1         |
+| safety             | Guards the joint bus: limits, contract gate, emergency stop on a fault or silence; later speed, torque, collision             | exists; phase 6         |
+| motion             | Motion generators: synchronised moves today; S-curve, waypoints, Cartesian, jog                                               | exists; phase 4         |
+| control loop       | The fixed control period: telemetry requests, then the setpoint step half a period later                                      | exists; phase 1         |
+| lifecycle          | Start-up order: contracts, calibration, configuration, homing, enable; trip and re-arm                                        | phase 1                 |
+| arm profile        | The single description of an arm: per joint node, transmission, limits, motor controller, motor; arm geometry and controllers | phase 2                 |
+| joint configurator | Applies and verifies each joint's motor controller (mode, algorithms, gains) and motor model over CAN                         | phase 2                 |
+| arm controllers    | Registry and selector: controllers enabled, disabled and switched at run time, bumpless                                       | phase 2, catalogue in 5 |
+| arm model          | Kinematics and dynamics of the six joints, the tool frame and the base mount                                                  | phase 3                 |
+| virtual arm        | Six e-foc virtual motors with selectable motor characteristics, coupled to the arm's dynamics                                 | phase 7                 |
+| simulator          | Qt operator station on ui-cpp: 3-D arm, scopes, configuration forms; runs the same core on any back end                       | phase 8                 |
 
 ```mermaid
 flowchart TD
-    Control[control] --> Motion[motion]
-    Control --> Model[arm model]
-    Control --> Safety[safety]
+    Profile[arm profile] --> Lifecycle[lifecycle]
+    Lifecycle --> Configurator[joint configurator]
+    Lifecycle --> Loop[control loop]
+    Loop --> Motion[motion generators]
+    Motion --> Controllers[arm controllers: selector]
+    Controllers --> Safety[safety]
     Safety --> JointBus[joint bus]
-    Motion --> Model
+    Configurator --> JointBus
+    Motion --> Model[arm model]
+    Controllers --> Model
     JointBus --> Protocol[e-foc-protocol client]
     Model --> Robotics[robotics-toolbox]
     Motion --> Robotics
+    Simulator[simulator] --> Profile
+    Simulator --> UiCpp[ui-cpp]
+```
+
+---
+
+## Configurability
+
+What varies between arms, joints and experiments is data in the **arm profile**, chosen at run time by the console or
+the simulator, never by a compile-time switch:
+
+| Choice                          | Options                                                                                                                                                           | Where it acts                                               | When it may change                        |
+|---------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------|-------------------------------------------|
+| Arm controller                  | Registered controllers, each enabled or disabled; one active                                                                                                      | Control loop's setpoint step                                | At rest, or bumpless                      |
+| Motion generator                | Trapezoid, S-curve, waypoints, Cartesian, jog                                                                                                                     | Reference fed to the arm controller                         | At rest                                   |
+| Motor controller per joint      | e-foc control mode; current: PID, decoupled PID, deadbeat, sliding mode; speed: PID, LQI, ADRC, two-DOF; position: PID, cascade P, LQR, LQI, two-DOF; their gains | e-foc node, through the joint configurator                  | Lifecycle `Ready`, not enabled            |
+| Motor characteristics per joint | Preset (`teknic`, `anaheim`, …) or custom R, L, pole pairs, flux, inertia, friction, limits                                                                       | Real node: motor-model parameters; virtual motor: its plant | Lifecycle `Ready`; virtual motor restarts |
+
+```mermaid
+sequenceDiagram
+    participant U as Console or simulator
+    participant P as Arm profile
+    participant L as Lifecycle
+    participant J as Joint configurator
+    participant S as Controller selector
+    U->>P: edit (controller, algorithm, motor)
+    U->>L: configure
+    L->>J: apply profile to each joint
+    J-->>L: verified (or mismatches)
+    U->>S: enable, disable, select controller
+    S-->>U: switched (bumpless) or refused with the reason
 ```
 
 ---
@@ -98,11 +138,12 @@ flowchart TD
 
 ### Required Interfaces
 
-| Interface         | Direction | Purpose                                  | Invariants                       |
-|-------------------|-----------|------------------------------------------|----------------------------------|
-| hal::Can          | required  | The CAN adapter or virtual bus           | Provided by the platform         |
-| FocMotorCanClient | required  | Commands and telemetry of one e-foc node | From e-foc-protocol              |
-| robotics-toolbox  | required  | Kinematics, dynamics, trajectories       | Float-only, heap-free algorithms |
+| Interface         | Direction | Purpose                                                  | Invariants                       |
+|-------------------|-----------|----------------------------------------------------------|----------------------------------|
+| hal::Can          | required  | The CAN adapter or virtual bus                           | Provided by the platform         |
+| FocMotorCanClient | required  | Commands and telemetry of one e-foc node                 | From e-foc-protocol              |
+| robotics-toolbox  | required  | Kinematics, dynamics, trajectories, controllers          | Float-only, heap-free algorithms |
+| ui-cpp            | required  | Simulator primitives: stage, scope, charts, model, shell | Host only; Qt backend opt-in     |
 
 ---
 
@@ -133,9 +174,12 @@ sequenceDiagram
 
 ## Open Questions & Decisions
 
-| # | Question / Decision                          | Status  | Options Considered                         | Rationale                                                          |
-|---|----------------------------------------------|---------|--------------------------------------------|--------------------------------------------------------------------|
-| 1 | Where the controller runs                    | decided | MCU board, Linux single-board computer, PC | PC first; the core stays portable for a later MCU target           |
-| 2 | Dependencies as submodules or FetchContent   | decided | Submodules, FetchContent                   | Final projects pin their dependencies as submodules under `infra/` |
-| 3 | Combined position, speed and torque setpoint | open    | Per-kind setpoints, one combined command   | Needs a minor e-foc-protocol contract version                      |
-| 4 | Coupling the virtual motors to arm dynamics  | open    | Plant-port external torque, own plant      | Decides how realistic the simulated arm is                         |
+| # | Question / Decision                          | Status  | Options Considered                                            | Rationale                                                                                    |
+|---|----------------------------------------------|---------|---------------------------------------------------------------|----------------------------------------------------------------------------------------------|
+| 1 | Where the controller runs                    | decided | MCU board, Linux single-board computer, PC                    | PC first; the core stays portable for a later MCU target                                     |
+| 2 | Dependencies as submodules or FetchContent   | decided | Submodules, FetchContent                                      | Final projects pin their dependencies as submodules under `infra/`                           |
+| 3 | Combined position, speed and torque setpoint | open    | Per-kind setpoints, one combined command                      | Needs a minor e-foc-protocol contract version; phase 5 (#21)                                 |
+| 4 | Coupling the virtual motors to arm dynamics  | open    | Plant-port external torque, own plant                         | Decides how realistic the simulated arm is; phase 7 (#23)                                    |
+| 5 | How a command reaches all joints or none     | open    | Pending command in the joint bus, command phase, deeper queue | Phase 1 (#17)                                                                                |
+| 6 | Everything that varies is profile data       | decided | Compile-time choices, run-time profile                        | The simulator and the platform must switch controllers and motors at run time; phase 2 (#18) |
+| 7 | Simulator widgets                            | decided | Own Qt widgets, ui-cpp                                        | Reuse ui-cpp's stage, scope, charts, model and shell; phase 8 (#24)                          |
