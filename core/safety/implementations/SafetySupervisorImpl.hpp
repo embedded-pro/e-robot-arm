@@ -35,7 +35,6 @@ namespace arm
         void OnJointSilent(std::size_t joint) override;
 
         bool MayCommandMotion() const;
-        bool WithinLimits(const JointPositions& positions) const;
         bool AnyJointFaulted() const;
         void Trip();
 

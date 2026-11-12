@@ -58,7 +58,7 @@ namespace arm
 
     bool SafetySupervisorImpl::SendPositions(const JointPositions& positions)
     {
-        return MayCommandMotion() && WithinLimits(positions) && bus.SendPositions(positions);
+        return MayCommandMotion() && WithinLimits(limits, positions) && bus.SendPositions(positions);
     }
 
     bool SafetySupervisorImpl::RequestTelemetry()
@@ -114,15 +114,6 @@ namespace arm
     bool SafetySupervisorImpl::MayCommandMotion() const
     {
         return !tripped && bus.Contracts() == can::ContractCompatibility::compatible;
-    }
-
-    bool SafetySupervisorImpl::WithinLimits(const JointPositions& positions) const
-    {
-        for (std::size_t joint = 0; joint != jointCount; ++joint)
-            if (!(limits[joint].lower <= positions[joint] && positions[joint] <= limits[joint].upper))
-                return false;
-
-        return true;
     }
 
     bool SafetySupervisorImpl::AnyJointFaulted() const

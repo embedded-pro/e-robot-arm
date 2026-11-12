@@ -2,7 +2,7 @@
 title: "System Architecture"
 type: architecture
 status: draft
-version: 0.6.0
+version: 0.7.0
 component: "system"
 date: 2026-11-12
 ---
@@ -12,15 +12,16 @@ date: 2026-11-12
 | Title     | System Architecture |
 | Type      | architecture        |
 | Status    | draft               |
-| Version   | 0.6.0               |
+| Version   | 0.7.0               |
 | Component | system              |
 | Date      | 2026-11-12          |
 
 > Target architecture of e-robot-arm. The repository is bootstrapped from embedded-scaffold: the joint bus
 > (`core/joint_bus/`, [design](../design/joint-bus.md)), the safety supervisor (`core/safety/`,
 > [design](../design/safety.md)), joint-space motion (`core/motion/`, [design](../design/joint-motion.md)) and the
-> control loop (`core/control_loop/`, [design](../design/control-loop.md)) exist; the other components below are
-> planned, and the scaffold's `example_*` components stay until they are replaced. Diagrams are Mermaid or ASCII
+> control loop (`core/control_loop/`, [design](../design/control-loop.md)) exist, put together by `core/arm/` and
+> driven from a terminal by `tools/arm_console/` ([design](../design/arm-console.md)); the other components below
+> are planned, and the scaffold's `example_*` components stay until they are replaced. Diagrams are Mermaid or ASCII
 > art only.
 
 ---

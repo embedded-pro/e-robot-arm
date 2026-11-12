@@ -1,3 +1,4 @@
+add_subdirectory(arm)
 add_subdirectory(control_loop)
 add_subdirectory(example_component)
 add_subdirectory(joint_bus)

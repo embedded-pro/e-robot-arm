@@ -27,6 +27,8 @@ simulator runs the same core against e-foc virtual motors or the real arm.
   - `core/control_loop/` — `arm::ControlLoop`: the fixed control period; telemetry
     request to all joints, then the setpoint step half a period later.
     Design: `documentation/design/control-loop.md`.
+  - `core/arm/` — `arm::Arm`: builds the joint bus, safety supervisor, motion and
+    control loop from one `FocMotorCategoryClient` and an `ArmConfig`; heap-free.
   - `core/platform_abstraction/` — the `platform::Platform` interface (the seam
     between portable logic and hardware) plus a `PlatformMock` for tests.
   - `core/example_component/` — a trivial `interfaces/` + `implementations/` +
@@ -38,8 +40,11 @@ simulator runs the same core against e-foc virtual motors or the real arm.
   - `targets/platform_implementations/{host,st,ti}/PlatformImpl.*` — concrete
     `platform::Platform` implementations (host stubs; EK-TM4C123GXL; STM32F429I-DISC1).
   - The active platform is chosen by `E_ROBOT_ARM_TARGET_PLATFORM`.
-- `tools/` — host-side developer tools that reuse `core/` libraries
-  (`tools/example_tool/`). Built only for the host.
+- `tools/` — host-side developer tools that reuse `core/` libraries. Built only for the host.
+  - `tools/arm_console/` — `e-robot-arm-console`: opens a can-lite adapter
+    (`virtual:<bus>` hosts or joins the virtual hub), builds `arm::Arm` and takes
+    text commands. Design: `documentation/design/arm-console.md`.
+  - `tools/example_tool/` — the scaffold's example.
 - `integration_tests/` — BDD tests (cucumber-cpp / Gherkin): `features/`, `steps/`,
   `support/`, `hooks/`, `main/`.
 - `infra/numerical-toolbox/` — generic numerical algorithms (PID, filters,
