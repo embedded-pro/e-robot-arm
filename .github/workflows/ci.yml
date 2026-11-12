@@ -136,6 +136,8 @@ jobs:
         shell: bash
         run: |
           SUDO=$(command -v sudo || true)
+          # The image's mull source (dl.cloudsmith.io) answers 402 and fails apt-get update; this job needs nothing from it.
+          grep -rl 'dl.cloudsmith.io' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null | xargs -r $SUDO rm -f
           $SUDO apt-get update
           $SUDO apt-get install -y --no-install-recommends \
             qt6-declarative-dev qt6-declarative-dev-tools qt6-quick3d-dev qt6-shadertools-dev \
