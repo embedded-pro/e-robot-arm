@@ -137,7 +137,6 @@ jobs:
         run: |
           SUDO=()
           if command -v sudo > /dev/null; then SUDO=(sudo); fi
-          # The image's mull source (dl.cloudsmith.io) answers 402 and fails apt-get update; this job needs nothing from it.
           grep -rl 'dl.cloudsmith.io' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null | xargs -r "${SUDO[@]}" rm -f
           "${SUDO[@]}" apt-get update
           available() { for name in "$@"; do apt-cache policy "$name" | grep -q 'Candidate: [0-9]' && { echo "$name"; return; }; done; }
