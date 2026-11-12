@@ -1,70 +1,89 @@
-#include "core/motion/test_doubles/JointMotionMock.hpp"
-#include "core/safety/test_doubles/SafetySupervisorMock.hpp"
 #include "tools/arm_console/ArmConsole.hpp"
+#include "tools/arm_host/test_doubles/ArmCommandsMock.hpp"
 #include "gmock/gmock.h"
 #include <sstream>
 
 namespace
 {
     using namespace testing;
+    using arm_host::ArmEventKind;
+
+    MATCHER_P(Holds, type, "")
+    {
+        return std::holds_alternative<std::remove_cvref_t<decltype(type)>>(arg);
+    }
 
     class ArmConsoleTest
         : public Test
     {
     public:
-        std::string Run(const std::string& line)
+        std::string Run(const std::string& line, arm_console::Outcome expected = arm_console::Outcome::done)
         {
             output.str("");
-            EXPECT_TRUE(console.Execute(line));
+            EXPECT_EQ(expected, console.Execute(line).outcome);
             return output.str();
         }
 
-        StrictMock<arm::SafetySupervisorMock> safety;
-        StrictMock<arm::JointMotionMock> motion;
+        std::string Printed(const arm_host::ArmEvent& event)
+        {
+            output.str("");
+            console.Print(event);
+            return output.str();
+        }
+
+        StrictMock<arm_host::ArmCommandsMock> arm;
         std::ostringstream output;
-        arm_console::ArmConsole console{ safety, motion, output };
+        arm_console::ArmConsole console{ arm, output };
     };
 }
 
-TEST_F(ArmConsoleTest, joint_bus_commands_reach_the_safety_supervisor_and_report_acceptance)
+TEST_F(ArmConsoleTest, each_arm_command_is_posted_and_its_id_returned)
 {
     InSequence order;
-    EXPECT_CALL(safety, QueryContracts()).WillOnce(Return(true));
-    EXPECT_CALL(safety, Start()).WillOnce(Return(false));
-    EXPECT_CALL(safety, Stop()).WillOnce(Return(true));
-    EXPECT_CALL(safety, EmergencyStop()).WillOnce(Return(true));
-    EXPECT_CALL(safety, ClearFault()).WillOnce(Return(true));
-    EXPECT_CALL(safety, Rearm()).WillOnce(Return(false));
+    EXPECT_CALL(arm, Post(Holds(arm_host::CheckContracts{}))).WillOnce(Return(1));
+    EXPECT_CALL(arm, Post(Holds(arm_host::StartJoints{}))).WillOnce(Return(2));
+    EXPECT_CALL(arm, Post(Holds(arm_host::StopJoints{}))).WillOnce(Return(3));
+    EXPECT_CALL(arm, Post(Holds(arm_host::EmergencyStop{}))).WillOnce(Return(4));
+    EXPECT_CALL(arm, Post(Holds(arm_host::ClearFaults{}))).WillOnce(Return(5));
+    EXPECT_CALL(arm, Post(Holds(arm_host::Rearm{}))).WillOnce(Return(6));
+    EXPECT_CALL(arm, Post(Holds(arm_host::AbortMove{}))).WillOnce(Return(7));
 
-    EXPECT_EQ("ok\n", Run("contracts"));
-    EXPECT_EQ("refused\n", Run("start"));
-    EXPECT_EQ("ok\n", Run("stop"));
-    EXPECT_EQ("ok\n", Run("estop"));
-    EXPECT_EQ("ok\n", Run("clear"));
-    EXPECT_EQ("refused\n", Run("rearm"));
+    uint32_t expectedId = 1;
+    for (const auto* line : { "contracts", "start", "stop", "estop", "clear", "rearm", "abort" })
+    {
+        const auto result = console.Execute(line);
+        EXPECT_EQ(arm_console::Outcome::posted, result.outcome);
+        EXPECT_EQ(expectedId++, result.command);
+    }
 }
 
-TEST_F(ArmConsoleTest, mode_selects_the_named_control_mode)
+TEST_F(ArmConsoleTest, mode_posts_the_named_control_mode)
 {
-    EXPECT_CALL(safety, SelectMode(can::FocMotorMode::position)).WillOnce(Return(true));
-    EXPECT_CALL(safety, SelectMode(can::FocMotorMode::torque)).WillOnce(Return(true));
+    EXPECT_CALL(arm, Post(Holds(arm_host::SelectMode{})))
+        .WillOnce(Invoke([](const arm_host::ArmCommand& command)
+            {
+                EXPECT_EQ(can::FocMotorMode::position, std::get<arm_host::SelectMode>(command).mode);
+                return 1u;
+            }));
 
-    EXPECT_EQ("ok\n", Run("mode position"));
-    EXPECT_EQ("ok\n", Run("mode torque"));
+    Run("mode position", arm_console::Outcome::posted);
 }
 
-TEST_F(ArmConsoleTest, move_sends_the_six_positions_to_joint_motion)
+TEST_F(ArmConsoleTest, move_posts_the_six_positions)
 {
-    arm::JointPositions target{ foc::Radians{ 0.1f }, foc::Radians{ -0.2f }, foc::Radians{ 0.3f },
+    const arm::JointPositions target{ foc::Radians{ 0.1f }, foc::Radians{ -0.2f }, foc::Radians{ 0.3f },
         foc::Radians{ 0.0f }, foc::Radians{ 1.5f }, foc::Radians{ -1.0f } };
-    EXPECT_CALL(motion, MoveTo(target)).WillOnce(Return(true));
-    EXPECT_CALL(motion, Abort());
+    EXPECT_CALL(arm, Post(Holds(arm_host::MoveTo{})))
+        .WillOnce(Invoke([&target](const arm_host::ArmCommand& command)
+            {
+                EXPECT_EQ(target, std::get<arm_host::MoveTo>(command).target);
+                return 1u;
+            }));
 
-    EXPECT_EQ("ok\n", Run("move 0.1 -0.2 0.3 0 1.5 -1"));
-    EXPECT_EQ("ok\n", Run("abort"));
+    Run("move 0.1 -0.2 0.3 0 1.5 -1", arm_console::Outcome::posted);
 }
 
-TEST_F(ArmConsoleTest, a_malformed_or_unknown_command_prints_the_usage_and_sends_nothing)
+TEST_F(ArmConsoleTest, a_malformed_or_unknown_command_prints_the_usage_and_posts_nothing)
 {
     EXPECT_THAT(Run("move 1 2 3"), StartsWith("usage:"));
     EXPECT_THAT(Run("move 1 2 3 4 5 six"), StartsWith("usage:"));
@@ -73,14 +92,12 @@ TEST_F(ArmConsoleTest, a_malformed_or_unknown_command_prints_the_usage_and_sends
     EXPECT_EQ("", Run(""));
 }
 
-TEST_F(ArmConsoleTest, status_prints_every_joint_the_trip_and_the_move)
+TEST_F(ArmConsoleTest, status_prints_every_joint_the_trip_and_the_move_from_the_snapshot)
 {
-    std::array<arm::JointReading, arm::jointCount> readings{};
-    readings[3] = { foc::Radians{ 0.25f }, foc::RadiansPerSecond{ -1.5f }, can::FocMotorState::fault, can::FocFaultCode::overCurrent };
-    for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
-        EXPECT_CALL(safety, Reading(joint)).WillRepeatedly(ReturnRef(readings[joint]));
-    EXPECT_CALL(safety, Tripped()).WillOnce(Return(true));
-    EXPECT_CALL(motion, Moving()).WillOnce(Return(false));
+    arm_host::ArmSnapshot snapshot{};
+    snapshot.readings[3] = { foc::Radians{ 0.25f }, foc::RadiansPerSecond{ -1.5f }, can::FocMotorState::fault, can::FocFaultCode::overCurrent };
+    snapshot.tripped = true;
+    EXPECT_CALL(arm, Snapshot()).WillOnce(Return(snapshot));
 
     const auto status = Run("status");
 
@@ -90,19 +107,22 @@ TEST_F(ArmConsoleTest, status_prints_every_joint_the_trip_and_the_move)
     EXPECT_THAT(status, HasSubstr("motion: idle\n"));
 }
 
-TEST_F(ArmConsoleTest, events_are_printed_as_they_happen)
+TEST_F(ArmConsoleTest, events_print_as_one_line_each_with_joints_numbered_from_one)
 {
-    safety.GetObserver().OnContractsResolved(can::ContractCompatibility::compatible);
-    safety.GetObserver().OnContractsResolved(can::ContractCompatibility::incompatible);
-    safety.GetObserver().OnJointFault(2, can::FocFaultCode::stall);
-    safety.GetObserver().OnJointSilent(5);
-    motion.GetObserver().OnMoveDone();
-    motion.GetObserver().OnMoveAborted();
-
-    EXPECT_EQ("contracts compatible\ncontracts incompatible\njoint 3 faulted: stall\njoint 6 silent\nmove done\nmove aborted\n", output.str());
+    EXPECT_EQ("ok\n", Printed({ .kind = ArmEventKind::accepted }));
+    EXPECT_EQ("refused: tripped\n", Printed({ .kind = ArmEventKind::refused, .reason = "tripped" }));
+    EXPECT_EQ("contracts compatible\n", Printed({ .kind = ArmEventKind::contractsResolved, .contracts = can::ContractCompatibility::compatible }));
+    EXPECT_EQ("contracts incompatible\n", Printed({ .kind = ArmEventKind::contractsResolved, .contracts = can::ContractCompatibility::incompatible }));
+    EXPECT_EQ("joint 3 faulted: stall\n", Printed({ .kind = ArmEventKind::jointFault, .joint = 2, .fault = can::FocFaultCode::stall }));
+    EXPECT_EQ("joint 6 silent\n", Printed({ .kind = ArmEventKind::jointSilent, .joint = 5 }));
+    EXPECT_EQ("tripped by joint 6\n", Printed({ .kind = ArmEventKind::tripped, .joint = 5 }));
+    EXPECT_EQ("move done\n", Printed({ .kind = ArmEventKind::moveDone }));
+    EXPECT_EQ("move aborted\n", Printed({ .kind = ArmEventKind::moveAborted }));
+    EXPECT_EQ("target ready\n", Printed({ .kind = ArmEventKind::targetReady }));
+    EXPECT_EQ("target failed: moving\n", Printed({ .kind = ArmEventKind::targetFailed, .reason = "moving" }));
 }
 
 TEST_F(ArmConsoleTest, quit_ends_the_console)
 {
-    EXPECT_FALSE(console.Execute("quit"));
+    EXPECT_EQ(arm_console::Outcome::quit, console.Execute("quit").outcome);
 }

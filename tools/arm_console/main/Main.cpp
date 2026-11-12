@@ -1,21 +1,16 @@
-#include "can-lite/drivers/hub/VirtualCanHub.hpp"
-#include "can-lite/drivers/implementation/PlatformCanAdapter.hpp"
-#include "core/arm/Arm.hpp"
-#include "e-foc-protocol/client/FocMotorCanClient.hpp"
-#include "hal/generic/TimerServiceGeneric.hpp"
-#include "infra/event/EventDispatcherThreadAware.hpp"
-#include "infra/timer/Timer.hpp"
 #include "tools/arm_console/ArmConsole.hpp"
 #include "tools/arm_console/ConsoleOptions.hpp"
+#include "tools/arm_host/AdapterTargetLink.hpp"
+#include "tools/arm_host/ArmHost.hpp"
+#include "tools/arm_host/DefaultArmConfig.hpp"
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <cstdlib>
 #include <iostream>
 #include <mutex>
-#include <numbers>
+#include <set>
 #include <string>
-#include <string_view>
 #include <thread>
 #include <vector>
 
@@ -23,73 +18,61 @@ namespace
 {
     using namespace std::chrono_literals;
 
-    arm::ArmConfig ArmConfigFor(const arm::JointNodeIds& nodes)
+    arm_host::ArmTarget TargetFor(const std::string& bus)
     {
-        arm::ArmConfig config{ nodes, 3, {}, {}, 10ms };
-        for (auto& limit : config.positionLimits)
-            limit = { foc::Radians{ -std::numbers::pi_v<float> }, foc::Radians{ std::numbers::pi_v<float> } };
-        for (auto& limit : config.motionLimits)
-            limit = { foc::RadiansPerSecond{ 1.0f }, foc::RadiansPerSecondSquared{ 2.0f } };
-        return config;
+        if (bus == "simulated")
+            return { arm_host::TargetKind::simulated, bus };
+        if (bus.starts_with("virtual:"))
+            return { arm_host::TargetKind::virtualBus, bus };
+        return { arm_host::TargetKind::real, bus };
     }
 
-    class Session
+    class EventPrinter
     {
     public:
-        Session(arm_console::ArmConsole& console, const infra::Function<void()>& onEnded)
-            : console(console)
-            , onEnded(onEnded)
+        EventPrinter(arm_host::ArmHost& host, arm_console::ArmConsole& console)
+            : host(host)
+            , console(console)
         {}
 
-        void Execute(std::string_view line)
+        void Run(const std::stop_token& stop)
         {
-            std::unique_lock lock{ mutex };
-            pending = std::string{ line };
-            done = false;
-            infra::EventDispatcher::Instance().Schedule([this]()
-                {
-                    ExecutePending();
-                });
-            executed.wait(lock, [this]()
-                {
-                    return done;
-                });
+            while (!stop.stop_requested())
+            {
+                Print();
+                std::this_thread::sleep_for(20ms);
+            }
+            Print();
         }
 
-        bool Ended() const
+        void WaitForAnswer(uint32_t command)
         {
-            return ended;
+            std::unique_lock lock{ mutex };
+            answeredCondition.wait_for(lock, 2s, [this, command]()
+                {
+                    return answered.contains(command);
+                });
         }
 
     private:
-        void ExecutePending()
+        void Print()
         {
-            std::string line;
+            for (const auto& event : host.TakeEvents())
             {
                 std::scoped_lock lock{ mutex };
-                line = pending;
+                console.Print(event);
+                if (event.kind == arm_host::ArmEventKind::accepted || event.kind == arm_host::ArmEventKind::refused)
+                    answered.insert(event.command);
+                answeredCondition.notify_all();
             }
-
-            if (!console.Execute(line))
-            {
-                onEnded();
-                ended = true;
-            }
-
-            {
-                std::scoped_lock lock{ mutex };
-                done = true;
-            }
-            executed.notify_one();
+            std::cout.flush();
         }
 
+        arm_host::ArmHost& host;
         arm_console::ArmConsole& console;
-        infra::Function<void()> onEnded;
         std::mutex mutex;
-        std::condition_variable executed;
-        std::string pending;
-        bool done{ false };
-        std::atomic<bool> ended{ false };
+        std::condition_variable answeredCondition;
+        std::set<uint32_t> answered;
     };
 }
 
@@ -102,55 +85,25 @@ int main(int argc, const char* const argv[])
         return EXIT_FAILURE;
     }
 
-    static infra::EventDispatcherThreadAware::WithSize<64> eventDispatcher;
-    static hal::TimerServiceGeneric timerService;
+    arm_host::ArmHost host{ arm_host::DefaultArmConfig(options->nodes), arm_host::HostTargetOpener(options->nodes, arm_host::simulatedTimeConstant, options->bitrate),
+        TargetFor(options->bus) };
+    arm_console::ArmConsole console{ host, std::cout };
+    EventPrinter printer{ host, console };
 
-    services::VirtualCanHub hub;
-    if (options->bus.starts_with("virtual:") && !hub.Listen())
-        std::cerr << "e-robot-arm-console: joining the virtual CAN hub that is already running\n";
-
-    services::PlatformCanAdapter platformAdapter;
-    auto& adapter = platformAdapter.Adapter();
-    if (!adapter.Connect(options->bus, options->bitrate))
-    {
-        std::cerr << "e-robot-arm-console: could not open " << options->bus << "\n";
-        return EXIT_FAILURE;
-    }
-
-    can::FocMotorCanClient client{ adapter };
-    arm::Arm arm{ client.CategoryClient(), ArmConfigFor(options->nodes) };
-    arm_console::ArmConsole console{ arm.Safety(), arm.Motion(), std::cout };
-
-    infra::TimerRepeating poll{ 1ms, [&hub, &adapter]()
+    std::jthread printing{ [&printer](const std::stop_token& stop)
         {
-            hub.Poll();
-            adapter.ProcessReadEvent();
-        } };
-    arm.Loop().Start();
-
-    Session session{ console, [&poll, &arm]()
-        {
-            arm.Loop().Stop();
-            poll.Cancel();
+            printer.Run(stop);
         } };
 
+    std::string line;
+    while (std::getline(std::cin, line))
     {
-        std::jthread eventLoop{ [&session]()
-            {
-                eventDispatcher.ExecuteUntil([&session]()
-                    {
-                        return session.Ended();
-                    });
-            } };
-
-        std::string line;
-        while (!session.Ended() && std::getline(std::cin, line))
-            session.Execute(line);
-
-        if (!session.Ended())
-            session.Execute("quit");
+        const auto result = console.Execute(line);
+        if (result.outcome == arm_console::Outcome::quit)
+            break;
+        if (result.outcome == arm_console::Outcome::posted)
+            printer.WaitForAnswer(result.command);
     }
 
-    adapter.Disconnect();
     return EXIT_SUCCESS;
 }

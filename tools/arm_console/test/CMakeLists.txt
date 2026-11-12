@@ -5,8 +5,7 @@ emil_add_test(e_robot_arm.tool.arm_console_test)
 target_link_libraries(e_robot_arm.tool.arm_console_test PUBLIC
     gmock_main
     e_robot_arm.tool.arm_console.logic
-    e_robot_arm.motion.test_doubles
-    e_robot_arm.safety.test_doubles
+    e_robot_arm.tool.arm_host.test_doubles
 )
 
 target_sources(e_robot_arm.tool.arm_console_test PRIVATE

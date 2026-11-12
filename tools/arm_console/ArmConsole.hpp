@@ -1,8 +1,10 @@
 #ifndef TOOLS_ARM_CONSOLE_ARM_CONSOLE_HPP
 #define TOOLS_ARM_CONSOLE_ARM_CONSOLE_HPP
 
-#include "core/motion/interfaces/JointMotion.hpp"
-#include "core/safety/interfaces/SafetySupervisor.hpp"
+#include "tools/arm_host/ArmCommands.hpp"
+#include "tools/arm_host/ArmEvent.hpp"
+#include <cstdint>
+#include <optional>
 #include <ostream>
 #include <sstream>
 #include <string>
@@ -10,31 +12,35 @@
 
 namespace arm_console
 {
+    enum class Outcome : uint8_t
+    {
+        done,
+        posted,
+        quit
+    };
+
+    struct ExecuteResult
+    {
+        Outcome outcome;
+        uint32_t command{ 0 };
+    };
+
     class ArmConsole
-        : private arm::JointBusObserver
-        , private arm::JointMotionObserver
     {
     public:
-        ArmConsole(arm::SafetySupervisor& safety, arm::JointMotion& motion, std::ostream& output);
+        ArmConsole(arm_host::ArmCommands& arm, std::ostream& output);
 
-        bool Execute(const std::string& line);
+        ExecuteResult Execute(const std::string& line);
+        void Print(const arm_host::ArmEvent& event);
 
     private:
-        void OnContractsResolved(can::ContractCompatibility compatibility) override;
-        void OnJointFault(std::size_t joint, can::FocFaultCode fault) override;
-        void OnJointSilent(std::size_t joint) override;
-        void OnMoveDone() override;
-        void OnMoveAborted() override;
-
-        bool Dispatch(std::string_view command, std::istringstream& arguments);
-        bool Mode(std::istringstream& arguments);
-        bool Move(std::istringstream& arguments);
+        std::optional<arm_host::ArmCommand> Parse(std::string_view command, std::istringstream& arguments) const;
+        std::optional<arm_host::ArmCommand> Mode(std::istringstream& arguments) const;
+        std::optional<arm_host::ArmCommand> Move(std::istringstream& arguments) const;
         void Status();
-        void Answer(bool accepted);
         void Usage();
 
-        arm::SafetySupervisor& safety;
-        arm::JointMotion& motion;
+        arm_host::ArmCommands& arm;
         std::ostream& output;
     };
 }

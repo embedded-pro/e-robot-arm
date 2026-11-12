@@ -58,6 +58,11 @@ namespace arm
         return moving;
     }
 
+    std::optional<JointPositions> JointMotionImpl::Setpoint() const
+    {
+        return setpoint;
+    }
+
     JointPositions JointMotionImpl::LatestPositions() const
     {
         JointPositions positions{};
@@ -75,9 +80,15 @@ namespace arm
         const auto elapsed = std::chrono::duration<float>(period * periodsElapsed).count();
         const bool arrived = elapsed >= plan.Duration();
 
-        if (!bus.SendPositions(arrived ? target : plan.Sample(elapsed)))
+        const auto positions = arrived ? target : plan.Sample(elapsed);
+        if (!bus.SendPositions(positions))
+        {
             Abort();
-        else if (arrived)
+            return;
+        }
+
+        setpoint = positions;
+        if (arrived)
         {
             Finish();
             NotifyObservers([](auto& observer)

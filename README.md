@@ -45,17 +45,33 @@ cmake --build --preset host-Debug
 ctest --preset host
 ```
 
+### The simulator
+
+The e-robot-arm Simulator runs the arm stack against six simulated joints, a `virtual:` bus or the real arm, with a
+lit, shadowed 3-D arm (Qt Quick 3D), the joint table, the bring-up and move controls, a scope and an event log. It
+needs Qt 6.4 or later with Qt Quick 3D (`qt6-quick3d-dev`, `qml6-module-qtquick3d` — `qml6-module-quick3d` on
+Ubuntu 24.04 — `qt6-declarative-dev`, `qt6-shadertools-dev`):
+
+```bash
+cmake --preset host-qt
+cmake --build --preset host-qt-Debug
+build/host-qt/tools/simulator/app/Debug/e-robot-arm-simulator
+```
+
+Esc is the emergency stop from anywhere in the application.
+
 ### Driving the arm from a terminal
 
 `e-robot-arm-console` opens a CAN adapter, builds the arm and reads one command per line (`contracts`,
 `mode position`, `start`, `move q1 … q6`, `status`, `estop`, `clear`, `rearm`, `quit`, …):
 
 ```bash
-build/host/tools/arm_console/Debug/e-robot-arm-console --bus virtual:arm --nodes 1,2,3,4,5,6
+build/host/tools/arm_console/Debug/e-robot-arm-console --bus simulated
 ```
 
-`--bus` takes `virtual:<name>` (hosts or joins can-lite's virtual CAN hub, where e-foc virtual motors connect), a
-SocketCAN interface such as `can0`, or the serial port of an slcan adapter.
+`--bus` takes `simulated` (six simulated joints in the process), `virtual:<name>` (hosts or joins can-lite's
+virtual CAN hub, where e-foc virtual motors connect), a SocketCAN interface such as `socketcan:can0`, or an slcan
+adapter.
 
 All presets are defined in `CMakePresets.json`. The scaffold's board presets (`EK-TM4C1294XL`, `EK-TM4C123GXL`,
 `STM32F407G-DISC1`, `STM32F429I-DISC1`, `NUCLEO-H563ZI`) stay available for a later microcontroller target.
@@ -73,7 +89,7 @@ e-robot-arm/
 │   ├── platform_abstraction/  #   platform::Platform interface (+ mock)
 │   └── example_component/     #   scaffold example, to be replaced
 ├── targets/                   # Application entry points + platform implementations (host, st, ti)
-├── tools/                     # Host-side tools: arm_console (the Qt simulator will live here)
+├── tools/                     # Host-side tools: simulator, arm_console, arm_host, simulated_arm
 ├── integration_tests/         # BDD integration tests (cucumber-cpp / Gherkin)
 ├── infra/                     # Submodules
 │   ├── embedded-infra-lib/    #   bounded containers, build helpers, toolchains
@@ -99,18 +115,20 @@ copies of embedded-infra-lib, can-lite and numerical-toolbox rather than fetchin
 
 ## Documentation
 
-| Document                                                                           | Description                                       |
-|------------------------------------------------------------------------------------|---------------------------------------------------|
-| [Roadmap](documentation/roadmap.md)                                                | Phases, issues and decisions still open           |
-| [System Architecture](documentation/architecture/system.md)                        | Planned components, interfaces and decisions      |
-| [Joint Bus Design](documentation/design/joint-bus.md)                              | The six e-foc joints as one set of commands       |
-| [Safety Supervisor Design](documentation/design/safety.md)                         | Limits and emergency stop in front of the bus     |
-| [Joint Motion Design](documentation/design/joint-motion.md)                        | Synchronised point-to-point joint moves           |
-| [Control Loop Design](documentation/design/control-loop.md)                        | Telemetry and setpoint phases of each period      |
-| [Arm Composition and Console](documentation/design/arm-console.md)                 | Wiring the arm and driving it from a terminal     |
-| [Documentation Templates](documentation/templates/)                                | Starting points for new documents                 |
-| [Performance Optimization Guide](documentation/performance-optimization/README.md) | Embedded performance techniques and cycle budgets |
-| [AI Agent Instructions](CLAUDE.md)                                                 | Development guidelines, patterns and constraints  |
+| Document                                                                           | Description                                            |
+|------------------------------------------------------------------------------------|--------------------------------------------------------|
+| [Roadmap](documentation/roadmap.md)                                                | Phases, issues and decisions still open                |
+| [System Architecture](documentation/architecture/system.md)                        | Planned components, interfaces and decisions           |
+| [Joint Bus Design](documentation/design/joint-bus.md)                              | The six e-foc joints as one set of commands            |
+| [Safety Supervisor Design](documentation/design/safety.md)                         | Limits and emergency stop in front of the bus          |
+| [Joint Motion Design](documentation/design/joint-motion.md)                        | Synchronised point-to-point joint moves                |
+| [Control Loop Design](documentation/design/control-loop.md)                        | Telemetry and setpoint phases of each period           |
+| [Arm Composition and Console](documentation/design/arm-console.md)                 | Wiring the arm and driving it from a terminal          |
+| [Simulator Design](documentation/design/simulator.md)                              | The arm host, targets and threads behind the simulator |
+| [Simulator Screen Design](documentation/design/tool-simulator.md)                  | Layout, controls, flows and look of the simulator      |
+| [Documentation Templates](documentation/templates/)                                | Starting points for new documents                      |
+| [Performance Optimization Guide](documentation/performance-optimization/README.md) | Embedded performance techniques and cycle budgets      |
+| [AI Agent Instructions](CLAUDE.md)                                                 | Development guidelines, patterns and constraints       |
 
 ## License
 

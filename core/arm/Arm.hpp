@@ -28,7 +28,9 @@ namespace arm
         Arm& operator=(const Arm& other) = delete;
 
         SafetySupervisor& Safety();
+        const SafetySupervisor& Safety() const;
         JointMotion& Motion();
+        const JointMotion& Motion() const;
         ControlLoop& Loop();
 
     private:

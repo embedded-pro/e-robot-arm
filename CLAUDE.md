@@ -43,9 +43,20 @@ simulator runs the same core against e-foc virtual motors or the real arm.
     `platform::Platform` implementations (host stubs; EK-TM4C123GXL; STM32F429I-DISC1).
   - The active platform is chosen by `E_ROBOT_ARM_TARGET_PLATFORM`.
 - `tools/` — host-side developer tools that reuse `core/` libraries. Built only for the host.
-  - `tools/arm_console/` — `e-robot-arm-console`: opens a can-lite adapter
-    (`virtual:<bus>` hosts or joins the virtual hub), builds `arm::Arm` and takes
-    text commands. Design: `documentation/design/arm-console.md`.
+  - `tools/arm_console/` — `e-robot-arm-console`: text commands to an
+    `ArmHost` on simulated joints (`--bus simulated`), a `virtual:<bus>` (hosts or
+    joins the virtual hub) or a real adapter. Design: `documentation/design/arm-console.md`.
+  - `tools/simulated_arm/` — six simulated e-foc joints on an in-process
+    `VirtualCanBus`, with a first-order lag and fault injection; used by the
+    integration tests, the console and the simulator.
+  - `tools/arm_host/` — `arm_host::ArmHost`: the arm on its own thread with its
+    target (simulated, `virtual:` or a real adapter); commands in, snapshot,
+    events and traces out. Design: `documentation/design/simulator.md`.
+  - `tools/simulator/` — the e-robot-arm Simulator: `view_models/` (no Qt,
+    tested with ui-cpp's recording backend) and `app/` (Qt Widgets on ui-cpp,
+    the Qt Quick 3D scene as the `Simulator` QML module, built with the
+    `host-qt` preset). Design: `documentation/design/simulator.md` and
+    `tool-simulator.md`.
   - `tools/example_tool/` — the scaffold's example.
 - `integration_tests/` — BDD tests (cucumber-cpp / Gherkin): `features/`, `steps/`,
   `support/`, `hooks/`, `main/`.
@@ -57,6 +68,7 @@ simulator runs the same core against e-foc virtual motors or the real arm.
   control (`robotics/...` includes).
 - `infra/e-foc-protocol/` — the e-foc motor CAN contract and `FocMotorCanClient`
   (`e-foc-protocol/...` includes).
+- `infra/ui-cpp/` — UI primitives (forms, shell, scope, theme; Qt backend opt-in).
 - `infra/can-lite/`, `infra/hal/` — CAN protocol library with host bus adapters, and
   hardware abstraction layer (st, ti).
 - Every dependency is a submodule pinned to its `main`. e-foc-protocol and
@@ -82,12 +94,17 @@ cmake --build --preset EK-TM4C123GXL-Debug
 cmake --preset STM32F429I-DISC1
 cmake --build --preset STM32F429I-DISC1-Debug
 
+# Qt simulator (needs Qt Quick 3D); its window test needs a display (xvfb-run)
+cmake --preset host-qt
+cmake --build --preset host-qt-Debug
+xvfb-run -a build/host-qt/tools/simulator/app/test/Debug/e_robot_arm.tool.simulator_window_test
+
 # Coverage build
 cmake --preset coverage
 cmake --build --preset coverage
 ```
 
-Configure presets (`CMakePresets.json`): `host`, `coverage`, `EK-TM4C1294XL`,
+Configure presets (`CMakePresets.json`): `host`, `host-qt`, `coverage`, `EK-TM4C1294XL`,
 `EK-TM4C123GXL`, `STM32F407G-DISC1`, `STM32F429I-DISC1`, `NUCLEO-H563ZI`.
 
 ## 3. Project-Specific Constraints (must follow)
@@ -210,3 +227,12 @@ Use the agents in `.claude/agents/` for structured development workflows:
 - **planner** — create detailed implementation plans before writing code
 - **executor** — implement code changes following all project constraints
 - **reviewer** — review code changes against project standards
+
+Skills in `.claude/skills/`:
+
+- **ux-ui-expert** (`.claude/skills/ux-ui-expert/SKILL.md`) — load before designing, reviewing or changing
+  anything a person sees or operates under `tools/` (the simulator, the console): layouts, safety controls,
+  configuration flows, the 3-D view, scopes. The simulator is built on ui-cpp primitives.
+- **qt-3d-gui** (`.claude/skills/qt-3d-gui/SKILL.md`) — load with ux-ui-expert for the simulator's build and
+  look: Qt Quick 3D scene (PBR materials, image-based lighting, soft shadows, SSAO, MSAA), embedding it in the
+  Widgets application, live data at display rate, camera and picking, theme, typography, performance budget.

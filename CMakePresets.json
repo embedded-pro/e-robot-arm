@@ -28,10 +28,18 @@
         "E_ROBOT_ARM_TARGET_PLATFORM": "host",
         "E_ROBOT_ARM_BUILD_TESTS": true,
         "E_ROBOT_ARM_BUILD_HIL_TESTS": true,
-        "E_ROBOT_ARM_BUILD_SIMULATOR": true,
         "NUMERICAL_TOOLBOX_ENABLE_OPTIMIZATIONS": false
       },
       "generator": "Ninja Multi-Config"
+    },
+    {
+      "name": "host-qt",
+      "displayName": "Configuration for Host Tooling, Tests and the Qt Simulator",
+      "inherits": "host",
+      "cacheVariables": {
+        "E_ROBOT_ARM_BUILD_SIMULATOR": true,
+        "UI_BUILD_QT_BACKEND": true
+      }
     },
     {
       "name": "host-single-Debug",
@@ -200,6 +208,16 @@
       "configurePreset": "host"
     },
     {
+      "name": "host-qt-Debug",
+      "configurePreset": "host-qt",
+      "configuration": "Debug"
+    },
+    {
+      "name": "host-qt-RelWithDebInfo",
+      "configurePreset": "host-qt",
+      "configuration": "RelWithDebInfo"
+    },
+    {
       "name": "host-Debug",
       "configuration": "Debug",
       "configurePreset": "host"
@@ -308,6 +326,17 @@
       "configurePreset": "host",
       "configuration": "Debug",
       "inherits": "defaults"
+    },
+    {
+      "name": "host-qt",
+      "configurePreset": "host-qt",
+      "configuration": "Debug",
+      "inherits": "defaults",
+      "filter": {
+        "exclude": {
+          "label": "hardware|display"
+        }
+      }
     },
     {
       "name": "coverage",

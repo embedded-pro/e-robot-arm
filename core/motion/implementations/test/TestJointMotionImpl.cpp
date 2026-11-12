@@ -192,3 +192,40 @@ TEST_F(JointMotionImplTest, a_step_without_a_move_sends_nothing)
 
     EXPECT_FALSE(motion.Moving());
 }
+
+TEST_F(JointMotionImplTest, has_no_setpoint_before_the_first_move)
+{
+    EXPECT_FALSE(motion.Setpoint().has_value());
+}
+
+TEST_F(JointMotionImplTest, reports_the_last_accepted_setpoint_set)
+{
+    RecordSetpoints();
+    EXPECT_TRUE(motion.MoveTo(Target(1.0f)));
+    Step(3);
+
+    ASSERT_TRUE(motion.Setpoint().has_value());
+    for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+        EXPECT_NEAR(motion.Setpoint()->at(joint).Value(), sent.back()[joint].Value(), tolerance);
+}
+
+TEST_F(JointMotionImplTest, keeps_the_last_setpoint_after_the_move_is_done)
+{
+    RecordSetpoints();
+    EXPECT_CALL(observer, OnMoveDone());
+    EXPECT_TRUE(motion.MoveTo(Target(0.0f)));
+    Step(1);
+
+    ASSERT_TRUE(motion.Setpoint().has_value());
+    EXPECT_NEAR(motion.Setpoint()->at(0).Value(), 0.0f, tolerance);
+}
+
+TEST_F(JointMotionImplTest, a_refused_setpoint_set_is_not_reported)
+{
+    RecordSetpoints(false);
+    EXPECT_CALL(observer, OnMoveAborted());
+    EXPECT_TRUE(motion.MoveTo(Target(1.0f)));
+    Step(1);
+
+    EXPECT_FALSE(motion.Setpoint().has_value());
+}

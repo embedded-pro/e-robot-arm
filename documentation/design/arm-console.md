@@ -2,7 +2,7 @@
 title: "Arm Composition and Console Design"
 type: design
 status: draft
-version: 0.1.0
+version: 0.2.0
 component: "arm"
 date: 2026-11-12
 ---
@@ -12,7 +12,7 @@ date: 2026-11-12
 | Title     | Arm Composition and Console Design |
 | Type      | design                             |
 | Status    | draft                              |
-| Version   | 0.1.0                              |
+| Version   | 0.2.0                              |
 | Component | arm                                |
 | Date      | 2026-11-12                         |
 
@@ -76,10 +76,14 @@ Every command prints whether it was accepted. Events print as they happen: the c
 faulted or went silent, a move done or aborted. An unknown command or a malformed one prints a usage line and
 sends nothing.
 
-For a `virtual:` bus the console hosts can-lite's virtual CAN hub, or joins the one already running when another
-process (an e-foc virtual motor, for instance) hosts it. The hub and the CAN adapter are polled every millisecond on
-the event loop; commands typed on standard input are handed to the event loop, so every call into the arm runs on
-one thread.
+The console runs on the arm host shared with the simulator ([simulator.md](simulator.md) Parts B and E): the arm
+lives on the host's thread, each typed command is posted to it, and the console waits up to 2 s for that command's
+answer, `ok` or `refused: <reason>`. Events print as they come, polled every 20 ms. `--bus simulated` runs six
+simulated joints in the process with no CAN at all.
+
+For a `virtual:` bus the host runs can-lite's virtual CAN hub, or joins the one already running when another process
+(an e-foc virtual motor, for instance) hosts it. The hub and the CAN adapter are polled every millisecond on the
+host's event loop.
 
 ---
 

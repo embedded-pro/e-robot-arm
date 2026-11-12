@@ -17,7 +17,17 @@ namespace arm
         return safety;
     }
 
+    const SafetySupervisor& Arm::Safety() const
+    {
+        return safety;
+    }
+
     JointMotion& Arm::Motion()
+    {
+        return motion;
+    }
+
+    const JointMotion& Arm::Motion() const
     {
         return motion;
     }

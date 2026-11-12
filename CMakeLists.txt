@@ -92,6 +92,10 @@ add_subdirectory(infra/numerical-toolbox)
 add_subdirectory(infra/e-foc-protocol)
 add_subdirectory(infra/robotics-toolbox)
 
+if (NOT E_ROBOT_ARM_EMBEDDED_BUILD)
+    add_subdirectory(infra/ui-cpp)
+endif()
+
 # Ordering is load-bearing. Both calls must sit after every submodule and FetchContent
 # addition -- otherwise dependencies such as cucumber_cpp are missed -- and before
 # add_subdirectory(core), or this project's own targets get marked SYSTEM and the warnings
@@ -117,6 +121,9 @@ endif()
 emil_clangformat_directories(e_robot_arm DIRECTORIES ${E_ROBOT_ARM_CLANGFORMAT_DIRS})
 emil_folderize_all_targets()
 emil_exclude_directory_from_coverage(infra/embedded-infra-lib)
+if (NOT E_ROBOT_ARM_EMBEDDED_BUILD)
+    emil_exclude_directory_from_coverage(infra/ui-cpp)
+endif()
 emil_coverage_targets(DIRECTORIES .)
 
 include(scripts/development_environment.cmake)

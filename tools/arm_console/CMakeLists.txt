@@ -5,8 +5,7 @@ target_include_directories(e_robot_arm.tool.arm_console.logic PUBLIC
 )
 
 target_link_libraries(e_robot_arm.tool.arm_console.logic PUBLIC
-    e_robot_arm.motion.interfaces
-    e_robot_arm.safety.interfaces
+    e_robot_arm.tool.arm_host
 )
 
 target_sources(e_robot_arm.tool.arm_console.logic PRIVATE
@@ -22,12 +21,7 @@ if (TARGET can_lite.drivers.platform)
 
     target_link_libraries(e_robot_arm.tool.arm_console PRIVATE
         e_robot_arm.tool.arm_console.logic
-        e_robot_arm.arm
-        e_foc_protocol.client
-        can_lite.drivers.hub
-        can_lite.drivers.platform
-        hal.generic
-        infra.event
+        e_robot_arm.tool.arm_host.adapters
     )
 
     target_sources(e_robot_arm.tool.arm_console PRIVATE

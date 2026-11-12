@@ -18,111 +18,103 @@ namespace arm_console
         }
     }
 
-    ArmConsole::ArmConsole(arm::SafetySupervisor& safety, arm::JointMotion& motion, std::ostream& output)
-        : arm::JointBusObserver(safety)
-        , arm::JointMotionObserver(motion)
-        , safety(safety)
-        , motion(motion)
+    ArmConsole::ArmConsole(arm_host::ArmCommands& arm, std::ostream& output)
+        : arm(arm)
         , output(output)
     {}
 
-    bool ArmConsole::Execute(const std::string& line)
+    ExecuteResult ArmConsole::Execute(const std::string& line)
     {
         std::istringstream arguments{ line };
         std::string command;
         if (!(arguments >> command))
-            return true;
+            return { Outcome::done };
 
         if (command == "quit")
-            return false;
+            return { Outcome::quit };
 
-        if (!Dispatch(command, arguments))
+        if (command == "status")
+        {
+            Status();
+            return { Outcome::done };
+        }
+
+        const auto parsed = Parse(command, arguments);
+        if (!parsed)
+        {
             Usage();
-        return true;
+            return { Outcome::done };
+        }
+
+        return { Outcome::posted, arm.Post(*parsed) };
     }
 
-    bool ArmConsole::Dispatch(std::string_view command, std::istringstream& arguments)
+    std::optional<arm_host::ArmCommand> ArmConsole::Parse(std::string_view command, std::istringstream& arguments) const
     {
         if (command == "contracts")
-            Answer(safety.QueryContracts());
-        else if (command == "start")
-            Answer(safety.Start());
-        else if (command == "stop")
-            Answer(safety.Stop());
-        else if (command == "estop")
-            Answer(safety.EmergencyStop());
-        else if (command == "clear")
-            Answer(safety.ClearFault());
-        else if (command == "rearm")
-            Answer(safety.Rearm());
-        else if (command == "abort")
-        {
-            motion.Abort();
-            Answer(true);
-        }
-        else if (command == "status")
-            Status();
-        else if (command == "mode")
+            return arm_host::CheckContracts{};
+        if (command == "start")
+            return arm_host::StartJoints{};
+        if (command == "stop")
+            return arm_host::StopJoints{};
+        if (command == "estop")
+            return arm_host::EmergencyStop{};
+        if (command == "clear")
+            return arm_host::ClearFaults{};
+        if (command == "rearm")
+            return arm_host::Rearm{};
+        if (command == "abort")
+            return arm_host::AbortMove{};
+        if (command == "mode")
             return Mode(arguments);
-        else if (command == "move")
+        if (command == "move")
             return Move(arguments);
-        else
-            return false;
-
-        return true;
+        return std::nullopt;
     }
 
-    bool ArmConsole::Mode(std::istringstream& arguments)
+    std::optional<arm_host::ArmCommand> ArmConsole::Mode(std::istringstream& arguments) const
     {
         std::string name;
         arguments >> name;
         if (name == "torque")
-            Answer(safety.SelectMode(can::FocMotorMode::torque));
-        else if (name == "speed")
-            Answer(safety.SelectMode(can::FocMotorMode::speed));
-        else if (name == "position")
-            Answer(safety.SelectMode(can::FocMotorMode::position));
-        else
-            return false;
-
-        return true;
+            return arm_host::SelectMode{ can::FocMotorMode::torque };
+        if (name == "speed")
+            return arm_host::SelectMode{ can::FocMotorMode::speed };
+        if (name == "position")
+            return arm_host::SelectMode{ can::FocMotorMode::position };
+        return std::nullopt;
     }
 
-    bool ArmConsole::Move(std::istringstream& arguments)
+    std::optional<arm_host::ArmCommand> ArmConsole::Move(std::istringstream& arguments) const
     {
         arm::JointPositions target{};
         for (auto& position : target)
         {
             float value{};
             if (!(arguments >> value))
-                return false;
+                return std::nullopt;
             position = foc::Radians{ value };
         }
 
         std::string rest;
         if (arguments >> rest)
-            return false;
+            return std::nullopt;
 
-        Answer(motion.MoveTo(target));
-        return true;
+        return arm_host::MoveTo{ target };
     }
 
     void ArmConsole::Status()
     {
+        const auto snapshot = arm.Snapshot();
         output << std::fixed << std::setprecision(3);
         for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
         {
-            const auto& reading = safety.Reading(joint);
+            const auto& reading = snapshot.readings[joint];
             output << "joint " << joint + 1 << ": position " << reading.position.Value() << " rad, speed " << reading.speed.Value()
                    << " rad/s, state " << Name(stateNames, reading.state) << ", fault " << Name(faultNames, reading.fault) << "\n";
         }
-        output << "safety: " << (safety.Tripped() ? "tripped" : "armed") << "\n";
-        output << "motion: " << (motion.Moving() ? "moving" : "idle") << "\n";
-    }
-
-    void ArmConsole::Answer(bool accepted)
-    {
-        output << (accepted ? "ok" : "refused") << "\n";
+        output << "safety: " << (snapshot.tripped ? "tripped" : "armed") << "\n";
+        output << "motion: " << (snapshot.moving ? "moving" : "idle") << "\n";
     }
 
     void ArmConsole::Usage()
@@ -130,28 +122,42 @@ namespace arm_console
         output << "usage: contracts | mode torque|speed|position | start | stop | estop | clear | rearm | move q1 q2 q3 q4 q5 q6 | abort | status | quit\n";
     }
 
-    void ArmConsole::OnContractsResolved(can::ContractCompatibility compatibility)
+    void ArmConsole::Print(const arm_host::ArmEvent& event)
     {
-        output << "contracts " << (compatibility == can::ContractCompatibility::compatible ? "compatible" : "incompatible") << "\n";
-    }
+        using enum arm_host::ArmEventKind;
 
-    void ArmConsole::OnJointFault(std::size_t joint, can::FocFaultCode fault)
-    {
-        output << "joint " << joint + 1 << " faulted: " << Name(faultNames, fault) << "\n";
-    }
-
-    void ArmConsole::OnJointSilent(std::size_t joint)
-    {
-        output << "joint " << joint + 1 << " silent\n";
-    }
-
-    void ArmConsole::OnMoveDone()
-    {
-        output << "move done\n";
-    }
-
-    void ArmConsole::OnMoveAborted()
-    {
-        output << "move aborted\n";
+        switch (event.kind)
+        {
+            case accepted:
+                output << "ok\n";
+                break;
+            case refused:
+                output << "refused: " << event.reason << "\n";
+                break;
+            case contractsResolved:
+                output << "contracts " << (event.contracts == can::ContractCompatibility::compatible ? "compatible" : "incompatible") << "\n";
+                break;
+            case jointFault:
+                output << "joint " << event.joint + 1 << " faulted: " << Name(faultNames, event.fault) << "\n";
+                break;
+            case jointSilent:
+                output << "joint " << event.joint + 1 << " silent\n";
+                break;
+            case tripped:
+                output << "tripped by joint " << event.joint + 1 << "\n";
+                break;
+            case moveDone:
+                output << "move done\n";
+                break;
+            case moveAborted:
+                output << "move aborted\n";
+                break;
+            case targetReady:
+                output << "target ready\n";
+                break;
+            case targetFailed:
+                output << "target failed: " << event.reason << "\n";
+                break;
+        }
     }
 }
