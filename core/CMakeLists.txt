@@ -1,4 +1,5 @@
 add_subdirectory(example_component)
 add_subdirectory(joint_bus)
+add_subdirectory(motion)
 add_subdirectory(platform_abstraction)
 add_subdirectory(safety)

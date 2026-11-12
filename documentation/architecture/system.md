@@ -2,7 +2,7 @@
 title: "System Architecture"
 type: architecture
 status: draft
-version: 0.4.0
+version: 0.5.0
 component: "system"
 date: 2026-11-12
 ---
@@ -12,14 +12,15 @@ date: 2026-11-12
 | Title     | System Architecture |
 | Type      | architecture        |
 | Status    | draft               |
-| Version   | 0.4.0               |
+| Version   | 0.5.0               |
 | Component | system              |
 | Date      | 2026-11-12          |
 
 > Target architecture of e-robot-arm. The repository is bootstrapped from embedded-scaffold: the joint bus
-> (`core/joint_bus/`, [design](../design/joint-bus.md)) and the safety supervisor (`core/safety/`,
-> [design](../design/safety.md)) exist; the other components below are planned, and the scaffold's `example_*`
-> components stay until they are replaced. Diagrams are Mermaid or ASCII art only.
+> (`core/joint_bus/`, [design](../design/joint-bus.md)), the safety supervisor (`core/safety/`,
+> [design](../design/safety.md)) and joint-space motion (`core/motion/`, [design](../design/joint-motion.md))
+> exist; the other components below are planned, and the scaffold's `example_*` components stay until they are
+> replaced. Diagrams are Mermaid or ASCII art only.
 
 ---
 
@@ -62,7 +63,7 @@ flowchart LR
 |---------------|-----------------------------------------------------------------------------------------|
 | arm model     | Kinematic and dynamic parameters of the six joints, the tool frame and the base mount   |
 | joint bus     | Six e-foc nodes on one client: node map, contract check, fault fan-out, liveness        |
-| motion        | Trajectory generation and time-optimal path parameterisation                            |
+| motion        | Synchronised joint moves today; trajectories and time-optimal path parameterisation     |
 | control       | Joint-space and Cartesian control with dynamics feed-forward                            |
 | safety        | Guards the joint bus: joint limits, contract gate, emergency stop on a fault or silence |
 | simulator     | Qt operator UI and 3-D view, running the same core against virtual motors or the arm    |

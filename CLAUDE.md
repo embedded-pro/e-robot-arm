@@ -21,6 +21,9 @@ simulator runs the same core against e-foc virtual motors or the real arm.
   - `core/safety/` — `arm::SafetySupervisor`: a `JointBus` in front of the real
     one (joint limits, contract gate, emergency stop on a fault or silence,
     re-arm). Design: `documentation/design/safety.md`.
+  - `core/motion/` — `arm::JointMotion`: synchronised trapezoidal point-to-point
+    moves of the six joints, streamed once per control period through the
+    safety supervisor. Design: `documentation/design/joint-motion.md`.
   - `core/platform_abstraction/` — the `platform::Platform` interface (the seam
     between portable logic and hardware) plus a `PlatformMock` for tests.
   - `core/example_component/` — a trivial `interfaces/` + `implementations/` +
