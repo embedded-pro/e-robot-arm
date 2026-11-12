@@ -204,6 +204,11 @@ namespace simulator
         return forms.moveModel;
     }
 
+    void SimulatorPresenter::SetRearmPrompt(const ui::Callback<void(std::string_view prompt)>& prompt)
+    {
+        rearmPrompt = prompt;
+    }
+
     void SimulatorPresenter::OnOperateAction(ui::model::ActionId action)
     {
         if (action == OperateAction::checkContracts)
@@ -216,8 +221,8 @@ namespace simulator
             Post(arm_host::StopJoints{});
         else if (action == OperateAction::clearFaults)
             Post(arm_host::ClearFaults{});
-        else if (action == OperateAction::rearm && onRearmRequested)
-            onRearmRequested(std::format("Re-arm after the trip by {}?", tripSource));
+        else if (action == OperateAction::rearm && rearmPrompt)
+            rearmPrompt(std::format("Re-arm after the trip by {}?", tripSource));
     }
 
     void SimulatorPresenter::OnMoveAction(ui::model::ActionId action)

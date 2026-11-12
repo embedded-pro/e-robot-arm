@@ -67,8 +67,7 @@ namespace simulator
         const std::string& OperateHint() const;
         const std::string& MoveHint() const;
         ui::model::FormModel& MoveForm();
-
-        ui::Callback<void(std::string_view prompt)> onRearmRequested;
+        void SetRearmPrompt(const ui::Callback<void(std::string_view prompt)>& prompt);
 
     private:
         struct Forms
@@ -110,6 +109,7 @@ namespace simulator
         std::string operateHint;
         std::string moveHint;
         std::map<uint32_t, std::string> pending;
+        ui::Callback<void(std::string_view prompt)> rearmPrompt;
     };
 }
 

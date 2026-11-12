@@ -291,10 +291,10 @@ namespace simulator
                 if (presenter.SelectJoint(joint))
                     scope->SelectJoint(static_cast<std::size_t>(joint));
             });
-        presenter.onRearmRequested = [this](std::string_view prompt)
-        {
-            ConfirmRearm(prompt);
-        };
+        presenter.SetRearmPrompt([this](std::string_view prompt)
+            {
+                ConfirmRearm(prompt);
+            });
     }
 
     void SimulatorWindow::ChooseTarget(int choice)

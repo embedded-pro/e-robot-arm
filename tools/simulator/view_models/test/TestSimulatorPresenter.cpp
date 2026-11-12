@@ -141,10 +141,10 @@ TEST_F(SimulatorPresenterTest, a_trip_names_its_source_in_the_status_and_in_the_
     presenter.Refresh(tripped, events);
 
     std::string prompt;
-    presenter.onRearmRequested = [&prompt](std::string_view text)
-    {
-        prompt = text;
-    };
+    presenter.SetRearmPrompt([&prompt](std::string_view text)
+        {
+            prompt = text;
+        });
     Trigger(OperateAction::rearm);
 
     EXPECT_EQ("Tripped — Joint 3 (Overcurrent)", presenter.Status().trip);
