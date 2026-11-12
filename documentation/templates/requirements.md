@@ -7,10 +7,10 @@ toc-title: Table of Contents
 
 # Requirements Specification
 
-| Field | Value |
-|-------|-------|
-| Project | e-robot-arm |
-| Status | Draft |
+| Field     | Value                    |
+|-----------|--------------------------|
+| Project   | e-robot-arm              |
+| Status    | Draft                    |
 | Generated | Auto-generated from YAML |
 
 > **Note:** Do not edit manually --- modify YAML files in `documentation/requirements/`
