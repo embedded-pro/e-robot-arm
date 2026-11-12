@@ -29,8 +29,13 @@ simulator runs the same core against e-foc virtual motors or the real arm.
   - `core/control_loop/` — `arm::ControlLoop`: the fixed control period; telemetry
     request to all joints, then the setpoint step half a period later.
     Design: `documentation/design/control-loop.md`.
-  - `core/arm/` — `arm::Arm`: builds the joint bus, safety supervisor, motion and
-    control loop from one `FocMotorCategoryClient` and an `ArmConfig`; heap-free.
+  - `core/lifecycle/` — `arm::ArmLifecycle`: the start-up order (contracts,
+    calibration, enable, move) and trip/re-arm, on EMIL's table state machine; it
+    follows the readings, so the single-step commands still work for debugging.
+    Design: `documentation/design/arm-lifecycle.md`.
+  - `core/arm/` — `arm::Arm`: builds the joint bus, safety supervisor, motion,
+    lifecycle and control loop from one `FocMotorCategoryClient` and an
+    `ArmConfig`; heap-free.
   - `core/platform_abstraction/` — the `platform::Platform` interface (the seam
     between portable logic and hardware) plus a `PlatformMock` for tests.
   - `core/example_component/` — a trivial `interfaces/` + `implementations/` +

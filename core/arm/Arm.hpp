@@ -3,6 +3,7 @@
 
 #include "core/control_loop/implementations/ControlLoopImpl.hpp"
 #include "core/joint_bus/implementations/JointBusImpl.hpp"
+#include "core/lifecycle/implementations/ArmLifecycleImpl.hpp"
 #include "core/motion/implementations/JointMotionImpl.hpp"
 #include "core/safety/implementations/SafetySupervisorImpl.hpp"
 #include "e-foc-protocol/client/FocMotorCategoryClient.hpp"
@@ -20,6 +21,7 @@ namespace arm
         infra::Duration controlPeriod;
         uint8_t commandTimeoutPeriods{ 3 };
         JointTransmissions transmissions{};
+        can::FocMotorMode enableMode{ can::FocMotorMode::position };
     };
 
     class Arm
@@ -33,12 +35,15 @@ namespace arm
         const SafetySupervisor& Safety() const;
         JointMotion& Motion();
         const JointMotion& Motion() const;
+        ArmLifecycle& Lifecycle();
+        const ArmLifecycle& Lifecycle() const;
         ControlLoop& Loop();
 
     private:
         JointBusImpl jointBus;
         SafetySupervisorImpl safety;
         JointMotionImpl motion;
+        ArmLifecycleImpl lifecycle;
         ControlLoopImpl loop;
     };
 }

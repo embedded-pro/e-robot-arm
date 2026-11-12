@@ -38,3 +38,10 @@
   shall: >
     The arm shall take and report joint positions and speeds, and check position limits, in joint space, converting
     to and from each motor's shaft through that joint's gear ratio, direction and zero offset.
+
+- id: REQ-ARM-008
+  title: Start-up order
+  shall: >
+    The arm shall move only after every joint has reported a compatible contract, every joint has reported itself
+    calibrated and every joint has been started in the configured control mode, and after a joint fault or a silent
+    joint it shall move again only once it has been re-armed and brought back to that point.

@@ -50,6 +50,7 @@ namespace integration
         arm::JointPositions start{};
         arm::JointPositions target{};
         bool lastAccepted{ false };
+        uint32_t movesDoneBefore{ 0 };
     };
 }
 

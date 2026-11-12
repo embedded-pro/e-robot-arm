@@ -30,7 +30,10 @@ namespace
         {
             EXPECT_CALL(bus, EmergencyStop()).WillOnce(Return(true));
             EXPECT_CALL(observer, OnJointFault(4, can::FocFaultCode::overCurrent));
-            bus.GetObserver().OnJointFault(4, can::FocFaultCode::overCurrent);
+            bus.NotifyObservers([](auto& observer)
+                {
+                    observer.OnJointFault(4, can::FocFaultCode::overCurrent);
+                });
         }
 
         void JointStates(can::FocMotorState faultedJointState)
@@ -129,7 +132,10 @@ TEST_F(SafetySupervisorImplTest, a_silent_joint_stops_every_joint_and_is_passed_
     EXPECT_CALL(bus, EmergencyStop()).WillOnce(Return(true));
     EXPECT_CALL(observer, OnJointSilent(2));
 
-    bus.GetObserver().OnJointSilent(2);
+    bus.NotifyObservers([](auto& observer)
+        {
+            observer.OnJointSilent(2);
+        });
 
     EXPECT_TRUE(supervisor.Tripped());
 }
@@ -139,7 +145,10 @@ TEST_F(SafetySupervisorImplTest, a_second_event_while_tripped_is_passed_on_witho
     Trip();
 
     EXPECT_CALL(observer, OnJointSilent(1));
-    bus.GetObserver().OnJointSilent(1);
+    bus.NotifyObservers([](auto& observer)
+        {
+            observer.OnJointSilent(1);
+        });
 }
 
 TEST_F(SafetySupervisorImplTest, refuses_motion_while_tripped)
@@ -177,7 +186,10 @@ TEST_F(SafetySupervisorImplTest, rearms_once_no_joint_is_faulted_and_motion_pass
 TEST_F(SafetySupervisorImplTest, passes_contract_outcomes_and_readings_on)
 {
     EXPECT_CALL(observer, OnContractsResolved(can::ContractCompatibility::incompatible));
-    bus.GetObserver().OnContractsResolved(can::ContractCompatibility::incompatible);
+    bus.NotifyObservers([](auto& observer)
+        {
+            observer.OnContractsResolved(can::ContractCompatibility::incompatible);
+        });
 
     JointStates(can::FocMotorState::running);
     EXPECT_EQ(&readings[4], &supervisor.Reading(4));
@@ -188,8 +200,14 @@ TEST_F(SafetySupervisorImplTest, passes_contract_outcomes_and_readings_on)
 TEST_F(SafetySupervisorImplTest, passes_command_delivery_outcomes_on)
 {
     EXPECT_CALL(observer, OnCommandDelivered(arm::JointCommand::start));
-    bus.GetObserver().OnCommandDelivered(arm::JointCommand::start);
+    bus.NotifyObservers([](auto& observer)
+        {
+            observer.OnCommandDelivered(arm::JointCommand::start);
+        });
 
     EXPECT_CALL(observer, OnCommandFailed(arm::JointCommand::stop, arm::CommandFailure::timedOut));
-    bus.GetObserver().OnCommandFailed(arm::JointCommand::stop, arm::CommandFailure::timedOut);
+    bus.NotifyObservers([](auto& observer)
+        {
+            observer.OnCommandFailed(arm::JointCommand::stop, arm::CommandFailure::timedOut);
+        });
 }

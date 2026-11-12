@@ -63,10 +63,10 @@ namespace arm
     class JointBus;
 
     class JointBusObserver
-        : public infra::SingleObserver<JointBusObserver, JointBus>
+        : public infra::Observer<JointBusObserver, JointBus>
     {
     public:
-        using infra::SingleObserver<JointBusObserver, JointBus>::SingleObserver;
+        using infra::Observer<JointBusObserver, JointBus>::Observer;
 
         virtual void OnContractsResolved(can::ContractCompatibility compatibility) = 0;
         virtual void OnJointFault(std::size_t joint, can::FocFaultCode fault) = 0;
