@@ -43,6 +43,16 @@ namespace integration
         silentJoints.push_back(joint);
     }
 
+    void ArmEvents::OnCommandDelivered(arm::JointCommand command)
+    {
+        deliveredCommands.push_back(command);
+    }
+
+    void ArmEvents::OnCommandFailed(arm::JointCommand command, arm::CommandFailure)
+    {
+        failedCommands.push_back(command);
+    }
+
     void ArmEvents::OnMoveDone()
     {
         ++movesDone;
@@ -68,9 +78,9 @@ namespace integration
         EXPECT_TRUE(arm.Safety().QueryContracts());
         ForwardTime(20ms);
         EXPECT_TRUE(arm.Safety().SelectMode(can::FocMotorMode::position));
-        ForwardTime(20ms);
         EXPECT_TRUE(arm.Safety().Start());
         ForwardTime(20ms);
+        EXPECT_TRUE(events.failedCommands.empty());
 
         for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
             start[joint] = arm.Safety().Reading(joint).position;

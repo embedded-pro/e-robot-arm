@@ -9,10 +9,25 @@ namespace arm_host
             return std::holds_alternative<SelectMode>(command) || std::holds_alternative<StartJoints>(command) || std::holds_alternative<MoveTo>(command);
         }
 
-        bool IdempotentBusCommand(const ArmCommand& command)
+        bool DeliveredByTheJoints(const ArmCommand& command)
         {
             return std::holds_alternative<CheckContracts>(command) || std::holds_alternative<SelectMode>(command) || std::holds_alternative<StartJoints>(command) ||
-                   std::holds_alternative<StopJoints>(command) || std::holds_alternative<ClearFaults>(command) || std::holds_alternative<EmergencyStop>(command);
+                   std::holds_alternative<StopJoints>(command) || std::holds_alternative<ClearFaults>(command);
+        }
+
+        std::string_view FailureReason(arm::CommandFailure failure)
+        {
+            switch (failure)
+            {
+                case arm::CommandFailure::timedOut:
+                    return "not delivered to every joint in time";
+                case arm::CommandFailure::replaced:
+                    return "replaced by a newer command";
+                case arm::CommandFailure::emergencyStop:
+                    return "emergency stop";
+            }
+
+            return "not delivered";
         }
     }
 
@@ -38,45 +53,44 @@ namespace arm_host
 
     void ArmSession::Execute(uint32_t id, const ArmCommand& command)
     {
-        if (std::holds_alternative<EmergencyStop>(command))
-        {
-            backlog.emplace_front(id, command);
-            attempts = 0;
-        }
+        if (DeliveredByTheJoints(command))
+            Deliver(id, command);
+        else if (Run(command))
+            Emit({ .kind = ArmEventKind::accepted, .command = id, .commandName = CommandName(command) });
         else
-            backlog.emplace_back(id, command);
-
-        if (!retryTimer.Armed())
-            Pump();
+            Emit({ .kind = ArmEventKind::refused, .command = id, .commandName = CommandName(command), .reason = RefusalReason(command) });
     }
 
-    void ArmSession::Pump()
+    void ArmSession::Deliver(uint32_t id, const ArmCommand& command)
     {
-        while (!backlog.empty())
-        {
-            const auto& [id, command] = backlog.front();
-            if (Run(command))
-                Emit({ .kind = ArmEventKind::accepted, .command = id, .commandName = CommandName(command) });
-            else if (QueueRefused(command) && attempts + 1 < maxAttempts)
-            {
-                ++attempts;
-                retryTimer.Start(retryInterval, [this]()
-                    {
-                        Pump();
-                    });
-                return;
-            }
-            else
-                Emit({ .kind = ArmEventKind::refused, .command = id, .commandName = CommandName(command), .reason = RefusalReason(command) });
+        issuing.emplace(id, command);
+        const auto sent = Run(command);
+        const auto deliveredAtOnce = !issuing.has_value();
+        issuing.reset();
 
-            attempts = 0;
-            backlog.pop_front();
-        }
+        if (!sent)
+            Emit({ .kind = ArmEventKind::refused, .command = id, .commandName = CommandName(command), .reason = RefusalReason(command) });
+        else if (!deliveredAtOnce)
+            held.emplace(id, command);
     }
 
-    bool ArmSession::QueueRefused(const ArmCommand& command) const
+    void ArmSession::Delivered()
     {
-        return IdempotentBusCommand(command) && RefusalReason(command) == "CAN transmit queue full";
+        auto& delivered = issuing.has_value() ? issuing : held;
+        if (!delivered.has_value())
+            return;
+
+        Emit({ .kind = ArmEventKind::accepted, .command = delivered->id, .commandName = CommandName(delivered->command) });
+        delivered.reset();
+    }
+
+    void ArmSession::Failed(arm::CommandFailure failure)
+    {
+        if (!held.has_value())
+            return;
+
+        Emit({ .kind = ArmEventKind::refused, .command = held->id, .commandName = CommandName(held->command), .reason = FailureReason(failure) });
+        held.reset();
     }
 
     void ArmSession::StopAll()
@@ -85,8 +99,7 @@ namespace arm_host
         arm.Safety().Stop();
         arm.Loop().Stop();
         publishTimer.Cancel();
-        retryTimer.Cancel();
-        backlog.clear();
+        held.reset();
     }
 
     bool ArmSession::Moving() const
@@ -190,6 +203,8 @@ namespace arm_host
             return "contracts not compatible";
         if (std::holds_alternative<MoveTo>(command))
             return Moving() ? "moving" : "target outside the joint limits";
+        if (DeliveredByTheJoints(command))
+            return "a joint's contract is incompatible";
         return "CAN transmit queue full";
     }
 
@@ -214,6 +229,16 @@ namespace arm_host
     {
         session.Emit({ .kind = ArmEventKind::jointSilent, .joint = joint });
         session.ReportTrip(joint, can::FocFaultCode::none);
+    }
+
+    void ArmSession::Events::OnCommandDelivered(arm::JointCommand)
+    {
+        session.Delivered();
+    }
+
+    void ArmSession::Events::OnCommandFailed(arm::JointCommand, arm::CommandFailure failure)
+    {
+        session.Failed(failure);
     }
 
     void ArmSession::Events::OnMoveDone()

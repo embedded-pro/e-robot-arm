@@ -7,6 +7,7 @@
 #include "e-foc-protocol/contract/FocMotorWireContract.hpp"
 #include "infra/timer/test_helper/ClockFixture.hpp"
 #include "gmock/gmock.h"
+#include <algorithm>
 #include <vector>
 
 namespace
@@ -17,6 +18,7 @@ namespace
     constexpr uint16_t foreignNode{ 99 };
     constexpr float tolerance{ 1.0e-6f };
     constexpr uint8_t missedRequestsBeforeSilent{ 3 };
+    constexpr infra::Duration commandTimeout{ std::chrono::milliseconds{ 30 } };
 
     struct SentFrame
     {
@@ -61,6 +63,24 @@ namespace
             Receive(node, can::focTelemetryMotionId, services::CanPayloadWriter{}.WriteFloat32(speed).WriteFloat32(position));
         }
 
+        void CompleteTransmissions()
+        {
+            while (!inFlight.empty())
+            {
+                auto onDone = inFlight.front();
+                inFlight.erase(inFlight.begin());
+                onDone(true);
+            }
+        }
+
+        std::size_t FramesTo(uint16_t node, uint8_t messageType) const
+        {
+            return static_cast<std::size_t>(std::ranges::count_if(sent, [node, messageType](const SentFrame& frame)
+                {
+                    return frame.node == node && frame.messageType == messageType;
+                }));
+        }
+
         void ExpectOneFramePerJoint(uint8_t messageType) const
         {
             ASSERT_EQ(arm::jointCount, sent.size());
@@ -74,6 +94,8 @@ namespace
         StrictMock<hal::CanMock> canMock;
         infra::Function<void(hal::Can::Id, const hal::Can::Message&)> receive;
         std::vector<SentFrame> sent;
+        bool holdTransmissions{ false };
+        std::vector<infra::Function<void(bool)>> inFlight;
         infra::Execute setupBus{ [this]()
             {
                 EXPECT_CALL(canMock, ReceiveData(_)).WillRepeatedly(SaveArg<0>(&receive));
@@ -82,17 +104,21 @@ namespace
                         {
                             const auto canId = id.Get29BitId();
                             sent.push_back({ services::ExtractCanNodeId(canId), services::ExtractCanMessageType(canId), services::ExtractCanPriority(canId), data });
-                            onDone(true);
+                            if (holdTransmissions)
+                                inFlight.push_back(onDone);
+                            else
+                                onDone(true);
                         }));
             } };
         can::FocMotorCanClient client{ canMock };
-        arm::JointBusImpl bus{ client.CategoryClient(), nodes, missedRequestsBeforeSilent };
+        arm::JointBusImpl bus{ client.CategoryClient(), nodes, missedRequestsBeforeSilent, commandTimeout };
         StrictMock<arm::JointBusObserverMock> observer{ bus };
     };
 }
 
 TEST_F(JointBusImplTest, selects_the_control_mode_of_every_joint_in_joint_order)
 {
+    EXPECT_CALL(observer, OnCommandDelivered(arm::JointCommand::selectMode));
     EXPECT_TRUE(bus.SelectMode(can::FocMotorMode::position));
 
     ExpectOneFramePerJoint(can::focSelectControlModeId);
@@ -106,14 +132,22 @@ TEST_F(JointBusImplTest, selects_the_control_mode_of_every_joint_in_joint_order)
 
 TEST_F(JointBusImplTest, start_stop_and_clear_fault_reach_every_joint)
 {
-    const std::array<std::pair<bool (arm::JointBus::*)(), uint8_t>, 3> commands{ { { &arm::JointBus::Start, can::focStartId },
-        { &arm::JointBus::Stop, can::focStopId },
-        { &arm::JointBus::ClearFault, can::focClearFaultId } } };
+    struct Case
+    {
+        bool (arm::JointBus::*send)();
+        uint8_t messageType;
+        arm::JointCommand command;
+    };
 
-    for (const auto& [command, messageType] : commands)
+    const std::array<Case, 3> cases{ { { &arm::JointBus::Start, can::focStartId, arm::JointCommand::start },
+        { &arm::JointBus::Stop, can::focStopId, arm::JointCommand::stop },
+        { &arm::JointBus::ClearFault, can::focClearFaultId, arm::JointCommand::clearFault } } };
+
+    for (const auto& [send, messageType, command] : cases)
     {
         sent.clear();
-        EXPECT_TRUE((bus.*command)());
+        EXPECT_CALL(observer, OnCommandDelivered(command));
+        EXPECT_TRUE((bus.*send)());
         ExpectOneFramePerJoint(messageType);
     }
 }
@@ -143,8 +177,9 @@ TEST_F(JointBusImplTest, sends_one_position_setpoint_per_joint)
     }
 }
 
-TEST_F(JointBusImplTest, a_refused_joint_fails_the_command_but_the_others_are_still_commanded)
+TEST_F(JointBusImplTest, a_refused_joint_fails_the_emergency_stop_but_the_others_are_still_stopped)
 {
+    EXPECT_CALL(observer, OnCommandDelivered(arm::JointCommand::queryContracts));
     EXPECT_TRUE(bus.QueryContracts());
     EXPECT_CALL(observer, OnContractsResolved(can::ContractCompatibility::incompatible));
     AnswerIncompatible(nodes[2]);
@@ -158,6 +193,7 @@ TEST_F(JointBusImplTest, a_refused_joint_fails_the_command_but_the_others_are_st
 
 TEST_F(JointBusImplTest, contract_check_resolves_compatible_after_all_six_joints_answer)
 {
+    EXPECT_CALL(observer, OnCommandDelivered(arm::JointCommand::queryContracts));
     EXPECT_TRUE(bus.QueryContracts());
     ExpectOneFramePerJoint(can::focQueryContractVersionId);
 
@@ -172,6 +208,7 @@ TEST_F(JointBusImplTest, contract_check_resolves_compatible_after_all_six_joints
 
 TEST_F(JointBusImplTest, first_incompatible_answer_resolves_the_contract_check_once)
 {
+    EXPECT_CALL(observer, OnCommandDelivered(arm::JointCommand::queryContracts));
     EXPECT_TRUE(bus.QueryContracts());
     AnswerCompatible(nodes[0]);
 
@@ -197,6 +234,7 @@ TEST_F(JointBusImplTest, telemetry_updates_the_reading_of_its_joint)
 
 TEST_F(JointBusImplTest, frames_from_nodes_outside_the_map_are_ignored)
 {
+    EXPECT_CALL(observer, OnCommandDelivered(arm::JointCommand::queryContracts));
     EXPECT_TRUE(bus.QueryContracts());
     for (const auto node : nodes)
         AnswerCompatible(node == nodes.back() ? foreignNode : node);
@@ -278,4 +316,87 @@ TEST_F(JointBusImplTest, a_silent_joint_reading_is_marked_silent_until_the_joint
 
     EXPECT_FALSE(bus.Reading(2).silent);
     EXPECT_TRUE(bus.Reading(3).silent);
+}
+
+TEST_F(JointBusImplTest, a_command_refused_during_a_telemetry_burst_reaches_every_joint_once_the_burst_drains)
+{
+    holdTransmissions = true;
+    EXPECT_TRUE(bus.RequestTelemetry());
+
+    EXPECT_TRUE(bus.Start());
+    EXPECT_LT(FramesTo(nodes.back(), can::focStartId), 1u);
+
+    holdTransmissions = false;
+    CompleteTransmissions();
+    EXPECT_CALL(observer, OnCommandDelivered(arm::JointCommand::start));
+    ForwardTime(std::chrono::milliseconds{ 1 });
+
+    for (const auto node : nodes)
+        EXPECT_EQ(1u, FramesTo(node, can::focStartId)) << "node " << node;
+}
+
+TEST_F(JointBusImplTest, a_held_command_that_cannot_reach_every_joint_in_time_fails)
+{
+    holdTransmissions = true;
+    EXPECT_TRUE(bus.RequestTelemetry());
+    EXPECT_TRUE(bus.Start());
+
+    ForwardTime(commandTimeout - std::chrono::milliseconds{ 1 });
+    EXPECT_CALL(observer, OnCommandFailed(arm::JointCommand::start, arm::CommandFailure::timedOut));
+    ForwardTime(std::chrono::milliseconds{ 1 });
+
+    holdTransmissions = false;
+    CompleteTransmissions();
+    ForwardTime(commandTimeout);
+    EXPECT_EQ(0u, FramesTo(nodes.back(), can::focStartId));
+}
+
+TEST_F(JointBusImplTest, a_newer_command_replaces_a_held_one)
+{
+    holdTransmissions = true;
+    EXPECT_TRUE(bus.RequestTelemetry());
+    EXPECT_TRUE(bus.Start());
+
+    EXPECT_CALL(observer, OnCommandFailed(arm::JointCommand::start, arm::CommandFailure::replaced));
+    EXPECT_TRUE(bus.Stop());
+
+    holdTransmissions = false;
+    CompleteTransmissions();
+    EXPECT_CALL(observer, OnCommandDelivered(arm::JointCommand::stop));
+    ForwardTime(std::chrono::milliseconds{ 1 });
+
+    for (const auto node : nodes)
+        EXPECT_EQ(1u, FramesTo(node, can::focStopId)) << "node " << node;
+    EXPECT_EQ(0u, FramesTo(nodes.back(), can::focStartId));
+}
+
+TEST_F(JointBusImplTest, an_emergency_stop_overtakes_a_held_command_and_drops_it)
+{
+    holdTransmissions = true;
+    EXPECT_TRUE(bus.RequestTelemetry());
+    EXPECT_TRUE(bus.Start());
+
+    EXPECT_CALL(observer, OnCommandFailed(arm::JointCommand::start, arm::CommandFailure::emergencyStop));
+    EXPECT_TRUE(bus.EmergencyStop());
+
+    holdTransmissions = false;
+    CompleteTransmissions();
+    ForwardTime(commandTimeout);
+
+    for (const auto node : nodes)
+        EXPECT_EQ(1u, FramesTo(node, can::focEmergencyStopId)) << "node " << node;
+    EXPECT_EQ(0u, FramesTo(nodes.back(), can::focStartId));
+}
+
+TEST_F(JointBusImplTest, a_command_to_an_arm_with_an_incompatible_joint_is_refused_before_any_frame_is_sent)
+{
+    EXPECT_CALL(observer, OnCommandDelivered(arm::JointCommand::queryContracts));
+    EXPECT_TRUE(bus.QueryContracts());
+    EXPECT_CALL(observer, OnContractsResolved(can::ContractCompatibility::incompatible));
+    AnswerIncompatible(nodes[4]);
+    sent.clear();
+
+    EXPECT_FALSE(bus.Start());
+
+    EXPECT_TRUE(sent.empty());
 }

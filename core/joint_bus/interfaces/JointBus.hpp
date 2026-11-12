@@ -42,6 +42,22 @@ namespace arm
         bool silent{ false };
     };
 
+    enum class JointCommand : uint8_t
+    {
+        queryContracts,
+        selectMode,
+        start,
+        stop,
+        clearFault
+    };
+
+    enum class CommandFailure : uint8_t
+    {
+        timedOut,
+        replaced,
+        emergencyStop
+    };
+
     class JointBus;
 
     class JointBusObserver
@@ -53,6 +69,8 @@ namespace arm
         virtual void OnContractsResolved(can::ContractCompatibility compatibility) = 0;
         virtual void OnJointFault(std::size_t joint, can::FocFaultCode fault) = 0;
         virtual void OnJointSilent(std::size_t joint) = 0;
+        virtual void OnCommandDelivered(JointCommand command) = 0;
+        virtual void OnCommandFailed(JointCommand command, CommandFailure failure) = 0;
 
     protected:
         ~JointBusObserver() = default;

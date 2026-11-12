@@ -33,6 +33,8 @@ namespace arm
         void OnContractsResolved(can::ContractCompatibility compatibility) override;
         void OnJointFault(std::size_t joint, can::FocFaultCode fault) override;
         void OnJointSilent(std::size_t joint) override;
+        void OnCommandDelivered(JointCommand command) override;
+        void OnCommandFailed(JointCommand command, CommandFailure failure) override;
 
         bool MayCommandMotion() const;
         bool AnyJointFaulted() const;

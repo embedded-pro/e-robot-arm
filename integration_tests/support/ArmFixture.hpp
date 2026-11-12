@@ -20,6 +20,8 @@ namespace integration
         std::optional<can::ContractCompatibility> contracts;
         std::vector<std::size_t> faultedJoints;
         std::vector<std::size_t> silentJoints;
+        std::vector<arm::JointCommand> deliveredCommands;
+        std::vector<arm::JointCommand> failedCommands;
         uint32_t movesDone{ 0 };
         uint32_t movesAborted{ 0 };
 
@@ -27,6 +29,8 @@ namespace integration
         void OnContractsResolved(can::ContractCompatibility compatibility) override;
         void OnJointFault(std::size_t joint, can::FocFaultCode fault) override;
         void OnJointSilent(std::size_t joint) override;
+        void OnCommandDelivered(arm::JointCommand command) override;
+        void OnCommandFailed(arm::JointCommand command, arm::CommandFailure failure) override;
         void OnMoveDone() override;
         void OnMoveAborted() override;
     };

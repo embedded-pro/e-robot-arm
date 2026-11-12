@@ -7,6 +7,7 @@ target_include_directories(e_robot_arm.joint_bus.implementations PUBLIC
 
 target_link_libraries(e_robot_arm.joint_bus.implementations PUBLIC
     e_robot_arm.joint_bus.interfaces
+    infra.timer
 )
 
 target_sources(e_robot_arm.joint_bus.implementations PRIVATE
