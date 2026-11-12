@@ -9,7 +9,8 @@ build system, dev container, CI and documentation scaffolding.
 
 > **Status**: the joint bus (`core/joint_bus/`) drives the six e-foc nodes over CAN, the safety supervisor
 > (`core/safety/`) guards it, joint motion (`core/motion/`) moves all six joints together to a target, and the
-> control loop (`core/control_loop/`) paces telemetry and setpoints; the rest of the arm is planned. The `example_*` components and `example_tool` are the scaffold's worked examples and will be
+> control loop (`core/control_loop/`) paces telemetry and setpoints. `core/arm/` puts them together and the
+> `e-robot-arm-console` host tool drives them over any can-lite adapter; the rest of the arm is planned. The `example_*` components and `example_tool` are the scaffold's worked examples and will be
 > replaced by the arm's own components.
 
 ## Overview
@@ -44,6 +45,18 @@ cmake --build --preset host-Debug
 ctest --preset host
 ```
 
+### Driving the arm from a terminal
+
+`e-robot-arm-console` opens a CAN adapter, builds the arm and reads one command per line (`contracts`,
+`mode position`, `start`, `move q1 … q6`, `status`, `estop`, `clear`, `rearm`, `quit`, …):
+
+```bash
+build/host/tools/arm_console/Debug/e-robot-arm-console --bus virtual:arm --nodes 1,2,3,4,5,6
+```
+
+`--bus` takes `virtual:<name>` (hosts or joins can-lite's virtual CAN hub, where e-foc virtual motors connect), a
+SocketCAN interface such as `can0`, or the serial port of an slcan adapter.
+
 All presets are defined in `CMakePresets.json`. The scaffold's board presets (`EK-TM4C1294XL`, `EK-TM4C123GXL`,
 `STM32F407G-DISC1`, `STM32F429I-DISC1`, `NUCLEO-H563ZI`) stay available for a later microcontroller target.
 
@@ -56,10 +69,11 @@ e-robot-arm/
 │   ├── safety/                #   joint limits and emergency stop in front of the joint bus
 │   ├── motion/                #   synchronised point-to-point joint moves
 │   ├── control_loop/          #   the fixed control period: telemetry, then setpoints
+│   ├── arm/                   #   the composition of the components above
 │   ├── platform_abstraction/  #   platform::Platform interface (+ mock)
 │   └── example_component/     #   scaffold example, to be replaced
 ├── targets/                   # Application entry points + platform implementations (host, st, ti)
-├── tools/                     # Host-side tools (the Qt simulator will live here)
+├── tools/                     # Host-side tools: arm_console (the Qt simulator will live here)
 ├── integration_tests/         # BDD integration tests (cucumber-cpp / Gherkin)
 ├── infra/                     # Submodules
 │   ├── embedded-infra-lib/    #   bounded containers, build helpers, toolchains
@@ -92,6 +106,7 @@ copies of embedded-infra-lib, can-lite and numerical-toolbox rather than fetchin
 | [Safety Supervisor Design](documentation/design/safety.md)                         | Limits and emergency stop in front of the bus     |
 | [Joint Motion Design](documentation/design/joint-motion.md)                        | Synchronised point-to-point joint moves           |
 | [Control Loop Design](documentation/design/control-loop.md)                        | Telemetry and setpoint phases of each period      |
+| [Arm Composition and Console](documentation/design/arm-console.md)                 | Wiring the arm and driving it from a terminal     |
 | [Documentation Templates](documentation/templates/)                                | Starting points for new documents                 |
 | [Performance Optimization Guide](documentation/performance-optimization/README.md) | Embedded performance techniques and cycle budgets |
 | [AI Agent Instructions](CLAUDE.md)                                                 | Development guidelines, patterns and constraints  |

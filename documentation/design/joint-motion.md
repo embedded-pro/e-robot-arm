@@ -2,7 +2,7 @@
 title: "Joint Motion Design"
 type: design
 status: draft
-version: 0.2.0
+version: 0.3.0
 component: "motion"
 date: 2026-11-12
 ---
@@ -12,7 +12,7 @@ date: 2026-11-12
 | Title     | Joint Motion Design |
 | Type      | design              |
 | Status    | draft               |
-| Version   | 0.2.0               |
+| Version   | 0.3.0               |
 | Component | motion              |
 | Date      | 2026-11-12          |
 
@@ -33,8 +33,8 @@ date: 2026-11-12
 
 **Is NOT responsible for:**
 
-- Position limits, faults and silence: the safety supervisor in front of the joint bus guards those, and a
-  setpoint it refuses aborts the move.
+- Guarding setpoints, faults and silence: the safety supervisor in front of the joint bus does, and a setpoint
+  set it refuses aborts the move. Joint motion only refuses a target outside the position limits up front.
 - Requesting telemetry: the arm's control loop paces the requests.
 - Paths through waypoints, Cartesian moves, jerk limits and dynamics: planned with the arm model.
 
@@ -52,7 +52,9 @@ Every other joint is then re-planned to take exactly that duration, at its own a
 its cruise speed. A joint that does not move stays where it is. All joints therefore start and stop at the same
 instants, and no joint exceeds its limits.
 
-A move is refused if a target is not finite or another move is still running.
+A move is refused if a target is not finite, lies outside its joint's position limits, or another move is still
+running. Each joint moves monotonically from its start to its target, so a target within the limits keeps the
+whole move within them; the safety supervisor still checks every setpoint set.
 
 ### Part B — Streaming
 
@@ -86,11 +88,12 @@ move by request stops the streaming the same way; the joints hold the last posit
 
 ## Data Model
 
-| Entity       | Field            | Type / Unit     | Range | Notes                          |
-|--------------|------------------|-----------------|-------|--------------------------------|
-| Joint limits | maximum speed    | radians/second  | > 0   | One per joint                  |
-| Joint limits | max acceleration | radians/second² | > 0   | One per joint                  |
-| Motion       | control period   | duration        | > 0   | Time between two setpoint sets |
+| Entity       | Field            | Type / Unit     | Range         | Notes                                    |
+|--------------|------------------|-----------------|---------------|------------------------------------------|
+| Joint limits | position         | radians         | lower < upper | One range per joint, as the supervisor's |
+| Joint limits | maximum speed    | radians/second  | > 0           | One per joint                            |
+| Joint limits | max acceleration | radians/second² | > 0           | One per joint                            |
+| Motion       | control period   | duration        | > 0           | Time between two setpoint sets           |
 
 ---
 

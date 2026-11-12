@@ -7,14 +7,6 @@
 
 namespace arm
 {
-    struct JointLimit
-    {
-        foc::Radians lower;
-        foc::Radians upper;
-    };
-
-    using JointLimits = std::array<JointLimit, jointCount>;
-
     class SafetySupervisor
         : public JointBus
     {

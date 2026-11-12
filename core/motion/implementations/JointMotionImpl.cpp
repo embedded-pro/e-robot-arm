@@ -19,8 +19,9 @@ namespace arm
         }
     }
 
-    JointMotionImpl::JointMotionImpl(JointBus& bus, const JointMotionLimits& limits, infra::Duration period)
+    JointMotionImpl::JointMotionImpl(JointBus& bus, const JointLimits& positionLimits, const JointMotionLimits& limits, infra::Duration period)
         : bus(bus)
+        , positionLimits(positionLimits)
         , limits(limits)
         , period(period)
     {
@@ -30,7 +31,7 @@ namespace arm
 
     bool JointMotionImpl::MoveTo(const JointPositions& newTarget)
     {
-        if (Moving() || !std::ranges::all_of(newTarget, Finite))
+        if (Moving() || !std::ranges::all_of(newTarget, Finite) || !WithinLimits(positionLimits, newTarget))
             return false;
 
         target = newTarget;

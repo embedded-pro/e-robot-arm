@@ -13,7 +13,7 @@ namespace arm
         : public JointMotion
     {
     public:
-        JointMotionImpl(JointBus& bus, const JointMotionLimits& limits, infra::Duration period);
+        JointMotionImpl(JointBus& bus, const JointLimits& positionLimits, const JointMotionLimits& limits, infra::Duration period);
 
         bool MoveTo(const JointPositions& target) override;
         void Abort() override;
@@ -26,6 +26,7 @@ namespace arm
         void Finish();
 
         JointBus& bus;
+        JointLimits positionLimits;
         JointMotionLimits limits;
         infra::Duration period;
         JointMovePlan plan;

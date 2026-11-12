@@ -16,6 +16,23 @@ namespace arm
     using JointNodeIds = std::array<uint16_t, jointCount>;
     using JointPositions = std::array<foc::Radians, jointCount>;
 
+    struct JointLimit
+    {
+        foc::Radians lower;
+        foc::Radians upper;
+    };
+
+    using JointLimits = std::array<JointLimit, jointCount>;
+
+    inline bool WithinLimits(const JointLimits& limits, const JointPositions& positions)
+    {
+        for (std::size_t joint = 0; joint != jointCount; ++joint)
+            if (!(limits[joint].lower <= positions[joint] && positions[joint] <= limits[joint].upper))
+                return false;
+
+        return true;
+    }
+
     struct JointReading
     {
         foc::Radians position{ 0.0f };

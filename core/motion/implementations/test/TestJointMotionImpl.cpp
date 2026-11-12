@@ -22,6 +22,14 @@ namespace
         MOCK_METHOD(void, OnMoveAborted, (), (override));
     };
 
+    arm::JointLimits PositionLimits()
+    {
+        arm::JointLimits limits{};
+        for (auto& limit : limits)
+            limit = { foc::Radians{ -2.0f }, foc::Radians{ 2.0f } };
+        return limits;
+    }
+
     arm::JointMotionLimits UniformLimits()
     {
         arm::JointMotionLimits limits{};
@@ -69,7 +77,7 @@ namespace
 
         StrictMock<arm::JointBusMock> bus;
         std::array<arm::JointReading, arm::jointCount> readings{};
-        arm::JointMotionImpl motion{ bus, UniformLimits(), 100ms };
+        arm::JointMotionImpl motion{ bus, PositionLimits(), UniformLimits(), 100ms };
         StrictMock<JointMotionObserverMock> observer{ motion };
         std::vector<arm::JointPositions> sent;
     };
@@ -114,6 +122,14 @@ TEST_F(JointMotionImplTest, starts_from_the_latest_reported_positions)
 TEST_F(JointMotionImplTest, refuses_a_target_that_is_not_finite)
 {
     EXPECT_FALSE(motion.MoveTo(Target(std::numeric_limits<float>::infinity())));
+
+    EXPECT_FALSE(motion.Moving());
+    Step(10);
+}
+
+TEST_F(JointMotionImplTest, refuses_a_target_outside_the_joint_limits)
+{
+    EXPECT_FALSE(motion.MoveTo(Target(2.01f)));
 
     EXPECT_FALSE(motion.Moving());
     Step(10);
