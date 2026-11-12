@@ -17,23 +17,40 @@ request as the work it describes. The tracking issue is
 | Console           | `tools/arm_console/` | [arm-console.md](design/arm-console.md)   |
 | Arm scenarios     | `integration_tests/` | [requirements](requirements/arm/arm.yaml) |
 
+## Order of work
+
+The simulator comes first: phase 8a starts the roadmap, and every later phase brings its own simulator panel.
+
+| Step | Issues                                                                                                                     | Phase  | Scope                                                                                                               |
+|------|----------------------------------------------------------------------------------------------------------------------------|--------|---------------------------------------------------------------------------------------------------------------------|
+| 1    | [#28](https://github.com/embedded-pro/e-robot-arm/issues/28)                                                               | 8a     | Simulator foundation: professional Qt shell, lit and shadowed 3-D arm, joint table, status, safety controls, scopes |
+| 2    | [#17](https://github.com/embedded-pro/e-robot-arm/issues/17)                                                               | 1      | Ready for hardware                                                                                                  |
+| 3    | [#18](https://github.com/embedded-pro/e-robot-arm/issues/18), [#29](https://github.com/embedded-pro/e-robot-arm/issues/29) | 2 + 8b | Configurable arm and its panels                                                                                     |
+| 4    | [#19](https://github.com/embedded-pro/e-robot-arm/issues/19), [#30](https://github.com/embedded-pro/e-robot-arm/issues/30) | 3 + 8c | Arm model and real geometry in the 3-D view                                                                         |
+| 5    | [#23](https://github.com/embedded-pro/e-robot-arm/issues/23), [#31](https://github.com/embedded-pro/e-robot-arm/issues/31) | 7 + 8d | Virtual e-foc motors with per-joint motors, tuning views, real arm in the simulator                                 |
+| 6    | [#20](https://github.com/embedded-pro/e-robot-arm/issues/20)                                                               | 4      | Motion                                                                                                              |
+| 7    | [#21](https://github.com/embedded-pro/e-robot-arm/issues/21)                                                               | 5      | Arm controllers and the setpoint contract                                                                           |
+| 8    | [#22](https://github.com/embedded-pro/e-robot-arm/issues/22)                                                               | 6      | Safety                                                                                                              |
+| 9    | [#25](https://github.com/embedded-pro/e-robot-arm/issues/25)                                                               | 9      | Hardware and deployment                                                                                             |
+
 ## Phases
 
-| Phase | Issue                                                        | Scope                                                                                                                                                     | Depends on |
-|-------|--------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|------------|
-| 1     | [#17](https://github.com/embedded-pro/e-robot-arm/issues/17) | Ready for hardware: a command reaches all joints or none, joint ↔ motor transmission, start-up lifecycle, stale telemetry and overruns, scaffold clean-up | —          |
-| 2     | [#18](https://github.com/embedded-pro/e-robot-arm/issues/18) | Configurable arm: arm profile, motor controller and motor per joint applied over CAN, arm-controller registry with enable, disable and switch             | 1          |
-| 3     | [#19](https://github.com/embedded-pro/e-robot-arm/issues/19) | Arm model: geometry, forward and inverse kinematics, Jacobian, dynamics from robotics-toolbox                                                             | 2          |
-| 4     | [#20](https://github.com/embedded-pro/e-robot-arm/issues/20) | Motion: S-curve, replacing a running move, waypoint paths, Cartesian moves, jogging, teach points                                                         | 2, 3       |
-| 5     | [#21](https://github.com/embedded-pro/e-robot-arm/issues/21) | Arm controllers and the setpoint contract: combined setpoints in e-foc-protocol and e-foc, controller catalogue from robotics-toolbox                     | 2, 3       |
-| 6     | [#22](https://github.com/embedded-pro/e-robot-arm/issues/22) | Safety: speed, acceleration and torque limits, following error, collision detection, workspace, watchdog, hardware stop                                   | 3, 5       |
-| 7     | [#23](https://github.com/embedded-pro/e-robot-arm/issues/23) | Simulation with e-foc virtual motors: selectable motor characteristics per joint, coupling to arm dynamics, CI job                                        | 1, 2, 3    |
-| 8     | [#24](https://github.com/embedded-pro/e-robot-arm/issues/24) | Qt simulator on ui-cpp: 3-D arm, scopes, forms to choose arm controllers, motor controllers and motors                                                    | 2, 3, (7)  |
-| 9     | [#25](https://github.com/embedded-pro/e-robot-arm/issues/25) | Hardware and deployment: bring-up and homing, real-time on the PC, MCU port                                                                               | 1, 2, 6    |
+| Phase | Issue                                                        | Scope                                                                                                                                                                                                                                                                                                                                                                       | Depends on                          |
+|-------|--------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------|
+| 1     | [#17](https://github.com/embedded-pro/e-robot-arm/issues/17) | Ready for hardware: a command reaches all joints or none, joint ↔ motor transmission, start-up lifecycle, stale telemetry and overruns, scaffold clean-up                                                                                                                                                                                                                   | —                                   |
+| 2     | [#18](https://github.com/embedded-pro/e-robot-arm/issues/18) | Configurable arm: arm profile, motor controller and motor per joint applied over CAN, arm-controller registry with enable, disable and switch                                                                                                                                                                                                                               | 1                                   |
+| 3     | [#19](https://github.com/embedded-pro/e-robot-arm/issues/19) | Arm model: geometry, forward and inverse kinematics, Jacobian, dynamics from robotics-toolbox                                                                                                                                                                                                                                                                               | 2                                   |
+| 4     | [#20](https://github.com/embedded-pro/e-robot-arm/issues/20) | Motion: S-curve, replacing a running move, waypoint paths, Cartesian moves, jogging, teach points                                                                                                                                                                                                                                                                           | 2, 3                                |
+| 5     | [#21](https://github.com/embedded-pro/e-robot-arm/issues/21) | Arm controllers and the setpoint contract: combined setpoints in e-foc-protocol and e-foc, controller catalogue from robotics-toolbox                                                                                                                                                                                                                                       | 2, 3                                |
+| 6     | [#22](https://github.com/embedded-pro/e-robot-arm/issues/22) | Safety: speed, acceleration and torque limits, following error, collision detection, workspace, watchdog, hardware stop                                                                                                                                                                                                                                                     | 3, 5                                |
+| 7     | [#23](https://github.com/embedded-pro/e-robot-arm/issues/23) | Simulation with e-foc virtual motors: selectable motor characteristics per joint, coupling to arm dynamics, CI job                                                                                                                                                                                                                                                          | 1, 2, 3                             |
+| 8     | [#24](https://github.com/embedded-pro/e-robot-arm/issues/24) | Qt simulator: 8a foundation ([#28](https://github.com/embedded-pro/e-robot-arm/issues/28)), 8b configuration panels ([#29](https://github.com/embedded-pro/e-robot-arm/issues/29)), 8c real geometry and jog ([#30](https://github.com/embedded-pro/e-robot-arm/issues/30)), 8d virtual and real arm, tuning ([#31](https://github.com/embedded-pro/e-robot-arm/issues/31)) | 8a: none; 8b: 2; 8c: 3, 4; 8d: 7, 9 |
+| 9     | [#25](https://github.com/embedded-pro/e-robot-arm/issues/25) | Hardware and deployment: bring-up and homing, real-time on the PC, MCU port                                                                                                                                                                                                                                                                                                 | 1, 2, 6                             |
 
 ```mermaid
 flowchart LR
-    P1[1 Ready for hardware] --> P2[2 Configurable arm]
+    P8a[8a Simulator foundation] --> P1[1 Ready for hardware]
+    P1 --> P2[2 Configurable arm]
     P2 --> P3[3 Arm model]
     P2 --> P4[4 Motion]
     P3 --> P4
@@ -43,9 +60,12 @@ flowchart LR
     P5 --> P6
     P1 --> P7[7 Virtual motors]
     P3 --> P7
-    P2 --> P8[8 Qt simulator]
-    P3 --> P8
-    P7 -.-> P8
+    P8a --> P8b[8b Configuration panels]
+    P2 --> P8b
+    P8a --> P8c[8c Geometry and jog]
+    P3 --> P8c
+    P8a --> P8d[8d Virtual and real arm]
+    P7 --> P8d
     P6 --> P9[9 Hardware]
 ```
 
@@ -69,10 +89,11 @@ The architecture is described in [system.md](architecture/system.md#configurabil
 
 ## Decisions waiting for input
 
-| Decision                                                    | Phase | Recommendation                                                          |
-|-------------------------------------------------------------|-------|-------------------------------------------------------------------------|
-| How a command is kept from reaching only some joints        | 1     | The joint bus holds one pending command until the burst drains          |
-| The arm's geometry, gear ratios and mass properties         | 1, 3  | A generic six-joint arm with a spherical wrist until real numbers exist |
-| Profile file format                                         | 2     | A format already in the dev container's libraries                       |
-| Combined and unacknowledged setpoints in e-foc-protocol     | 5     | Combined setpoint first; drop acknowledgements if the bus needs it      |
-| Hardware stop: relay or safe-torque-off, and how it is read | 6     | Decided with the bring-up hardware                                      |
+| Decision                                                    | Phase | Recommendation                                                                                       |
+|-------------------------------------------------------------|-------|------------------------------------------------------------------------------------------------------|
+| How a command is kept from reaching only some joints        | 1     | The joint bus holds one pending command until the burst drains                                       |
+| The arm's geometry, gear ratios and mass properties         | 1, 3  | A generic six-joint arm with a spherical wrist until real numbers exist                              |
+| Profile file format                                         | 2     | A format already in the dev container's libraries                                                    |
+| Combined and unacknowledged setpoints in e-foc-protocol     | 5     | Combined setpoint first; drop acknowledgements if the bus needs it                                   |
+| Hardware stop: relay or safe-torque-off, and how it is read | 6     | Decided with the bring-up hardware                                                                   |
+| 3-D rendering of the simulator                              | 8a    | Decided: Qt Quick 3D (PBR, image-based lighting, soft shadows, SSAO); ui-cpp for the rest of the GUI |

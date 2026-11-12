@@ -62,7 +62,7 @@ Read its `AGENTS.md` before writing UI code.
 
   | Need                                           | Primitive                                                                           |
   |------------------------------------------------|-------------------------------------------------------------------------------------|
-  | 3-D arm, ghost arm, tool trail, picking        | `ui::stage` (`StageView`, `SceneGraph`, `Transform3::FromDh`, STL import)           |
+  | 3-D arm, ghost arm, tool trail, picking        | Qt Quick 3D scene (the `qt-3d-gui` skill); `ui::stage` only in headless tests       |
   | Live joint traces, triggered on a trip         | `ui::scope` (`ScopeCore`, `RingBuffer`, `Trigger`)                                  |
   | Plots (step responses, tracking error)         | `ui::charts` (`ChartCore`, linear and log axes)                                     |
   | Forms: parameters, choices, toggles, read-outs | `ui::model` (`FormSpec`, `FieldSpec`, `FormModel`), shown by `ui::shell` `FormView` |
