@@ -12,10 +12,15 @@ namespace arm_host
         return names[command.index()];
     }
 
+    std::string_view MisconfigurationText(arm::MisconfigurationReason reason)
+    {
+        return reason == arm::MisconfigurationReason::differs ? "reads back different" : "could not be configured";
+    }
+
     std::string_view StateName(arm::ArmState state)
     {
-        static constexpr std::array<std::string_view, 10> names{ "unpowered", "checking contracts", "contracts incompatible", "waiting for calibration", "ready",
-            "enabling", "enabled", "moving", "disabling", "tripped" };
+        static constexpr std::array<std::string_view, 12> names{ "unpowered", "checking contracts", "contracts incompatible", "waiting for calibration",
+            "configuring motor controllers", "misconfigured", "ready", "enabling", "enabled", "moving", "disabling", "tripped" };
 
         return names[static_cast<std::size_t>(state)];
     }

@@ -54,6 +54,8 @@ namespace simulator
                 case targetFailed:
                     return { LogLevel::fault, "Target switch failed: " + Text(event.reason) };
                 case stateChanged:
+                    if (event.joint != arm_host::noJoint)
+                        return { LogLevel::fault, "Arm " + Text(arm_host::StateName(event.state)) + ": " + Joint(event.joint) + " " + Text(event.reason) };
                     return { LogLevel::info, "Arm " + Text(arm_host::StateName(event.state)) };
                 case controllerApplied:
                     return { LogLevel::info, Joint(event.joint) + " controller applied" };

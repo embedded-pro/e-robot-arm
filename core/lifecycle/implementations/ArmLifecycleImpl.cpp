@@ -1,5 +1,6 @@
 #include "core/lifecycle/implementations/ArmLifecycleImpl.hpp"
 #include "services/fsm/StateMachineDefinition.hpp"
+#include <algorithm>
 
 namespace arm
 {
@@ -42,6 +43,7 @@ namespace arm
         return { {
             Machine::Row<Unpowered, lifecycle::BringUp, Checking>(nullptr, queryContracts),
             Machine::Row<Incompatible, lifecycle::BringUp, Checking>(nullptr, queryContracts),
+            Machine::Row<lifecycle::Misconfigured, lifecycle::BringUp, Checking>(nullptr, queryContracts),
 
             Machine::Row<Unpowered, ContractsResolved, WaitingForCalibration>(compatible),
             Machine::Row<Unpowered, ContractsResolved, lifecycle::Incompatible>(incompatible),
@@ -50,15 +52,40 @@ namespace arm
             Machine::Row<lifecycle::Incompatible, ContractsResolved, WaitingForCalibration>(compatible),
             Machine::Row<WaitingForCalibration, ContractsResolved, lifecycle::Incompatible>(incompatible),
             Machine::Row<Ready, ContractsResolved, lifecycle::Incompatible>(incompatible),
+            Machine::Row<Configuring, ContractsResolved, lifecycle::Incompatible>(incompatible),
+            Machine::Row<lifecycle::Misconfigured, ContractsResolved, lifecycle::Incompatible>(incompatible),
 
             Machine::Row<Checking, Failed, Unpowered>([](ArmLifecycleImpl&, const Checking&, const Failed& event)
                 {
                     return event.command == JointCommand::queryContracts;
                 }),
 
-            Machine::Row<WaitingForCalibration, Observed, Ready>([](ArmLifecycleImpl&, const WaitingForCalibration&, const Observed& event)
+            Machine::Row<WaitingForCalibration, Observed, Ready>([](ArmLifecycleImpl& self, const WaitingForCalibration&, const Observed& event)
+                {
+                    return event.allCalibrated && !self.HasControllers();
+                }),
+            Machine::Row<WaitingForCalibration, Observed, Configuring>([](ArmLifecycleImpl&, const WaitingForCalibration&, const Observed& event)
                 {
                     return event.allCalibrated;
+                },
+                [](ArmLifecycleImpl& self, WaitingForCalibration&, const Observed&)
+                {
+                    self.StartConfiguring();
+                    return Configuring{};
+                }),
+            Machine::Row<Configuring, Observed, WaitingForCalibration>([](ArmLifecycleImpl&, const Configuring&, const Observed& event)
+                {
+                    return !event.allCalibrated;
+                }),
+            Machine::InternalRow<Configuring, Observed>([](ArmLifecycleImpl& self, Configuring&, const Observed&)
+                {
+                    self.ConfigureNext();
+                }),
+            Machine::Row<Configuring, Configured, Ready>(),
+            Machine::Row<Configuring, lifecycle::Misconfigure, lifecycle::Misconfigured>(nullptr, [](ArmLifecycleImpl& self, Configuring&, const lifecycle::Misconfigure& event)
+                {
+                    self.misconfiguration = event.misconfiguration;
+                    return lifecycle::Misconfigured{};
                 }),
             Machine::Row<Ready, Observed, Enabled>([](ArmLifecycleImpl&, const Ready&, const Observed& event)
                 {
@@ -143,7 +170,9 @@ namespace arm
             .Allow<Unpowered, Checking, WaitingForCalibration, lifecycle::Incompatible, Tripped>()
             .Allow<Checking, WaitingForCalibration, lifecycle::Incompatible, Unpowered, Tripped>()
             .Allow<lifecycle::Incompatible, Checking, WaitingForCalibration, Tripped>()
-            .Allow<WaitingForCalibration, Ready, lifecycle::Incompatible, Tripped>()
+            .Allow<WaitingForCalibration, Ready, Configuring, lifecycle::Incompatible, Tripped>()
+            .Allow<Configuring, Ready, lifecycle::Misconfigured, WaitingForCalibration, lifecycle::Incompatible, Tripped>()
+            .Allow<lifecycle::Misconfigured, Checking, lifecycle::Incompatible, Tripped>()
             .Allow<Ready, Enabled, WaitingForCalibration, Enabling, lifecycle::Incompatible, Tripped>()
             .Allow<Enabling, Ready, Enabled, Tripped>()
             .Allow<Enabled, Ready, Moving, Disabling, Tripped>()
@@ -152,12 +181,16 @@ namespace arm
             .Allow<Tripped, WaitingForCalibration>();
     }
 
-    ArmLifecycleImpl::ArmLifecycleImpl(SafetySupervisor& safety, JointMotion& motion, can::FocMotorMode enableMode)
+    ArmLifecycleImpl::ArmLifecycleImpl(SafetySupervisor& safety, JointMotion& motion, JointConfigurator& configurator, can::FocMotorMode enableMode,
+        const JointControllers& controllers)
         : JointBusObserver(safety)
         , JointMotionObserver(motion)
+        , JointConfiguratorObserver(configurator)
         , safety(safety)
         , motion(motion)
+        , configurator(configurator)
         , enableMode(enableMode)
+        , controllers(controllers)
         , fsm(*this, services::Validated<ArmLifecycleImpl>())
     {
         fsm.Start<Unpowered>();
@@ -191,6 +224,13 @@ namespace arm
     ArmState ArmLifecycleImpl::State() const
     {
         return static_cast<ArmState>(fsm.CurrentState().index());
+    }
+
+    std::optional<Misconfiguration> ArmLifecycleImpl::MisconfiguredJoint() const
+    {
+        if (fsm.Is<lifecycle::Misconfigured>())
+            return misconfiguration;
+        return std::nullopt;
     }
 
     void ArmLifecycleImpl::Step()
@@ -231,6 +271,37 @@ namespace arm
     void ArmLifecycleImpl::OnMoveAborted()
     {
         fsm.Dispatch(MoveFinished{});
+    }
+
+    void ArmLifecycleImpl::OnApplied(std::size_t joint)
+    {
+        if (!fsm.Is<Configuring>() || configuringJoint != joint)
+            return;
+
+        if (!configurator.Read(joint))
+            Misconfigure(MisconfigurationReason::failed);
+    }
+
+    void ArmLifecycleImpl::OnRead(std::size_t joint, const ControllerReading& reading)
+    {
+        if (!fsm.Is<Configuring>() || configuringJoint != joint)
+            return;
+
+        if (Compare(*controllers[joint], reading.settings).Any())
+        {
+            Misconfigure(MisconfigurationReason::differs);
+            return;
+        }
+
+        configuringJoint.reset();
+        nextJoint = joint + 1;
+        ConfigureNext();
+    }
+
+    void ArmLifecycleImpl::OnConfigurationFailed(std::size_t joint, ConfigurationFailure)
+    {
+        if (fsm.Is<Configuring>() && configuringJoint == joint)
+            Misconfigure(MisconfigurationReason::failed);
     }
 
     ArmLifecycleImpl::StateReporter::StateReporter(ArmLifecycleImpl& lifecycle, Machine& machine)
@@ -289,5 +360,45 @@ namespace arm
     {
         if (!safety.Stop())
             fsm.Dispatch(Failed{ JointCommand::stop });
+    }
+
+    bool ArmLifecycleImpl::HasControllers() const
+    {
+        return std::ranges::any_of(controllers, [](const std::optional<ControllerSettings>& controller)
+            {
+                return controller.has_value();
+            });
+    }
+
+    void ArmLifecycleImpl::StartConfiguring()
+    {
+        nextJoint = 0;
+        configuringJoint.reset();
+    }
+
+    void ArmLifecycleImpl::ConfigureNext()
+    {
+        if (configuringJoint.has_value() || configurator.Busy())
+            return;
+
+        while (nextJoint != jointCount && !controllers[nextJoint].has_value())
+            ++nextJoint;
+
+        if (nextJoint == jointCount)
+        {
+            fsm.Dispatch(Configured{});
+            return;
+        }
+
+        configuringJoint = nextJoint;
+        if (!configurator.Apply(nextJoint, *controllers[nextJoint]))
+            Misconfigure(MisconfigurationReason::failed);
+    }
+
+    void ArmLifecycleImpl::Misconfigure(MisconfigurationReason reason)
+    {
+        const auto joint = *configuringJoint;
+        configuringJoint.reset();
+        fsm.Dispatch(lifecycle::Misconfigure{ { joint, reason } });
     }
 }

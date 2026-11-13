@@ -15,6 +15,7 @@ request as the work it describes. The tracking issue is
 | Control loop       | `core/control_loop/`       | [control-loop.md](design/control-loop.md)             |
 | Arm lifecycle      | `core/lifecycle/`          | [arm-lifecycle.md](design/arm-lifecycle.md)           |
 | Joint configurator | `core/joint_configurator/` | [joint-configurator.md](design/joint-configurator.md) |
+| Arm profile        | `core/arm_profile/`        | [arm-profile.md](design/arm-profile.md)               |
 | Arm composition    | `core/arm/`                | [arm-console.md](design/arm-console.md)               |
 | Console            | `tools/arm_console/`       | [arm-console.md](design/arm-console.md)               |
 | Simulated arm      | `tools/simulated_arm/`     | [simulator.md](design/simulator.md)                   |

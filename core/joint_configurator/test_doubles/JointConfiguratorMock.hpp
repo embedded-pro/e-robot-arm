@@ -6,6 +6,15 @@
 
 namespace arm
 {
+    class JointConfiguratorMock
+        : public JointConfigurator
+    {
+    public:
+        MOCK_METHOD(bool, Apply, (std::size_t joint, const ControllerSettings& settings), (override));
+        MOCK_METHOD(bool, Read, (std::size_t joint), (override));
+        MOCK_METHOD(bool, Busy, (), (const, override));
+    };
+
     class JointConfiguratorObserverMock
         : public JointConfiguratorObserver
     {

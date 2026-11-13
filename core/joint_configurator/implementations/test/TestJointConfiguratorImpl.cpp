@@ -164,3 +164,38 @@ TEST_F(JointConfiguratorImplTest, a_request_left_unanswered_fails_the_operation_
     EXPECT_CALL(bus, QueryAlgorithms(joint)).WillOnce(Return(true));
     EXPECT_TRUE(configurator.Read(joint));
 }
+
+TEST_F(JointConfiguratorImplTest, the_lifecycle_may_configure_while_it_brings_the_arm_up)
+{
+    state = arm::ArmState::configuring;
+    EXPECT_CALL(bus, QueryAlgorithms(joint)).WillOnce(Return(true));
+    EXPECT_TRUE(configurator.Read(joint));
+}
+
+TEST_F(JointConfiguratorImplTest, every_observer_hears_the_finished_joint_even_when_one_starts_the_next)
+{
+    StrictMock<arm::JointConfiguratorObserverMock> second{ configurator };
+    bool started{ false };
+    const auto startNext = [this, &started](std::size_t)
+    {
+        if (!started)
+        {
+            started = true;
+            EXPECT_TRUE(configurator.Apply(joint + 1, settings));
+        }
+    };
+
+    ExpectAndAnswerSelections();
+    EXPECT_TRUE(configurator.Apply(joint, settings));
+    AnswerAlgorithms(joint, {});
+    AnswerAlgorithms(joint, {});
+    EXPECT_CALL(bus, SetParameter(joint, _, _)).Times(arm::gainCount).WillRepeatedly(Return(true));
+    AnswerAlgorithms(joint, {});
+    for (std::size_t gain = 0; gain + 1 != arm::gainCount; ++gain)
+        AnswerParameter(joint, arm::gainParameters[gain], settings.gains[gain]);
+
+    EXPECT_CALL(bus, SelectAlgorithm(joint + 1, can::FocControlLoop::current, _)).WillOnce(Return(true));
+    EXPECT_CALL(observer, OnApplied(joint)).WillOnce(Invoke(startNext));
+    EXPECT_CALL(second, OnApplied(joint)).WillOnce(Invoke(startNext));
+    AnswerParameter(joint, arm::gainParameters.back(), settings.gains.back());
+}

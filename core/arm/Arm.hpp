@@ -35,8 +35,8 @@ namespace arm
         JointBusImpl jointBus;
         SafetySupervisorImpl safety;
         JointMotionImpl motion;
-        ArmLifecycleImpl lifecycle;
         JointConfiguratorImpl configurator;
+        ArmLifecycleImpl lifecycle;
         ControlLoopImpl loop;
     };
 }

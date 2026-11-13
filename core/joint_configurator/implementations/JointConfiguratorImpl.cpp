@@ -88,7 +88,8 @@ namespace arm
 
     bool JointConfiguratorImpl::Start(Operation newOperation, std::size_t newJoint)
     {
-        if (operation.has_value() || newJoint >= jointCount || lifecycle.State() != ArmState::ready)
+        const auto state = lifecycle.State();
+        if (operation.has_value() || newJoint >= jointCount || (state != ArmState::ready && state != ArmState::configuring))
             return false;
 
         operation = newOperation;
@@ -163,30 +164,33 @@ namespace arm
     void JointConfiguratorImpl::Finish()
     {
         const auto finished = *operation;
+        const auto finishedJoint = joint;
+        const auto finishedReading = reading;
         operation.reset();
         retryTimer.Cancel();
         timeoutTimer.Cancel();
 
         if (finished == Operation::apply)
-            NotifyObservers([this](auto& observer)
+            NotifyObservers([finishedJoint](auto& observer)
                 {
-                    observer.OnApplied(joint);
+                    observer.OnApplied(finishedJoint);
                 });
         else
-            NotifyObservers([this](auto& observer)
+            NotifyObservers([finishedJoint, &finishedReading](auto& observer)
                 {
-                    observer.OnRead(joint, reading);
+                    observer.OnRead(finishedJoint, finishedReading);
                 });
     }
 
     void JointConfiguratorImpl::Fail(ConfigurationFailure failure)
     {
+        const auto failedJoint = joint;
         operation.reset();
         retryTimer.Cancel();
         timeoutTimer.Cancel();
-        NotifyObservers([this, failure](auto& observer)
+        NotifyObservers([failedJoint, failure](auto& observer)
             {
-                observer.OnConfigurationFailed(joint, failure);
+                observer.OnConfigurationFailed(failedJoint, failure);
             });
     }
 }

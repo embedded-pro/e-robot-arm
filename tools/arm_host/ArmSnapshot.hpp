@@ -22,6 +22,7 @@ namespace arm_host
         bool tripped{ false };
         bool moving{ false };
         arm::ArmState state{ arm::ArmState::unpowered };
+        std::optional<arm::Misconfiguration> misconfiguration{};
         uint32_t overruns{ 0 };
     };
 

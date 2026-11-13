@@ -2,7 +2,7 @@
 title: "System Architecture"
 type: architecture
 status: draft
-version: 0.10.0
+version: 0.11.0
 component: "system"
 date: 2026-11-12
 ---
@@ -12,7 +12,7 @@ date: 2026-11-12
 | Title     | System Architecture |
 | Type      | architecture        |
 | Status    | draft               |
-| Version   | 0.10.0              |
+| Version   | 0.11.0              |
 | Component | system              |
 | Date      | 2026-11-12          |
 
@@ -70,8 +70,8 @@ flowchart LR
 | safety             | Guards the joint bus: limits, contract gate, emergency stop on a fault or silence; later speed, torque, collision                                                                  | exists; phase 6                                 |
 | motion             | Motion generators: synchronised moves today; S-curve, waypoints, Cartesian, jog                                                                                                    | exists; phase 4                                 |
 | control loop       | The fixed control period: telemetry requests, then the setpoint step half a period later                                                                                           | exists; phase 1                                 |
-| lifecycle          | Start-up order: contracts, calibration, configuration, homing, enable; trip and re-arm                                                                                             | exists; phase 2, homing                         |
-| arm profile        | The single description of an arm: per joint node, transmission, limits, motor controller, motor; arm geometry and controllers                                                      | phase 2                                         |
+| lifecycle          | Start-up order: contracts, calibration, configuration, homing, enable; trip and re-arm                                                                                             | exists, configuration included; homing later    |
+| arm profile        | The single description of an arm: per joint node, transmission, limits, motor controller, motor; arm geometry and controllers                                                      | exists (JSON, motor controller); phase 2, motor |
 | joint configurator | Applies and verifies each joint's motor controller (algorithms, gains) and motor model over CAN                                                                                    | exists (motor controller); phase 2, motor model |
 | arm controllers    | Registry and selector: controllers enabled, disabled and switched at run time, bumpless                                                                                            | phase 2, catalogue in 5                         |
 | arm model          | Kinematics and dynamics of the six joints, the tool frame and the base mount                                                                                                       | phase 3                                         |

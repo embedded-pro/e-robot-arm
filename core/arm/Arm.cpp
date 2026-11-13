@@ -6,8 +6,8 @@ namespace arm
         : jointBus(client, config.nodes, config.transmissions, config.missedRequestsBeforeSilent, config.controlPeriod * config.commandTimeoutPeriods)
         , safety(jointBus, config.positionLimits)
         , motion(safety, config.positionLimits, config.motionLimits, config.controlPeriod)
-        , lifecycle(safety, motion, config.enableMode)
         , configurator(safety, lifecycle)
+        , lifecycle(safety, motion, configurator, config.enableMode, config.controllers)
         , loop(safety, config.controlPeriod, [this]()
               {
                   motion.Step();

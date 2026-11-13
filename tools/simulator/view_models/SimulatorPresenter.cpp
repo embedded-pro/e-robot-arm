@@ -85,6 +85,14 @@ namespace simulator
             return text;
         }
 
+        std::string Misconfigured(const arm_host::ArmSnapshot& snapshot)
+        {
+            if (!snapshot.misconfiguration.has_value())
+                return "Misconfigured";
+            return std::format("Misconfigured: {} {}", jointLabels[snapshot.misconfiguration->joint],
+                arm_host::MisconfigurationText(snapshot.misconfiguration->reason));
+        }
+
         std::pair<std::string, ui::theme::StatusLevel> Stage(const arm_host::ArmSnapshot& snapshot)
         {
             using ui::theme::StatusLevel;
@@ -102,6 +110,10 @@ namespace simulator
                     return { "Contracts incompatible", StatusLevel::Fault };
                 case waitingForCalibration:
                     return { WaitingForCalibration(snapshot), StatusLevel::Warning };
+                case configuring:
+                    return { "Configuring motor controllers…", StatusLevel::Neutral };
+                case misconfigured:
+                    return { Misconfigured(snapshot), StatusLevel::Fault };
                 case ready:
                     return { "Ready", StatusLevel::Neutral };
                 case enabling:

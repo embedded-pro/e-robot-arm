@@ -29,6 +29,11 @@ TEST_F(EventLogTest, describes_events_in_plain_language_with_joints_from_one)
     EXPECT_EQ("Start refused: tripped", simulator::Describe({ .kind = ArmEventKind::refused, .commandName = "start", .reason = "tripped" }, start).message);
     EXPECT_EQ(simulator::LogLevel::fault, simulator::Describe({ .kind = ArmEventKind::jointSilent, .joint = 0 }, start).level);
     EXPECT_EQ(simulator::LogLevel::warning, simulator::Describe({ .kind = ArmEventKind::moveAborted }, start).level);
+
+    const auto misconfigured = simulator::Describe(
+        { .kind = ArmEventKind::stateChanged, .reason = "reads back different", .joint = 4, .state = arm::ArmState::misconfigured }, start);
+    EXPECT_EQ("Arm misconfigured: Joint 5 reads back different", misconfigured.message);
+    EXPECT_EQ(simulator::LogLevel::fault, misconfigured.level);
 }
 
 TEST_F(EventLogTest, keeps_the_newest_lines_up_to_its_capacity)

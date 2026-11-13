@@ -63,6 +63,11 @@ namespace simulation
         return settings;
     }
 
+    void SimulatedJoint::IgnoreParameter(can::FocParameter parameter)
+    {
+        node.ignored = parameter;
+    }
+
     SimulatedJoint::Node::Node(can::FocMotorCategoryServer& server, infra::Duration timeConstant)
         : can::FocMotorCategoryServerObserver(server)
         , server(server)
@@ -182,7 +187,8 @@ namespace simulation
 
     void SimulatedJoint::Node::OnSetParameter(can::FocParameter parameter, float value, const infra::Function<void(can::FocParameterValue)>& onDone)
     {
-        parameters[static_cast<std::size_t>(parameter)] = value;
+        if (ignored != parameter)
+            parameters[static_cast<std::size_t>(parameter)] = value;
         onDone(can::FocParameterValue{ value, false });
     }
 

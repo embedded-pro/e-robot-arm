@@ -8,6 +8,7 @@
 #include "tools/simulated_arm/VirtualCanBus.hpp"
 #include <array>
 #include <cstdint>
+#include <optional>
 
 namespace simulation
 {
@@ -28,6 +29,7 @@ namespace simulation
         foc::Radians Target() const;
         uint32_t EmergencyStops() const;
         arm::ControllerSettings Controller() const;
+        void IgnoreParameter(can::FocParameter parameter);
 
     private:
         class Node
@@ -72,6 +74,7 @@ namespace simulation
             uint32_t emergencyStops{ 0 };
             can::FocAlgorithms algorithms{};
             std::array<float, 256> parameters{};
+            std::optional<can::FocParameter> ignored;
             can::FocMotorCategoryServer& server;
             infra::Duration timeConstant;
             infra::TimePoint lastUpdate{ infra::Now() };

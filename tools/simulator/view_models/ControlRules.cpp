@@ -83,6 +83,7 @@ namespace simulator
             {
                 case unpowered:
                 case incompatible:
+                case misconfigured:
                     return Enabled();
                 case checking:
                     return Disabled("Checking contracts");
@@ -109,6 +110,10 @@ namespace simulator
                     return Disabled("Checking contracts");
                 case waitingForCalibration:
                     return Disabled("Waiting for calibration");
+                case configuring:
+                    return Disabled("Configuring motor controllers");
+                case misconfigured:
+                    return Disabled("Misconfigured: bring the arm up again");
                 case enabling:
                     return Disabled("Enabling");
                 case disabling:

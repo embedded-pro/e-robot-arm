@@ -3,7 +3,9 @@
 
 #include "core/joint_bus/interfaces/JointBus.hpp"
 #include "infra/util/Observer.hpp"
+#include <cstddef>
 #include <cstdint>
+#include <optional>
 
 namespace arm
 {
@@ -13,12 +15,28 @@ namespace arm
         checking,
         incompatible,
         waitingForCalibration,
+        configuring,
+        misconfigured,
         ready,
         enabling,
         enabled,
         moving,
         disabling,
         tripped
+    };
+
+    enum class MisconfigurationReason : uint8_t
+    {
+        failed,
+        differs
+    };
+
+    struct Misconfiguration
+    {
+        std::size_t joint;
+        MisconfigurationReason reason;
+
+        bool operator==(const Misconfiguration& other) const = default;
     };
 
     class ArmLifecycle;
@@ -49,6 +67,7 @@ namespace arm
         virtual bool Rearm() = 0;
         virtual bool MoveTo(const JointPositions& target) = 0;
         virtual ArmState State() const = 0;
+        virtual std::optional<Misconfiguration> MisconfiguredJoint() const = 0;
 
     protected:
         ~ArmLifecycle() = default;

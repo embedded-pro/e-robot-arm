@@ -76,7 +76,8 @@ control loop and reads one command per line from standard input:
 
 `bringup`, `enable`, `disable`, `rearm` and `move` go through the arm's lifecycle; `contracts`, `mode`, `start`,
 `stop`, `clear` and `estop` reach the joints directly, for debugging, and the lifecycle follows where they leave the
-arm. Every command prints whether it was accepted. Events print as they happen: each lifecycle state (`arm: ready`),
+arm. Every command prints whether it was accepted. Events print as they happen: each lifecycle state (`arm: ready`, or
+`arm: misconfigured (joint 5 reads back different)` naming the joint),
 the contract outcome, a joint that faulted or went silent, a move done or aborted. An unknown command or a malformed one prints a usage line and
 sends nothing.
 
@@ -133,7 +134,7 @@ sequenceDiagram
     participant A as Arm (supervisor, motion, loop)
     U->>C: bringup
     C->>A: bring up
-    A-->>C: arm: checking contracts, waiting for calibration, ready
+    A-->>C: arm: checking contracts, waiting for calibration, configuring motor controllers, ready
     U->>C: enable
     C->>A: enable
     A-->>C: arm: enabling, enabled
