@@ -1,3 +1,4 @@
+#include "core/joint_configurator/test_doubles/JointConfiguratorMock.hpp"
 #include "core/lifecycle/implementations/ArmLifecycleImpl.hpp"
 #include "core/lifecycle/test_doubles/ArmLifecycleMock.hpp"
 #include "core/motion/test_doubles/JointMotionMock.hpp"
@@ -13,7 +14,8 @@ namespace
         : public Test
     {
     public:
-        ArmLifecycleImplTest()
+        explicit ArmLifecycleImplTest(const arm::JointControllers& controllers = {})
+            : controllers(controllers)
         {
             EXPECT_CALL(observer, OnStateChanged(_)).Times(AnyNumber());
             EXPECT_CALL(safety, Reading(_)).WillRepeatedly(Invoke([this](std::size_t joint) -> const arm::JointReading&
@@ -97,7 +99,9 @@ namespace
         std::array<arm::JointReading, arm::jointCount> readings{};
         StrictMock<arm::SafetySupervisorMock> safety;
         StrictMock<arm::JointMotionMock> motion;
-        arm::ArmLifecycleImpl lifecycle{ safety, motion, can::FocMotorMode::speed };
+        StrictMock<arm::JointConfiguratorMock> configurator;
+        arm::JointControllers controllers;
+        arm::ArmLifecycleImpl lifecycle{ safety, motion, configurator, can::FocMotorMode::speed, controllers };
         StrictMock<arm::ArmLifecycleObserverMock> observer{ lifecycle };
         arm::JointPositions target{};
     };
@@ -312,4 +316,146 @@ TEST_F(ArmLifecycleImplTest, rearm_needs_the_safety_supervisor_and_then_waits_fo
 
     Observe(can::FocMotorState::ready);
     EXPECT_EQ(ArmState::ready, lifecycle.State());
+}
+
+namespace
+{
+    arm::ControllerSettings Settings(float speedBandwidth)
+    {
+        arm::ControllerSettings settings{};
+        settings.position = can::FocPositionAlgorithm::lqr;
+        settings[arm::Gain::speedBandwidth] = speedBandwidth;
+        return settings;
+    }
+
+    arm::JointControllers TwoConfiguredJoints()
+    {
+        arm::JointControllers controllers{};
+        controllers[1] = Settings(100.0f);
+        controllers[4] = Settings(140.0f);
+        return controllers;
+    }
+
+    class ArmLifecycleConfiguringTest
+        : public ArmLifecycleImplTest
+    {
+    public:
+        ArmLifecycleConfiguringTest()
+            : ArmLifecycleImplTest(TwoConfiguredJoints())
+        {
+            EXPECT_CALL(configurator, Busy()).WillRepeatedly(Return(false));
+        }
+
+        void BringToConfiguring()
+        {
+            EXPECT_CALL(safety, QueryContracts()).WillOnce(Return(true));
+            EXPECT_TRUE(lifecycle.BringUp());
+            ResolveContracts(can::ContractCompatibility::compatible);
+            Observe(can::FocMotorState::ready);
+            ASSERT_EQ(ArmState::configuring, lifecycle.State());
+        }
+
+        void Applied(std::size_t joint)
+        {
+            configurator.NotifyObservers([joint](auto& observer)
+                {
+                    observer.OnApplied(joint);
+                });
+        }
+
+        void ReadBack(std::size_t joint, const arm::ControllerSettings& settings)
+        {
+            configurator.NotifyObservers([joint, &settings](auto& observer)
+                {
+                    observer.OnRead(joint, arm::ControllerReading{ can::FocMotorMode::position, settings });
+                });
+        }
+
+        void ConfigureJoint(std::size_t joint)
+        {
+            EXPECT_CALL(configurator, Read(joint)).WillOnce(Return(true));
+            Applied(joint);
+        }
+    };
+}
+
+TEST_F(ArmLifecycleConfiguringTest, after_calibration_applies_and_verifies_each_configured_joint_before_it_is_ready)
+{
+    BringToConfiguring();
+
+    EXPECT_CALL(configurator, Apply(1, _)).WillOnce(Return(true));
+    lifecycle.Step();
+    ConfigureJoint(1);
+
+    EXPECT_CALL(configurator, Apply(4, _)).WillOnce(Invoke([](std::size_t, const arm::ControllerSettings& settings)
+        {
+            EXPECT_NEAR(140.0f, settings[arm::Gain::speedBandwidth], 1.0e-6f);
+            return true;
+        }));
+    ReadBack(1, Settings(100.0f));
+    EXPECT_EQ(ArmState::configuring, lifecycle.State());
+    EXPECT_FALSE(lifecycle.Enable());
+
+    ConfigureJoint(4);
+    EXPECT_CALL(observer, OnStateChanged(ArmState::ready));
+    ReadBack(4, Settings(140.0f));
+    EXPECT_EQ(ArmState::ready, lifecycle.State());
+}
+
+TEST_F(ArmLifecycleConfiguringTest, a_read_back_that_differs_stops_the_bring_up_and_names_the_joint)
+{
+    BringToConfiguring();
+    EXPECT_CALL(configurator, Apply(1, _)).WillOnce(Return(true));
+    lifecycle.Step();
+    ConfigureJoint(1);
+
+    ReadBack(1, Settings(90.0f));
+    EXPECT_EQ(ArmState::misconfigured, lifecycle.State());
+    EXPECT_EQ((arm::Misconfiguration{ 1, arm::MisconfigurationReason::differs }), lifecycle.MisconfiguredJoint());
+    lifecycle.Step();
+    EXPECT_FALSE(lifecycle.Enable());
+
+    EXPECT_CALL(safety, QueryContracts()).WillOnce(Return(true));
+    EXPECT_TRUE(lifecycle.BringUp());
+    EXPECT_EQ(ArmState::checking, lifecycle.State());
+    EXPECT_EQ(std::nullopt, lifecycle.MisconfiguredJoint());
+}
+
+TEST_F(ArmLifecycleConfiguringTest, an_apply_that_fails_or_is_refused_stops_the_bring_up)
+{
+    BringToConfiguring();
+    EXPECT_CALL(configurator, Apply(1, _)).WillOnce(Return(true));
+    lifecycle.Step();
+    configurator.NotifyObservers([](auto& observer)
+        {
+            observer.OnConfigurationFailed(1, arm::ConfigurationFailure::timedOut);
+        });
+    EXPECT_EQ((arm::Misconfiguration{ 1, arm::MisconfigurationReason::failed }), lifecycle.MisconfiguredJoint());
+
+    EXPECT_CALL(safety, QueryContracts()).WillOnce(Return(true));
+    EXPECT_TRUE(lifecycle.BringUp());
+    ResolveContracts(can::ContractCompatibility::compatible);
+    Observe(can::FocMotorState::ready);
+    EXPECT_CALL(configurator, Apply(1, _)).WillOnce(Return(false));
+    lifecycle.Step();
+    EXPECT_EQ((arm::Misconfiguration{ 1, arm::MisconfigurationReason::failed }), lifecycle.MisconfiguredJoint());
+}
+
+TEST_F(ArmLifecycleConfiguringTest, losing_calibration_waits_again_and_ignores_the_late_outcome)
+{
+    BringToConfiguring();
+    EXPECT_CALL(configurator, Apply(1, _)).WillOnce(Return(true));
+    lifecycle.Step();
+
+    Observe(can::FocMotorState::idle);
+    EXPECT_EQ(ArmState::waitingForCalibration, lifecycle.State());
+    Applied(1);
+    ReadBack(1, Settings(90.0f));
+    EXPECT_EQ(ArmState::waitingForCalibration, lifecycle.State());
+
+    Observe(can::FocMotorState::ready);
+    EXPECT_EQ(ArmState::configuring, lifecycle.State());
+    Applied(1);
+    EXPECT_CALL(configurator, Apply(1, _)).WillOnce(Return(true));
+    lifecycle.Step();
 }

@@ -1,4 +1,5 @@
 add_subdirectory(arm)
+add_subdirectory(arm_profile)
 add_subdirectory(control_loop)
 add_subdirectory(joint_bus)
 add_subdirectory(joint_configurator)

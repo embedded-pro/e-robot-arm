@@ -229,3 +229,43 @@ TEST_F(ArmSessionTest, applies_and_reads_a_joint_controller_once_the_arm_is_read
     ASSERT_NE(nullptr, sink.Find(ArmEventKind::controllerRead));
     EXPECT_FALSE(arm::Compare(settings, sink.Find(ArmEventKind::controllerRead)->controller.settings).Any());
 }
+
+namespace
+{
+    arm::ArmConfig ConfigWithController()
+    {
+        auto config = arm_host::test::Config();
+        arm::ControllerSettings settings{};
+        settings[arm::Gain::speedBandwidth] = 120.0f;
+        config.controllers[1] = settings;
+        return config;
+    }
+
+    class ArmSessionConfiguringTest
+        : public testing::Test
+        , public infra::ClockFixture
+    {
+    public:
+        arm_host::ArmTarget target{ arm_host::TargetKind::simulated, "" };
+        simulation::SimulatedArm simulatedArm{ arm_host::test::nodes, 50ms };
+        arm_host::test::RecordingSink sink;
+        arm_host::ArmSession session{ simulatedArm.ArmSide(), ConfigWithController(), target, sink, &simulatedArm };
+    };
+}
+
+TEST_F(ArmSessionConfiguringTest, names_the_joint_whose_motor_controller_reads_back_different)
+{
+    simulatedArm.Joint(1).IgnoreParameter(can::FocParameter::speedBandwidth);
+    session.Execute(1, arm_host::BringUp{});
+    ForwardTime(500ms);
+
+    EXPECT_EQ(arm::ArmState::misconfigured, sink.snapshot.state);
+    EXPECT_EQ((arm::Misconfiguration{ 1, arm::MisconfigurationReason::differs }), sink.snapshot.misconfiguration);
+    const auto event = std::ranges::find_if(sink.events, [](const arm_host::ArmEvent& candidate)
+        {
+            return candidate.kind == ArmEventKind::stateChanged && candidate.state == arm::ArmState::misconfigured;
+        });
+    ASSERT_NE(sink.events.end(), event);
+    EXPECT_EQ(1u, event->joint);
+    EXPECT_EQ("reads back different", event->reason);
+}

@@ -292,6 +292,24 @@ TEST_F(SimulatorPresenterTest, waiting_for_calibration_names_every_joint_not_yet
     EXPECT_EQ(ui::theme::StatusLevel::Warning, presenter.Status().stageLevel);
 }
 
+TEST_F(SimulatorPresenterTest, a_misconfigured_arm_names_the_joint_and_offers_bring_up_again)
+{
+    auto snapshot = simulator::test::Compatible();
+    snapshot.state = arm::ArmState::configuring;
+    presenter.Refresh(snapshot, {});
+    EXPECT_EQ("Configuring motor controllers…", presenter.Status().stage);
+    EXPECT_EQ("Configuring motor controllers", presenter.State(simulator::Control::enable).reason);
+
+    ++snapshot.sequence;
+    snapshot.state = arm::ArmState::misconfigured;
+    snapshot.misconfiguration = arm::Misconfiguration{ 2, arm::MisconfigurationReason::failed };
+    presenter.Refresh(snapshot, {});
+    EXPECT_EQ("Misconfigured: J3 could not be configured", presenter.Status().stage);
+    EXPECT_EQ(ui::theme::StatusLevel::Fault, presenter.Status().stageLevel);
+    EXPECT_TRUE(presenter.State(simulator::Control::bringUp).enabled);
+    EXPECT_EQ("Misconfigured: bring the arm up again", presenter.State(simulator::Control::enable).reason);
+}
+
 TEST_F(SimulatorPresenterTest, a_snapshot_that_stops_changing_is_shown_as_no_data)
 {
     auto snapshot = simulator::test::Running();

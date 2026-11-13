@@ -11,10 +11,11 @@ namespace integration
 
         constexpr arm::JointNodeIds nodes{ 11, 12, 13, 14, 15, 16 };
 
-        arm::ArmConfig Config(const arm::JointTransmissions& transmissions)
+        arm::ArmConfig Config(const arm::JointTransmissions& transmissions, const arm::JointControllers& controllers)
         {
             arm::ArmConfig config{ nodes, 3, {}, {}, 10ms };
             config.transmissions = transmissions;
+            config.controllers = controllers;
             for (auto& limit : config.positionLimits)
                 limit = { foc::Radians{ -std::numbers::pi_v<float> }, foc::Radians{ std::numbers::pi_v<float> } };
             for (auto& limit : config.motionLimits)
@@ -80,9 +81,9 @@ namespace integration
         ++movesAborted;
     }
 
-    ArmFixture::ArmFixture(const arm::JointTransmissions& transmissions)
+    ArmFixture::ArmFixture(const arm::JointTransmissions& transmissions, const arm::JointControllers& controllers)
         : simulatedArm(nodes, infra::Duration{})
-        , arm(client.CategoryClient(), Config(transmissions))
+        , arm(client.CategoryClient(), Config(transmissions, controllers))
     {}
 
     simulation::SimulatedJoint& ArmFixture::Joint(std::size_t number)

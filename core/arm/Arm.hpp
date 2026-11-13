@@ -1,6 +1,7 @@
 #ifndef CORE_ARM_ARM_HPP
 #define CORE_ARM_ARM_HPP
 
+#include "core/arm/ArmConfig.hpp"
 #include "core/control_loop/implementations/ControlLoopImpl.hpp"
 #include "core/joint_bus/implementations/JointBusImpl.hpp"
 #include "core/joint_configurator/implementations/JointConfiguratorImpl.hpp"
@@ -13,18 +14,6 @@
 
 namespace arm
 {
-    struct ArmConfig
-    {
-        JointNodeIds nodes;
-        uint8_t missedRequestsBeforeSilent;
-        JointLimits positionLimits;
-        JointMotionLimits motionLimits;
-        infra::Duration controlPeriod;
-        uint8_t commandTimeoutPeriods{ 3 };
-        JointTransmissions transmissions{};
-        can::FocMotorMode enableMode{ can::FocMotorMode::position };
-    };
-
     class Arm
     {
     public:
@@ -46,8 +35,8 @@ namespace arm
         JointBusImpl jointBus;
         SafetySupervisorImpl safety;
         JointMotionImpl motion;
-        ArmLifecycleImpl lifecycle;
         JointConfiguratorImpl configurator;
+        ArmLifecycleImpl lifecycle;
         ControlLoopImpl loop;
     };
 }

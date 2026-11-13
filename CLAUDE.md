@@ -29,12 +29,15 @@ simulator runs the same core against e-foc virtual motors or the real arm.
     request to all joints, then the setpoint step half a period later.
     Design: `documentation/design/control-loop.md`.
   - `core/lifecycle/` — `arm::ArmLifecycle`: the start-up order (contracts,
-    calibration, enable, move) and trip/re-arm, on EMIL's table state machine; it
+    calibration, motor-controller configuration, enable, move) and trip/re-arm,
+    on EMIL's table state machine; it
     follows the readings, so the single-step commands still work for debugging.
     Design: `documentation/design/arm-lifecycle.md`.
   - `core/joint_configurator/` — `arm::JointConfigurator`: applies and reads one
     joint's motor controller (algorithms and gains) over CAN while the arm is
-    Ready, one request at a time. Design: `documentation/design/joint-configurator.md`.
+    Ready or Configuring, one request at a time. Design: `documentation/design/joint-configurator.md`.
+  - `core/arm_profile/` — reads a JSON arm profile into `ArmConfig` and writes it
+    back, heap-free on EMIL's JSON parser. Design: `documentation/design/arm-profile.md`.
   - `core/arm/` — `arm::Arm`: builds the joint bus, safety supervisor, motion,
     lifecycle, joint configurator and control loop from one `FocMotorCategoryClient` and an
     `ArmConfig`; heap-free.

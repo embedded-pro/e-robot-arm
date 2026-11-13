@@ -77,6 +77,7 @@ namespace arm_host
 
     std::string_view CommandName(const ArmCommand& command);
     std::string_view StateName(arm::ArmState state);
+    std::string_view MisconfigurationText(arm::MisconfigurationReason reason);
 }
 
 #endif

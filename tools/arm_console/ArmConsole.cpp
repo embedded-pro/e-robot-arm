@@ -167,7 +167,10 @@ namespace arm_console
                 output << "target failed: " << event.reason << "\n";
                 break;
             case stateChanged:
-                output << "arm: " << arm_host::StateName(event.state) << "\n";
+                output << "arm: " << arm_host::StateName(event.state);
+                if (event.joint != arm_host::noJoint)
+                    output << " (joint " << event.joint + 1 << " " << event.reason << ")";
+                output << "\n";
                 break;
             case controllerApplied:
                 output << "joint " << event.joint + 1 << " controller applied\n";

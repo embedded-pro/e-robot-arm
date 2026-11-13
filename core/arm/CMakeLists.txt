@@ -17,6 +17,7 @@ target_link_libraries(e_robot_arm.arm PUBLIC
 target_sources(e_robot_arm.arm PRIVATE
     Arm.cpp
     Arm.hpp
+    ArmConfig.hpp
 )
 
 add_subdirectory(test)

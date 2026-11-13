@@ -1,6 +1,7 @@
 #ifndef CORE_LIFECYCLE_IMPLEMENTATIONS_ARM_LIFECYCLE_IMPL_HPP
 #define CORE_LIFECYCLE_IMPLEMENTATIONS_ARM_LIFECYCLE_IMPL_HPP
 
+#include "core/joint_configurator/interfaces/JointConfigurator.hpp"
 #include "core/lifecycle/interfaces/ArmLifecycle.hpp"
 #include "core/motion/interfaces/JointMotion.hpp"
 #include "core/safety/interfaces/SafetySupervisor.hpp"
@@ -28,6 +29,16 @@ namespace arm::lifecycle
     struct WaitingForCalibration
     {
         static constexpr const char* name{ "WaitingForCalibration" };
+    };
+
+    struct Configuring
+    {
+        static constexpr const char* name{ "Configuring" };
+    };
+
+    struct Misconfigured
+    {
+        static constexpr const char* name{ "Misconfigured" };
     };
 
     struct Ready
@@ -60,7 +71,7 @@ namespace arm::lifecycle
         static constexpr const char* name{ "Tripped" };
     };
 
-    using State = std::variant<Unpowered, Checking, Incompatible, WaitingForCalibration, Ready, Enabling, Enabled, Moving, Disabling, Tripped>;
+    using State = std::variant<Unpowered, Checking, Incompatible, WaitingForCalibration, Configuring, Misconfigured, Ready, Enabling, Enabled, Moving, Disabling, Tripped>;
 
     struct BringUp
     {
@@ -79,6 +90,17 @@ namespace arm::lifecycle
         bool allCalibrated;
         bool allRunning;
         bool anyRunning;
+    };
+
+    struct Configured
+    {
+        static constexpr const char* name{ "Configured" };
+    };
+
+    struct Misconfigure
+    {
+        static constexpr const char* name{ "Misconfigure" };
+        Misconfiguration misconfiguration;
     };
 
     struct Enable
@@ -123,7 +145,7 @@ namespace arm::lifecycle
         static constexpr const char* name{ "Rearmed" };
     };
 
-    using Event = std::variant<BringUp, ContractsResolved, Observed, Enable, Disable, MoveStarted, MoveFinished, Delivered, Failed, Trip, Rearmed>;
+    using Event = std::variant<BringUp, ContractsResolved, Observed, Configured, Misconfigure, Enable, Disable, MoveStarted, MoveFinished, Delivered, Failed, Trip, Rearmed>;
 }
 
 namespace arm
@@ -132,16 +154,18 @@ namespace arm
         : public ArmLifecycle
         , private JointBusObserver
         , private JointMotionObserver
+        , private JointConfiguratorObserver
     {
     public:
         using Machine = services::TableStateMachine<lifecycle::State, lifecycle::Event, ArmLifecycleImpl>;
         using Initial = lifecycle::Unpowered;
 
-        static constexpr std::size_t rowCount{ 27 };
+        static constexpr std::size_t rowCount{ 35 };
         static constexpr std::array<Machine::Transition, rowCount> Rows();
         static constexpr Machine::Rules Rules();
 
-        ArmLifecycleImpl(SafetySupervisor& safety, JointMotion& motion, can::FocMotorMode enableMode);
+        ArmLifecycleImpl(SafetySupervisor& safety, JointMotion& motion, JointConfigurator& configurator, can::FocMotorMode enableMode,
+            const JointControllers& controllers);
 
         bool BringUp() override;
         bool Enable() override;
@@ -149,6 +173,7 @@ namespace arm
         bool Rearm() override;
         bool MoveTo(const JointPositions& target) override;
         ArmState State() const override;
+        std::optional<Misconfiguration> MisconfiguredJoint() const override;
 
         void Step();
 
@@ -160,6 +185,9 @@ namespace arm
         void OnCommandFailed(JointCommand command, CommandFailure failure) override;
         void OnMoveDone() override;
         void OnMoveAborted() override;
+        void OnApplied(std::size_t joint) override;
+        void OnRead(std::size_t joint, const ControllerReading& reading) override;
+        void OnConfigurationFailed(std::size_t joint, ConfigurationFailure failure) override;
 
         class StateReporter
             : public services::StateMachineObserver<lifecycle::State, lifecycle::Event>
@@ -179,10 +207,19 @@ namespace arm
         void SelectMode();
         void StartJoints();
         void StopJoints();
+        bool HasControllers() const;
+        void StartConfiguring();
+        void ConfigureNext();
+        void Misconfigure(MisconfigurationReason reason);
 
         SafetySupervisor& safety;
         JointMotion& motion;
+        JointConfigurator& configurator;
         can::FocMotorMode enableMode;
+        JointControllers controllers;
+        std::size_t nextJoint{ 0 };
+        std::optional<std::size_t> configuringJoint;
+        std::optional<Misconfiguration> misconfiguration;
         Machine::WithStorage<4> fsm;
         StateReporter reporter{ *this, fsm };
     };

@@ -2,7 +2,7 @@
 title: "Joint Configurator Design"
 type: design
 status: draft
-version: 0.1.0
+version: 0.2.0
 component: "joint_configurator"
 date: 2026-11-13
 ---
@@ -12,7 +12,7 @@ date: 2026-11-13
 | Title     | Joint Configurator Design |
 | Type      | design                    |
 | Status    | draft                     |
-| Version   | 0.1.0                     |
+| Version   | 0.2.0                     |
 | Component | joint_configurator        |
 | Date      | 2026-11-13                |
 
@@ -30,13 +30,15 @@ date: 2026-11-13
 - Reading one joint's settings back, and comparing them with the settings applied, item by item.
 - Sending one request at a time and waiting for its answer, so a configuration never competes with the control
   loop's bursts for the transmit queue.
-- Refusing to configure unless the arm is Ready: contracts compatible, every joint calibrated, no joint running.
+- Refusing to configure unless the arm is Ready (contracts compatible, every joint calibrated, no joint running) or
+  Configuring, where the lifecycle applies the configured settings ([arm-lifecycle.md](arm-lifecycle.md) Part D).
 
 **Is NOT responsible for:**
 
 - The control mode: enabling the arm selects one mode for all six joints ([arm-lifecycle.md](arm-lifecycle.md)).
 - Motor characteristics, limits and the other e-foc parameters: later parts of phase 2.
-- Storing settings: the arm profile (phase 2) owns them; the configurator only applies and reads.
+- Storing settings: the arm profile owns them ([arm-profile.md](arm-profile.md)); the configurator only applies and
+  reads.
 
 ---
 
@@ -94,17 +96,17 @@ show what was applied next to what the joint reports.
 
 ### Provided
 
-| Interface          | Purpose                                | Contract                                                                         |
-|--------------------|----------------------------------------|----------------------------------------------------------------------------------|
-| Joint configurator | Apply and read one joint's settings    | Refused unless the arm is Ready and no operation runs; one outcome per operation |
-| Comparison         | The items in which two settings differ | Algorithms equal, gains within a relative 10⁻⁴                                   |
+| Interface          | Purpose                                | Contract                                                                                        |
+|--------------------|----------------------------------------|-------------------------------------------------------------------------------------------------|
+| Joint configurator | Apply and read one joint's settings    | Refused unless the arm is Ready or Configuring and no operation runs; one outcome per operation |
+| Comparison         | The items in which two settings differ | Algorithms equal, gains within a relative 10⁻⁴                                                  |
 
 ### Required
 
 | Interface     | Purpose                                                      | Contract                        |
 |---------------|--------------------------------------------------------------|---------------------------------|
 | Joint bus     | Per-joint algorithm and parameter requests and their answers | Through the safety supervisor   |
-| Arm lifecycle | Whether the arm is Ready                                     | Read before an operation starts |
+| Arm lifecycle | Whether the arm is Ready or Configuring                      | Read before an operation starts |
 | Timer         | Retry after a millisecond, give up after 100 ms              | The event loop's timer service  |
 
 ---
@@ -147,7 +149,7 @@ sequenceDiagram
 | Constraint | Value / Description                                                                     |
 |------------|-----------------------------------------------------------------------------------------|
 | Pace       | One request in flight; an apply takes seventeen round trips, about 20 ms on an idle bus |
-| Lifecycle  | Ready only: a running joint is never reconfigured                                       |
+| Lifecycle  | Ready or Configuring only: a running joint is never reconfigured                        |
 | Memory     | No heap; one operation's state at a time                                                |
 
 ---

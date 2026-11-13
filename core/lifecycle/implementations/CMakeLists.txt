@@ -6,6 +6,7 @@ target_include_directories(e_robot_arm.lifecycle.implementations PUBLIC
 )
 
 target_link_libraries(e_robot_arm.lifecycle.implementations PUBLIC
+    e_robot_arm.joint_configurator.interfaces
     e_robot_arm.lifecycle.interfaces
     e_robot_arm.motion.interfaces
     e_robot_arm.safety.interfaces

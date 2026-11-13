@@ -16,6 +16,21 @@ namespace
         return { foc::Radians{ q1 }, foc::Radians{ q2 }, foc::Radians{ q3 }, foc::Radians{ q4 }, foc::Radians{ q5 }, foc::Radians{ q6 } };
     }
 
+    arm::ControllerSettings LqrWithSpeedBandwidth(float bandwidth)
+    {
+        arm::ControllerSettings settings{};
+        settings.position = can::FocPositionAlgorithm::lqr;
+        settings[arm::Gain::speedBandwidth] = bandwidth;
+        return settings;
+    }
+
+    bool ReachedWithin(ArmFixture& fixture, arm::ArmState state, std::int32_t milliseconds)
+    {
+        for (std::int32_t elapsed = 0; elapsed < milliseconds && fixture.arm.Lifecycle().State() != state; elapsed += 10)
+            fixture.ForwardTime(10ms);
+        return fixture.arm.Lifecycle().State() == state;
+    }
+
 }
 
 GIVEN(R"(an arm with six simulated joints on one CAN bus)")
@@ -326,4 +341,46 @@ THEN(R"(reading joint {int} back shall report exactly what was applied)", (std::
 THEN(R"(the configuration shall be refused)")
 {
     EXPECT_FALSE(context.Get<ArmFixture>().lastAccepted);
+}
+
+GIVEN(R"(an arm whose configuration gives joints {int} and {int} LQR position control with a speed bandwidth of {float} radians per second)", (std::int32_t first, std::int32_t second, float bandwidth))
+{
+    arm::JointControllers controllers{};
+    controllers[static_cast<std::size_t>(first - 1)] = LqrWithSpeedBandwidth(bandwidth);
+    controllers[static_cast<std::size_t>(second - 1)] = LqrWithSpeedBandwidth(bandwidth);
+    context.Emplace<ArmFixture>(arm::JointTransmissions{}, controllers);
+}
+
+GIVEN(R"(joint {int} ignores changes to its speed bandwidth)", (std::int32_t joint))
+{
+    context.Get<ArmFixture>().Joint(static_cast<std::size_t>(joint)).IgnoreParameter(can::FocParameter::speedBandwidth);
+}
+
+THEN(R"(the arm shall be ready within {int} ms)", (std::int32_t milliseconds))
+{
+    EXPECT_TRUE(ReachedWithin(context.Get<ArmFixture>(), arm::ArmState::ready, milliseconds));
+}
+
+THEN(R"(joints {int} and {int} shall run LQR position control with a speed bandwidth of {float} radians per second)", (std::int32_t first, std::int32_t second, float bandwidth))
+{
+    auto& fixture = context.Get<ArmFixture>();
+    for (const auto joint : { first, second })
+        EXPECT_FALSE(arm::Compare(LqrWithSpeedBandwidth(bandwidth), fixture.Joint(static_cast<std::size_t>(joint)).Controller()).Any()) << "joint " << joint;
+}
+
+THEN(R"(joint {int} shall keep its default motor controller)", (std::int32_t joint))
+{
+    EXPECT_FALSE(arm::Compare(arm::ControllerSettings{}, context.Get<ArmFixture>().Joint(static_cast<std::size_t>(joint)).Controller()).Any());
+}
+
+THEN(R"(the arm shall be misconfigured within {int} ms, naming joint {int})", (std::int32_t milliseconds, std::int32_t joint))
+{
+    auto& fixture = context.Get<ArmFixture>();
+    EXPECT_TRUE(ReachedWithin(fixture, arm::ArmState::misconfigured, milliseconds));
+    EXPECT_EQ((arm::Misconfiguration{ static_cast<std::size_t>(joint - 1), arm::MisconfigurationReason::differs }), fixture.arm.Lifecycle().MisconfiguredJoint());
+}
+
+THEN(R"(the arm shall refuse to be enabled)")
+{
+    EXPECT_FALSE(context.Get<ArmFixture>().arm.Lifecycle().Enable());
 }

@@ -49,5 +49,20 @@
 - id: REQ-ARM-009
   title: Joint motor-controller configuration
   shall: >
-    The arm shall apply a joint's motor-controller algorithms and gains only while it is ready and no joint is
-    running, and shall read them back from the joint so that what was applied can be confirmed.
+    The arm shall apply a joint's motor-controller algorithms and gains only while every joint is calibrated and no
+    joint is running, and shall read them back from the joint so that what was applied can be confirmed.
+
+- id: REQ-ARM-010
+  title: Arm profile
+  shall: >
+    The arm shall take its configuration, namely its control timing and per joint the node, gear ratio, direction,
+    zero offset, limits and motor controller, from one profile file, shall refuse a profile with an unknown,
+    missing or out-of-range item and name that item, and shall write its configuration to a profile that reads
+    back to the same configuration.
+
+- id: REQ-ARM-011
+  title: Motor controllers applied at bring-up
+  shall: >
+    While bringing itself up, the arm shall apply each joint motor controller its configuration names and confirm
+    it by reading it back before it can be enabled, and shall stop the bring-up and name the joint when one cannot
+    be applied or reads back different.

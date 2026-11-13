@@ -296,7 +296,14 @@ namespace arm_host
 
     void ArmSession::Events::OnStateChanged(arm::ArmState state)
     {
-        session.Emit({ .kind = ArmEventKind::stateChanged, .state = state });
+        const auto misconfiguration = session.arm.Lifecycle().MisconfiguredJoint();
+        if (state == arm::ArmState::misconfigured && misconfiguration.has_value())
+            session.Emit({ .kind = ArmEventKind::stateChanged,
+                .reason = MisconfigurationText(misconfiguration->reason),
+                .joint = misconfiguration->joint,
+                .state = state });
+        else
+            session.Emit({ .kind = ArmEventKind::stateChanged, .state = state });
     }
 
     void ArmSession::Events::OnApplied(std::size_t joint)
@@ -356,6 +363,7 @@ namespace arm_host
         snapshot.tripped = safety.Tripped();
         snapshot.moving = arm.Motion().Moving();
         snapshot.state = arm.Lifecycle().State();
+        snapshot.misconfiguration = arm.Lifecycle().MisconfiguredJoint();
         snapshot.overruns = arm.Loop().OverrunCount();
         sample.commanded = snapshot.commanded.value_or(sample.measured);
 
