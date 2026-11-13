@@ -5,8 +5,6 @@ Libraries with no `main` belong in [`core/`](../core).
 
 ```
 targets/
-├── example_app/                  # Trivial host-only entry point (Accumulator demo)
-│   └── Main.cpp
 └── platform_implementations/
     ├── host/                     # PlatformImpl: stubs + loopback serial (host preset)
     ├── st/                       # PlatformImpl: STM32F429I-DISC1

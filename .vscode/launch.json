@@ -23,11 +23,11 @@
       ]
     },
     {
-      "name": "Example App",
+      "name": "Arm Console (simulated joints)",
       "type": "cppdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/build/host/bin/Debug/e_robot_arm.example_app",
-      "args": [],
+      "program": "${workspaceFolder}/build/host/tools/arm_console/Debug/e-robot-arm-console",
+      "args": ["--bus", "simulated"],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",
       "environment": [],
