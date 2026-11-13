@@ -712,7 +712,7 @@ namespace arm
 
                 for (int32_t digits = 6; digits <= 9; ++digits)
                 {
-                    const auto decimals = static_cast<std::size_t>(std::clamp(digits - 1 - exponent, 0, 9));
+                    const auto decimals = static_cast<std::size_t>(std::clamp<int32_t>(digits - 1 - exponent, 0, 9));
                     const auto rounded = static_cast<double>(static_cast<uint64_t>(magnitude * powersOfTen[decimals] + 0.5)) / powersOfTen[decimals];
                     if (static_cast<float>((value < 0.0f ? -rounded : rounded) / static_cast<double>(scale)) == value)
                         return decimals;
