@@ -5,6 +5,7 @@
 #include "ui/backend/recording/RecordingShell.hpp"
 #include "gmock/gmock.h"
 #include <algorithm>
+#include <tuple>
 
 namespace
 {
@@ -54,55 +55,80 @@ namespace
 
 TEST_F(SimulatorPresenterTest, builds_the_operate_and_move_forms_from_their_specs)
 {
-    EXPECT_EQ(6u, Count(operateView, FormCommandKind::CreateAction));
+    EXPECT_EQ(5u, Count(operateView, FormCommandKind::CreateAction));
     EXPECT_EQ(6u, Count(moveView, FormCommandKind::CreateNumber));
     EXPECT_EQ(2u, Count(moveView, FormCommandKind::CreateAction));
 }
 
 TEST_F(SimulatorPresenterTest, without_a_target_disables_the_operations_and_says_why)
 {
-    EXPECT_FALSE(ActionEnabled(operateView, OperateAction::start));
+    EXPECT_FALSE(ActionEnabled(operateView, OperateAction::bringUp));
     EXPECT_FALSE(ActionEnabled(moveView, MoveAction::move));
-    EXPECT_THAT(presenter.OperateHint(), HasSubstr("Start: Not connected"));
+    EXPECT_THAT(presenter.OperateHint(), HasSubstr("Bring Up: Not connected"));
     EXPECT_THAT(presenter.MoveHint(), HasSubstr("Move: Not connected"));
     EXPECT_EQ("Disconnected", presenter.Status().connection);
 }
 
-TEST_F(SimulatorPresenterTest, enables_the_bring_up_steps_as_the_arm_allows_them)
+TEST_F(SimulatorPresenterTest, enables_each_lifecycle_step_as_the_arm_allows_it)
 {
-    presenter.Refresh(simulator::test::Compatible(), {});
+    presenter.Refresh(simulator::test::Connected(), {});
+    EXPECT_TRUE(ActionEnabled(operateView, OperateAction::bringUp));
+    EXPECT_FALSE(ActionEnabled(operateView, OperateAction::enable));
+    EXPECT_THAT(presenter.OperateHint(), HasSubstr("Enable: Bring the arm up first"));
 
-    EXPECT_TRUE(ActionEnabled(operateView, OperateAction::positionMode));
-    EXPECT_TRUE(ActionEnabled(operateView, OperateAction::start));
-    EXPECT_FALSE(ActionEnabled(operateView, OperateAction::stop));
+    presenter.Refresh(simulator::test::Compatible(), {});
+    EXPECT_FALSE(ActionEnabled(operateView, OperateAction::bringUp));
+    EXPECT_TRUE(ActionEnabled(operateView, OperateAction::enable));
+    EXPECT_FALSE(ActionEnabled(operateView, OperateAction::disable));
     EXPECT_EQ("Contracts: compatible", presenter.Status().contracts);
+
+    presenter.Refresh(simulator::test::Running(), {});
+    EXPECT_FALSE(ActionEnabled(operateView, OperateAction::enable));
+    EXPECT_TRUE(ActionEnabled(operateView, OperateAction::disable));
+    EXPECT_TRUE(ActionEnabled(moveView, MoveAction::move));
 }
 
 TEST_F(SimulatorPresenterTest, an_operation_posts_its_command_and_shows_it_requested_until_answered)
 {
-    EXPECT_CALL(arm, Post(Holds(arm_host::StartJoints{}))).WillOnce(Return(42));
-    Trigger(OperateAction::start);
-    EXPECT_EQ("Start requested…", shell.Statuses().back());
+    EXPECT_CALL(arm, Post(Holds(arm_host::Enable{}))).WillOnce(Return(42));
+    Trigger(OperateAction::enable);
+    EXPECT_EQ("Enable requested…", shell.Statuses().back());
 
-    const std::array events{ arm_host::ArmEvent{ .kind = ArmEventKind::refused, .command = 42, .commandName = "start", .reason = "tripped" } };
+    const std::array events{ arm_host::ArmEvent{ .kind = ArmEventKind::refused, .command = 42, .commandName = "enable", .reason = "tripped" } };
     presenter.Refresh(simulator::test::Compatible(), events);
 
-    EXPECT_EQ("Start refused: tripped", shell.Statuses().back());
+    EXPECT_EQ("Enable refused: tripped", shell.Statuses().back());
     EXPECT_EQ(1u, presenter.Log().Lines().size());
 }
 
 TEST_F(SimulatorPresenterTest, each_operate_action_posts_its_command)
 {
     InSequence order;
-    EXPECT_CALL(arm, Post(Holds(arm_host::CheckContracts{}))).WillOnce(Return(1));
-    EXPECT_CALL(arm, Post(Holds(arm_host::SelectMode{}))).WillOnce(Return(2));
-    EXPECT_CALL(arm, Post(Holds(arm_host::StopJoints{}))).WillOnce(Return(3));
+    EXPECT_CALL(arm, Post(Holds(arm_host::BringUp{}))).WillOnce(Return(1));
+    EXPECT_CALL(arm, Post(Holds(arm_host::Enable{}))).WillOnce(Return(2));
+    EXPECT_CALL(arm, Post(Holds(arm_host::Disable{}))).WillOnce(Return(3));
     EXPECT_CALL(arm, Post(Holds(arm_host::ClearFaults{}))).WillOnce(Return(4));
 
-    Trigger(OperateAction::checkContracts);
-    Trigger(OperateAction::positionMode);
-    Trigger(OperateAction::stop);
+    Trigger(OperateAction::bringUp);
+    Trigger(OperateAction::enable);
+    Trigger(OperateAction::disable);
     Trigger(OperateAction::clearFaults);
+}
+
+TEST_F(SimulatorPresenterTest, a_single_step_posts_its_command_only_while_its_rule_allows_it)
+{
+    EXPECT_FALSE(presenter.SingleStep(simulator::Control::start));
+
+    presenter.Refresh(simulator::test::Compatible(), {});
+    InSequence order;
+    EXPECT_CALL(arm, Post(Holds(arm_host::CheckContracts{}))).WillOnce(Return(1));
+    EXPECT_CALL(arm, Post(Holds(arm_host::SelectMode{}))).WillOnce(Return(2));
+    EXPECT_CALL(arm, Post(Holds(arm_host::StartJoints{}))).WillOnce(Return(3));
+    EXPECT_TRUE(presenter.SingleStep(simulator::Control::checkContracts));
+    EXPECT_TRUE(presenter.SingleStep(simulator::Control::positionMode));
+    EXPECT_TRUE(presenter.SingleStep(simulator::Control::start));
+    EXPECT_FALSE(presenter.SingleStep(simulator::Control::stop));
+    EXPECT_FALSE(presenter.SingleStep(simulator::Control::move));
 }
 
 TEST_F(SimulatorPresenterTest, move_posts_the_six_targets_from_the_form)
@@ -137,6 +163,7 @@ TEST_F(SimulatorPresenterTest, a_trip_names_its_source_in_the_status_and_in_the_
 {
     auto tripped = simulator::test::Running();
     tripped.tripped = true;
+    tripped.state = arm::ArmState::tripped;
     const std::array events{ arm_host::ArmEvent{ .kind = ArmEventKind::tripped, .joint = 2, .fault = can::FocFaultCode::overCurrent } };
     presenter.Refresh(tripped, events);
 
@@ -183,29 +210,73 @@ TEST_F(SimulatorPresenterTest, a_picked_joint_becomes_the_selection)
     EXPECT_EQ(4u, presenter.Scene().Selected());
 }
 
-TEST_F(SimulatorPresenterTest, shows_the_arm_stage_from_the_snapshot)
+TEST_F(SimulatorPresenterTest, shows_the_lifecycle_state_with_its_level)
 {
     EXPECT_EQ("Disconnected", presenter.Status().stage);
 
     presenter.Refresh(simulator::test::Connected(), {});
-    EXPECT_EQ("Contracts unchecked", presenter.Status().stage);
+    EXPECT_EQ("Unpowered", presenter.Status().stage);
 
     presenter.Refresh(simulator::test::Compatible(), {});
     EXPECT_EQ("Ready", presenter.Status().stage);
+    EXPECT_EQ(ui::theme::StatusLevel::Neutral, presenter.Status().stageLevel);
 
     presenter.Refresh(simulator::test::Running(), {});
-    EXPECT_EQ("Running", presenter.Status().stage);
+    EXPECT_EQ("Enabled", presenter.Status().stage);
     EXPECT_EQ(ui::theme::StatusLevel::Ok, presenter.Status().stageLevel);
 
-    auto moving = simulator::test::Running();
-    moving.moving = true;
-    presenter.Refresh(moving, {});
-    EXPECT_EQ("Moving", presenter.Status().stage);
-
-    moving.tripped = true;
-    presenter.Refresh(moving, {});
+    auto tripped = simulator::test::Running();
+    tripped.state = arm::ArmState::tripped;
+    presenter.Refresh(tripped, {});
     EXPECT_EQ("Tripped", presenter.Status().stage);
     EXPECT_EQ(ui::theme::StatusLevel::Fault, presenter.Status().stageLevel);
+}
+
+TEST_F(SimulatorPresenterTest, labels_every_lifecycle_state_with_its_level)
+{
+    using arm::ArmState;
+    using ui::theme::StatusLevel;
+    const std::array<std::tuple<ArmState, std::string_view, StatusLevel>, 6> expected{ {
+        { ArmState::checking, "Checking contracts…", StatusLevel::Neutral },
+        { ArmState::incompatible, "Contracts incompatible", StatusLevel::Fault },
+        { ArmState::enabling, "Enabling…", StatusLevel::Neutral },
+        { ArmState::moving, "Moving", StatusLevel::Ok },
+        { ArmState::disabling, "Disabling…", StatusLevel::Neutral },
+        { ArmState::unpowered, "Unpowered", StatusLevel::Neutral },
+    } };
+
+    for (const auto& [state, label, level] : expected)
+    {
+        auto snapshot = simulator::test::Connected();
+        snapshot.state = state;
+        presenter.Refresh(snapshot, {});
+        EXPECT_EQ(label, presenter.Status().stage);
+        EXPECT_EQ(level, presenter.Status().stageLevel) << label;
+    }
+}
+
+TEST_F(SimulatorPresenterTest, a_single_step_stop_reaches_running_joints_and_other_controls_are_not_single_steps)
+{
+    presenter.Refresh(simulator::test::Running(), {});
+    EXPECT_CALL(arm, Post(Holds(arm_host::StopJoints{}))).WillOnce(Return(1));
+
+    EXPECT_TRUE(presenter.SingleStep(simulator::Control::stop));
+    EXPECT_FALSE(presenter.SingleStep(simulator::Control::move));
+}
+
+TEST_F(SimulatorPresenterTest, waiting_for_calibration_names_every_joint_not_yet_ready)
+{
+    auto waiting = simulator::test::Compatible();
+    waiting.state = arm::ArmState::waitingForCalibration;
+    for (auto& reading : waiting.readings)
+        reading.state = can::FocMotorState::ready;
+    waiting.readings[1].state = can::FocMotorState::idle;
+    waiting.readings[4].state = can::FocMotorState::partialCalibration;
+
+    presenter.Refresh(waiting, {});
+
+    EXPECT_EQ("Waiting for calibration: J2, J5", presenter.Status().stage);
+    EXPECT_EQ(ui::theme::StatusLevel::Warning, presenter.Status().stageLevel);
 }
 
 TEST_F(SimulatorPresenterTest, a_snapshot_that_stops_changing_is_shown_as_no_data)

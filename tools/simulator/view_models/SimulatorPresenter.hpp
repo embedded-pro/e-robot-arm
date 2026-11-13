@@ -32,13 +32,25 @@ namespace simulator
 
     struct OperateAction
     {
-        static constexpr ui::model::ActionId checkContracts{ 0 };
-        static constexpr ui::model::ActionId positionMode{ 1 };
-        static constexpr ui::model::ActionId start{ 2 };
-        static constexpr ui::model::ActionId stop{ 3 };
-        static constexpr ui::model::ActionId clearFaults{ 4 };
-        static constexpr ui::model::ActionId rearm{ 5 };
+        static constexpr ui::model::ActionId bringUp{ 0 };
+        static constexpr ui::model::ActionId enable{ 1 };
+        static constexpr ui::model::ActionId disable{ 2 };
+        static constexpr ui::model::ActionId clearFaults{ 3 };
+        static constexpr ui::model::ActionId rearm{ 4 };
     };
+
+    struct SingleStepItem
+    {
+        Control control;
+        std::string_view label;
+    };
+
+    inline constexpr std::array<SingleStepItem, 4> singleStepItems{ {
+        { Control::checkContracts, "Check &Contracts" },
+        { Control::positionMode, "&Position Mode" },
+        { Control::start, "&Start" },
+        { Control::stop, "S&top" },
+    } };
 
     struct MoveAction
     {
@@ -63,6 +75,7 @@ namespace simulator
         bool InjectFault(std::size_t joint);
         bool SilenceJoint(std::size_t joint);
         bool SelectJoint(int joint);
+        bool SingleStep(Control control);
 
         const ControlState& State(Control control) const;
         const StatusStrip& Status() const;
@@ -106,7 +119,7 @@ namespace simulator
         arm::JointLimits limits;
         Forms forms{ limits };
         arm_host::ArmSnapshot snapshot;
-        std::array<ControlState, 10> states;
+        std::array<ControlState, controlCount> states;
         std::array<JointRow, arm::jointCount> rows;
         StatusStrip status;
         ArmSceneModel scene;

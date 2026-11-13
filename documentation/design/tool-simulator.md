@@ -2,7 +2,7 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.3.0
+version: 0.4.0
 component: "tool-simulator"
 date: 2026-11-12
 ---
@@ -12,7 +12,7 @@ date: 2026-11-12
 | Title     | Simulator Screen Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.3.0                   |
+| Version   | 0.4.0                   |
 | Component | tool-simulator          |
 | Date      | 2026-11-12              |
 
@@ -52,7 +52,7 @@ Layout** restores this one.
 ┌ e-robot-arm Simulator — Simulated joints ────────────────────────────────────────────────────────────┐
 │ File  Arm  Simulation  View  Help                                                                     │
 ├───────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ Target [Simulated joints ▾]  ● Running   Contracts: compatible   Trip: —          ┌────────────────┐ │
+│ Target [Simulated joints ▾]  ● Enabled   Contracts: compatible   Trip: —          ┌────────────────┐ │
 │                                                                                    │ EMERGENCY STOP │ │
 │                                                                                    │      Esc       │ │
 ├──────────────────────────────────────────────────────────────┬─────────────────────┴────────────────┤
@@ -63,9 +63,9 @@ Layout** restores this one.
 │     measured arm, commanded ghost, floor with shadows        │  …  (joints 2–6)                      │
 │                                                              ├──────────────────────────────────────┤
 │                                                              │ Operate                               │
-│   [Front] [Side] [Top] [Iso] [Frame]       camera presets    │  [Check Contracts] [Position Mode]    │
-│                                                              │  [Start] [Stop] [Clear Faults]        │
-│                                                              │  [Re-arm…]                            │
+│   [Front] [Side] [Top] [Iso] [Frame]       camera presets    │  [Bring Up] [Enable] [Disable]        │
+│                                                              │  [Clear Faults]          [Re-arm…]    │
+│                                                              │                                       │
 │                                                              ├──────────────────────────────────────┤
 │                                                              │ Move                                  │
 │                                                              │  J1 [  0.000] rad  …  J6 [ 0.000] rad │
@@ -79,8 +79,10 @@ Layout** restores this one.
   the last trip with its source, and the emergency stop at the far right, apart from every other button.
   - **Connection** reads Connected, Disconnected, or **No data from the arm** (`Warning`) when the snapshot has not
     changed for 30 frames (half a second): a stalled arm thread is never shown as live.
-  - **Arm stage** is derived from the snapshot until the lifecycle exists (phase 1c): Disconnected, Contracts
-    unchecked, Contracts incompatible (`Fault`), Ready, Running (`Ok`), Moving (`Ok`), Tripped (`Fault`).
+  - **Arm state** is the lifecycle's state ([arm-lifecycle.md](arm-lifecycle.md)) as the snapshot reports it:
+    Disconnected and Unpowered (`Neutral`), Checking contracts…, Contracts incompatible (`Fault`), **Waiting for
+    calibration: J2, J5** (`Warning`, naming every joint not yet ready), Ready, Enabling…, Enabled (`Ok`), Moving
+    (`Ok`), Disabling…, Tripped (`Fault`).
 - **Silent joints:** a joint that stopped answering shows **Silent** at `Fault` level, with position and speed as
   "—", until it answers again; its last values are never shown as live.
 - **Real-arm banner:** on the real target a full-width strip under the menu reads **REAL ARM — `<adapter>`** in the
@@ -96,20 +98,22 @@ Every disabled control carries its reason: in a hint under its group, one line p
 tooltip on the status strip's controls. "Connected" means
 the target is built and at least one joint has answered. Joints are numbered 1–6, base first.
 
-| Control          | Enabled when                                                         | Disabled reason shown                                                  | Action                                             |
-|------------------|----------------------------------------------------------------------|------------------------------------------------------------------------|----------------------------------------------------|
-| Emergency stop   | A target is built                                                    | "No target"                                                            | Emergency stop to all joints, ahead of all else    |
-| Check Contracts  | Connected, no move running                                           | "Not connected", "Moving"                                              | Query every joint's contract                       |
-| Position Mode    | Contracts compatible, not tripped, no move running                   | "Contracts not checked", "Contracts incompatible", "Tripped", "Moving" | Select position mode on all joints                 |
-| Start            | Contracts compatible, not tripped                                    | "Contracts not checked", "Contracts incompatible", "Tripped"           | Start all joints                                   |
-| Stop             | Any joint running                                                    | "No joint running"                                                     | Stop all joints                                    |
-| Clear Faults     | Any joint in fault                                                   | "No joint in fault"                                                    | Clear faults on all joints                         |
-| Re-arm…          | Tripped, no joint in fault                                           | "Not tripped", "Joint N in fault: clear it first"                      | Confirmation naming the trip's source, then re-arm |
-| Move target J1–6 | Always editable                                                      | —                                                                      | Validated as typed against the joint limits        |
-| Move             | Every joint running, not tripped, no move running, all targets valid | "Joint N not running", "Tripped", "Moving", "J N outside limits"       | Move to the six targets                            |
-| Abort            | A move running                                                       | "No move running"                                                      | Abort the move                                     |
-| Target selector  | No move running                                                      | "Moving"                                                               | Part C                                             |
+| Control          | Enabled when                                                      | Disabled reason shown                                                                                                            | Action                                                                   |
+|------------------|-------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------|
+| Emergency stop   | A target is built                                                 | "No target"                                                                                                                      | Emergency stop to all joints, ahead of all else                          |
+| Bring Up         | Connected; the arm is Unpowered or its contracts are incompatible | "Not connected", "Checking contracts", "Tripped: re-arm first", "Already brought up"                                             | Lifecycle: check the contracts, wait for calibration                     |
+| Enable           | The arm is Ready                                                  | "Bring the arm up first", "Checking contracts", "Waiting for calibration", "Enabling", "Already enabled", "Disabling", "Tripped" | Lifecycle: select position mode, start the joints                        |
+| Disable          | The arm is Enabled                                                | "Moving: abort first", "Not enabled"                                                                                             | Lifecycle: stop the joints                                               |
+| Clear Faults     | Any joint in fault                                                | "No joint in fault"                                                                                                              | Clear faults on all joints                                               |
+| Re-arm…          | The arm is Tripped, no joint in fault                             | "Not tripped", "Joint N in fault: clear it first"                                                                                | Confirmation naming the trip's source, then re-arm through the lifecycle |
+| Move target J1–6 | Always editable                                                   | —                                                                                                                                | Validated as typed against the joint limits                              |
+| Move             | The arm is Enabled, all targets valid                             | "Not connected", "Tripped", "Moving", "Enable the arm first", "J N outside limits"                                               | Move to the six targets through the lifecycle                            |
+| Abort            | A move running                                                    | "No move running"                                                                                                                | Abort the move                                                           |
+| Target selector  | No move running                                                   | "Moving"                                                                                                                         | Part C                                                                   |
 
+- **Arm → Single Step** holds the joints' own commands for debugging: Check Contracts (connected, no move
+  running), Position Mode and Start (contracts compatible, not tripped), Stop (any joint running). A disabled item
+  shows its reason in the status bar when hovered. The lifecycle follows where they leave the arm.
 - A clicked action shows "requested…" in the status strip within 100 ms and is replaced by the result event.
 - Spin boxes have keyboard tracking off; Enter in a target field does not move — only **Move** or Ctrl+Enter does.
 - Nothing is enabled by a past click: every rule reads the latest snapshot.
@@ -127,12 +131,13 @@ opens a confirmation: "Connect to the real arm on `<adapter>`? Joints start stop
 **Cancel** (default). A failed adapter is logged as a fault with its reason, and the arm returns to the previous
 target.
 
-**Bring up and move.** Check Contracts → Position Mode → Start → set targets → Move. The ghost shows the commanded
-arm while moving; the scope shows the selected joint.
+**Bring up and move.** Bring Up → the arm waits for calibration, naming the joints not ready (calibration is done on
+the node) → Ready → Enable → Enabled → set targets → Move. The ghost shows the commanded arm while moving; the scope
+shows the selected joint. Disable stops the joints and returns the arm to Ready.
 
 **Trip and recover.** On a trip the status strip shows **Tripped — `<source>`** in `Fault`, the joint table marks
 the joint, the log records it, and the scope triggers. Clear Faults, then Re-arm…, whose confirmation names the
-source.
+source. Re-arm returns the arm to Waiting for calibration, then Ready; Enable starts it again.
 
 **Inject a failure** (simulated target only). **Simulation → Inject Fault → Joint N** or **Silence Joint N**.
 
@@ -221,25 +226,20 @@ from the same theme roles. The platform UI font; tabular digits in every numeric
 
 ## State Machine
 
-The Operate group follows the arm's state as the snapshot reports it:
+The Operate group follows the arm's lifecycle ([arm-lifecycle.md](arm-lifecycle.md)) as the snapshot reports it;
+the screen keeps no state of its own. The lifecycle state decides which of its controls are enabled:
 
-```mermaid
-stateDiagram-v2
-    [*] --> Disconnected
-    Disconnected --> Unchecked : joints answer
-    Unchecked --> Compatible : contracts compatible
-    Unchecked --> Incompatible : a contract incompatible
-    Compatible --> Positioned : position mode on all joints
-    Positioned --> Running : start
-    Running --> Moving : move
-    Moving --> Running : move done or aborted
-    Running --> Positioned : stop
-    Compatible --> Tripped : fault or silence
-    Positioned --> Tripped : fault or silence
-    Running --> Tripped : fault or silence
-    Moving --> Tripped : fault or silence
-    Tripped --> Compatible : clear faults, re-arm
-```
+| Lifecycle state                   | Enabled in Operate and Move                              |
+|-----------------------------------|----------------------------------------------------------|
+| Unpowered, Contracts incompatible | Bring Up                                                 |
+| Checking, Waiting for calibration | —                                                        |
+| Ready                             | Enable                                                   |
+| Enabling, Disabling               | —                                                        |
+| Enabled                           | Disable, Move                                            |
+| Moving                            | Abort                                                    |
+| Tripped                           | Clear Faults (a joint in fault), Re-arm… (none in fault) |
+
+The emergency stop is enabled in every state while a target is built.
 
 ---
 
