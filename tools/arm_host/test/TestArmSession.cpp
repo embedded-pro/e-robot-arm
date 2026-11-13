@@ -57,6 +57,7 @@ TEST_F(ArmSessionTest, publishes_the_tool_pose_of_the_measured_joints)
     EXPECT_NEAR(0.02f, sink.snapshot.toolPose.x, 1.0e-4f);
     EXPECT_NEAR(0.71f, sink.snapshot.toolPose.z, 1.0e-4f);
     EXPECT_TRUE(sink.snapshot.singularities.elbow);
+    EXPECT_NEAR(0.0f, sink.snapshot.gravityTorque[1].Value(), 1.0e-4f);
 }
 
 TEST_F(ArmSessionTest, publishes_a_snapshot_and_a_trace_sample_every_control_period)

@@ -28,6 +28,17 @@ namespace
                                 R"( "jointSigns": [ 1, -1, 1, 1, -1, 1 ], "jointOffsetsRad": [ 0, 0.5, 0, 0, 0, -0.25 ],)"
                                 R"( "tool": { "zM": 0.12, "pitchRad": 0.3 }, "base": { "xM": 1, "yawRad": 1.5 } },)" };
 
+    std::string Link(const std::string& mass)
+    {
+        return R"({ "massKg": )" + mass + R"(, "centreM": { "z": 0.1 }, "inertiaKgM2": { "xx": 0.004, "yy": 0.004, "zz": 0.0005, "xy": 0.0001 } })";
+    }
+
+    std::string Mass(const std::string& firstLink, const std::string& payload = R"(, "payload": { "massKg": 0.75, "centreM": { "x": 0.02, "z": 0.04 } })")
+    {
+        return R"( "massProperties": { "links": [ )" + firstLink + ", " + Link("0.9") + ", " + Link("0.8") + ", " + Link("0.3") + ", " + Link("0.25") + ", " +
+               Link("0.1") + " ]" + payload + " },";
+    }
+
     const std::string configuredJoint{ Joint(1,
         R"(, "transmission": { "ratio": 50, "direction": "negative", "offsetRad": -0.125 },)"
         R"( "motorController": { "current": "slidingMode", "speed": "adrc", "position": "lqr", "gains": { "positionBandwidth": 25, "speedErrorWeight": 1.5 } },)"
@@ -89,6 +100,26 @@ TEST_F(ArmProfileTest, reads_every_item_and_fills_in_the_defaults)
     EXPECT_NEAR(0.0064f, config.motors[0]->settings[arm::MotorParameter::fluxLinkage], 1.0e-7f);
     EXPECT_FALSE(config.motors[1].has_value());
     EXPECT_NEAR(arm::ReferenceGeometry().opw.c2, config.geometry.opw.c2, 1.0e-6f);
+    EXPECT_EQ(arm::ReferenceMass().links[2].inertia, config.mass.links[2].inertia);
+    EXPECT_EQ(0.0f, config.mass.payload.mass);
+}
+
+TEST_F(ArmProfileTest, reads_the_mass_properties_of_the_links_and_the_payload)
+{
+    const auto profile = Read(Profile(Joint(1), Mass(Link("1.25"))));
+    ASSERT_TRUE(profile.has_value()) << Problem();
+    const auto& mass = profile->config.mass;
+
+    EXPECT_NEAR(1.25f, mass.links[0].mass, 1.0e-6f);
+    EXPECT_NEAR(0.1f, mass.links[5].mass, 1.0e-6f);
+    EXPECT_EQ((std::array<float, 3>{ 0.0f, 0.0f, 0.1f }), mass.links[3].centre);
+    EXPECT_EQ((std::array<float, 6>{ 0.004f, 0.004f, 0.0005f, 0.0001f, 0.0f, 0.0f }), mass.links[1].inertia);
+    EXPECT_NEAR(0.75f, mass.payload.mass, 1.0e-6f);
+    EXPECT_EQ((std::array<float, 3>{ 0.02f, 0.0f, 0.04f }), mass.payload.centre);
+
+    const auto withoutPayload = Read(Profile(Joint(1), Mass(Link("1"), "")));
+    ASSERT_TRUE(withoutPayload.has_value()) << Problem();
+    EXPECT_EQ(0.0f, withoutPayload->config.mass.payload.mass);
 }
 
 TEST_F(ArmProfileTest, reads_the_geometry_with_its_signs_offsets_tool_and_base)
@@ -110,10 +141,10 @@ TEST_F(ArmProfileTest, reads_the_geometry_with_its_signs_offsets_tool_and_base)
 
 TEST_F(ArmProfileTest, a_written_profile_reads_back_to_the_same_configuration)
 {
-    const auto original = Read(Profile(configuredJoint, geometry));
+    const auto original = Read(Profile(configuredJoint, geometry + Mass(Link("1.25"))));
     ASSERT_TRUE(original.has_value()) << Problem();
 
-    infra::StringOutputStream::WithStorage<8192> stream;
+    infra::StringOutputStream::WithStorage<16384> stream;
     arm::WriteArmProfile(*original, stream);
     const auto& written = stream.Storage();
     const auto copy = Read(std::string{ written.begin(), written.end() });
@@ -153,6 +184,14 @@ TEST_F(ArmProfileTest, a_written_profile_reads_back_to_the_same_configuration)
     EXPECT_EQ(geometryBefore.opw.offsets, geometryAfter.opw.offsets);
     EXPECT_EQ(geometryBefore.tool.pitch, geometryAfter.tool.pitch);
     EXPECT_EQ(geometryBefore.base.x, geometryAfter.base.x);
+    for (std::size_t link = 0; link != arm::jointCount; ++link)
+    {
+        EXPECT_EQ(original->config.mass.links[link].mass, copy->config.mass.links[link].mass);
+        EXPECT_EQ(original->config.mass.links[link].centre, copy->config.mass.links[link].centre);
+        EXPECT_EQ(original->config.mass.links[link].inertia, copy->config.mass.links[link].inertia);
+    }
+    EXPECT_EQ(original->config.mass.payload.mass, copy->config.mass.payload.mass);
+    EXPECT_EQ(original->config.mass.payload.centre, copy->config.mass.payload.centre);
     EXPECT_NE(std::string::npos, std::string(written.begin(), written.end()).find(R"("inertiaGramCm2": 120.5)"));
     EXPECT_NE(std::string::npos, std::string(written.begin(), written.end()).find(R"("fluxLinkageMilliWeber": 6.4)"));
 }
@@ -187,6 +226,15 @@ TEST_F(ArmProfileTest, refuses_a_profile_and_names_the_first_problem)
             "geometry.jointOffsetsRad: must be a list of six" },
         { Profile(Joint(1), R"( "geometry": { "opwMetres": { "a1": 0, "a2": 0, "b": 0, "c1": 0, "c2": 0.2, "c3": 0.2, "c4": 0 }, "tool": { "wM": 1 } },)"),
             "geometry.tool.wM: is not a profile item" },
+        { Profile(Joint(1), R"( "massProperties": { "payload": { "massKg": 1 } },)"), "massProperties.links: is missing" },
+        { Profile(Joint(1), R"( "massProperties": { "links": [ ] },)"), "massProperties.links: must be a list of six" },
+        { Profile(Joint(1), Mass(Link("-1"))), "massProperties.links[0].massKg: must be 0 or above" },
+        { Profile(Joint(1), Mass(R"({ "centreM": { "x": 0 } })")), "massProperties.links[0].massKg: is missing" },
+        { Profile(Joint(1), Mass(R"({ "massKg": 1, "centreM": { "w": 0 } })")), "massProperties.links[0].centreM.w: is not a profile item" },
+        { Profile(Joint(1), Mass(R"({ "massKg": 1, "inertiaKgM2": { "xx": -0.1 } })")), "massProperties.links[0].inertiaKgM2: moments must be 0 or above" },
+        { Profile(Joint(1), Mass(R"({ "massKg": 1, "inertiaKgM2": { "xx": 0.1, "yy": 0.1, "zz": 0.3 } })")),
+            "massProperties.links[0].inertiaKgM2: each sum of two moments must be at least the third" },
+        { Profile(Joint(1), Mass(Link("1"), R"(, "tip": 1)")), "massProperties.tip: is not a profile item" },
         { R"({ "format": "e-robot-arm profile", "version": 2 })", "version: is not a version this reader knows" },
         { R"({ "format": "something else" })", "format: must be \"e-robot-arm profile\"" },
         { R"({ "format": "e-robot-arm profile", "version": 1, "controlPeriodMs": 5 })", "name: is missing" },

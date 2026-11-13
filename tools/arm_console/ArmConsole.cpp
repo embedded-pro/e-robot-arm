@@ -45,7 +45,7 @@ namespace arm_console
         if (command == "load" || command == "save")
             return Profile(command, arguments);
 
-        if (command == "pose" || command == "fk" || command == "ik")
+        if (command == "pose" || command == "fk" || command == "ik" || command == "gravity")
         {
             Kinematics(command, arguments);
             return { Outcome::done };
@@ -124,7 +124,7 @@ namespace arm_console
     {
         const auto snapshot = arm.Snapshot();
         std::array<float, arm::jointCount> values{};
-        const bool wantsValues = command != "pose";
+        const bool wantsValues = command == "fk" || command == "ik";
         for (auto& value : values)
             if (wantsValues && !(arguments >> value))
             {
@@ -141,8 +141,16 @@ namespace arm_console
 
         if (command == "pose")
             return PrintPose(snapshot.toolPose, snapshot.singularities);
+        if (command == "gravity")
+        {
+            output << "gravity torque:";
+            for (const auto& torque : snapshot.gravityTorque)
+                output << std::format(" {:.3f}", torque.Value() > -5.0e-4f && torque.Value() < 5.0e-4f ? 0.0f : torque.Value());
+            output << " N·m\n";
+            return;
+        }
 
-        const arm::ArmModel model{ snapshot.config.geometry, snapshot.config.positionLimits };
+        const arm::ArmModel model{ snapshot.config.geometry, snapshot.config.mass, snapshot.config.positionLimits };
         arm::JointPositions current{};
         for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
             current[joint] = command == "fk" ? foc::Radians{ values[joint] } : snapshot.readings[joint].position;
@@ -227,7 +235,7 @@ namespace arm_console
 
     void ArmConsole::Usage()
     {
-        output << "usage: bringup | enable | disable | move q1 q2 q3 q4 q5 q6 | rearm | contracts | mode torque|speed|position | start | stop | estop | clear | abort | load <file> | save <file> | pose | fk q1..q6 | ik x y z roll pitch yaw | status | quit\n";
+        output << "usage: bringup | enable | disable | move q1 q2 q3 q4 q5 q6 | rearm | contracts | mode torque|speed|position | start | stop | estop | clear | abort | load <file> | save <file> | pose | gravity | fk q1..q6 | ik x y z roll pitch yaw | status | quit\n";
     }
 
     void ArmConsole::Print(const arm_host::ArmEvent& event)

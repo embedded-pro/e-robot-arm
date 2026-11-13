@@ -163,14 +163,18 @@ TEST_F(ArmConsoleTest, a_profile_that_cannot_be_read_is_refused_with_the_reason)
     EXPECT_THAT(Run("load"), HasSubstr("usage:"));
 }
 
-TEST_F(ArmConsoleTest, pose_fk_and_ik_convert_without_moving_the_arm)
+TEST_F(ArmConsoleTest, pose_gravity_fk_and_ik_convert_without_moving_the_arm)
 {
     arm_host::ArmSnapshot snapshot{};
     snapshot.config = arm_host::DefaultArmConfig({ 1, 2, 3, 4, 5, 6 });
     snapshot.toolPose = { 0.02f, 0.0f, 0.71f, 0.0f, 0.0f, 0.0f };
     snapshot.singularities = { true, true, false };
+    snapshot.gravityTorque = { foc::NewtonMeter{ 0.0f }, foc::NewtonMeter{ -7.0157f }, foc::NewtonMeter{ -0.0001f }, foc::NewtonMeter{ 0.0f },
+        foc::NewtonMeter{ 0.25f }, foc::NewtonMeter{ 0.0f } };
     EXPECT_CALL(arm, Snapshot()).WillRepeatedly(Return(snapshot));
 
+    EXPECT_EQ("gravity torque: 0.000 -7.016 0.000 0.000 0.250 0.000 N·m\n", Run("gravity"));
+    EXPECT_THAT(Run("gravity 1"), HasSubstr("usage:"));
     EXPECT_EQ("tool: x 0.020 y 0.000 z 0.710 m, roll 0.000 pitch 0.000 yaw 0.000 rad, near wrist elbow singularity\n", Run("pose"));
     EXPECT_EQ("tool: x 0.580 y 0.000 z 0.150 m, roll 0.000 pitch 1.571 yaw 0.000 rad, near wrist elbow singularity\n", Run("fk 0 1.5707963 0 0 0 0"));
     EXPECT_EQ("tool: x 0.562 y 0.000 z 0.258 m, roll 0.000 pitch 1.571 yaw 0.000 rad\n", Run("fk 0 1.2 0.3 0 0.0707963 0"));

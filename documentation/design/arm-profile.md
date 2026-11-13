@@ -2,7 +2,7 @@
 title: "Arm Profile Design"
 type: design
 status: draft
-version: 0.3.0
+version: 0.4.0
 component: "arm_profile"
 date: 2026-11-13
 ---
@@ -12,7 +12,7 @@ date: 2026-11-13
 | Title     | Arm Profile Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.3.0              |
+| Version   | 0.4.0              |
 | Component | arm_profile        |
 | Date      | 2026-11-13         |
 
@@ -35,7 +35,7 @@ date: 2026-11-13
 - Files: the host tools read and write them and hand the text over.
 - Applying the profile: the arm is built from its configuration, and the lifecycle applies the motor controllers
   while bringing the arm up ([arm-lifecycle.md](arm-lifecycle.md)).
-- Mass properties and arm controllers: later items of the format, as phases 3 to 5 add them.
+- Arm controllers: a later item of the format, as phase 5 adds them.
 
 ---
 
@@ -56,6 +56,7 @@ A profile holds what `ArmConfig` holds:
 | Enable mode              | `enableMode`                 | `torque`, `speed`, `position` | `position`          |
 | Joints                   | `joints`                     | exactly six, in order         | required            |
 | Geometry                 | `geometry`                   | see below                     | the reference arm   |
+| Mass properties          | `massProperties`             | see below                     | the reference arm   |
 
 The geometry is the arm model's ([arm-model.md](arm-model.md) Part A):
 
@@ -66,6 +67,18 @@ The geometry is the arm model's ([arm-model.md](arm-model.md) Part A):
 | Joint offsets | `jointOffsetsRad`                                           | six, rad             | all 0               |
 | Tool          | `tool.xM`, `.yM`, `.zM`, `.rollRad`, `.pitchRad`, `.yawRad` | m, rad               | identity            |
 | Base          | `base`, as `tool`                                           | m, rad               | identity            |
+
+The mass properties are the arm model's ([arm-model.md](arm-model.md) Part F): `links`, a list of six, one per link
+in joint order, and an optional `payload`, relative to the flange. Each of them:
+
+| Item           | JSON key                       | Unit, range                                                 | Default when absent |
+|----------------|--------------------------------|-------------------------------------------------------------|---------------------|
+| Mass           | `massKg`                       | kg, 0 or above                                              | required            |
+| Centre of mass | `centreM.x`, `.y`, `.z`        | m, in the link's frame                                      | 0                   |
+| Moments        | `inertiaKgM2.xx`, `.yy`, `.zz` | kg·m², about the centre; each sum of two at least the third | 0                   |
+| Products       | `inertiaKgM2.xy`, `.xz`, `.yz` | kg·m², tensor elements                                      | 0                   |
+
+Without `payload` the arm carries none.
 
 Each joint:
 
@@ -185,6 +198,7 @@ The example shows one joint; a profile lists six.
 | Config  | controllers | per joint, motor-controller settings    | present or absent  | Absent: the lifecycle leaves the joint alone |
 | Config  | motors      | per joint, preset and motor settings    | present or absent  | Absent: the lifecycle leaves the joint alone |
 | Config  | geometry    | OPW lengths, signs, offsets, tool, base | —                  | The reference arm when absent                |
+| Config  | mass        | six links and a payload                 | Part A             | The reference arm when absent                |
 
 ---
 

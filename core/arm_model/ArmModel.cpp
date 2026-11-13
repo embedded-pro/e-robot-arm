@@ -36,6 +36,61 @@ namespace arm
         {
             return math::Vector3<float>{ rotation.at(0, column), rotation.at(1, column), rotation.at(2, column) };
         }
+
+        math::Vector3<float> Point(const std::array<float, 3>& point)
+        {
+            return math::Vector3<float>{ point[0], point[1], point[2] };
+        }
+
+        math::Matrix3<float> Tensor(const std::array<float, 6>& inertia)
+        {
+            return math::Matrix3<float>{ { inertia[0], inertia[3], inertia[4] }, { inertia[3], inertia[1], inertia[5] }, { inertia[4], inertia[5], inertia[2] } };
+        }
+
+        math::Matrix3<float> ParallelAxis(float mass, const math::Vector3<float>& offset)
+        {
+            const auto outer = offset * offset.Transpose();
+            return (math::Matrix3<float>::Identity() * math::DotProduct(offset, offset) - outer) * mass;
+        }
+
+        dynamics::JointLink<float> WithPayload(dynamics::JointLink<float> link, const MassProperties& payload, float flange)
+        {
+            const auto total = link.mass + payload.mass;
+            if (!(total > 0.0f))
+                return link;
+
+            const auto payloadCentre = Point(payload.centre) + math::Vector3<float>{ 0.0f, 0.0f, flange };
+            const auto centre = (link.jointToCoM * link.mass + payloadCentre * payload.mass) * (1.0f / total);
+            link.inertia = link.inertia + ParallelAxis(link.mass, link.jointToCoM - centre) + Tensor(payload.inertia) + ParallelAxis(payload.mass, payloadCentre - centre);
+            link.mass = total;
+            link.jointToCoM = centre;
+            return link;
+        }
+
+        std::array<dynamics::JointLink<float>, jointCount> Links(const ArmGeometry& geometry, const ArmMass& mass)
+        {
+            const auto& p = geometry.opw;
+            const math::Vector3<float> up{ 0.0f, 0.0f, 1.0f };
+            const math::Vector3<float> side{ 0.0f, 1.0f, 0.0f };
+            const std::array<math::Vector3<float>, jointCount> axes{ up, side, side, up, side, up };
+            const std::array<math::Vector3<float>, jointCount> origins{ math::Vector3<float>{}, math::Vector3<float>{ p.a1, p.b, p.c1 },
+                math::Vector3<float>{ 0.0f, 0.0f, p.c2 }, math::Vector3<float>{ p.a2, 0.0f, p.c3 }, math::Vector3<float>{}, math::Vector3<float>{} };
+
+            std::array<dynamics::JointLink<float>, jointCount> links{};
+            for (std::size_t joint = 0; joint != jointCount; ++joint)
+            {
+                const auto& properties = mass.links[joint];
+                links[joint] = dynamics::JointLink<float>{ properties.mass, Tensor(properties.inertia), axes[joint], origins[joint], Point(properties.centre) };
+            }
+
+            links.back() = WithPayload(links.back(), mass.payload, p.c4);
+            return links;
+        }
+
+        math::Vector3<float> GravityInBase(const math::SE3Transform<float>& base)
+        {
+            return base.rotation.Transpose() * math::Vector3<float>{ 0.0f, 0.0f, -ArmModel::standardGravity };
+        }
     }
 
     math::SE3Transform<float> ToTransform(const Placement& placement)
@@ -58,7 +113,7 @@ namespace arm
         return placement;
     }
 
-    ArmModel::ArmModel(const ArmGeometry& geometry, const JointLimits& limits)
+    ArmModel::ArmModel(const ArmGeometry& geometry, const ArmMass& mass, const JointLimits& limits)
         : geometry(geometry)
         , limits(limits)
         , opw(geometry.opw)
@@ -68,6 +123,7 @@ namespace arm
         , baseInverse(base.Inverse())
         , forearm(math::Sqrt(geometry.opw.a2 * geometry.opw.a2 + geometry.opw.c3 * geometry.opw.c3))
         , forearmAngle(math::Atan2(geometry.opw.a2, geometry.opw.c3))
+        , dynamics(Links(geometry, mass), GravityInBase(base))
     {}
 
     ArmModel::Pose ArmModel::ToolPose(const JointPositions& joints) const
@@ -155,6 +211,51 @@ namespace arm
             }
         }
 
+        return result;
+    }
+
+    JointTorques ArmModel::GravityTorque(const JointPositions& joints) const
+    {
+        return ToJointTorques(dynamics.ComputeGravityTerms(ModelVector(joints)));
+    }
+
+    JointTorques ArmModel::InverseDynamics(const JointPositions& joints, const JointSpeeds& speeds, const JointAccelerations& accelerations) const
+    {
+        JointVector speed{};
+        JointVector acceleration{};
+        for (std::size_t joint = 0; joint != jointCount; ++joint)
+        {
+            const auto sign = static_cast<float>(geometry.opw.signs[joint]);
+            speed.at(joint, 0) = sign * speeds[joint].Value();
+            acceleration.at(joint, 0) = sign * accelerations[joint].Value();
+        }
+
+        return ToJointTorques(dynamics.ComputeInverseDynamics(ModelVector(joints), speed, acceleration));
+    }
+
+    ArmModel::MassMatrix ArmModel::JointMassMatrix(const JointPositions& joints) const
+    {
+        auto matrix = dynamics.ComputeMassMatrix(ModelVector(joints));
+        for (std::size_t row = 0; row != jointCount; ++row)
+            for (std::size_t column = 0; column != jointCount; ++column)
+                matrix.at(row, column) *= static_cast<float>(geometry.opw.signs[row] * geometry.opw.signs[column]);
+        return matrix;
+    }
+
+    ArmModel::JointVector ArmModel::ModelVector(const JointPositions& joints) const
+    {
+        const auto angles = Angles(joints);
+        JointVector vector{};
+        for (std::size_t joint = 0; joint != jointCount; ++joint)
+            vector.at(joint, 0) = angles.theta[joint];
+        return vector;
+    }
+
+    JointTorques ArmModel::ToJointTorques(const JointVector& torques) const
+    {
+        JointTorques result{};
+        for (std::size_t joint = 0; joint != jointCount; ++joint)
+            result[joint] = foc::NewtonMeter{ static_cast<float>(geometry.opw.signs[joint]) * torques.at(joint, 0) };
         return result;
     }
 
