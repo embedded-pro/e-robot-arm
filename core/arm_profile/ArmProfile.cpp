@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <iterator>
 
 namespace arm
 {
@@ -480,14 +481,14 @@ namespace arm
             {
                 return ReadMembers(path, value, [this, &settings](const Path& item, infra::JsonString key, const Value& member)
                     {
-                        const auto* name = std::find_if(gainNames.begin(), gainNames.end(), [&key](const char* gainName)
+                        const auto name = std::find_if(gainNames.begin(), gainNames.end(), [&key](const char* gainName)
                             {
                                 return key == gainName;
                             });
                         if (name == gainNames.end())
                             return Unknown(item);
 
-                        const auto gain = static_cast<std::size_t>(name - gainNames.begin());
+                        const auto gain = static_cast<std::size_t>(std::distance(gainNames.begin(), name));
                         return ReadGain(item, member, gain, settings.gains[gain]);
                     });
             }
