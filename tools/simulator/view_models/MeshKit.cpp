@@ -91,7 +91,7 @@ namespace simulator::mesh
     {
         const auto offset = static_cast<uint32_t>(vertices.size());
         for (const auto& vertex : part.vertices)
-            vertices.push_back({ frame.Apply(vertex.position), Normalised(frame.Rotate(vertex.normal)) });
+            vertices.emplace_back(frame.Apply(vertex.position), Normalised(frame.Rotate(vertex.normal)));
         for (const auto index : part.indices)
             indices.push_back(offset + index);
     }
