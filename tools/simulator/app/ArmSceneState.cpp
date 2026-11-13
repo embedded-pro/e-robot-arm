@@ -95,10 +95,11 @@ namespace simulator
         using ui::backend::qt::ToQt;
         using ui::theme::ColorRole;
 
-        background = ToQt(theme.Get(ColorRole::SceneBackground));
-        const bool dark = background.lightness() < 128;
-        floor = dark ? QColor::fromHslF(0.58f, 0.06f, 0.15f) : ToQt(theme.Get(ColorRole::SceneSurface));
-        grid = dark ? QColor::fromHslF(0.58f, 0.08f, 0.32f) : ToQt(theme.Get(ColorRole::GridMajor));
+        const auto themed = ToQt(theme.Get(ColorRole::SceneBackground));
+        const bool dark = themed.lightness() < 128;
+        background = dark ? QColor::fromHslF(0.6f, 0.12f, 0.30f) : themed;
+        floor = dark ? QColor::fromHslF(0.6f, 0.06f, 0.42f) : ToQt(theme.Get(ColorRole::SceneSurface));
+        grid = dark ? QColor::fromHslF(0.6f, 0.08f, 0.55f) : ToQt(theme.Get(ColorRole::GridMajor));
         accent = ToQt(theme.Get(ColorRole::Accent));
         fault = ToQt(theme.Get(ColorRole::Fault));
         warning = ToQt(theme.Get(ColorRole::Warning));
