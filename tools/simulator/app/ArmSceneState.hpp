@@ -20,8 +20,10 @@ namespace simulator
         QML_ELEMENT
         QML_SINGLETON
 
-        Q_PROPERTY(QVariantList measured READ Measured NOTIFY changed)
-        Q_PROPERTY(QVariantList commanded READ Commanded NOTIFY changed)
+        Q_PROPERTY(QVariantList measuredNodes READ MeasuredNodes NOTIFY changed)
+        Q_PROPERTY(QVariantList commandedNodes READ CommandedNodes NOTIFY changed)
+        Q_PROPERTY(QVariantList parts READ Parts NOTIFY partsChanged)
+        Q_PROPERTY(double extent READ Extent NOTIFY partsChanged)
         Q_PROPERTY(QVariantList levels READ Levels NOTIFY changed)
         Q_PROPERTY(bool ghostVisible READ GhostVisible NOTIFY changed)
         Q_PROPERTY(bool anyFault READ AnyFault NOTIFY changed)
@@ -41,8 +43,10 @@ namespace simulator
         void Update(const ArmSceneModel& model);
         void ApplyTheme(const ui::theme::Theme& theme);
 
-        QVariantList Measured() const;
-        QVariantList Commanded() const;
+        QVariantList MeasuredNodes() const;
+        QVariantList CommandedNodes() const;
+        QVariantList Parts() const;
+        double Extent() const;
         QVariantList Levels() const;
         bool GhostVisible() const;
         bool AnyFault() const;
@@ -59,12 +63,16 @@ namespace simulator
     signals:
         void changed();
         void themeChanged();
+        void partsChanged();
         void jointPicked(int joint);
         void cameraPresetRequested(int preset);
 
     private:
-        QVariantList measured;
-        QVariantList commanded;
+        QVariantList measuredNodes;
+        QVariantList commandedNodes;
+        QVariantList parts;
+        uint32_t partsRevision{ 0 };
+        double extent{ 100.0 };
         QVariantList levels;
         bool ghostVisible{ false };
         bool anyFault{ false };

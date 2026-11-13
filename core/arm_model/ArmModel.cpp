@@ -67,20 +67,30 @@ namespace arm
             return link;
         }
 
+        struct ChainFrame
+        {
+            math::Vector3<float> axis;
+            math::Vector3<float> origin;
+        };
+
+        std::array<ChainFrame, jointCount> Chain(const kinematics::OpwParameters<float>& p)
+        {
+            const math::Vector3<float> up{ 0.0f, 0.0f, 1.0f };
+            const math::Vector3<float> side{ 0.0f, 1.0f, 0.0f };
+            return { ChainFrame{ up, math::Vector3<float>{} }, ChainFrame{ side, math::Vector3<float>{ p.a1, p.b, p.c1 } },
+                ChainFrame{ side, math::Vector3<float>{ 0.0f, 0.0f, p.c2 } }, ChainFrame{ up, math::Vector3<float>{ p.a2, 0.0f, p.c3 } },
+                ChainFrame{ side, math::Vector3<float>{} }, ChainFrame{ up, math::Vector3<float>{} } };
+        }
+
         std::array<dynamics::JointLink<float>, jointCount> Links(const ArmGeometry& geometry, const ArmMass& mass)
         {
             const auto& p = geometry.opw;
-            const math::Vector3<float> up{ 0.0f, 0.0f, 1.0f };
-            const math::Vector3<float> side{ 0.0f, 1.0f, 0.0f };
-            const std::array<math::Vector3<float>, jointCount> axes{ up, side, side, up, side, up };
-            const std::array<math::Vector3<float>, jointCount> origins{ math::Vector3<float>{}, math::Vector3<float>{ p.a1, p.b, p.c1 },
-                math::Vector3<float>{ 0.0f, 0.0f, p.c2 }, math::Vector3<float>{ p.a2, 0.0f, p.c3 }, math::Vector3<float>{}, math::Vector3<float>{} };
-
+            const auto chain = Chain(p);
             std::array<dynamics::JointLink<float>, jointCount> links{};
             for (std::size_t joint = 0; joint != jointCount; ++joint)
             {
                 const auto& properties = mass.links[joint];
-                links[joint] = dynamics::JointLink<float>{ properties.mass, Tensor(properties.inertia), axes[joint], origins[joint], Point(properties.centre) };
+                links[joint] = dynamics::JointLink<float>{ properties.mass, Tensor(properties.inertia), chain[joint].axis, chain[joint].origin, Point(properties.centre) };
             }
 
             links.back() = WithPayload(links.back(), mass.payload, p.c4);
@@ -212,6 +222,20 @@ namespace arm
         }
 
         return result;
+    }
+
+    ArmModel::LinkFrames ArmModel::LinkPoses(const JointPositions& joints) const
+    {
+        const auto angles = Angles(joints);
+        const auto chain = Chain(geometry.opw);
+        LinkFrames frames{};
+        auto pose = base;
+        for (std::size_t joint = 0; joint != jointCount; ++joint)
+        {
+            pose = pose * Pose{ math::RotationAboutAxis(chain[joint].axis, angles.theta[joint]), chain[joint].origin };
+            frames[joint] = pose;
+        }
+        return frames;
     }
 
     JointTorques ArmModel::GravityTorque(const JointPositions& joints) const

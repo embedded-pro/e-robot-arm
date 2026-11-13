@@ -2,7 +2,7 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.9.0
+version: 0.10.0
 component: "tool-simulator"
 date: 2026-11-12
 ---
@@ -12,7 +12,7 @@ date: 2026-11-12
 | Title     | Simulator Screen Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.9.0                   |
+| Version   | 0.10.0                  |
 | Component | tool-simulator          |
 | Date      | 2026-11-12              |
 
@@ -168,23 +168,32 @@ Qt Quick 3D in a `QQuickWidget`, scene in QML, following the `qt-3d-gui` skill:
 - **Lights:** key directional light at 50° elevation, 35° left of the camera, casting shadows at very high
   shadow-map quality, shadow factor 70, soft filter; fill at 0.3 from the right, low; rim at 0.5 from behind, high.
 - **Floor:** 3 m × 3 m matte light grey (roughness 0.9) receiving shadows, with a faint 10 cm grid.
-- **Arm** (generic, phase 8a): primitives in centimetres, Z-up model converted once to Qt's Y-up at the scene root.
+- **Arm** (phase 8c): built from the profile's geometry ([arm-model.md](arm-model.md) Part A), so the arm on
+  screen is the arm the model computes. The arm model gives each link's frame at the measured (or commanded)
+  joints, base mount included ([arm-model.md](arm-model.md) Part B); each link is drawn in its frame from
+  primitives sized by the OPW lengths, with a thickness $R$ of 15 % of the longer of c2 and c3, between 1.5 and
+  8 cm:
 
-  | Part                 | Shape                    | Size (cm)         | Material                               |
-  |----------------------|--------------------------|-------------------|----------------------------------------|
-  | Base                 | Cylinder                 | Ø 24 × 12         | Cast: #3c4043, metal 0.6, rough 0.55   |
-  | Joint housings       | Cylinder across the axis | Ø 12–16 × 14      | Anodised: #9aa0a6, metal 1, rough 0.35 |
-  | Shoulder column (J1) | Box                      | 14 × 14 × 28      | Painted: theme accent, rough 0.4       |
-  | Upper arm (J2–J3)    | Box                      | 10 × 10 × 45      | Painted                                |
-  | Forearm (J3–J5)      | Box                      | 9 × 9 × 40        | Painted                                |
-  | Wrist and flange     | Cylinder                 | Ø 8 × 10, Ø 6 × 3 | Anodised, rubber cap #1d1f21           |
+  | Link            | Parts, in the link's frame                                           | Material                               |
+  |-----------------|----------------------------------------------------------------------|----------------------------------------|
+  | Base (fixed)    | Pedestal, Ø 2.8R, from the floor to a quarter of c1                  | Cast: #3c4043, metal 0.6, rough 0.55   |
+  | 1, turret       | Housing on J1; column Ø 2R up to c1; arm (a1, b) across to J2        | Painted: theme accent, rough 0.4       |
+  | 2, upper arm    | Housing across J2; beam 1.2R square from J2 to J3 (c2)               | Anodised housing, painted beam         |
+  | 3, forearm      | Housing across J3; beam 1.1R square over a2, then up c3 to the wrist | Anodised housing, painted beam         |
+  | 4, wrist roll   | Cylinder Ø 1.1R along J4, ending at the wrist centre                 | Anodised: #9aa0a6, metal 1, rough 0.35 |
+  | 5, wrist pitch  | Housing Ø 1R across J5 at the wrist centre                           | Anodised                               |
+  | 6, flange       | Stem Ø 0.6R from the wrist centre to the flange (c4), disc Ø 1.2R    | Rubber cap #1d1f21                     |
 
-  Joint axes: J1 vertical; J2, J3 and J5 horizontal and parallel; J4 and J6 along the forearm and flange.
+  Joint axes follow the model: J1, J4 and J6 along z of their links, J2, J3 and J5 along y. Every pose is
+  converted once from the model's frame (Z-up, metres) to the scene's (Y-up, centimetres):
+  $(x, y, z) \mapsto 100\,(x, z, -y)$. The parts are rebuilt only when the geometry changes (a profile is loaded);
+  each frame moves the seven link nodes.
 - **Ghost arm:** the same nodes, accent colour, opacity 0.3, blended, no depth write; visible only while a move
   runs or the commanded and measured arms differ by more than 0.5°.
 - **Selection:** clicking a part selects its joint (in the table too, both ways); its housing's emissive rises in
   the accent colour. A faulted joint's housing pulses in the `Fault` colour, and the table says it in text.
-- **Camera:** perspective, 40° field of view; orbit, pan, zoom; presets animate over 250 ms with ease-out.
+- **Camera:** perspective, 40° field of view, framed on the arm's height (the sum of its OPW lengths); orbit, pan,
+  zoom; presets animate over 250 ms with ease-out.
 
 ### Part F — Scope and log
 

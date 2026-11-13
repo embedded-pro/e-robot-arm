@@ -24,6 +24,27 @@ namespace simulator
             levels[joint] = snapshot.targetReady ? LevelOf(snapshot.readings[joint]) : ui::theme::StatusLevel::Neutral;
         }
         ghostVisible = snapshot.targetReady && (snapshot.moving || apart);
+        UpdateNodes(snapshot);
+    }
+
+    void ArmSceneModel::UpdateNodes(const arm_host::ArmSnapshot& snapshot)
+    {
+        const auto& geometry = snapshot.config.geometry;
+        const arm::ArmModel model{ geometry, snapshot.config.mass, snapshot.config.positionLimits };
+        arm::JointPositions measuredJoints{};
+        for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+            measuredJoints[joint] = snapshot.readings[joint].position;
+
+        measuredNodes = SceneNodePoses(model, geometry, measuredJoints);
+        commandedNodes = SceneNodePoses(model, geometry, snapshot.commanded.value_or(measuredJoints));
+
+        auto built = BuildSceneParts(geometry);
+        if (built != parts)
+        {
+            parts = std::move(built);
+            extent = ArmExtent(geometry);
+            ++partsRevision;
+        }
     }
 
     bool ArmSceneModel::Select(int pickedJoint)
@@ -63,5 +84,30 @@ namespace simulator
     ui::theme::StatusLevel ArmSceneModel::Level(std::size_t joint) const
     {
         return levels[joint];
+    }
+
+    const SceneNodes& ArmSceneModel::MeasuredNodes() const
+    {
+        return measuredNodes;
+    }
+
+    const SceneNodes& ArmSceneModel::CommandedNodes() const
+    {
+        return commandedNodes;
+    }
+
+    const SceneParts& ArmSceneModel::Parts() const
+    {
+        return parts;
+    }
+
+    uint32_t ArmSceneModel::PartsRevision() const
+    {
+        return partsRevision;
+    }
+
+    float ArmSceneModel::Extent() const
+    {
+        return extent;
     }
 }

@@ -2,7 +2,7 @@
 title: "Arm Model Design"
 type: design
 status: draft
-version: 0.2.0
+version: 0.3.0
 component: "arm_model"
 date: 2026-11-13
 ---
@@ -12,7 +12,7 @@ date: 2026-11-13
 | Title     | Arm Model Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.2.0            |
+| Version   | 0.3.0            |
 | Component | arm_model        |
 | Date      | 2026-11-13       |
 
@@ -75,6 +75,9 @@ It is invented: about 0.56 m of reach from the shoulder, standing for a desktop 
 - **Jacobian**: 6 × 6, linear rows first, in the base frame, at the tool centre point.
 - **Manipulability**: |det J|.
 - **Singularities**: wrist, elbow and shoulder, each flagged on its own by the thresholds of the theory.
+- **Link frames**: the pose of each of the six links in the base frame, at its joint, as
+  [arm-dynamics.md](../theory/arm-dynamics.md) defines them; link 6 with the flange at (0, 0, c4) and the tool
+  gives the tool pose. The simulator draws the arm from them ([tool-simulator.md](tool-simulator.md) Part E).
 
 ### Part C — Inverse kinematics
 
@@ -150,6 +153,7 @@ The test fails if any call exceeds 2 ms, a fifth of the period.
 | Inverse kinematics | Tool pose to joint positions      | Within the limits and closest to the current joints, or the failure |
 | Jacobian           | Joint velocities to tool twist    | 6 × 6, base frame, at the tool centre point                         |
 | Singularities      | Which singularity the arm is near | Wrist, elbow, shoulder, independently                               |
+| Link frames        | Joint positions to link poses     | Six poses, base frame, at each joint                                |
 | Gravity torque     | Joint positions to holding torque | N·m per joint, joint space                                          |
 | Inverse dynamics   | Motion to joint torques           | Positions, speeds, accelerations; gravity included                  |
 | Mass matrix        | Joint positions to inertia        | 6 × 6, joint space, symmetric positive definite                     |

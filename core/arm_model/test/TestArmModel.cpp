@@ -186,6 +186,18 @@ TEST_F(ArmModelTest, flags_each_singularity_and_its_manipulability_falls_to_zero
     EXPECT_FALSE(overTheBase.wrist);
 }
 
+TEST_F(ArmModelTest, the_last_link_frame_with_the_flange_and_the_tool_is_the_tool_pose)
+{
+    const auto geometry = SignedGeometry();
+    const arm::ArmModel signedArm{ geometry, arm::ReferenceMass(), FullTurn() };
+    const auto joints = Joints(0.4f, -0.3f, 0.8f, 0.5f, -0.7f, 0.2f);
+    const auto frames = signedArm.LinkPoses(joints);
+    const arm::ArmModel::Pose flange{ math::Matrix3<float>::Identity(), math::Vector3<float>{ 0.0f, 0.0f, geometry.opw.c4 } };
+
+    ExpectSamePose(signedArm.ToolPose(joints), frames[5] * flange * arm::ToTransform(geometry.tool));
+    ExpectPosition(model.LinkPoses(Joints(0, 0, 0, 0, 0, 0))[2], 0.02f, 0.0f, 0.4f);
+}
+
 TEST_F(ArmModelTest, holds_the_documented_torque_of_the_reference_arm)
 {
     const auto upright = model.GravityTorque(Joints(0, 0, 0, 0, 0, 0));

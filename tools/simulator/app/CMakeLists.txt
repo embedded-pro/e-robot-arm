@@ -12,7 +12,6 @@ qt_add_qml_module(e_robot_arm.tool.simulator.app
     DEPENDENCIES QtQuick
     NO_CACHEGEN
     QML_FILES
-        qml/ArmHousing.qml
         qml/ArmModel.qml
         qml/ArmPart.qml
         qml/ArmScene.qml

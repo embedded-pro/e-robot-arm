@@ -43,12 +43,12 @@ Rectangle {
 
         Node {
             id: pivot
-            position: Qt.vector3d(10, 40, 0)
+            position: Qt.vector3d(0, ArmSceneState.extent * 0.45, 0)
             eulerRotation: Qt.vector3d(-18, 35, 0)
 
             PerspectiveCamera {
                 id: camera
-                position: Qt.vector3d(0, 0, 210)
+                position: Qt.vector3d(0, 0, ArmSceneState.extent * 2.4)
                 fieldOfView: 40
                 clipNear: 5
                 clipFar: 2000
@@ -127,7 +127,8 @@ Rectangle {
 
         ArmModel {
             id: measuredArm
-            angles: ArmSceneState.measured
+            nodes: ArmSceneState.measuredNodes
+            parts: ArmSceneState.parts
             levels: ArmSceneState.levels
             selectedJoint: ArmSceneState.selectedJoint
             accentColor: ArmSceneState.accentColor
@@ -139,7 +140,8 @@ Rectangle {
             id: ghostArm
             visible: ArmSceneState.ghostVisible
             ghost: true
-            angles: ArmSceneState.commanded
+            nodes: ArmSceneState.commandedNodes
+            parts: ArmSceneState.parts
             accentColor: ArmSceneState.accentColor
         }
     }
@@ -161,12 +163,12 @@ Rectangle {
 
     function goTo(rotation, distance) {
         rotationAnimation.to = rotation
-        distanceAnimation.to = Qt.vector3d(0, 0, distance)
+        distanceAnimation.to = Qt.vector3d(0, 0, distance * ArmSceneState.extent)
         cameraMove.restart()
     }
 
     function frame() {
-        goTo(Qt.vector3d(-18, 35, 0), 210)
+        goTo(Qt.vector3d(-18, 35, 0), 2.4)
     }
 
     ParallelAnimation {
@@ -179,10 +181,10 @@ Rectangle {
         target: ArmSceneState
         function onCameraPresetRequested(preset) {
             switch (preset) {
-            case 0: root.goTo(Qt.vector3d(-10, 0, 0), 260); break
-            case 1: root.goTo(Qt.vector3d(-10, 90, 0), 260); break
-            case 2: root.goTo(Qt.vector3d(-89, 0, 0), 300); break
-            case 3: root.goTo(Qt.vector3d(-30, 45, 0), 280); break
+            case 0: root.goTo(Qt.vector3d(-10, 0, 0), 2.9); break
+            case 1: root.goTo(Qt.vector3d(-10, 90, 0), 2.9); break
+            case 2: root.goTo(Qt.vector3d(-89, 0, 0), 3.3); break
+            case 3: root.goTo(Qt.vector3d(-30, 45, 0), 3.1); break
             default: root.frame(); break
             }
         }

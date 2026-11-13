@@ -1,6 +1,9 @@
 #include "tools/simulator/app/ArmSceneState.hpp"
 #include "ui/backend/qt/QtConversions.hpp"
 #include <QJSEngine>
+#include <QQuaternion>
+#include <QVariantMap>
+#include <QVector3D>
 
 namespace simulator
 {
@@ -8,12 +11,37 @@ namespace simulator
     {
         ArmSceneState* instance{ nullptr };
 
-        QVariantList ToList(const std::array<float, arm::jointCount>& values)
+        QVector3D Vector(const std::array<float, 3>& value)
+        {
+            return { value[0], value[1], value[2] };
+        }
+
+        QQuaternion Rotation(const std::array<float, 4>& value)
+        {
+            return { value[0], value[1], value[2], value[3] };
+        }
+
+        QVariantList ToList(const SceneNodes& nodes)
         {
             QVariantList list;
-            for (const auto value : values)
-                list.append(static_cast<double>(value));
+            for (const auto& node : nodes)
+                list.append(QVariantMap{ { "position", Vector(node.position) }, { "rotation", Rotation(node.rotation) } });
             return list;
+        }
+
+        QVariantList ToList(const SceneParts& parts)
+        {
+            QVariantList nodes;
+            for (const auto& nodeParts : parts)
+            {
+                QVariantList list;
+                for (const auto& part : nodeParts)
+                    list.append(QVariantMap{ { "joint", part.joint }, { "source", part.shape == PartShape::cylinder ? "#Cylinder" : "#Cube" },
+                        { "material", static_cast<int>(part.material) }, { "position", Vector(part.centre) }, { "rotation", Rotation(part.rotation) },
+                        { "scale", Vector(part.scale) } });
+                nodes.append(QVariant{ list });
+            }
+            return nodes;
         }
     }
 
@@ -30,8 +58,9 @@ namespace simulator
 
     ArmSceneState::ArmSceneState(QObject* parent)
         : QObject(parent)
-        , measured(ToList({}))
-        , commanded(ToList({}))
+        , measuredNodes(ToList(SceneNodes{}))
+        , commandedNodes(ToList(SceneNodes{}))
+        , parts(ToList(SceneParts{}))
     {
         for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
             levels.append(0);
@@ -40,8 +69,15 @@ namespace simulator
 
     void ArmSceneState::Update(const ArmSceneModel& model)
     {
-        measured = ToList(model.MeasuredDegrees());
-        commanded = ToList(model.CommandedDegrees());
+        measuredNodes = ToList(model.MeasuredNodes());
+        commandedNodes = ToList(model.CommandedNodes());
+        if (model.PartsRevision() != partsRevision)
+        {
+            partsRevision = model.PartsRevision();
+            parts = ToList(model.Parts());
+            extent = model.Extent();
+            emit partsChanged();
+        }
         anyFault = false;
         for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
         {
@@ -67,14 +103,24 @@ namespace simulator
         emit themeChanged();
     }
 
-    QVariantList ArmSceneState::Measured() const
+    QVariantList ArmSceneState::MeasuredNodes() const
     {
-        return measured;
+        return measuredNodes;
     }
 
-    QVariantList ArmSceneState::Commanded() const
+    QVariantList ArmSceneState::CommandedNodes() const
     {
-        return commanded;
+        return commandedNodes;
+    }
+
+    QVariantList ArmSceneState::Parts() const
+    {
+        return parts;
+    }
+
+    double ArmSceneState::Extent() const
+    {
+        return extent;
     }
 
     QVariantList ArmSceneState::Levels() const
