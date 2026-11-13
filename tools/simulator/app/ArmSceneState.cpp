@@ -97,8 +97,8 @@ namespace simulator
 
         background = ToQt(theme.Get(ColorRole::SceneBackground));
         const bool dark = background.lightness() < 128;
-        floor = dark ? QColor::fromHslF(0.0f, 0.0f, 0.30f) : ToQt(theme.Get(ColorRole::SceneSurface));
-        grid = dark ? QColor::fromHslF(0.0f, 0.0f, 0.42f) : ToQt(theme.Get(ColorRole::GridMajor));
+        floor = dark ? QColor::fromHslF(0.58f, 0.06f, 0.15f) : ToQt(theme.Get(ColorRole::SceneSurface));
+        grid = dark ? QColor::fromHslF(0.58f, 0.08f, 0.32f) : ToQt(theme.Get(ColorRole::GridMajor));
         accent = ToQt(theme.Get(ColorRole::Accent));
         fault = ToQt(theme.Get(ColorRole::Fault));
         warning = ToQt(theme.Get(ColorRole::Warning));

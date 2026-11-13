@@ -168,11 +168,13 @@ again.
 Qt Quick 3D in a `QQuickWidget`, scene in QML, following the `qt-3d-gui` skill:
 
 - **Environment:** theme background colour; image-based lighting from a small studio HDR probe
-  (`probeExposure` 0.8); filmic tone mapping; MSAA High; specular antialiasing; ambient occlusion (strength 55,
+  (`probeExposure` 1.0); filmic tone mapping; MSAA High; specular antialiasing; ambient occlusion (strength 55,
   distance 5 cm, softness 40).
-- **Lights:** key directional light at 50° elevation, 35° left of the camera, casting shadows at very high
-  shadow-map quality, shadow factor 70, soft filter; fill at 0.3 from the right, low; rim at 0.5 from behind, high.
-- **Floor:** 3 m × 3 m matte light grey (roughness 0.9) receiving shadows, with a faint 10 cm grid.
+- **Lights:** key directional light at 50° elevation, 35° left of the camera, brightness 1.2, casting shadows at
+  very high shadow-map quality, shadow factor 70, soft filter; fill at 0.3 from the right, low; rim at 0.75 from
+  behind, high, to outline the arm against the background.
+- **Floor:** 3 m × 3 m matte (roughness 0.9) receiving shadows, charcoal in the dark theme and the theme's scene surface
+  in the light one, with a 10 cm grid at half opacity.
 - **Arm** (phase 8c): built from the profile's geometry ([arm-model.md](arm-model.md) Part A), so the arm on
   screen is the arm the model computes. The arm model gives each link's frame at the measured (or commanded)
   joints, base mount included ([arm-model.md](arm-model.md) Part B); each link is drawn in its frame as a desktop
@@ -191,16 +193,21 @@ Qt Quick 3D in a `QQuickWidget`, scene in QML, following the `qt-3d-gui` skill:
 
   Each link is one mesh per finish, all physically based:
 
-  | Finish    | Colour       | Metalness | Roughness | Where                                       |
-  |-----------|--------------|-----------|-----------|---------------------------------------------|
-  | Aluminium | #c4c9cf      | 1.0       | 0.3       | Plates, tubes, columns                      |
-  | Anodised  | #2f343a      | 0.85      | 0.38      | Gearboxes, housings, foot plate             |
-  | Motor     | #1b1d20      | 0.35      | 0.55      | Motor bodies                                |
-  | Steel     | #d9dde2      | 1.0       | 0.22      | Bolts, standoffs, motor end plates, flange  |
-  | Accent    | theme accent | 0.55      | 0.32      | Joint hubs and rings; carries the highlight |
-  | Rubber    | #1d1f21      | 0.0       | 0.8       | Motor caps                                  |
+  | Finish    | Colour        | Metalness | Roughness | Where                                        |
+  |-----------|---------------|-----------|-----------|----------------------------------------------|
+  | Aluminium | #e2e6eb       | 0.6       | 0.28      | Plates, tubes, columns                       |
+  | Anodised  | #5a6573       | 0.6       | 0.4       | Gearboxes, housings, foot plate              |
+  | Motor     | #141619       | 0.3       | 0.5       | Motor bodies                                 |
+  | Steel     | #f0f2f5       | 0.85      | 0.2       | Bolts, standoffs, motor end plates, flange   |
+  | Hub       | signal orange | 0.3       | 0.35      | Joint hubs and rings; carries the highlight  |
+  | Rubber    | #26292d       | 0.0       | 0.75      | Motor caps                                   |
 
-  A selected or faulted joint lights its link's accent parts. The meshes are rebuilt only when the OPW lengths
+  The hubs are signal orange (#f28c28) whatever the theme's accent, so the joints stand out against the dark
+  scene; the ghost keeps the theme's accent. In the dark theme the floor is a charcoal (#24272b) a step below the
+  background in lightness and a step apart in hue, with its grid at half opacity, so the silver arm and its
+  shadow read against it.
+
+  A selected or faulted joint lights its link's hubs. The meshes are rebuilt only when the OPW lengths
   change; each frame moves the seven link nodes.
 
   Joint axes follow the model: J1, J4 and J6 along z of their links, J2, J3 and J5 along y. Every pose is

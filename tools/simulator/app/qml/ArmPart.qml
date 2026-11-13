@@ -9,11 +9,12 @@ Model {
     property bool ghost: false
     property real fade: 1.0
     property color accentColor: "#f28c28"
+    property color hubColor: "#f28c28"
     property vector3d emissive: Qt.vector3d(0, 0, 0)
 
-    readonly property var baseColors: ["#c4c9cf", "#2f343a", "#1b1d20", "#d9dde2", part.accentColor, "#1d1f21"]
-    readonly property var metals: [1.0, 0.85, 0.35, 1.0, 0.55, 0.0]
-    readonly property var roughnesses: [0.3, 0.38, 0.55, 0.22, 0.32, 0.8]
+    readonly property var baseColors: ["#e2e6eb", "#5a6573", "#141619", "#f0f2f5", part.hubColor, "#26292d"]
+    readonly property var metals: [0.6, 0.6, 0.3, 0.85, 0.3, 0.0]
+    readonly property var roughnesses: [0.28, 0.4, 0.5, 0.2, 0.35, 0.75]
 
     readonly property bool blended: ghost || fade < 1.0
 

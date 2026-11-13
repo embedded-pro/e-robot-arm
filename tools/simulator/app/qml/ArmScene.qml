@@ -31,7 +31,7 @@ Rectangle {
             backgroundMode: SceneEnvironment.Color
             clearColor: ArmSceneState.backgroundColor
             lightProbe: Texture { source: "qrc:/Simulator/assets/studio.hdr" }
-            probeExposure: 0.8
+            probeExposure: 1.0
             tonemapMode: SceneEnvironment.TonemapModeFilmic
             antialiasingMode: SceneEnvironment.MSAA
             antialiasingQuality: SceneEnvironment.High
@@ -60,7 +60,7 @@ Rectangle {
         DirectionalLight {
             id: keyLight
             eulerRotation: Qt.vector3d(-50, -35, 0)
-            brightness: 1.0
+            brightness: 1.2
             castsShadow: true
             shadowMapQuality: Light.ShadowMapQualityVeryHigh
             shadowMapFar: 600
@@ -75,7 +75,7 @@ Rectangle {
 
         DirectionalLight {
             eulerRotation: Qt.vector3d(-60, 180, 0)
-            brightness: 0.5
+            brightness: 0.75
         }
 
         Model {
@@ -108,7 +108,7 @@ Rectangle {
                     materials: DefaultMaterial {
                         lighting: DefaultMaterial.NoLighting
                         diffuseColor: ArmSceneState.gridColor
-                        opacity: 0.35
+                        opacity: 0.5
                     }
                 }
 
@@ -121,7 +121,7 @@ Rectangle {
                     materials: DefaultMaterial {
                         lighting: DefaultMaterial.NoLighting
                         diffuseColor: ArmSceneState.gridColor
-                        opacity: 0.35
+                        opacity: 0.5
                     }
                 }
             }

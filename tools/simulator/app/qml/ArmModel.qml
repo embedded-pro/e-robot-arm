@@ -14,6 +14,7 @@ Node {
     property bool ghost: false
     property int selectedJoint: -1
     property color accentColor: "#f28c28"
+    property color hubColor: "#f28c28"
     property color faultColor: "#e74c3c"
     property real faultPulse: 0
 
@@ -35,7 +36,7 @@ Node {
         if (levels[joint] === 3)
             return Qt.vector3d(faultColor.r * faultPulse, faultColor.g * faultPulse, faultColor.b * faultPulse)
         if (joint === selectedJoint)
-            return Qt.vector3d(accentColor.r * 0.35, accentColor.g * 0.35, accentColor.b * 0.35)
+            return Qt.vector3d(hubColor.r * 0.45, hubColor.g * 0.45, hubColor.b * 0.45)
         return Qt.vector3d(0, 0, 0)
     }
 
@@ -82,6 +83,7 @@ Node {
                     ghost: arm.ghost
                     fade: arm.fadeFor(link.meshShown, part.index, link.index - 1)
                     accentColor: arm.accentColor
+                    hubColor: arm.hubColor
                     emissive: arm.emissiveFor(link.index - 1)
                 }
             }
