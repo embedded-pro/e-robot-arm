@@ -105,6 +105,7 @@ namespace arm
             CountMissedTelemetry();
 
         telemetryRequested = true;
+        ++period;
         for (auto& joint : liveness)
             joint.answered = false;
 
@@ -118,6 +119,11 @@ namespace arm
     {
         really_assert(joint < jointCount);
         return readings[joint];
+    }
+
+    uint32_t JointBusImpl::Period() const
+    {
+        return period;
     }
 
     void JointBusImpl::OnSelectControlModeResponse(uint16_t, can::FocMotorMode)
@@ -153,6 +159,7 @@ namespace arm
         readings[*joint].speed = transmissions[*joint].JointSpeed(speed);
         readings[*joint].position = transmissions[*joint].JointPosition(position);
         readings[*joint].silent = false;
+        readings[*joint].period = period;
         liveness[*joint] = Liveness{ true, 0, false };
     }
 

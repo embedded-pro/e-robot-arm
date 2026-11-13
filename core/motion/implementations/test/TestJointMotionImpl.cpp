@@ -47,8 +47,13 @@ namespace
             for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
             {
                 readings[joint].position = foc::Radians{ 0.1f * static_cast<float>(joint) };
+                readings[joint].period = currentPeriod;
                 EXPECT_CALL(bus, Reading(joint)).WillRepeatedly(ReturnRef(readings[joint]));
             }
+            EXPECT_CALL(bus, Period()).WillRepeatedly(Invoke([this]()
+                {
+                    return currentPeriod;
+                }));
         }
 
         arm::JointPositions Target(float firstJoint) const
@@ -77,6 +82,7 @@ namespace
 
         StrictMock<arm::JointBusMock> bus;
         std::array<arm::JointReading, arm::jointCount> readings{};
+        uint32_t currentPeriod{ 5 };
         arm::JointMotionImpl motion{ bus, PositionLimits(), UniformLimits(), 100ms };
         StrictMock<JointMotionObserverMock> observer{ motion };
         std::vector<arm::JointPositions> sent;
@@ -117,6 +123,23 @@ TEST_F(JointMotionImplTest, starts_from_the_latest_reported_positions)
     EXPECT_NEAR(0.005f, sent.front()[0].Value(), tolerance);
     for (std::size_t joint = 1; joint != arm::jointCount; ++joint)
         EXPECT_NEAR(readings[joint].position.Value(), sent.front()[joint].Value(), tolerance);
+}
+
+TEST_F(JointMotionImplTest, plans_from_readings_at_most_one_period_old)
+{
+    readings[3].period = currentPeriod - 1;
+
+    EXPECT_TRUE(motion.MoveTo(Target(0.5f)));
+}
+
+TEST_F(JointMotionImplTest, refuses_to_plan_from_a_stale_reading)
+{
+    readings[3].period = currentPeriod - 2;
+    EXPECT_FALSE(motion.MoveTo(Target(0.5f)));
+
+    readings[3].period = 0;
+    EXPECT_FALSE(motion.MoveTo(Target(0.5f)));
+    EXPECT_FALSE(motion.Moving());
 }
 
 TEST_F(JointMotionImplTest, refuses_a_target_that_is_not_finite)

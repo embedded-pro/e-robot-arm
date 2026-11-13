@@ -2,7 +2,7 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.4.0
+version: 0.5.0
 component: "tool-simulator"
 date: 2026-11-12
 ---
@@ -12,7 +12,7 @@ date: 2026-11-12
 | Title     | Simulator Screen Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.4.0                   |
+| Version   | 0.5.0                   |
 | Component | tool-simulator          |
 | Date      | 2026-11-12              |
 
@@ -75,14 +75,16 @@ Layout** restores this one.
 └───────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-- **Status strip** (top, not a dock, cannot be hidden): target selector, connection, the arm's stage, contracts,
-  the last trip with its source, and the emergency stop at the far right, apart from every other button.
+- **Status strip** (top, not a dock, cannot be hidden): target selector, connection, the arm's state, contracts,
+  the last trip with its source, the overrun count, and the emergency stop at the far right, apart from every other button.
   - **Connection** reads Connected, Disconnected, or **No data from the arm** (`Warning`) when the snapshot has not
     changed for 30 frames (half a second): a stalled arm thread is never shown as live.
   - **Arm state** is the lifecycle's state ([arm-lifecycle.md](arm-lifecycle.md)) as the snapshot reports it:
     Disconnected and Unpowered (`Neutral`), Checking contracts…, Contracts incompatible (`Fault`), **Waiting for
     calibration: J2, J5** (`Warning`, naming every joint not yet ready), Ready, Enabling…, Enabled (`Ok`), Moving
     (`Ok`), Disabling…, Tripped (`Fault`).
+  - **Overruns** shows the control loop's count of late phases ([control-loop.md](control-loop.md) Part C):
+    `Neutral` at 0, `Warning` from the first one, with a tooltip saying what it counts.
 - **Silent joints:** a joint that stopped answering shows **Silent** at `Fault` level, with position and speed as
   "—", until it answers again; its last values are never shown as live.
 - **Real-arm banner:** on the real target a full-width strip under the menu reads **REAL ARM — `<adapter>`** in the
@@ -280,4 +282,4 @@ sequenceDiagram
 | 2 | Joint-limit defaults before the arm profile exists                                           | ±π for every joint, per-joint guesses                 | decided: ±π                                                        |
 | 3 | Default-role buttons (Check Contracts, Position Mode) draw flat in ui-cpp's Instrument theme | Give `ButtonRole::Default` a raised surface in ui-cpp | resolved: ui-cpp#24 gives Default buttons a raised fill and border |
 | 4 | Naming every joint an emergency stop did not reach                                           | Per-joint delivery reports from the joint bus         | phase 1a (#17)                                                     |
-| 5 | Bus load and period overruns in the status strip                                             | Control-loop overrun count, bus-load estimate         | phase 1d (#17)                                                     |
+| 5 | Bus load and period overruns in the status strip                                             | Control-loop overrun count, bus-load estimate         | overruns shown (phase 1d); bus load open                           |

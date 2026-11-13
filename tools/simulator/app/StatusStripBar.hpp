@@ -39,6 +39,7 @@ namespace simulator
         QLabel* stage;
         QLabel* contracts;
         QLabel* trip;
+        QLabel* overruns;
         QPushButton* emergencyStop;
     };
 }

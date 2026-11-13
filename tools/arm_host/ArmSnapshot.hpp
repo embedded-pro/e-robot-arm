@@ -22,6 +22,7 @@ namespace arm_host
         bool tripped{ false };
         bool moving{ false };
         arm::ArmState state{ arm::ArmState::unpowered };
+        uint32_t overruns{ 0 };
     };
 
     struct TraceSample

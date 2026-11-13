@@ -18,6 +18,7 @@ namespace arm
         void Start() override;
         void Stop() override;
         bool Running() const override;
+        uint32_t OverrunCount() const override;
 
     private:
         enum class Phase : uint8_t
@@ -27,11 +28,14 @@ namespace arm
         };
 
         void RunPhase();
+        void CountOverruns();
 
         JointBus& bus;
         infra::Duration halfPeriod;
         infra::Function<void()> setpointStep;
         Phase next{ Phase::setpoints };
+        infra::TimePoint due{};
+        uint32_t overruns{ 0 };
         infra::TimerRepeating timer;
     };
 }

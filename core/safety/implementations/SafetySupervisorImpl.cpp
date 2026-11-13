@@ -71,6 +71,11 @@ namespace arm
         return bus.Reading(joint);
     }
 
+    uint32_t SafetySupervisorImpl::Period() const
+    {
+        return bus.Period();
+    }
+
     bool SafetySupervisorImpl::Tripped() const
     {
         return tripped;

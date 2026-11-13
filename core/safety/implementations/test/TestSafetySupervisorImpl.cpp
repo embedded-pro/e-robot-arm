@@ -195,6 +195,8 @@ TEST_F(SafetySupervisorImplTest, passes_contract_outcomes_and_readings_on)
     EXPECT_EQ(&readings[4], &supervisor.Reading(4));
     EXPECT_CALL(bus, Contracts()).WillOnce(Return(can::ContractCompatibility::incompatible));
     EXPECT_EQ(can::ContractCompatibility::incompatible, supervisor.Contracts());
+    EXPECT_CALL(bus, Period()).WillOnce(Return(17u));
+    EXPECT_EQ(17u, supervisor.Period());
 }
 
 TEST_F(SafetySupervisorImplTest, passes_command_delivery_outcomes_on)

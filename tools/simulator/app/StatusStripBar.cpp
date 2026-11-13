@@ -26,6 +26,7 @@ namespace simulator
         , stage{ StatusLabel(this, "Arm state") }
         , contracts{ StatusLabel(this, "Contracts") }
         , trip{ StatusLabel(this, "Trip") }
+        , overruns{ StatusLabel(this, "Overruns") }
         , emergencyStop{ new QPushButton{ "EMERGENCY STOP\nEsc", this } }
     {
         setObjectName("statusStrip");
@@ -47,6 +48,7 @@ namespace simulator
         font.setPointSizeF(font.pointSizeF() * 1.25);
         emergencyStop->setFont(font);
         emergencyStop->setFocusPolicy(Qt::NoFocus);
+        overruns->setToolTip("Control-loop phases that started more than a quarter period late");
 
         addWidget(new QLabel{ " Target ", this });
         addWidget(targets);
@@ -54,6 +56,7 @@ namespace simulator
         addWidget(stage);
         addWidget(contracts);
         addWidget(trip);
+        addWidget(overruns);
         addWidget(spacer);
         addWidget(emergencyStop);
 
@@ -79,6 +82,8 @@ namespace simulator
         contracts->setText(ToQt(status.contracts));
         trip->setText(ToQt(status.trip));
         StyleStatusLabel(*trip, status.tripLevel);
+        overruns->setText(ToQt(status.overruns));
+        StyleStatusLabel(*overruns, status.overrunLevel);
 
         emergencyStop->setEnabled(emergency.enabled);
         emergencyStop->setToolTip(emergency.enabled ? "Emergency stop to every joint (Esc)" : ToQt(emergency.reason));

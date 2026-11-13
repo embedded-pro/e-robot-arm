@@ -1,5 +1,6 @@
 #include "core/control_loop/implementations/ControlLoopImpl.hpp"
 #include "infra/util/ReallyAssert.hpp"
+#include <algorithm>
 
 namespace arm
 {
@@ -17,6 +18,7 @@ namespace arm
             return;
 
         next = Phase::setpoints;
+        due = infra::Now() + halfPeriod;
         bus.RequestTelemetry();
         timer.Start(halfPeriod, [this]()
             {
@@ -34,8 +36,15 @@ namespace arm
         return timer.Armed();
     }
 
+    uint32_t ControlLoopImpl::OverrunCount() const
+    {
+        return overruns;
+    }
+
     void ControlLoopImpl::RunPhase()
     {
+        CountOverruns();
+
         if (next == Phase::setpoints)
         {
             next = Phase::telemetry;
@@ -46,5 +55,16 @@ namespace arm
             next = Phase::setpoints;
             bus.RequestTelemetry();
         }
+    }
+
+    void ControlLoopImpl::CountOverruns()
+    {
+        const auto lateness = std::max(infra::Now() - due, infra::Duration::zero());
+        const auto missed = static_cast<uint32_t>(lateness / halfPeriod);
+
+        if (lateness > halfPeriod / 2)
+            overruns += 1 + missed;
+
+        due += halfPeriod * (1 + missed);
     }
 }

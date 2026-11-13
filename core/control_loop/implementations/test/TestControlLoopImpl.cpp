@@ -14,6 +14,12 @@ namespace
         , public infra::ClockFixture
     {
     public:
+        void Stall(infra::Duration duration)
+        {
+            systemTimerService.TimeProgressed(duration);
+            ExecuteAllActions();
+        }
+
         StrictMock<arm::JointBusMock> bus;
         StrictMock<MockFunction<void()>> setpointStep;
         arm::ControlLoopImpl loop{ bus, 10ms, [this]()
@@ -67,4 +73,40 @@ TEST_F(ControlLoopImplTest, starting_a_running_loop_does_nothing)
     loop.Start();
 
     loop.Start();
+}
+
+TEST_F(ControlLoopImplTest, a_phase_that_starts_more_than_a_quarter_period_late_is_an_overrun)
+{
+    EXPECT_CALL(bus, RequestTelemetry()).WillRepeatedly(Return(true));
+    EXPECT_CALL(setpointStep, Call()).Times(AnyNumber());
+    loop.Start();
+    ForwardTime(20ms);
+    EXPECT_EQ(0u, loop.OverrunCount());
+
+    Stall(7ms);
+    EXPECT_EQ(0u, loop.OverrunCount());
+
+    ForwardTime(3ms);
+    Stall(8ms);
+    EXPECT_EQ(1u, loop.OverrunCount());
+
+    ForwardTime(2ms);
+    EXPECT_EQ(1u, loop.OverrunCount());
+}
+
+TEST_F(ControlLoopImplTest, a_stall_counts_every_phase_it_missed_once)
+{
+    EXPECT_CALL(bus, RequestTelemetry()).WillRepeatedly(Return(true));
+    EXPECT_CALL(setpointStep, Call()).Times(AnyNumber());
+    loop.Start();
+
+    Stall(17ms);
+    EXPECT_EQ(3u, loop.OverrunCount());
+
+    ForwardTime(3ms);
+    EXPECT_EQ(3u, loop.OverrunCount());
+
+    loop.Stop();
+    loop.Start();
+    EXPECT_EQ(3u, loop.OverrunCount());
 }

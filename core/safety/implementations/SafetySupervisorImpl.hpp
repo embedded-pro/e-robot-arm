@@ -25,6 +25,7 @@ namespace arm
         bool RequestTelemetry() override;
 
         const JointReading& Reading(std::size_t joint) const override;
+        uint32_t Period() const override;
 
         bool Tripped() const override;
         bool Rearm() override;
