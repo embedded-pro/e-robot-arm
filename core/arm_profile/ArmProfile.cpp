@@ -49,6 +49,12 @@ namespace arm
             return element;
         }
 
+        bool Mark(bool& seen, bool read)
+        {
+            seen = read;
+            return read;
+        }
+
         std::optional<double> Number(const Value& value)
         {
             if (const auto* integer = std::get_if<int32_t>(&value))
@@ -210,17 +216,17 @@ namespace arm
                 if (key == "version")
                     return ReadVersion(path, value, seen.version);
                 if (key == "name")
-                    return seen.name = ReadName(path, value, profile.name);
+                    return Mark(seen.name, ReadName(path, value, profile.name));
                 if (key == "controlPeriodMs")
-                    return seen.period = ReadPeriod(path, value, profile.config);
+                    return Mark(seen.period, ReadPeriod(path, value, profile.config));
                 if (key == "missedRequestsBeforeSilent")
-                    return seen.missed = ReadPeriods(path, value, profile.config.missedRequestsBeforeSilent);
+                    return Mark(seen.missed, ReadPeriods(path, value, profile.config.missedRequestsBeforeSilent));
                 if (key == "commandTimeoutPeriods")
                     return ReadPeriods(path, value, profile.config.commandTimeoutPeriods);
                 if (key == "enableMode")
                     return ReadMode(path, value, profile.config);
                 if (key == "joints")
-                    return seen.joints = ReadJoints(path, value, profile.config);
+                    return Mark(seen.joints, ReadJoints(path, value, profile.config));
                 return Unknown(path);
             }
 
@@ -229,7 +235,8 @@ namespace arm
                 const auto* text = std::get_if<infra::JsonString>(&value);
                 if (text == nullptr || !(*text == formatMarker))
                     return Fail(path, "must be \"e-robot-arm profile\"");
-                return seen = true;
+                seen = true;
+                return true;
             }
 
             bool ReadVersion(const Path& path, const Value& value, bool& seen)
@@ -237,7 +244,8 @@ namespace arm
                 int32_t version{ 0 };
                 if (!ReadInteger(path, value, profileVersion, profileVersion, "is not a version this reader knows", version))
                     return false;
-                return seen = true;
+                seen = true;
+                return true;
             }
 
             bool ReadPeriod(const Path& path, const Value& value, ArmConfig& config)
@@ -275,7 +283,7 @@ namespace arm
 
                 auto joints = *found;
                 std::size_t count{ 0 };
-                for (auto& joint : joints)
+                for (const auto& joint : joints)
                 {
                     if (count == jointCount)
                         return Fail(path, "must list six joints");
@@ -334,13 +342,13 @@ namespace arm
             bool ReadJointItem(const Path& path, infra::JsonString key, const Value& value, Joint& seen, ArmConfig& config, std::size_t joint)
             {
                 if (key == "node")
-                    return seen.node = ReadNode(path, value, config.nodes[joint]);
+                    return Mark(seen.node, ReadNode(path, value, config.nodes[joint]));
                 if (key == "transmission")
                     return ReadTransmission(path, value, config.transmissions[joint]);
                 if (key == "positionLimitsRad")
-                    return seen.limits = ReadLimits(path, value, config.positionLimits[joint]);
+                    return Mark(seen.limits, ReadLimits(path, value, config.positionLimits[joint]));
                 if (key == "motionLimits")
-                    return seen.motion = ReadMotion(path, value, config.motionLimits[joint]);
+                    return Mark(seen.motion, ReadMotion(path, value, config.motionLimits[joint]));
                 if (key == "motorController")
                     return ReadController(path, value, config.controllers[joint]);
                 return Unknown(path);
@@ -393,9 +401,9 @@ namespace arm
                 if (!ReadMembers(path, value, [this, &seen, &limit](const Path& item, infra::JsonString key, const Value& member)
                         {
                             if (key == "lower")
-                                return seen[0] = ReadRadians(item, member, limit.lower);
+                                return Mark(seen[0], ReadRadians(item, member, limit.lower));
                             if (key == "upper")
-                                return seen[1] = ReadRadians(item, member, limit.upper);
+                                return Mark(seen[1], ReadRadians(item, member, limit.upper));
                             return Unknown(item);
                         }))
                     return false;
@@ -416,9 +424,9 @@ namespace arm
                 if (!ReadMembers(path, value, [this, &seen, &values](const Path& item, infra::JsonString key, const Value& member)
                         {
                             if (key == "speedRadPerS")
-                                return seen[0] = ReadPositive(item, member, values[0]);
+                                return Mark(seen[0], ReadPositive(item, member, values[0]));
                             if (key == "accelerationRadPerS2")
-                                return seen[1] = ReadPositive(item, member, values[1]);
+                                return Mark(seen[1], ReadPositive(item, member, values[1]));
                             return Unknown(item);
                         }))
                     return false;
@@ -481,7 +489,7 @@ namespace arm
             {
                 return ReadMembers(path, value, [this, &settings](const Path& item, infra::JsonString key, const Value& member)
                     {
-                        const auto name = std::find_if(gainNames.begin(), gainNames.end(), [&key](const char* gainName)
+                        const auto name = std::ranges::find_if(gainNames, [&key](const char* gainName)
                             {
                                 return key == gainName;
                             });
@@ -597,14 +605,14 @@ namespace arm
 
             void Text(infra::BoundedConstString text)
             {
-                stream << "\"";
+                stream << R"(")";
                 for (const auto character : text)
                 {
                     if (character == '"' || character == '\\')
-                        stream << "\\";
+                        stream << R"(\)";
                     stream << infra::BoundedConstString{ &character, 1 };
                 }
-                stream << "\"";
+                stream << R"(")";
             }
 
             infra::TextOutputStream& stream;
