@@ -19,6 +19,8 @@ target_sources(e_robot_arm.tool.simulator.view_models PRIVATE
     ConfigurationFlow.cpp
     ConfigurationFlow.hpp
     ControlRules.cpp
+    DesktopArm.cpp
+    DesktopArm.hpp
     ControlRules.hpp
     EventLog.cpp
     EventLog.hpp

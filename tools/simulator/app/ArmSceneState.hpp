@@ -25,7 +25,6 @@ namespace simulator
 
         Q_PROPERTY(QVariantList measuredNodes READ MeasuredNodes NOTIFY changed)
         Q_PROPERTY(QVariantList commandedNodes READ CommandedNodes NOTIFY changed)
-        Q_PROPERTY(QVariantList parts READ Parts NOTIFY partsChanged)
         Q_PROPERTY(double extent READ Extent NOTIFY partsChanged)
         Q_PROPERTY(QString singularityWarning READ SingularityWarning NOTIFY changed)
         Q_PROPERTY(QVector3D toolPosition READ ToolPosition NOTIFY changed)
@@ -54,7 +53,8 @@ namespace simulator
 
         QVariantList MeasuredNodes() const;
         QVariantList CommandedNodes() const;
-        QVariantList Parts() const;
+        static ArmSceneState* Current();
+        const mesh::Mesh& MeshOf(int node, int finish) const;
         double Extent() const;
         QString SingularityWarning() const;
         QVector3D ToolPosition() const;
@@ -90,8 +90,8 @@ namespace simulator
     private:
         QVariantList measuredNodes;
         QVariantList commandedNodes;
-        QVariantList parts;
-        uint32_t partsRevision{ 0 };
+        ArmMeshes generated{};
+        uint32_t meshesRevision{ 0 };
         double extent{ 100.0 };
         QString singularityWarning;
         QVector3D toolPosition;

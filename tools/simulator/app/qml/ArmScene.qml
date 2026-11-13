@@ -130,7 +130,6 @@ Rectangle {
         ArmModel {
             id: measuredArm
             nodes: ArmSceneState.measuredNodes
-            parts: ArmSceneState.parts
             meshes: ArmSceneState.meshes
             onMeshFailed: (node, reason) => ArmSceneState.ReportMeshFailure(node, reason)
             levels: ArmSceneState.levels
@@ -197,7 +196,6 @@ Rectangle {
             visible: ArmSceneState.ghostVisible
             ghost: true
             nodes: ArmSceneState.commandedNodes
-            parts: ArmSceneState.parts
             accentColor: ArmSceneState.accentColor
         }
     }

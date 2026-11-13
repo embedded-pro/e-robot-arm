@@ -34,20 +34,6 @@ namespace simulator
             return list;
         }
 
-        QVariantList ToList(const SceneParts& parts)
-        {
-            QVariantList nodes;
-            for (const auto& nodeParts : parts)
-            {
-                QVariantList list;
-                for (const auto& part : nodeParts)
-                    list.append(QVariantMap{ { "joint", part.joint }, { "source", part.shape == PartShape::cylinder ? "#Cylinder" : "#Cube" },
-                        { "material", static_cast<int>(part.material) }, { "position", Vector(part.centre) }, { "rotation", Rotation(part.rotation) },
-                        { "scale", Vector(part.scale) } });
-                nodes.append(QVariant{ list });
-            }
-            return nodes;
-        }
     }
 
     ArmSceneState* ArmSceneState::create(QQmlEngine*, QJSEngine*)
@@ -65,7 +51,6 @@ namespace simulator
         : QObject(parent)
         , measuredNodes(ToList(SceneNodes{}))
         , commandedNodes(ToList(SceneNodes{}))
-        , parts(ToList(SceneParts{}))
     {
         for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
             levels.append(0);
@@ -76,10 +61,10 @@ namespace simulator
     {
         measuredNodes = ToList(model.MeasuredNodes());
         commandedNodes = ToList(model.CommandedNodes());
-        if (model.PartsRevision() != partsRevision)
+        if (model.MeshesRevision() != meshesRevision)
         {
-            partsRevision = model.PartsRevision();
-            parts = ToList(model.Parts());
+            meshesRevision = model.MeshesRevision();
+            generated = model.Meshes();
             extent = model.Extent();
             emit partsChanged();
         }
@@ -130,9 +115,17 @@ namespace simulator
         return commandedNodes;
     }
 
-    QVariantList ArmSceneState::Parts() const
+    ArmSceneState* ArmSceneState::Current()
     {
-        return parts;
+        return instance;
+    }
+
+    const mesh::Mesh& ArmSceneState::MeshOf(int node, int finish) const
+    {
+        static const mesh::Mesh none{};
+        if (node < 0 || node >= static_cast<int>(armNodeCount) || finish < 0 || finish >= static_cast<int>(finishCount))
+            return none;
+        return generated[static_cast<std::size_t>(node)][static_cast<std::size_t>(finish)];
     }
 
     double ArmSceneState::Extent() const

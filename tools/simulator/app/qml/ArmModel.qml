@@ -3,12 +3,12 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick3D
 import QtQuick3D.AssetUtils
+import Simulator
 
 Node {
     id: arm
 
     property var nodes: []
-    property var parts: []
     property var meshes: []
     property var levels: [0, 0, 0, 0, 0, 0]
     property bool ghost: false
@@ -26,7 +26,7 @@ Node {
     function fadeFor(meshShown, material, joint) {
         if (!meshShown)
             return 1.0
-        return material === 1 && highlighted(joint) ? 0.5 : 0.0
+        return material === 4 && highlighted(joint) ? 0.5 : 0.0
     }
 
     function emissiveFor(joint) {
@@ -64,21 +64,25 @@ Node {
             }
 
             Repeater3D {
-                model: arm.parts.length > link.index ? arm.parts[link.index] : []
+                model: 6
 
                 ArmPart {
-                    required property var modelData
+                    id: part
+                    required property int index
 
-                    joint: modelData.joint
-                    kind: modelData.material
-                    source: modelData.source
-                    position: modelData.position
-                    rotation: modelData.rotation
-                    scale: modelData.scale
+                    joint: link.index - 1
+                    kind: part.index
+                    geometry: ArmMeshGeometry {
+                        id: generated
+                        node: link.index
+                        finish: part.index
+                    }
+                    visible: !generated.empty
+                    scale: Qt.vector3d(100, 100, 100)
                     ghost: arm.ghost
-                    fade: arm.fadeFor(link.meshShown, modelData.material, modelData.joint)
+                    fade: arm.fadeFor(link.meshShown, part.index, link.index - 1)
                     accentColor: arm.accentColor
-                    emissive: arm.emissiveFor(modelData.joint)
+                    emissive: arm.emissiveFor(link.index - 1)
                 }
             }
         }

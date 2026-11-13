@@ -11,6 +11,13 @@ namespace simulator
         {
             return angle.Value() * 180.0f / std::numbers::pi_v<float>;
         }
+
+        bool SameGeometry(const arm::ArmGeometry& a, const arm::ArmGeometry& b)
+        {
+            const auto& p = a.opw;
+            const auto& q = b.opw;
+            return p.a1 == q.a1 && p.a2 == q.a2 && p.b == q.b && p.c1 == q.c1 && p.c2 == q.c2 && p.c3 == q.c3 && p.c4 == q.c4;
+        }
     }
 
     void ArmSceneModel::Update(const arm_host::ArmSnapshot& snapshot)
@@ -40,13 +47,13 @@ namespace simulator
         commandedNodes = SceneNodePoses(model, geometry, snapshot.commanded.value_or(measuredJoints));
         toolNode = ToScene(model.ToolPose(measuredJoints));
 
-        auto built = BuildSceneParts(geometry);
-        const bool rebuilt = built != parts;
+        const bool rebuilt = !builtFor || !SameGeometry(*builtFor, geometry);
         if (rebuilt)
         {
-            parts = std::move(built);
+            meshes = BuildDesktopArm(geometry);
+            builtFor = geometry;
             extent = ArmExtent(geometry);
-            ++partsRevision;
+            ++meshesRevision;
         }
         UpdateTrail(ModelIsLive(snapshot), rebuilt);
     }
@@ -130,14 +137,14 @@ namespace simulator
         return commandedNodes;
     }
 
-    const SceneParts& ArmSceneModel::Parts() const
+    const ArmMeshes& ArmSceneModel::Meshes() const
     {
-        return parts;
+        return meshes;
     }
 
-    uint32_t ArmSceneModel::PartsRevision() const
+    uint32_t ArmSceneModel::MeshesRevision() const
     {
-        return partsRevision;
+        return meshesRevision;
     }
 
     float ArmSceneModel::Extent() const

@@ -11,9 +11,9 @@ Model {
     property color accentColor: "#f28c28"
     property vector3d emissive: Qt.vector3d(0, 0, 0)
 
-    readonly property var baseColors: ["#3c4043", "#9aa0a6", "#eceff1", part.accentColor, "#1d1f21"]
-    readonly property var metals: [0.6, 1.0, 0.0, 0.0, 0.0]
-    readonly property var roughnesses: [0.55, 0.35, 0.42, 0.4, 0.8]
+    readonly property var baseColors: ["#c4c9cf", "#2f343a", "#1b1d20", "#d9dde2", part.accentColor, "#1d1f21"]
+    readonly property var metals: [1.0, 0.85, 0.35, 1.0, 0.55, 0.0]
+    readonly property var roughnesses: [0.3, 0.38, 0.55, 0.22, 0.32, 0.8]
 
     readonly property bool blended: ghost || fade < 1.0
 
@@ -25,7 +25,7 @@ Model {
         baseColor: part.ghost ? part.accentColor : part.baseColors[part.kind]
         metalness: part.ghost ? 0.0 : part.metals[part.kind]
         roughness: part.ghost ? 0.6 : part.roughnesses[part.kind]
-        emissiveFactor: part.kind === 1 ? part.emissive : Qt.vector3d(0, 0, 0)
+        emissiveFactor: part.kind === 4 ? part.emissive : Qt.vector3d(0, 0, 0)
         opacity: part.ghost ? 0.3 : part.fade
         alphaMode: part.blended ? PrincipledMaterial.Blend : PrincipledMaterial.Opaque
         depthDrawMode: part.blended ? Material.NeverDepthDraw : Material.OpaqueOnlyDepthDraw

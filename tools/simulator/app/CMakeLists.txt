@@ -18,6 +18,8 @@ qt_add_qml_module(e_robot_arm.tool.simulator.app
     RESOURCES
         assets/studio.hdr
     SOURCES
+        ArmMeshGeometry.cpp
+        ArmMeshGeometry.hpp
         ArmSceneState.cpp
         ArmSceneState.hpp
         TrailGeometry.cpp
