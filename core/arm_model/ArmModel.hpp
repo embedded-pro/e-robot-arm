@@ -47,6 +47,7 @@ namespace arm
         using Pose = math::SE3Transform<float>;
         using Jacobian = math::Matrix<float, 6, 6>;
         using MassMatrix = math::SquareMatrix<float, 6>;
+        using LinkFrames = std::array<Pose, jointCount>;
 
         static constexpr float singularSine{ 0.01f };
         static constexpr float shoulderDistance{ 0.005f };
@@ -59,6 +60,7 @@ namespace arm
         float Manipulability(const JointPositions& joints) const;
         Singularities Near(const JointPositions& joints) const;
         IkResult Inverse(const Pose& target, const JointPositions& current) const;
+        LinkFrames LinkPoses(const JointPositions& joints) const;
         JointTorques GravityTorque(const JointPositions& joints) const;
         JointTorques InverseDynamics(const JointPositions& joints, const JointSpeeds& speeds, const JointAccelerations& accelerations) const;
         MassMatrix JointMassMatrix(const JointPositions& joints) const;
