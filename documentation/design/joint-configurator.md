@@ -46,27 +46,27 @@ date: 2026-11-13
 
 A joint's motor-controller settings are its three algorithms and fourteen gains:
 
-| Loop     | Algorithms                                   | Gains                                                                                         |
-|----------|----------------------------------------------|-----------------------------------------------------------------------------------------------|
-| Current  | PID, decoupled PID, deadbeat, sliding mode   | bandwidth, switching gain, boundary layer, two-step deadbeat                                  |
-| Speed    | PID, LQI, ADRC, two-DOF                      | bandwidth, error weight, integral weight, observer bandwidth ratio, reference time constant   |
-| Position | PID, cascade P, LQR, LQI, two-DOF            | bandwidth, position error weight, speed error weight, integral weight, reference time constant |
+| Loop     | Algorithms                                 | Gains                                                                                          |
+|----------|--------------------------------------------|------------------------------------------------------------------------------------------------|
+| Current  | PID, decoupled PID, deadbeat, sliding mode | bandwidth, switching gain, boundary layer, two-step deadbeat                                   |
+| Speed    | PID, LQI, ADRC, two-DOF                    | bandwidth, error weight, integral weight, observer bandwidth ratio, reference time constant    |
+| Position | PID, cascade P, LQR, LQI, two-DOF          | bandwidth, position error weight, speed error weight, integral weight, reference time constant |
 
 Units and ranges are the e-foc contract's parameter table. Each algorithm uses only some of its loop's gains:
 
-| Algorithm                          | Gains it uses                                              |
-|------------------------------------|------------------------------------------------------------|
-| Current PID, decoupled PID         | bandwidth                                                  |
-| Current deadbeat                   | bandwidth, two-step deadbeat                               |
-| Current sliding mode               | bandwidth, switching gain, boundary layer                  |
-| Speed PID                          | bandwidth                                                  |
-| Speed LQI                          | bandwidth, error weight, integral weight                   |
-| Speed ADRC                         | bandwidth, observer bandwidth ratio                        |
-| Speed two-DOF                      | bandwidth, reference time constant                         |
-| Position PID, cascade P            | bandwidth                                                  |
-| Position LQR                       | bandwidth, position error weight, speed error weight       |
-| Position LQI                       | as LQR, and integral weight                                |
-| Position two-DOF                   | bandwidth, reference time constant                         |
+| Algorithm                  | Gains it uses                                        |
+|----------------------------|------------------------------------------------------|
+| Current PID, decoupled PID | bandwidth                                            |
+| Current deadbeat           | bandwidth, two-step deadbeat                         |
+| Current sliding mode       | bandwidth, switching gain, boundary layer            |
+| Speed PID                  | bandwidth                                            |
+| Speed LQI                  | bandwidth, error weight, integral weight             |
+| Speed ADRC                 | bandwidth, observer bandwidth ratio                  |
+| Speed two-DOF              | bandwidth, reference time constant                   |
+| Position PID, cascade P    | bandwidth                                            |
+| Position LQR               | bandwidth, position error weight, speed error weight |
+| Position LQI               | as LQR, and integral weight                          |
+| Position two-DOF           | bandwidth, reference time constant                   |
 
 The node stores every gain whatever algorithm runs, so the configurator always applies and reads all fourteen; the
 table above only decides which ones a screen shows.
@@ -94,28 +94,28 @@ show what was applied next to what the joint reports.
 
 ### Provided
 
-| Interface          | Purpose                                     | Contract                                                                         |
-|--------------------|---------------------------------------------|----------------------------------------------------------------------------------|
-| Joint configurator | Apply and read one joint's settings         | Refused unless the arm is Ready and no operation runs; one outcome per operation |
-| Comparison         | The items in which two settings differ      | Algorithms equal, gains within a relative 10⁻⁴                                   |
+| Interface          | Purpose                                | Contract                                                                         |
+|--------------------|----------------------------------------|----------------------------------------------------------------------------------|
+| Joint configurator | Apply and read one joint's settings    | Refused unless the arm is Ready and no operation runs; one outcome per operation |
+| Comparison         | The items in which two settings differ | Algorithms equal, gains within a relative 10⁻⁴                                   |
 
 ### Required
 
-| Interface     | Purpose                                                          | Contract                                     |
-|---------------|------------------------------------------------------------------|----------------------------------------------|
-| Joint bus     | Per-joint algorithm and parameter requests and their answers     | Through the safety supervisor                |
-| Arm lifecycle | Whether the arm is Ready                                         | Read before an operation starts              |
-| Timer         | Retry after a millisecond, give up after 100 ms                  | The event loop's timer service               |
+| Interface     | Purpose                                                      | Contract                        |
+|---------------|--------------------------------------------------------------|---------------------------------|
+| Joint bus     | Per-joint algorithm and parameter requests and their answers | Through the safety supervisor   |
+| Arm lifecycle | Whether the arm is Ready                                     | Read before an operation starts |
+| Timer         | Retry after a millisecond, give up after 100 ms              | The event loop's timer service  |
 
 ---
 
 ## Data Model
 
-| Entity   | Field      | Type / Unit                    | Range                   | Notes                                      |
-|----------|------------|--------------------------------|-------------------------|--------------------------------------------|
-| Settings | algorithms | one per loop                   | the contract's enums    | Current, speed, position                   |
-| Settings | gains      | fourteen values, contract units | the contract's ranges  | Every gain, whichever algorithm runs       |
-| Read     | mode       | FOC control mode               | torque, speed, position | Reported by the node, never applied        |
+| Entity   | Field      | Type / Unit                     | Range                   | Notes                                |
+|----------|------------|---------------------------------|-------------------------|--------------------------------------|
+| Settings | algorithms | one per loop                    | the contract's enums    | Current, speed, position             |
+| Settings | gains      | fourteen values, contract units | the contract's ranges   | Every gain, whichever algorithm runs |
+| Read     | mode       | FOC control mode                | torque, speed, position | Reported by the node, never applied  |
 
 ---
 
@@ -144,17 +144,17 @@ sequenceDiagram
 
 ## Constraints & Limitations
 
-| Constraint | Value / Description                                                                      |
-|------------|------------------------------------------------------------------------------------------|
-| Pace       | One request in flight; an apply takes seventeen round trips, about 20 ms on an idle bus  |
-| Lifecycle  | Ready only: a running joint is never reconfigured                                        |
-| Memory     | No heap; one operation's state at a time                                                 |
+| Constraint | Value / Description                                                                     |
+|------------|-----------------------------------------------------------------------------------------|
+| Pace       | One request in flight; an apply takes seventeen round trips, about 20 ms on an idle bus |
+| Lifecycle  | Ready only: a running joint is never reconfigured                                       |
+| Memory     | No heap; one operation's state at a time                                                |
 
 ---
 
 ## Open Questions
 
-| # | Question                                            | Options                                             | Status |
-|---|-----------------------------------------------------|-----------------------------------------------------|--------|
-| 1 | Whether to apply only the gains the algorithms use  | All fourteen (simple, always verifiable), only used | decided: all fourteen |
-| 2 | Motor characteristics and limits                    | The same configurator, a second one                 | open: next part of phase 2 |
+| # | Question                                           | Options                                             | Status                     |
+|---|----------------------------------------------------|-----------------------------------------------------|----------------------------|
+| 1 | Whether to apply only the gains the algorithms use | All fourteen (simple, always verifiable), only used | decided: all fourteen      |
+| 2 | Motor characteristics and limits                   | The same configurator, a second one                 | open: next part of phase 2 |
