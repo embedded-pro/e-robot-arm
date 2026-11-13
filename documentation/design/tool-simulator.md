@@ -2,7 +2,7 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.12.0
+version: 0.13.0
 component: "tool-simulator"
 date: 2026-11-12
 ---
@@ -12,7 +12,7 @@ date: 2026-11-12
 | Title     | Simulator Screen Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.12.0                  |
+| Version   | 0.13.0                  |
 | Component | tool-simulator          |
 | Date      | 2026-11-12              |
 
@@ -195,6 +195,17 @@ Qt Quick 3D in a `QQuickWidget`, scene in QML, following the `qt-3d-gui` skill:
   each frame moves the seven link nodes.
 - **Ghost arm:** the same nodes, accent colour, opacity 0.3, blended, no depth write; visible only while a move
   runs or the commanded and measured arms differ by more than 0.5°.
+- **Link meshes** (phase 8c): a link whose profile names a mesh ([arm-profile.md](arm-profile.md) Part A) draws
+  that glTF file instead of its generated parts, loaded at run time with its own materials.
+  - **Frame:** the mesh is in its link's frame, as the arm model defines it: Z up, metres, origin at the joint
+    (export from CAD with +Z up). The base mesh is in the base frame.
+  - **Budget:** at most 50 000 triangles per mesh, counted from the file's index (or position) accessors before
+    loading. A larger mesh is not loaded: decimate it.
+  - **Fallback:** a file that is missing, unreadable, over budget or fails to load leaves the link's generated
+    parts in place, and the event log names the link and the reason, once per profile load.
+  - **Selection and faults** stay visible on a meshed link: its joint housing is drawn over the mesh, translucent,
+    while the joint is selected or faulted.
+  - The ghost arm keeps the generated parts.
 - **Tool triad** (phase 8c): three thin bars at the tool centre point along the tool frame's axes, x red, y green,
   z blue (the usual robotics convention, unlit so they read in both themes), each 12 % of the arm's height long. It
   follows the measured arm; the ghost has none.

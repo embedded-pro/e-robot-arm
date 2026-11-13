@@ -6,6 +6,7 @@
 #include <QColor>
 #include <QObject>
 #include <QQuaternion>
+#include <QStringList>
 #include <QVariantList>
 #include <QVector3D>
 #include <QtQml/qqmlregistration.h>
@@ -30,6 +31,7 @@ namespace simulator
         Q_PROPERTY(QVector3D toolPosition READ ToolPosition NOTIFY changed)
         Q_PROPERTY(QQuaternion toolRotation READ ToolRotation NOTIFY changed)
         Q_PROPERTY(QVariantList trail READ Trail NOTIFY trailChanged)
+        Q_PROPERTY(QStringList meshes READ Meshes NOTIFY meshesChanged)
         Q_PROPERTY(QColor warningColor READ WarningColor NOTIFY themeChanged)
         Q_PROPERTY(QVariantList levels READ Levels NOTIFY changed)
         Q_PROPERTY(bool ghostVisible READ GhostVisible NOTIFY changed)
@@ -58,6 +60,8 @@ namespace simulator
         QVector3D ToolPosition() const;
         QQuaternion ToolRotation() const;
         QVariantList Trail() const;
+        QStringList Meshes() const;
+        void SetMeshes(const QStringList& urls);
         QColor WarningColor() const;
         QVariantList Levels() const;
         bool GhostVisible() const;
@@ -70,6 +74,7 @@ namespace simulator
         QColor FaultColor() const;
 
         Q_INVOKABLE void Pick(int joint);
+        Q_INVOKABLE void ReportMeshFailure(int node, const QString& reason);
         Q_INVOKABLE void RequestCameraPreset(int preset);
 
     signals:
@@ -77,6 +82,8 @@ namespace simulator
         void themeChanged();
         void partsChanged();
         void trailChanged();
+        void meshesChanged();
+        void meshFailed(int node, const QString& reason);
         void jointPicked(int joint);
         void cameraPresetRequested(int preset);
 
@@ -91,6 +98,7 @@ namespace simulator
         QQuaternion toolRotation;
         QVariantList trail;
         uint32_t trailRevision{ 0 };
+        QStringList meshes;
         QColor warning;
         QVariantList levels;
         bool ghostVisible{ false };

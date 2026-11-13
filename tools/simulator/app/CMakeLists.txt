@@ -33,6 +33,8 @@ target_sources(e_robot_arm.tool.simulator.app PRIVATE
     EmergencyStopKey.hpp
     JointTable.cpp
     JointTable.hpp
+    MeshFiles.cpp
+    MeshFiles.hpp
     Panels.cpp
     Panels.hpp
     SimulatorWindow.cpp

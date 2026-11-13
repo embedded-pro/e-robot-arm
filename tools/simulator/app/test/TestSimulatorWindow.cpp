@@ -347,6 +347,39 @@ TEST_F(SimulatorWindowTest, a_loaded_profile_rebuilds_the_arm_and_bring_up_confi
     QSettings{ "embedded-pro", "e-robot-arm Simulator" }.remove("profile");
 }
 
+TEST_F(SimulatorWindowTest, a_profile_draws_its_link_meshes_and_names_a_mesh_it_cannot_load)
+{
+    const auto directory = std::filesystem::temp_directory_path() / "e-robot-arm-mesh-test";
+    std::filesystem::create_directories(directory / "saved");
+    std::filesystem::copy_file(MESH_TEST_DATA "/box.gltf", directory / "box.gltf", std::filesystem::copy_options::overwrite_existing);
+    auto profile = arm_host::DefaultArmProfile(arm_host::defaultNodes);
+    profile.name = "meshed arm";
+    profile.meshes[2] = "box.gltf";
+    profile.meshes[3] = "missing.glb";
+    ASSERT_TRUE(arm_host::WriteProfileFile(directory / "arm.json", profile).empty());
+
+    window.LoadProfileFrom(QString::fromStdString((directory / "arm.json").string()));
+    auto* root = window.ArmView().rootObject();
+    EXPECT_TRUE(Eventually([this, root]()
+        {
+            auto* mesh = root->findChild<QObject*>("mesh2");
+            return mesh != nullptr && mesh->property("visible").toBool() && Logged(window.Presenter(), "Link 3 mesh not loaded: cannot open");
+        }))
+        << LogText(window.Presenter());
+    EXPECT_FALSE(root->findChild<QObject*>("mesh3")->property("visible").toBool());
+    if (const auto* capture = std::getenv("SIMULATOR_FRAME_CAPTURE"))
+        window.ArmView().grabFramebuffer().save(QString{ capture }.replace(".png", "-mesh.png"));
+
+    window.SaveProfileTo(QString::fromStdString((directory / "saved" / "copy.json").string()));
+    const auto saved = arm_host::ReadProfileFile(directory / "saved" / "copy.json");
+    ASSERT_TRUE(std::holds_alternative<arm::ArmProfile>(saved));
+    const auto& meshes = std::get<arm::ArmProfile>(saved).meshes;
+    EXPECT_EQ("../box.gltf", std::string(meshes[2].begin(), meshes[2].end()));
+
+    std::filesystem::remove_all(directory);
+    QSettings{ "embedded-pro", "e-robot-arm Simulator" }.remove("profile");
+}
+
 int main(int argc, char* argv[])
 {
     auto format = QSurfaceFormat::defaultFormat();

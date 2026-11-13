@@ -210,6 +210,24 @@ namespace simulator
         return fault;
     }
 
+    QStringList ArmSceneState::Meshes() const
+    {
+        return meshes;
+    }
+
+    void ArmSceneState::SetMeshes(const QStringList& urls)
+    {
+        if (urls == meshes)
+            return;
+        meshes = urls;
+        emit meshesChanged();
+    }
+
+    void ArmSceneState::ReportMeshFailure(int node, const QString& reason)
+    {
+        emit meshFailed(node, reason);
+    }
+
     void ArmSceneState::Pick(int joint)
     {
         emit jointPicked(joint);

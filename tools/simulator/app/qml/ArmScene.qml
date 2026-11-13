@@ -131,6 +131,8 @@ Rectangle {
             id: measuredArm
             nodes: ArmSceneState.measuredNodes
             parts: ArmSceneState.parts
+            meshes: ArmSceneState.meshes
+            onMeshFailed: (node, reason) => ArmSceneState.ReportMeshFailure(node, reason)
             levels: ArmSceneState.levels
             selectedJoint: ArmSceneState.selectedJoint
             accentColor: ArmSceneState.accentColor

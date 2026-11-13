@@ -139,9 +139,20 @@ TEST_F(ArmProfileTest, reads_the_geometry_with_its_signs_offsets_tool_and_base)
     EXPECT_NEAR(1.5f, read.base.yaw, 1.0e-6f);
 }
 
+TEST_F(ArmProfileTest, reads_the_link_meshes_and_leaves_the_others_out)
+{
+    const auto profile = Read(Profile(Joint(1), R"( "meshes": { "base": "meshes/base.glb", "link3": "forearm.gltf" },)"));
+    ASSERT_TRUE(profile.has_value()) << Problem();
+
+    EXPECT_EQ("meshes/base.glb", std::string(profile->meshes[0].begin(), profile->meshes[0].end()));
+    EXPECT_EQ("forearm.gltf", std::string(profile->meshes[3].begin(), profile->meshes[3].end()));
+    EXPECT_TRUE(profile->meshes[1].empty());
+    EXPECT_TRUE(Read(Profile(Joint(1)))->meshes[6].empty());
+}
+
 TEST_F(ArmProfileTest, a_written_profile_reads_back_to_the_same_configuration)
 {
-    const auto original = Read(Profile(configuredJoint, geometry + Mass(Link("1.25"))));
+    const auto original = Read(Profile(configuredJoint, geometry + Mass(Link("1.25")) + R"( "meshes": { "link6": "flange \"v2\".glb" },)"));
     ASSERT_TRUE(original.has_value()) << Problem();
 
     infra::StringOutputStream::WithStorage<16384> stream;
@@ -192,6 +203,8 @@ TEST_F(ArmProfileTest, a_written_profile_reads_back_to_the_same_configuration)
     }
     EXPECT_EQ(original->config.mass.payload.mass, copy->config.mass.payload.mass);
     EXPECT_EQ(original->config.mass.payload.centre, copy->config.mass.payload.centre);
+    EXPECT_EQ(original->meshes, copy->meshes);
+    EXPECT_EQ("flange \"v2\".glb", std::string(copy->meshes[6].begin(), copy->meshes[6].end()));
     EXPECT_NE(std::string::npos, std::string(written.begin(), written.end()).find(R"("inertiaGramCm2": 120.5)"));
     EXPECT_NE(std::string::npos, std::string(written.begin(), written.end()).find(R"("fluxLinkageMilliWeber": 6.4)"));
 }
@@ -235,6 +248,10 @@ TEST_F(ArmProfileTest, refuses_a_profile_and_names_the_first_problem)
         { Profile(Joint(1), Mass(R"({ "massKg": 1, "inertiaKgM2": { "xx": 0.1, "yy": 0.1, "zz": 0.3 } })")),
             "massProperties.links[0].inertiaKgM2: each sum of two moments must be at least the third" },
         { Profile(Joint(1), Mass(Link("1"), R"(, "tip": 1)")), "massProperties.tip: is not a profile item" },
+        { Profile(Joint(1), R"( "meshes": { "link7": "a.glb" },)"), "meshes.link7: is not a profile item" },
+        { Profile(Joint(1), R"( "meshes": { "link1": "arm.stl" },)"), "meshes.link1: must name a .gltf or .glb file" },
+        { Profile(Joint(1), R"( "meshes": { "base": "" },)"), "meshes.base: must be a path of 1 to 96 characters" },
+        { Profile(Joint(1), R"( "meshes": { "base": 3 },)"), "meshes.base: must be a path of 1 to 96 characters" },
         { R"({ "format": "e-robot-arm profile", "version": 2 })", "version: is not a version this reader knows" },
         { R"({ "format": "something else" })", "format: must be \"e-robot-arm profile\"" },
         { R"({ "format": "e-robot-arm profile", "version": 1, "controlPeriodMs": 5 })", "name: is missing" },

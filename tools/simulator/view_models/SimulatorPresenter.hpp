@@ -75,6 +75,7 @@ namespace simulator
         void EmergencyStop();
         void SwitchTarget(const arm_host::ArmTarget& target);
         void LoadProfile(const arm::ArmProfile& profile);
+        void Note(LogLevel level, std::size_t joint, std::string message);
         void ConfirmRearm();
         bool InjectFault(std::size_t joint);
         bool SilenceJoint(std::size_t joint);

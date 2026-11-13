@@ -2,7 +2,7 @@
 title: "Arm Profile Design"
 type: design
 status: draft
-version: 0.4.0
+version: 0.5.0
 component: "arm_profile"
 date: 2026-11-13
 ---
@@ -12,7 +12,7 @@ date: 2026-11-13
 | Title     | Arm Profile Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.4.0              |
+| Version   | 0.5.0              |
 | Component | arm_profile        |
 | Date      | 2026-11-13         |
 
@@ -57,6 +57,7 @@ A profile holds what `ArmConfig` holds:
 | Joints                   | `joints`                     | exactly six, in order         | required            |
 | Geometry                 | `geometry`                   | see below                     | the reference arm   |
 | Mass properties          | `massProperties`             | see below                     | the reference arm   |
+| Link meshes              | `meshes`                     | see below                     | none                |
 
 The geometry is the arm model's ([arm-model.md](arm-model.md) Part A):
 
@@ -79,6 +80,11 @@ in joint order, and an optional `payload`, relative to the flange. Each of them:
 | Products       | `inertiaKgM2.xy`, `.xz`, `.yz` | kg·m², tensor elements                                      | 0                   |
 
 Without `payload` the arm carries none.
+
+The link meshes are what the simulator draws instead of its generated shapes ([tool-simulator.md](tool-simulator.md)
+Part E): `meshes` names a glTF file for any of `base`, `link1` … `link6`, as a path relative to the profile file, at
+most 96 characters, ending in `.gltf` or `.glb`. A link without a mesh keeps the generated shapes. The arm itself
+never reads them.
 
 Each joint:
 
@@ -199,6 +205,7 @@ The example shows one joint; a profile lists six.
 | Config  | motors      | per joint, preset and motor settings    | present or absent  | Absent: the lifecycle leaves the joint alone |
 | Config  | geometry    | OPW lengths, signs, offsets, tool, base | —                  | The reference arm when absent                |
 | Config  | mass        | six links and a payload                 | Part A             | The reference arm when absent                |
+| Profile | meshes      | seven relative paths                    | Part A             | Drawn by the simulator only                  |
 
 ---
 
