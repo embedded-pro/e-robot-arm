@@ -22,6 +22,33 @@ namespace
         return { foc::Radians{ q1 }, foc::Radians{ q2 }, foc::Radians{ q3 }, foc::Radians{ q4 }, foc::Radians{ q5 }, foc::Radians{ q6 } };
     }
 
+    arm::ArmGeometry SignedGeometry()
+    {
+        auto geometry = arm::ReferenceGeometry();
+        geometry.opw.a2 = 0.03f;
+        geometry.opw.b = 0.04f;
+        geometry.opw.signs = { 1, -1, 1, -1, 1, -1 };
+        geometry.opw.offsets = { 0.1f, -0.2f, 0.3f, 0.0f, 0.2f, -0.1f };
+        geometry.tool = { 0.01f, 0.0f, 0.05f, 0.0f, 0.0f, 0.0f };
+        geometry.base = { 0.0f, 0.0f, 0.0f, 0.2f, 0.3f, 0.0f };
+        return geometry;
+    }
+
+    arm::ArmMass PayloadOnly(float mass)
+    {
+        arm::ArmMass arm{};
+        arm.payload = { mass, { 0.01f, 0.0f, 0.05f }, {} };
+        return arm;
+    }
+
+    std::array<float, arm::jointCount> Values(const arm::JointTorques& torques)
+    {
+        std::array<float, arm::jointCount> values{};
+        for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+            values[joint] = torques[joint].Value();
+        return values;
+    }
+
     class ArmModelTest
         : public testing::Test
     {
@@ -41,7 +68,7 @@ namespace
                     EXPECT_NEAR(expected.rotation.at(row, column), actual.rotation.at(row, column), 1.0e-3f);
         }
 
-        arm::ArmModel model{ arm::ReferenceGeometry(), FullTurn() };
+        arm::ArmModel model{ arm::ReferenceGeometry(), arm::ReferenceMass(), FullTurn() };
     };
 }
 
@@ -60,7 +87,7 @@ TEST_F(ArmModelTest, applies_the_tool_and_the_base_placements)
     auto geometry = arm::ReferenceGeometry();
     geometry.tool = { 0.0f, 0.0f, 0.1f, 0.0f, 0.0f, 0.0f };
     geometry.base = { 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, pi / 2 };
-    const arm::ArmModel placed{ geometry, FullTurn() };
+    const arm::ArmModel placed{ geometry, arm::ReferenceMass(), FullTurn() };
 
     ExpectPosition(placed.ToolPose(Joints(0, pi / 2, 0, 0, 0, 0)), 1.0f, 0.68f, 0.15f);
 
@@ -113,7 +140,7 @@ TEST_F(ArmModelTest, refuses_a_target_out_of_reach_or_outside_the_joint_limits)
 
     auto limits = FullTurn();
     limits[0] = { foc::Radians{ 1.0f }, foc::Radians{ 1.5f } };
-    const arm::ArmModel narrow{ arm::ReferenceGeometry(), limits };
+    const arm::ArmModel narrow{ arm::ReferenceGeometry(), arm::ReferenceMass(), limits };
     const auto outside = narrow.Inverse(reachable, Joints(0, 0, 0, 0, 0, 0));
     EXPECT_FALSE(outside.joints.has_value());
     EXPECT_EQ(arm::IkFailure::outsideLimits, outside.failure);
@@ -159,6 +186,108 @@ TEST_F(ArmModelTest, flags_each_singularity_and_its_manipulability_falls_to_zero
     EXPECT_FALSE(overTheBase.wrist);
 }
 
+TEST_F(ArmModelTest, holds_the_documented_torque_of_the_reference_arm)
+{
+    const auto upright = model.GravityTorque(Joints(0, 0, 0, 0, 0, 0));
+    EXPECT_NEAR(0.0f, upright[1].Value(), 1.0e-5f);
+    EXPECT_NEAR(0.0f, upright[2].Value(), 1.0e-5f);
+
+    const auto forward = model.GravityTorque(Joints(0, pi / 2, 0, 0, 0, 0));
+    EXPECT_NEAR(0.0f, forward[0].Value(), 1.0e-5f);
+    EXPECT_NEAR(-9.81f * (1.0f * 0.11f + 0.8f * 0.35f + 0.3f * 0.47f + 0.25f * 0.52f + 0.1f * 0.55f), forward[1].Value(), 1.0e-4f);
+}
+
+TEST_F(ArmModelTest, a_payload_weighs_and_moves_as_a_point_mass_at_the_tool_centre_point)
+{
+    constexpr float mass{ 2.0f };
+    const arm::ArmModel payload{ SignedGeometry(), PayloadOnly(mass), FullTurn() };
+    const auto joints = Joints(0.4f, -0.3f, 0.8f, 0.5f, -0.7f, 0.2f);
+    const auto jacobian = payload.ToolJacobian(joints);
+    const auto gravity = Values(payload.GravityTorque(joints));
+    const auto inertia = payload.JointMassMatrix(joints);
+
+    for (std::size_t row = 0; row != arm::jointCount; ++row)
+    {
+        EXPECT_NEAR(mass * 9.81f * jacobian.at(2, row), gravity[row], 1.0e-4f) << row;
+        for (std::size_t column = 0; column != arm::jointCount; ++column)
+        {
+            float expected{ 0.0f };
+            for (std::size_t axis = 0; axis != 3; ++axis)
+                expected += mass * jacobian.at(axis, row) * jacobian.at(axis, column);
+            EXPECT_NEAR(expected, inertia.at(row, column), 1.0e-5f) << row << " " << column;
+        }
+    }
+}
+
+TEST_F(ArmModelTest, the_mass_matrix_is_symmetric_positive_definite_and_drives_the_inverse_dynamics)
+{
+    const arm::ArmModel signedArm{ SignedGeometry(), arm::ReferenceMass(), FullTurn() };
+    const auto joints = Joints(0.4f, -0.3f, 0.8f, 0.5f, -0.7f, 0.2f);
+    const std::array<float, arm::jointCount> acceleration{ 1.0f, -2.0f, 0.5f, 3.0f, -1.5f, 2.5f };
+    arm::JointAccelerations accelerations{};
+    for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+        accelerations[joint] = foc::RadiansPerSecondSquared{ acceleration[joint] };
+
+    const auto inertia = signedArm.JointMassMatrix(joints);
+    const auto gravity = Values(signedArm.GravityTorque(joints));
+    const auto torques = Values(signedArm.InverseDynamics(joints, arm::JointSpeeds{}, accelerations));
+
+    for (std::size_t row = 0; row != arm::jointCount; ++row)
+    {
+        float expected{ gravity[row] };
+        for (std::size_t column = 0; column != arm::jointCount; ++column)
+        {
+            EXPECT_NEAR(inertia.at(row, column), inertia.at(column, row), 1.0e-6f);
+            expected += inertia.at(row, column) * acceleration[column];
+        }
+        EXPECT_NEAR(expected, torques[row], 1.0e-4f) << row;
+    }
+
+    for (std::size_t row = 0; row != arm::jointCount; ++row)
+        EXPECT_GT(inertia.at(row, row), 0.0f);
+    float energy{ 0.0f };
+    for (std::size_t row = 0; row != arm::jointCount; ++row)
+        for (std::size_t column = 0; column != arm::jointCount; ++column)
+            energy += acceleration[row] * inertia.at(row, column) * acceleration[column];
+    EXPECT_GT(energy, 0.0f);
+}
+
+TEST_F(ArmModelTest, the_velocity_torques_deliver_half_the_rate_of_change_of_the_mass_matrix)
+{
+    const arm::ArmModel signedArm{ SignedGeometry(), arm::ReferenceMass(), FullTurn() };
+    const std::array<float, arm::jointCount> position{ 0.4f, -0.3f, 0.8f, 0.5f, -0.7f, 0.2f };
+    const std::array<float, arm::jointCount> speed{ 0.8f, -1.2f, 1.5f, -0.6f, 1.1f, 0.9f };
+    constexpr float step{ 1.0e-3f };
+
+    arm::JointPositions joints{};
+    arm::JointPositions ahead{};
+    arm::JointPositions behind{};
+    arm::JointSpeeds speeds{};
+    for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+    {
+        joints[joint] = foc::Radians{ position[joint] };
+        ahead[joint] = foc::Radians{ position[joint] + step * speed[joint] };
+        behind[joint] = foc::Radians{ position[joint] - step * speed[joint] };
+        speeds[joint] = foc::RadiansPerSecond{ speed[joint] };
+    }
+
+    const auto gravity = Values(signedArm.GravityTorque(joints));
+    const auto torques = Values(signedArm.InverseDynamics(joints, speeds, arm::JointAccelerations{}));
+    const auto after = signedArm.JointMassMatrix(ahead);
+    const auto before = signedArm.JointMassMatrix(behind);
+
+    float power{ 0.0f };
+    float change{ 0.0f };
+    for (std::size_t row = 0; row != arm::jointCount; ++row)
+    {
+        power += speed[row] * (torques[row] - gravity[row]);
+        for (std::size_t column = 0; column != arm::jointCount; ++column)
+            change += speed[row] * (after.at(row, column) - before.at(row, column)) / (2.0f * step) * speed[column];
+    }
+
+    EXPECT_NEAR(0.5f * change, power, 2.0e-3f);
+}
+
 TEST_F(ArmModelTest, each_call_costs_well_under_a_fifth_of_the_control_period)
 {
     constexpr int calls{ 20000 };
@@ -189,7 +318,29 @@ TEST_F(ArmModelTest, each_call_costs_well_under_a_fifth_of_the_control_period)
             sink = model.Inverse(target, Joints(q, 0.3f, 0.5f, q, 0.7f, q)).joints.has_value() ? 1.0f : 0.0f;
         });
 
-    std::printf("[METRIC] arm model per call: tool pose %.2f us, jacobian %.2f us, singularities %.2f us, inverse %.2f us\n", pose, jacobian, near, inverse);
-    for (const auto cost : { pose, jacobian, near, inverse })
+    const auto gravity = measure([this, &sink](float q)
+        {
+            sink = model.GravityTorque(Joints(q, 0.3f, 0.5f, q, 0.7f, q))[1].Value();
+        });
+    arm::JointSpeeds speeds{};
+    arm::JointAccelerations accelerations{};
+    for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+    {
+        speeds[joint] = foc::RadiansPerSecond{ 0.5f };
+        accelerations[joint] = foc::RadiansPerSecondSquared{ 1.0f };
+    }
+    const auto dynamics = measure([this, &sink, &speeds, &accelerations](float q)
+        {
+            sink = model.InverseDynamics(Joints(q, 0.3f, 0.5f, q, 0.7f, q), speeds, accelerations)[1].Value();
+        });
+    const auto inertia = measure([this, &sink](float q)
+        {
+            sink = model.JointMassMatrix(Joints(q, 0.3f, 0.5f, q, 0.7f, q)).at(1, 1);
+        });
+
+    std::printf("[METRIC] arm model per call: tool pose %.2f us, jacobian %.2f us, singularities %.2f us, inverse %.2f us, gravity %.2f us, inverse dynamics %.2f us, "
+                "mass matrix %.2f us\n",
+        pose, jacobian, near, inverse, gravity, dynamics, inertia);
+    for (const auto cost : { pose, jacobian, near, inverse, gravity, dynamics, inertia })
         EXPECT_LT(cost, 2000.0);
 }

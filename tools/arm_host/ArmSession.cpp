@@ -55,7 +55,7 @@ namespace arm_host
         : profile(profile)
         , client(can)
         , arm(client.CategoryClient(), profile.config)
-        , model(profile.config.geometry, profile.config.positionLimits)
+        , model(profile.config.geometry, profile.config.mass, profile.config.positionLimits)
         , target(target)
         , sink(sink)
         , simulation(simulation)
@@ -399,6 +399,7 @@ namespace arm_host
             measured[joint] = snapshot.readings[joint].position;
         snapshot.toolPose = arm::ToPlacement(model.ToolPose(measured));
         snapshot.singularities = model.Near(measured);
+        snapshot.gravityTorque = model.GravityTorque(measured);
         snapshot.profileName.assign(profile.name.begin(), profile.name.end());
         snapshot.config = profile.config;
         sample.commanded = snapshot.commanded.value_or(sample.measured);

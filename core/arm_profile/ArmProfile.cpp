@@ -24,6 +24,8 @@ namespace arm
 
         constexpr std::array<const char*, 7> opwLengthNames{ "a1", "a2", "b", "c1", "c2", "c3", "c4" };
         constexpr std::array<const char*, 6> placementNames{ "xM", "yM", "zM", "rollRad", "pitchRad", "yawRad" };
+        constexpr std::array<const char*, 3> centreNames{ "x", "y", "z" };
+        constexpr std::array<const char*, 6> inertiaNames{ "xx", "yy", "zz", "xy", "xz", "yz" };
 
         constexpr std::array<double, 10> powersOfTen{ 1.0, 1.0e1, 1.0e2, 1.0e3, 1.0e4, 1.0e5, 1.0e6, 1.0e7, 1.0e8, 1.0e9 };
 
@@ -148,6 +150,15 @@ namespace arm
                 return true;
             }
 
+            bool ReadNonNegative(const Path& path, const Value& value, float& result)
+            {
+                if (!ReadReal(path, value, result))
+                    return false;
+                if (!(result >= 0.0f))
+                    return Fail(path, "must be 0 or above");
+                return true;
+            }
+
             bool ReadPositive(const Path& path, const Value& value, float& result)
             {
                 if (!ReadReal(path, value, result))
@@ -234,7 +245,75 @@ namespace arm
                     return Mark(seen.joints, ReadJoints(path, value, profile.config));
                 if (key == "geometry")
                     return ReadGeometry(path, value, profile.config.geometry);
+                if (key == "massProperties")
+                    return ReadMass(path, value, profile.config.mass);
                 return Unknown(path);
+            }
+
+            bool ReadMass(const Path& path, const Value& value, ArmMass& mass)
+            {
+                mass = ArmMass{};
+                bool links{ false };
+                if (!ReadMembers(path, value, [this, &mass, &links](const Path& item, infra::JsonString key, const Value& member)
+                        {
+                            if (key == "links")
+                                return Mark(links, ReadSix(item, member, mass.links, [this](const Path& element, const Value& entry, MassProperties& properties)
+                                                       {
+                                                           return ReadMassProperties(element, entry, properties);
+                                                       }));
+                            if (key == "payload")
+                                return ReadMassProperties(item, member, mass.payload);
+                            return Unknown(item);
+                        }))
+                    return false;
+
+                if (!links)
+                    return Missing(path, "links");
+                return true;
+            }
+
+            bool ReadMassProperties(const Path& path, const Value& value, MassProperties& properties)
+            {
+                bool massSeen{ false };
+                if (!ReadMembers(path, value, [this, &properties, &massSeen](const Path& item, infra::JsonString key, const Value& member)
+                        {
+                            if (key == "massKg")
+                                return Mark(massSeen, ReadNonNegative(item, member, properties.mass));
+                            if (key == "centreM")
+                                return ReadNamed(item, member, centreNames, properties.centre);
+                            if (key == "inertiaKgM2")
+                                return ReadNamed(item, member, inertiaNames, properties.inertia) && CheckInertia(item, properties.inertia);
+                            return Unknown(item);
+                        }))
+                    return false;
+
+                if (!massSeen)
+                    return Missing(path, "massKg");
+                return true;
+            }
+
+            template<std::size_t N>
+            bool ReadNamed(const Path& path, const Value& value, const std::array<const char*, N>& names, std::array<float, N>& values)
+            {
+                return ReadMembers(path, value, [this, &names, &values](const Path& item, infra::JsonString key, const Value& member)
+                    {
+                        for (std::size_t index = 0; index != N; ++index)
+                            if (key == names[index])
+                                return ReadReal(item, member, values[index]);
+                        return Unknown(item);
+                    });
+            }
+
+            bool CheckInertia(const Path& path, const std::array<float, 6>& inertia)
+            {
+                const auto xx = inertia[0];
+                const auto yy = inertia[1];
+                const auto zz = inertia[2];
+                if (!(xx >= 0.0f && yy >= 0.0f && zz >= 0.0f))
+                    return Fail(path, "moments must be 0 or above");
+                if (xx + yy < zz || yy + zz < xx || zz + xx < yy)
+                    return Fail(path, "each sum of two moments must be at least the third");
+                return true;
             }
 
             bool ReadGeometry(const Path& path, const Value& value, ArmGeometry& geometry)
@@ -722,7 +801,37 @@ namespace arm
 
                 stream << "\n  ],\n  \"geometry\": {\n    \"opwMetres\": { ";
                 Geometry(config.geometry);
+                stream << "\n  },\n  \"massProperties\": {\n    \"links\": [";
+                for (std::size_t link = 0; link != jointCount; ++link)
+                {
+                    stream << (link == 0 ? "\n      " : ",\n      ");
+                    Mass(config.mass.links[link]);
+                }
+                stream << "\n    ],\n    \"payload\": ";
+                Mass(config.mass.payload);
                 stream << "\n  }\n}\n";
+            }
+
+            void Mass(const MassProperties& properties)
+            {
+                stream << R"({ "massKg": )";
+                Number(properties.mass);
+                stream << R"(, "centreM": )";
+                Named(centreNames, properties.centre);
+                stream << R"(, "inertiaKgM2": )";
+                Named(inertiaNames, properties.inertia);
+                stream << " }";
+            }
+
+            template<std::size_t N>
+            void Named(const std::array<const char*, N>& names, const std::array<float, N>& values)
+            {
+                for (std::size_t index = 0; index != N; ++index)
+                {
+                    stream << (index == 0 ? "{ \"" : ", \"") << names[index] << "\": ";
+                    Number(values[index]);
+                }
+                stream << " }";
             }
 
             void Geometry(const ArmGeometry& geometry)

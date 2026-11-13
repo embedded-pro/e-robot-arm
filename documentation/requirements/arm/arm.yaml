@@ -86,3 +86,10 @@
     The arm shall convert a tool pose to joint positions within the joint limits, choosing the solution closest to
     the current joints, and shall refuse a pose it cannot reach or can reach only outside the joint limits, saying
     which.
+
+- id: REQ-MOD-003
+  title: Joint torques from the arm's mass
+  shall: >
+    The arm shall report the gravity torque of each joint at the measured joint positions once per control period,
+    and shall convert a joint motion of positions, speeds and accelerations to joint torques, from its geometry, the
+    mass properties of its links and its payload.

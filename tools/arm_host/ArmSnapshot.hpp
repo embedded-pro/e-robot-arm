@@ -29,6 +29,7 @@ namespace arm_host
         uint32_t overruns{ 0 };
         arm::Placement toolPose{};
         arm::Singularities singularities{};
+        arm::JointTorques gravityTorque{};
         std::string profileName{};
         arm::ArmConfig config{};
     };

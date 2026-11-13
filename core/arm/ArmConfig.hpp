@@ -2,6 +2,7 @@
 #define CORE_ARM_ARM_CONFIG_HPP
 
 #include "core/arm_model/ArmGeometry.hpp"
+#include "core/arm_model/ArmMass.hpp"
 #include "core/joint_bus/interfaces/JointBus.hpp"
 #include "core/joint_configurator/interfaces/ControllerSettings.hpp"
 #include "core/joint_configurator/interfaces/MotorSettings.hpp"
@@ -25,6 +26,7 @@ namespace arm
         JointControllers controllers{};
         JointMotors motors{};
         ArmGeometry geometry{ ReferenceGeometry() };
+        ArmMass mass{ ReferenceMass() };
     };
 }
 
