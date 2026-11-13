@@ -191,3 +191,44 @@ TEST_F(ArmSceneModelTest, the_parts_are_sized_by_the_geometry_and_rebuilt_only_w
     EXPECT_EQ(revision + 1, scene.PartsRevision());
     EXPECT_NEAR(0.4f, scene.Parts()[2][1].scale[1], 1.0e-6f);
 }
+
+TEST_F(ArmSceneModelTest, the_tool_node_sits_at_the_tool_centre_point)
+{
+    auto snapshot = Placed();
+    snapshot.config.geometry.tool = { 0.0f, 0.01f, 0.08f, 0.2f, 0.0f, 0.0f };
+    scene.Update(snapshot);
+
+    arm::JointPositions joints{};
+    for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+        joints[joint] = snapshot.readings[joint].position;
+    const arm::ArmModel model{ snapshot.config.geometry, snapshot.config.mass, snapshot.config.positionLimits };
+    EXPECT_EQ(simulator::ToScene(model.ToolPose(joints)), scene.ToolNode());
+}
+
+TEST_F(ArmSceneModelTest, the_trail_adds_spaced_points_keeps_the_newest_and_clears_when_the_arm_changes)
+{
+    auto snapshot = simulator::test::Running();
+    scene.Update(snapshot);
+    scene.Update(snapshot);
+    EXPECT_EQ(1u, scene.ToolTrail().size());
+
+    for (std::size_t step = 1; step != simulator::ArmSceneModel::trailCapacity + 50; ++step)
+    {
+        snapshot.readings[1].position = foc::Radians{ 0.005f * static_cast<float>(step) };
+        scene.Update(snapshot);
+    }
+    EXPECT_EQ(simulator::ArmSceneModel::trailCapacity, scene.ToolTrail().size());
+    EXPECT_EQ(scene.ToolNode().position, scene.ToolTrail().back());
+
+    const auto revision = scene.TrailRevision();
+    snapshot.readings[2].silent = true;
+    scene.Update(snapshot);
+    EXPECT_TRUE(scene.ToolTrail().empty());
+    EXPECT_NE(revision, scene.TrailRevision());
+
+    snapshot.readings[2].silent = false;
+    scene.Update(snapshot);
+    snapshot.config.geometry.opw.c2 = 0.3f;
+    scene.Update(snapshot);
+    EXPECT_EQ(1u, scene.ToolTrail().size());
+}

@@ -21,11 +21,16 @@ namespace simulator
             return { value[0], value[1], value[2], value[3] };
         }
 
+        QVariantMap ToMap(const ScenePose& node)
+        {
+            return QVariantMap{ { "position", Vector(node.position) }, { "rotation", Rotation(node.rotation) } };
+        }
+
         QVariantList ToList(const SceneNodes& nodes)
         {
             QVariantList list;
             for (const auto& node : nodes)
-                list.append(QVariantMap{ { "position", Vector(node.position) }, { "rotation", Rotation(node.rotation) } });
+                list.append(ToMap(node));
             return list;
         }
 
@@ -86,6 +91,16 @@ namespace simulator
         }
         ghostVisible = model.GhostVisible();
         singularityWarning = QString::fromStdString(model.SingularityWarning());
+        toolPosition = Vector(model.ToolNode().position);
+        toolRotation = Rotation(model.ToolNode().rotation);
+        if (model.TrailRevision() != trailRevision)
+        {
+            trailRevision = model.TrailRevision();
+            trail.clear();
+            for (const auto& point : model.ToolTrail())
+                trail.append(Vector(point));
+            emit trailChanged();
+        }
         selectedJoint = model.Selected() ? static_cast<int>(*model.Selected()) : -1;
         emit changed();
     }
@@ -128,6 +143,21 @@ namespace simulator
     QString ArmSceneState::SingularityWarning() const
     {
         return singularityWarning;
+    }
+
+    QVector3D ArmSceneState::ToolPosition() const
+    {
+        return toolPosition;
+    }
+
+    QQuaternion ArmSceneState::ToolRotation() const
+    {
+        return toolRotation;
+    }
+
+    QVariantList ArmSceneState::Trail() const
+    {
+        return trail;
     }
 
     QColor ArmSceneState::WarningColor() const
