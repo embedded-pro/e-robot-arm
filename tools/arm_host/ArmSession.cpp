@@ -15,6 +15,26 @@ namespace arm_host
                    std::holds_alternative<StopJoints>(command) || std::holds_alternative<ClearFaults>(command);
         }
 
+        bool LifecycleCommand(const ArmCommand& command)
+        {
+            return std::holds_alternative<BringUp>(command) || std::holds_alternative<Enable>(command) || std::holds_alternative<Disable>(command);
+        }
+
+        std::optional<arm::JointCommand> JointCommandOf(const ArmCommand& command)
+        {
+            if (std::holds_alternative<CheckContracts>(command))
+                return arm::JointCommand::queryContracts;
+            if (std::holds_alternative<SelectMode>(command))
+                return arm::JointCommand::selectMode;
+            if (std::holds_alternative<StartJoints>(command))
+                return arm::JointCommand::start;
+            if (std::holds_alternative<StopJoints>(command))
+                return arm::JointCommand::stop;
+            if (std::holds_alternative<ClearFaults>(command))
+                return arm::JointCommand::clearFault;
+            return std::nullopt;
+        }
+
         std::string_view FailureReason(arm::CommandFailure failure)
         {
             switch (failure)
@@ -74,19 +94,19 @@ namespace arm_host
             held.emplace(id, command);
     }
 
-    void ArmSession::Delivered()
+    void ArmSession::Delivered(arm::JointCommand command)
     {
         auto& delivered = issuing.has_value() ? issuing : held;
-        if (!delivered.has_value())
+        if (!delivered.has_value() || JointCommandOf(delivered->command) != command)
             return;
 
         Emit({ .kind = ArmEventKind::accepted, .command = delivered->id, .commandName = CommandName(delivered->command) });
         delivered.reset();
     }
 
-    void ArmSession::Failed(arm::CommandFailure failure)
+    void ArmSession::Failed(arm::JointCommand command, arm::CommandFailure failure)
     {
-        if (!held.has_value())
+        if (!held.has_value() || JointCommandOf(held->command) != command)
             return;
 
         Emit({ .kind = ArmEventKind::refused, .command = held->id, .commandName = CommandName(held->command), .reason = FailureReason(failure) });
@@ -142,14 +162,14 @@ namespace arm_host
 
         bool operator()(const Rearm&) const
         {
-            const auto rearmed = session.arm.Safety().Rearm();
+            const auto rearmed = session.arm.Lifecycle().Rearm();
             session.tripReported = session.tripReported && !rearmed;
             return rearmed;
         }
 
         bool operator()(const MoveTo& move) const
         {
-            return session.arm.Motion().MoveTo(move.target);
+            return session.arm.Lifecycle().MoveTo(move.target);
         }
 
         bool operator()(const AbortMove&) const
@@ -174,6 +194,21 @@ namespace arm_host
                 });
         }
 
+        bool operator()(const BringUp&) const
+        {
+            return session.arm.Lifecycle().BringUp();
+        }
+
+        bool operator()(const Enable&) const
+        {
+            return session.arm.Lifecycle().Enable();
+        }
+
+        bool operator()(const Disable&) const
+        {
+            return session.arm.Lifecycle().Disable();
+        }
+
         ArmSession& session;
     };
 
@@ -196,13 +231,17 @@ namespace arm_host
         if (std::holds_alternative<InjectFault>(command) || std::holds_alternative<SilenceJoint>(command))
             return simulation == nullptr ? "not a simulated target" : "no such joint";
         if (std::holds_alternative<Rearm>(command))
-            return "a joint is in fault";
+            return arm.Lifecycle().State() == arm::ArmState::tripped ? "a joint is in fault" : "not tripped";
+        if (LifecycleCommand(command))
+            return StateName(arm.Lifecycle().State());
         if (NeedsMotionPermission(command) && arm.Safety().Tripped())
             return "tripped";
         if (NeedsMotionPermission(command) && arm.Safety().Contracts() != can::ContractCompatibility::compatible)
             return "contracts not compatible";
+        if (std::holds_alternative<MoveTo>(command) && arm.Lifecycle().State() != arm::ArmState::enabled)
+            return Moving() ? "moving" : "the arm is not enabled";
         if (std::holds_alternative<MoveTo>(command))
-            return Moving() ? "moving" : "target outside the joint limits";
+            return "target outside the joint limits";
         if (DeliveredByTheJoints(command))
             return "a joint's contract is incompatible";
         return "CAN transmit queue full";
@@ -211,6 +250,7 @@ namespace arm_host
     ArmSession::Events::Events(ArmSession& session, arm::Arm& arm)
         : arm::JointBusObserver(arm.Safety())
         , arm::JointMotionObserver(arm.Motion())
+        , arm::ArmLifecycleObserver(arm.Lifecycle())
         , session(session)
     {}
 
@@ -231,14 +271,19 @@ namespace arm_host
         session.ReportTrip(joint, can::FocFaultCode::none);
     }
 
-    void ArmSession::Events::OnCommandDelivered(arm::JointCommand)
+    void ArmSession::Events::OnCommandDelivered(arm::JointCommand command)
     {
-        session.Delivered();
+        session.Delivered(command);
     }
 
-    void ArmSession::Events::OnCommandFailed(arm::JointCommand, arm::CommandFailure failure)
+    void ArmSession::Events::OnCommandFailed(arm::JointCommand command, arm::CommandFailure failure)
     {
-        session.Failed(failure);
+        session.Failed(command, failure);
+    }
+
+    void ArmSession::Events::OnStateChanged(arm::ArmState state)
+    {
+        session.Emit({ .kind = ArmEventKind::stateChanged, .state = state });
     }
 
     void ArmSession::Events::OnMoveDone()
@@ -282,6 +327,7 @@ namespace arm_host
         snapshot.contracts = safety.Contracts();
         snapshot.tripped = safety.Tripped();
         snapshot.moving = arm.Motion().Moving();
+        snapshot.state = arm.Lifecycle().State();
         sample.commanded = snapshot.commanded.value_or(sample.measured);
 
         sink.OnSnapshot(snapshot);

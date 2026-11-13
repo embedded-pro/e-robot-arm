@@ -2,6 +2,7 @@
 #define TOOLS_ARM_HOST_ARM_EVENT_HPP
 
 #include "core/joint_bus/interfaces/JointBus.hpp"
+#include "core/lifecycle/interfaces/ArmLifecycle.hpp"
 #include "infra/timer/Timer.hpp"
 #include <cstddef>
 #include <cstdint>
@@ -21,7 +22,8 @@ namespace arm_host
         moveDone,
         moveAborted,
         targetReady,
-        targetFailed
+        targetFailed,
+        stateChanged
     };
 
     inline constexpr std::size_t noJoint{ std::numeric_limits<std::size_t>::max() };
@@ -36,6 +38,7 @@ namespace arm_host
         std::size_t joint{ noJoint };
         can::FocFaultCode fault{ can::FocFaultCode::none };
         can::ContractCompatibility contracts{ can::ContractCompatibility::unknown };
+        arm::ArmState state{ arm::ArmState::unpowered };
     };
 }
 

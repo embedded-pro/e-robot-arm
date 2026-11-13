@@ -2,6 +2,8 @@
 #include "tools/arm_host/ArmSession.hpp"
 #include "tools/arm_host/test/ArmHostTestSupport.hpp"
 #include "gmock/gmock.h"
+#include <algorithm>
+#include <vector>
 
 namespace
 {
@@ -143,9 +145,41 @@ TEST_F(ArmSessionTest, refuses_to_rearm_while_a_joint_is_in_fault_and_rearms_onc
     Execute(9, arm_host::Rearm{});
     ForwardTime(20ms);
 
-    EXPECT_EQ(9u, sink.events.back().command);
-    EXPECT_EQ(ArmEventKind::accepted, sink.events.back().kind);
+    EXPECT_TRUE(std::ranges::any_of(sink.events, [](const arm_host::ArmEvent& event)
+        {
+            return event.command == 9 && event.kind == ArmEventKind::accepted;
+        }));
     EXPECT_FALSE(sink.snapshot.tripped);
+    EXPECT_EQ(arm::ArmState::ready, sink.snapshot.state);
+}
+
+TEST_F(ArmSessionTest, bring_up_and_enable_walk_the_lifecycle_and_report_each_state)
+{
+    Execute(1, arm_host::BringUp{});
+    EXPECT_EQ(arm::ArmState::ready, sink.snapshot.state);
+
+    Execute(2, arm_host::Enable{});
+    EXPECT_EQ(arm::ArmState::enabled, sink.snapshot.state);
+    EXPECT_EQ(can::FocMotorMode::position, simulatedArm.Joint(5).Mode());
+
+    std::vector<arm::ArmState> states;
+    for (const auto& event : sink.events)
+        if (event.kind == ArmEventKind::stateChanged)
+            states.push_back(event.state);
+    EXPECT_EQ((std::vector<arm::ArmState>{ arm::ArmState::checking, arm::ArmState::waitingForCalibration, arm::ArmState::ready, arm::ArmState::enabling,
+                  arm::ArmState::enabled }),
+        states);
+}
+
+TEST_F(ArmSessionTest, refuses_lifecycle_commands_and_moves_out_of_order_and_names_the_state)
+{
+    Execute(1, arm_host::Enable{});
+    EXPECT_EQ("unpowered", sink.Last()->reason);
+
+    Execute(2, arm_host::CheckContracts{});
+    Execute(3, arm_host::MoveTo{ Target(0.5f) });
+    EXPECT_EQ(3u, sink.Last()->command);
+    EXPECT_EQ("the arm is not enabled", sink.Last()->reason);
 }
 
 TEST_F(ArmSessionTest, emergency_stop_aborts_a_running_move)

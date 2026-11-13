@@ -17,7 +17,8 @@ namespace arm
     public:
         static constexpr infra::Duration retryInterval{ std::chrono::milliseconds{ 1 } };
 
-        JointBusImpl(can::FocMotorCategoryClient& client, const JointNodeIds& nodes, uint8_t missedRequestsBeforeSilent, infra::Duration commandTimeout);
+        JointBusImpl(can::FocMotorCategoryClient& client, const JointNodeIds& nodes, const JointTransmissions& transmissions, uint8_t missedRequestsBeforeSilent,
+            infra::Duration commandTimeout);
 
         bool QueryContracts() override;
         can::ContractCompatibility Contracts() const override;
@@ -64,6 +65,7 @@ namespace arm
 
         can::FocMotorCategoryClient& client;
         JointNodeIds nodes;
+        JointTransmissions transmissions;
         std::array<JointReading, jointCount> readings{};
         std::array<bool, jointCount> contractAnswered{};
         bool contractCheckPending{ false };

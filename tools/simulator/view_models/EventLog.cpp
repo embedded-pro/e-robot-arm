@@ -1,4 +1,5 @@
 #include "tools/simulator/view_models/EventLog.hpp"
+#include "tools/arm_host/ArmCommand.hpp"
 #include "tools/simulator/view_models/JointRows.hpp"
 #include <array>
 #include <chrono>
@@ -52,6 +53,8 @@ namespace simulator
                     return { LogLevel::info, "Target ready" };
                 case targetFailed:
                     return { LogLevel::fault, "Target switch failed: " + Text(event.reason) };
+                case stateChanged:
+                    return { LogLevel::info, "Arm " + Text(arm_host::StateName(event.state)) };
             }
             return { LogLevel::info, "Unknown event" };
         }

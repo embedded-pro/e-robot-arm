@@ -27,6 +27,7 @@ namespace arm_host
         class Events
             : private arm::JointBusObserver
             , private arm::JointMotionObserver
+            , private arm::ArmLifecycleObserver
         {
         public:
             Events(ArmSession& session, arm::Arm& arm);
@@ -39,6 +40,7 @@ namespace arm_host
             void OnCommandFailed(arm::JointCommand command, arm::CommandFailure failure) override;
             void OnMoveDone() override;
             void OnMoveAborted() override;
+            void OnStateChanged(arm::ArmState state) override;
 
             ArmSession& session;
         };
@@ -57,8 +59,8 @@ namespace arm_host
         };
 
         void Deliver(uint32_t id, const ArmCommand& command);
-        void Delivered();
-        void Failed(arm::CommandFailure failure);
+        void Delivered(arm::JointCommand command);
+        void Failed(arm::JointCommand command, arm::CommandFailure failure);
         bool Run(const ArmCommand& command);
         bool Simulate(std::size_t joint, const infra::Function<void(simulation::SimulatedJoint&)>& action);
         std::string_view RefusalReason(const ArmCommand& command) const;

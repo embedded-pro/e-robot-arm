@@ -1,6 +1,7 @@
 #ifndef CORE_JOINT_BUS_INTERFACES_JOINT_BUS_HPP
 #define CORE_JOINT_BUS_INTERFACES_JOINT_BUS_HPP
 
+#include "core/joint_bus/interfaces/JointTransmission.hpp"
 #include "e-foc-protocol/client/FocMotorCategoryClient.hpp"
 #include "e-foc-protocol/contract/FocMotorMessages.hpp"
 #include "e-foc-protocol/foc/Units.hpp"
@@ -15,6 +16,7 @@ namespace arm
 
     using JointNodeIds = std::array<uint16_t, jointCount>;
     using JointPositions = std::array<foc::Radians, jointCount>;
+    using JointTransmissions = std::array<JointTransmission, jointCount>;
 
     struct JointLimit
     {
@@ -61,10 +63,10 @@ namespace arm
     class JointBus;
 
     class JointBusObserver
-        : public infra::SingleObserver<JointBusObserver, JointBus>
+        : public infra::Observer<JointBusObserver, JointBus>
     {
     public:
-        using infra::SingleObserver<JointBusObserver, JointBus>::SingleObserver;
+        using infra::Observer<JointBusObserver, JointBus>::Observer;
 
         virtual void OnContractsResolved(can::ContractCompatibility compatibility) = 0;
         virtual void OnJointFault(std::size_t joint, can::FocFaultCode fault) = 0;

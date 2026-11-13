@@ -2,7 +2,7 @@
 title: "Simulator Design"
 type: design
 status: draft
-version: 0.4.0
+version: 0.5.0
 component: "simulator"
 date: 2026-11-12
 ---
@@ -12,7 +12,7 @@ date: 2026-11-12
 | Title     | Simulator Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.4.0            |
+| Version   | 0.5.0            |
 | Component | simulator        |
 | Date      | 2026-11-12       |
 
@@ -26,7 +26,7 @@ date: 2026-11-12
 
 **Is responsible for:**
 
-- Running the arm stack of `core/` (`arm::Arm`: joint bus, safety supervisor, joint motion, control loop) on a PC
+- Running the arm stack of `core/` (`arm::Arm`: joint bus, safety supervisor, joint motion, lifecycle, control loop) on a PC
   against a selectable target: simulated joints, a `virtual:` CAN bus, or the real arm on a CAN adapter.
 - Keeping the arm on its own thread, so neither rendering nor the operator can delay a control period.
 - Handing the operator interface a consistent snapshot of the arm, its events and its traces, and taking its
@@ -107,13 +107,13 @@ A `SimulatedJoint` is an e-foc node on the in-process bus (a `FocMotorCategorySe
 
 `ArmHost` owns the arm thread and, on it, the target and the arm. Its operator-facing surface:
 
-| Operation              | Effect                                                                                                                                                                     |
-|------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `Post(command)`        | One of: check contracts, select position mode, start, stop, clear faults, emergency stop, re-arm, move, abort, inject fault, silence joint. Its result arrives as an event |
-| `SwitchTarget(target)` | Part C; its result arrives as an event                                                                                                                                     |
-| `Snapshot()`           | A copy of the latest snapshot                                                                                                                                              |
-| `TakeEvents()`         | Every event since the last call, in order                                                                                                                                  |
-| `TakeTrace()`          | Every trace sample since the last call, in order                                                                                                                           |
+| Operation              | Effect                                                                                                                                                                                                                                                                                                                                                                  |
+|------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `Post(command)`        | One of: bring up, enable, disable, check contracts, select position mode, start, stop, clear faults, emergency stop, re-arm, move, abort, inject fault, silence joint. Its result arrives as an event. Bring up, enable, disable, re-arm and move go through the arm's lifecycle ([arm-lifecycle.md](arm-lifecycle.md)), so a move is refused unless the arm is enabled |
+| `SwitchTarget(target)` | Part C; its result arrives as an event                                                                                                                                                                                                                                                                                                                                  |
+| `Snapshot()`           | A copy of the latest snapshot                                                                                                                                                                                                                                                                                                                                           |
+| `TakeEvents()`         | Every event since the last call, in order                                                                                                                                                                                                                                                                                                                               |
+| `TakeTrace()`          | Every trace sample since the last call, in order                                                                                                                                                                                                                                                                                                                        |
 
 It is built in layers, each tested on its own:
 
@@ -141,7 +141,8 @@ The snapshot is what the screen shows; events are what the log shows; traces are
 - **Snapshot** — published once per control period, with a sequence number so the GUI can tell a stale copy.
 - **Events** — command accepted or refused (with its id, its name and the reason), contracts resolved, joint fault,
   joint silent, tripped (with the joint and the fault that caused it, once per trip), move done, move aborted, target
-  ready, target failed; each with the arm-thread time.
+  ready, target failed, lifecycle state changed; each with the arm-thread time. The snapshot carries the lifecycle
+  state as well.
 - **Trace samples** — one per control period: the time, the six commanded positions and the six measured positions.
 
 The commanded positions are joint motion's last sampled setpoint. Joint motion gains a read-only accessor for it
@@ -237,7 +238,7 @@ sequenceDiagram
     participant J as Joints
     G->>H: Post(move)
     H->>A: schedule
-    A->>A: arm Motion().MoveTo
+    A->>A: arm Lifecycle().MoveTo
     loop every control period
         A->>J: request telemetry
         J-->>A: readings

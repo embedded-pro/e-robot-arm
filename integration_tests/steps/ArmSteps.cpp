@@ -23,6 +23,13 @@ GIVEN(R"(an arm with six simulated joints on one CAN bus)")
     context.Emplace<ArmFixture>();
 }
 
+GIVEN(R"(an arm whose joint {int} turns its motor {float} times, reversed, with its zero at {float} rad)", (std::int32_t joint, float ratio, float offset))
+{
+    arm::JointTransmissions transmissions{};
+    transmissions[static_cast<std::size_t>(joint - 1)] = { ratio, arm::JointDirection::negative, foc::Radians{ offset } };
+    context.Emplace<ArmFixture>(transmissions);
+}
+
 GIVEN(R"(the control loop is running)")
 {
     auto& fixture = context.Get<ArmFixture>();
@@ -79,7 +86,8 @@ WHEN(R"(the arm moves the joints to {float}, {float}, {float}, {float}, {float},
 {
     auto& fixture = context.Get<ArmFixture>();
     fixture.target = Positions(q1, q2, q3, q4, q5, q6);
-    fixture.lastAccepted = fixture.arm.Motion().MoveTo(fixture.target);
+    fixture.movesDoneBefore = fixture.events.movesDone;
+    fixture.lastAccepted = fixture.arm.Lifecycle().MoveTo(fixture.target);
 }
 
 THEN(R"(halfway through the move every joint shall be between its start and its target)")
@@ -104,7 +112,7 @@ THEN(R"(the move shall be done within {int} ms)", (std::int32_t milliseconds))
 {
     auto& fixture = context.Get<ArmFixture>();
     fixture.ForwardTime(std::chrono::milliseconds{ milliseconds });
-    EXPECT_EQ(1u, fixture.events.movesDone);
+    EXPECT_EQ(fixture.movesDoneBefore + 1, fixture.events.movesDone);
     EXPECT_FALSE(fixture.arm.Motion().Moving());
 }
 
@@ -113,6 +121,18 @@ THEN(R"(every joint shall be at its target)")
     auto& fixture = context.Get<ArmFixture>();
     for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
         EXPECT_NEAR(fixture.target[joint].Value(), fixture.Joint(joint + 1).Position().Value(), positionTolerance) << "joint " << joint + 1;
+}
+
+THEN(R"(the arm shall report every joint at its target)")
+{
+    auto& fixture = context.Get<ArmFixture>();
+    for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+        EXPECT_NEAR(fixture.target[joint].Value(), fixture.arm.Safety().Reading(joint).position.Value(), positionTolerance) << "joint " << joint + 1;
+}
+
+THEN(R"(motor {int} shall be at {float} rad)", (std::int32_t motor, float position))
+{
+    EXPECT_NEAR(position, context.Get<ArmFixture>().Joint(static_cast<std::size_t>(motor)).Position().Value(), positionTolerance);
 }
 
 THEN(R"(the move shall be refused and no joint shall move)")
@@ -172,6 +192,64 @@ THEN(R"(the arm shall refuse to move)")
     EXPECT_FALSE(fixture.arm.Safety().Start());
 }
 
+WHEN(R"(the arm is brought up)")
+{
+    auto& fixture = context.Get<ArmFixture>();
+    EXPECT_TRUE(fixture.arm.Lifecycle().BringUp());
+    fixture.ForwardTime(30ms);
+}
+
+WHEN(R"(the arm is enabled)")
+{
+    auto& fixture = context.Get<ArmFixture>();
+    EXPECT_TRUE(fixture.arm.Lifecycle().Enable());
+    fixture.ForwardTime(30ms);
+    for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+        fixture.start[joint] = fixture.arm.Safety().Reading(joint).position;
+}
+
+WHEN(R"(the faults are cleared and the arm is re-armed)")
+{
+    auto& fixture = context.Get<ArmFixture>();
+    EXPECT_TRUE(fixture.arm.Safety().ClearFault());
+    fixture.ForwardTime(20ms);
+    EXPECT_TRUE(fixture.arm.Lifecycle().Rearm());
+    fixture.ForwardTime(30ms);
+}
+
+THEN(R"(the arm shall be ready)")
+{
+    EXPECT_EQ(arm::ArmState::ready, context.Get<ArmFixture>().arm.Lifecycle().State());
+}
+
+THEN(R"(the arm shall be tripped)")
+{
+    EXPECT_EQ(arm::ArmState::tripped, context.Get<ArmFixture>().arm.Lifecycle().State());
+}
+
+THEN(R"(the arm shall refuse a move)")
+{
+    EXPECT_FALSE(context.Get<ArmFixture>().arm.Lifecycle().MoveTo(Positions(0.1f, 0.1f, 0.1f, 0.1f, 0.1f, 0.1f)));
+}
+
+THEN(R"(the arm shall refuse a move and refuse to be enabled)")
+{
+    auto& fixture = context.Get<ArmFixture>();
+    EXPECT_FALSE(fixture.arm.Lifecycle().MoveTo(Positions(0.1f, 0.1f, 0.1f, 0.1f, 0.1f, 0.1f)));
+    EXPECT_FALSE(fixture.arm.Lifecycle().Enable());
+}
+
+THEN(R"(the arm shall be enabled with every joint running in position mode)")
+{
+    auto& fixture = context.Get<ArmFixture>();
+    EXPECT_EQ(arm::ArmState::enabled, fixture.arm.Lifecycle().State());
+    for (std::size_t joint = 1; joint <= arm::jointCount; ++joint)
+    {
+        EXPECT_EQ(can::FocMotorMode::position, fixture.Joint(joint).Mode()) << "joint " << joint;
+        EXPECT_EQ(can::FocMotorState::running, fixture.Joint(joint).State()) << "joint " << joint;
+    }
+}
+
 GIVEN(R"(the contracts are compatible and position mode is selected)")
 {
     auto& fixture = context.Get<ArmFixture>();
@@ -211,7 +289,7 @@ WHEN(R"(the faults are cleared, the arm is re-armed and the joints are started a
     auto& fixture = context.Get<ArmFixture>();
     EXPECT_TRUE(fixture.arm.Safety().ClearFault());
     fixture.ForwardTime(20ms);
-    EXPECT_TRUE(fixture.arm.Safety().Rearm());
+    EXPECT_TRUE(fixture.arm.Lifecycle().Rearm());
     EXPECT_TRUE(fixture.arm.Safety().Start());
     fixture.ForwardTime(20ms);
 }

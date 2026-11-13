@@ -2,6 +2,7 @@
 #define TOOLS_ARM_HOST_ARM_COMMAND_HPP
 
 #include "core/joint_bus/interfaces/JointBus.hpp"
+#include "core/lifecycle/interfaces/ArmLifecycle.hpp"
 #include <cstddef>
 #include <string_view>
 #include <variant>
@@ -50,9 +51,20 @@ namespace arm_host
         std::size_t joint;
     };
 
-    using ArmCommand = std::variant<CheckContracts, SelectMode, StartJoints, StopJoints, ClearFaults, EmergencyStop, Rearm, MoveTo, AbortMove, InjectFault, SilenceJoint>;
+    struct BringUp
+    {};
+
+    struct Enable
+    {};
+
+    struct Disable
+    {};
+
+    using ArmCommand = std::variant<CheckContracts, SelectMode, StartJoints, StopJoints, ClearFaults, EmergencyStop, Rearm, MoveTo, AbortMove, InjectFault, SilenceJoint,
+        BringUp, Enable, Disable>;
 
     std::string_view CommandName(const ArmCommand& command);
+    std::string_view StateName(arm::ArmState state);
 }
 
 #endif

@@ -15,6 +15,15 @@ namespace
     using namespace testing;
 
     constexpr arm::JointNodeIds nodes{ 11, 12, 13, 14, 15, 16 };
+    constexpr std::size_t gearedJoint{ 2 };
+
+    arm::JointTransmissions Transmissions()
+    {
+        arm::JointTransmissions transmissions{};
+        transmissions[gearedJoint] = { 10.0f, arm::JointDirection::negative, foc::Radians{ 0.5f } };
+        return transmissions;
+    }
+
     constexpr uint16_t foreignNode{ 99 };
     constexpr float tolerance{ 1.0e-6f };
     constexpr uint8_t missedRequestsBeforeSilent{ 3 };
@@ -111,7 +120,7 @@ namespace
                         }));
             } };
         can::FocMotorCanClient client{ canMock };
-        arm::JointBusImpl bus{ client.CategoryClient(), nodes, missedRequestsBeforeSilent, commandTimeout };
+        arm::JointBusImpl bus{ client.CategoryClient(), nodes, Transmissions(), missedRequestsBeforeSilent, commandTimeout };
         StrictMock<arm::JointBusObserverMock> observer{ bus };
     };
 }
@@ -161,10 +170,11 @@ TEST_F(JointBusImplTest, emergency_stop_reaches_every_joint_at_emergency_priorit
         EXPECT_EQ(services::CanPriority::emergency, frame.priority);
 }
 
-TEST_F(JointBusImplTest, sends_one_position_setpoint_per_joint)
+TEST_F(JointBusImplTest, sends_one_position_setpoint_per_joint_in_motor_space)
 {
-    const arm::JointPositions positions{ foc::Radians{ 0.1f }, foc::Radians{ -0.2f }, foc::Radians{ 0.3f },
+    const arm::JointPositions positions{ foc::Radians{ 0.1f }, foc::Radians{ -0.2f }, foc::Radians{ 0.9f },
         foc::Radians{ -0.4f }, foc::Radians{ 0.5f }, foc::Radians{ -0.6f } };
+    const std::array<float, arm::jointCount> motorPositions{ 0.1f, -0.2f, -4.0f, -0.4f, 0.5f, -0.6f };
 
     EXPECT_TRUE(bus.SendPositions(positions));
 
@@ -173,7 +183,7 @@ TEST_F(JointBusImplTest, sends_one_position_setpoint_per_joint)
     {
         services::CanPayloadReader reader{ sent[joint].payload };
         reader.Skip(1);
-        EXPECT_NEAR(positions[joint].Value(), reader.ReadFloat32(), tolerance);
+        EXPECT_NEAR(motorPositions[joint], reader.ReadFloat32(), tolerance) << "joint " << joint;
     }
 }
 
@@ -230,6 +240,14 @@ TEST_F(JointBusImplTest, telemetry_updates_the_reading_of_its_joint)
     EXPECT_NEAR(-0.75f, reading.position.Value(), tolerance);
     EXPECT_EQ(can::FocMotorState::running, reading.state);
     EXPECT_NEAR(0.0f, bus.Reading(3).position.Value(), tolerance);
+}
+
+TEST_F(JointBusImplTest, motion_telemetry_of_a_geared_joint_is_converted_to_joint_space)
+{
+    ReportMotion(nodes[gearedJoint], -3.0f, -4.0f);
+
+    EXPECT_NEAR(0.3f, bus.Reading(gearedJoint).speed.Value(), tolerance);
+    EXPECT_NEAR(0.9f, bus.Reading(gearedJoint).position.Value(), tolerance);
 }
 
 TEST_F(JointBusImplTest, frames_from_nodes_outside_the_map_are_ignored)

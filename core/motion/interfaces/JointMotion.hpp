@@ -20,10 +20,10 @@ namespace arm
     class JointMotion;
 
     class JointMotionObserver
-        : public infra::SingleObserver<JointMotionObserver, JointMotion>
+        : public infra::Observer<JointMotionObserver, JointMotion>
     {
     public:
-        using infra::SingleObserver<JointMotionObserver, JointMotion>::SingleObserver;
+        using infra::Observer<JointMotionObserver, JointMotion>::Observer;
 
         virtual void OnMoveDone() = 0;
         virtual void OnMoveAborted() = 0;

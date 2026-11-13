@@ -8,8 +8,10 @@ target_include_directories(e_robot_arm.joint_bus.interfaces INTERFACE
 target_link_libraries(e_robot_arm.joint_bus.interfaces INTERFACE
     e_foc_protocol.client
     infra.util
+    numerical.math
 )
 
 target_sources(e_robot_arm.joint_bus.interfaces PRIVATE
     JointBus.hpp
+    JointTransmission.hpp
 )

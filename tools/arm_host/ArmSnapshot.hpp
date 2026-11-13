@@ -21,6 +21,7 @@ namespace arm_host
         can::ContractCompatibility contracts{ can::ContractCompatibility::unknown };
         bool tripped{ false };
         bool moving{ false };
+        arm::ArmState state{ arm::ArmState::unpowered };
     };
 
     struct TraceSample

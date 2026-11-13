@@ -65,6 +65,12 @@ namespace arm_console
             return arm_host::Rearm{};
         if (command == "abort")
             return arm_host::AbortMove{};
+        if (command == "bringup")
+            return arm_host::BringUp{};
+        if (command == "enable")
+            return arm_host::Enable{};
+        if (command == "disable")
+            return arm_host::Disable{};
         if (command == "mode")
             return Mode(arguments);
         if (command == "move")
@@ -113,13 +119,14 @@ namespace arm_console
             output << "joint " << joint + 1 << ": position " << reading.position.Value() << " rad, speed " << reading.speed.Value()
                    << " rad/s, state " << Name(stateNames, reading.state) << ", fault " << Name(faultNames, reading.fault) << (reading.silent ? ", silent" : "") << "\n";
         }
+        output << "arm: " << arm_host::StateName(snapshot.state) << "\n";
         output << "safety: " << (snapshot.tripped ? "tripped" : "armed") << "\n";
         output << "motion: " << (snapshot.moving ? "moving" : "idle") << "\n";
     }
 
     void ArmConsole::Usage()
     {
-        output << "usage: contracts | mode torque|speed|position | start | stop | estop | clear | rearm | move q1 q2 q3 q4 q5 q6 | abort | status | quit\n";
+        output << "usage: bringup | enable | disable | move q1 q2 q3 q4 q5 q6 | rearm | contracts | mode torque|speed|position | start | stop | estop | clear | abort | status | quit\n";
     }
 
     void ArmConsole::Print(const arm_host::ArmEvent& event)
@@ -157,6 +164,9 @@ namespace arm_console
                 break;
             case targetFailed:
                 output << "target failed: " << event.reason << "\n";
+                break;
+            case stateChanged:
+                output << "arm: " << arm_host::StateName(event.state) << "\n";
                 break;
         }
     }
