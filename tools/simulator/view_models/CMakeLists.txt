@@ -24,6 +24,8 @@ target_sources(e_robot_arm.tool.simulator.view_models PRIVATE
     EventLog.hpp
     JointRows.cpp
     JointRows.hpp
+    MeshKit.cpp
+    MeshKit.hpp
     MotorControllerPresenter.cpp
     MotorControllerPresenter.hpp
     MotorPresenter.cpp

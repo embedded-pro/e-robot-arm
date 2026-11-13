@@ -193,6 +193,12 @@ Qt Quick 3D in a `QQuickWidget`, scene in QML, following the `qt-3d-gui` skill:
   converted once from the model's frame (Z-up, metres) to the scene's (Y-up, centimetres):
   $(x, y, z) \mapsto 100\,(x, z, -y)$. The parts are rebuilt only when the geometry changes (a profile is loaded);
   each frame moves the seven link nodes.
+- **Mesh kit:** the simulator builds its own shapes, in metres, from two operations: a *lathe* turns a profile of
+  (radius, height) points about an axis (hubs, housings, gearboxes, flanges, discs) and an *extrusion* sweeps a convex
+  outline along an axis (plates, tubes, motor bodies, bolt heads). Normals are smooth around a lathe and across a
+  rounded corner, hard across a profile step and a straight corner, so machined edges stay crisp. Outlines: rounded
+  rectangle, stadium, regular polygon. Each part is placed by a frame (origin and axis) and merged into one mesh per
+  material per link.
 - **Ghost arm:** the same nodes, accent colour, opacity 0.3, blended, no depth write; visible only while a move
   runs or the commanded and measured arms differ by more than 0.5°.
 - **Link meshes** (phase 8c): a link whose profile names a mesh ([arm-profile.md](arm-profile.md) Part A) draws
