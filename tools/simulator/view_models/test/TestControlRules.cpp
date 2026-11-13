@@ -1,6 +1,9 @@
 #include "tools/simulator/view_models/ControlRules.hpp"
 #include "tools/simulator/view_models/test/SnapshotBuilder.hpp"
 #include "gmock/gmock.h"
+#include <array>
+#include <string>
+#include <utility>
 
 namespace
 {
@@ -131,6 +134,18 @@ TEST_F(ControlRulesTest, enable_is_offered_only_when_the_arm_is_ready_and_says_w
     auto tripped = simulator::test::Compatible();
     tripped.state = arm::ArmState::tripped;
     ExpectDisabled(Control::enable, tripped, "Tripped");
+
+    const std::array<std::pair<arm::ArmState, std::string>, 3> busy{ {
+        { arm::ArmState::checking, "Checking contracts" },
+        { arm::ArmState::enabling, "Enabling" },
+        { arm::ArmState::disabling, "Disabling" },
+    } };
+    for (const auto& [state, reason] : busy)
+    {
+        auto snapshot = simulator::test::Compatible();
+        snapshot.state = state;
+        ExpectDisabled(Control::enable, snapshot, reason);
+    }
 }
 
 TEST_F(ControlRulesTest, disable_is_offered_while_enabled_and_asks_to_abort_a_move_first)

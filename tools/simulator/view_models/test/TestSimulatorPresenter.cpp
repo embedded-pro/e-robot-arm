@@ -5,6 +5,7 @@
 #include "ui/backend/recording/RecordingShell.hpp"
 #include "gmock/gmock.h"
 #include <algorithm>
+#include <tuple>
 
 namespace
 {
@@ -229,6 +230,38 @@ TEST_F(SimulatorPresenterTest, shows_the_lifecycle_state_with_its_level)
     presenter.Refresh(tripped, {});
     EXPECT_EQ("Tripped", presenter.Status().stage);
     EXPECT_EQ(ui::theme::StatusLevel::Fault, presenter.Status().stageLevel);
+}
+
+TEST_F(SimulatorPresenterTest, labels_every_lifecycle_state_with_its_level)
+{
+    using arm::ArmState;
+    using ui::theme::StatusLevel;
+    const std::array<std::tuple<ArmState, std::string_view, StatusLevel>, 6> expected{ {
+        { ArmState::checking, "Checking contracts…", StatusLevel::Neutral },
+        { ArmState::incompatible, "Contracts incompatible", StatusLevel::Fault },
+        { ArmState::enabling, "Enabling…", StatusLevel::Neutral },
+        { ArmState::moving, "Moving", StatusLevel::Ok },
+        { ArmState::disabling, "Disabling…", StatusLevel::Neutral },
+        { ArmState::unpowered, "Unpowered", StatusLevel::Neutral },
+    } };
+
+    for (const auto& [state, label, level] : expected)
+    {
+        auto snapshot = simulator::test::Connected();
+        snapshot.state = state;
+        presenter.Refresh(snapshot, {});
+        EXPECT_EQ(label, presenter.Status().stage);
+        EXPECT_EQ(level, presenter.Status().stageLevel) << label;
+    }
+}
+
+TEST_F(SimulatorPresenterTest, a_single_step_stop_reaches_running_joints_and_other_controls_are_not_single_steps)
+{
+    presenter.Refresh(simulator::test::Running(), {});
+    EXPECT_CALL(arm, Post(Holds(arm_host::StopJoints{}))).WillOnce(Return(1));
+
+    EXPECT_TRUE(presenter.SingleStep(simulator::Control::stop));
+    EXPECT_FALSE(presenter.SingleStep(simulator::Control::move));
 }
 
 TEST_F(SimulatorPresenterTest, waiting_for_calibration_names_every_joint_not_yet_ready)
