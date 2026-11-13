@@ -73,6 +73,9 @@ control loop and reads one command per line from standard input:
 | `abort`                        | Abort the running move                                                                                                    |
 | `load <file>`                  | Load an arm profile file: the arm is rebuilt from it; refused while the arm is enabled ([arm-profile.md](arm-profile.md)) |
 | `save <file>`                  | Write the profile in effect to a file                                                                                     |
+| `pose`                         | Print the tool pose of the measured joints and the singularity the arm is near ([arm-model.md](arm-model.md))             |
+| `fk q1 q2 q3 q4 q5 q6`         | Print the tool pose of the given joint positions, in radians; moves nothing                                               |
+| `ik x y z roll pitch yaw`      | Print the joint positions of the given tool pose (m, rad), or why there are none; moves nothing                           |
 | `status`                       | Print each joint's position, speed, state and fault, the arm's lifecycle state, the trip, the move and the overrun count  |
 | `quit`                         | Stop the control loop and leave                                                                                           |
 

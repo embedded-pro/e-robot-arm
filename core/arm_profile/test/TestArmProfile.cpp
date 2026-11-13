@@ -24,6 +24,10 @@ namespace
                rootExtra + R"( "joints": [ )" + joints + " ] }";
     }
 
+    const std::string geometry{ R"( "geometry": { "opwMetres": { "a1": 0.05, "a2": -0.01, "b": 0.02, "c1": 0.3, "c2": 0.4, "c3": 0.35, "c4": 0.08 },)"
+                                R"( "jointSigns": [ 1, -1, 1, 1, -1, 1 ], "jointOffsetsRad": [ 0, 0.5, 0, 0, 0, -0.25 ],)"
+                                R"( "tool": { "zM": 0.12, "pitchRad": 0.3 }, "base": { "xM": 1, "yawRad": 1.5 } },)" };
+
     const std::string configuredJoint{ Joint(1,
         R"(, "transmission": { "ratio": 50, "direction": "negative", "offsetRad": -0.125 },)"
         R"( "motorController": { "current": "slidingMode", "speed": "adrc", "position": "lqr", "gains": { "positionBandwidth": 25, "speedErrorWeight": 1.5 } },)"
@@ -84,11 +88,29 @@ TEST_F(ArmProfileTest, reads_every_item_and_fills_in_the_defaults)
     EXPECT_NEAR(0.36f, config.motors[0]->settings[arm::MotorParameter::resistance], 1.0e-6f);
     EXPECT_NEAR(0.0064f, config.motors[0]->settings[arm::MotorParameter::fluxLinkage], 1.0e-7f);
     EXPECT_FALSE(config.motors[1].has_value());
+    EXPECT_NEAR(arm::ReferenceGeometry().opw.c2, config.geometry.opw.c2, 1.0e-6f);
+}
+
+TEST_F(ArmProfileTest, reads_the_geometry_with_its_signs_offsets_tool_and_base)
+{
+    const auto profile = Read(Profile(Joint(1), geometry));
+    ASSERT_TRUE(profile.has_value()) << Problem();
+    const auto& read = profile->config.geometry;
+
+    EXPECT_NEAR(0.05f, read.opw.a1, 1.0e-6f);
+    EXPECT_NEAR(-0.01f, read.opw.a2, 1.0e-6f);
+    EXPECT_NEAR(0.35f, read.opw.c3, 1.0e-6f);
+    EXPECT_EQ(-1, read.opw.signs[1]);
+    EXPECT_NEAR(-0.25f, read.opw.offsets[5], 1.0e-6f);
+    EXPECT_NEAR(0.12f, read.tool.z, 1.0e-6f);
+    EXPECT_NEAR(0.3f, read.tool.pitch, 1.0e-6f);
+    EXPECT_NEAR(0.0f, read.tool.x, 1.0e-6f);
+    EXPECT_NEAR(1.5f, read.base.yaw, 1.0e-6f);
 }
 
 TEST_F(ArmProfileTest, a_written_profile_reads_back_to_the_same_configuration)
 {
-    const auto original = Read(Profile(configuredJoint));
+    const auto original = Read(Profile(configuredJoint, geometry));
     ASSERT_TRUE(original.has_value()) << Problem();
 
     infra::StringOutputStream::WithStorage<8192> stream;
@@ -122,6 +144,15 @@ TEST_F(ArmProfileTest, a_written_profile_reads_back_to_the_same_configuration)
     ASSERT_TRUE(copy->config.motors[0].has_value());
     EXPECT_EQ(original->config.motors[0]->preset, copy->config.motors[0]->preset);
     EXPECT_FALSE(arm::Compare(original->config.motors[0]->settings, copy->config.motors[0]->settings).Any());
+
+    const auto& geometryBefore = original->config.geometry;
+    const auto& geometryAfter = copy->config.geometry;
+    EXPECT_EQ(geometryBefore.opw.a2, geometryAfter.opw.a2);
+    EXPECT_EQ(geometryBefore.opw.c4, geometryAfter.opw.c4);
+    EXPECT_EQ(geometryBefore.opw.signs, geometryAfter.opw.signs);
+    EXPECT_EQ(geometryBefore.opw.offsets, geometryAfter.opw.offsets);
+    EXPECT_EQ(geometryBefore.tool.pitch, geometryAfter.tool.pitch);
+    EXPECT_EQ(geometryBefore.base.x, geometryAfter.base.x);
     EXPECT_NE(std::string::npos, std::string(written.begin(), written.end()).find(R"("inertiaGramCm2": 120.5)"));
     EXPECT_NE(std::string::npos, std::string(written.begin(), written.end()).find(R"("fluxLinkageMilliWeber": 6.4)"));
 }
@@ -146,6 +177,16 @@ TEST_F(ArmProfileTest, refuses_a_profile_and_names_the_first_problem)
         { Profile(Joint(1, R"(, "motor": { "preset": "teknic-m2310p-ln-04k", "resistanceOhm": 500 })")),
             "joints[0].motor.resistanceOhm: is outside the e-foc contract's range" },
         { Profile(Joint(1, R"(, "motor": { "preset": "teknic-m2310p-ln-04k", "torque": 1 })")), "joints[0].motor.torque: is not a profile item" },
+        { Profile(Joint(1), R"( "geometry": { "jointSigns": [ 1, 1, 1, 1, 1, 1 ] },)"), "geometry.opwMetres: is missing" },
+        { Profile(Joint(1), R"( "geometry": { "opwMetres": { "a1": 0, "a2": 0, "b": 0, "c1": 0, "c2": 0, "c3": 0.2, "c4": 0 } },)"),
+            "geometry.opwMetres.c2: must be above 0" },
+        { Profile(Joint(1), R"( "geometry": { "opwMetres": { "a1": 0, "a2": 0, "b": 0, "c1": 0, "c2": 0.2, "c3": 0.2 } },)"), "geometry.opwMetres.c4: is missing" },
+        { Profile(Joint(1), R"( "geometry": { "opwMetres": { "a1": 0, "a2": 0, "b": 0, "c1": 0, "c2": 0.2, "c3": 0.2, "c4": 0 }, "jointSigns": [ 1, 2, 1, 1, 1, 1 ] },)"),
+            "geometry.jointSigns[1]: must be 1 or -1" },
+        { Profile(Joint(1), R"( "geometry": { "opwMetres": { "a1": 0, "a2": 0, "b": 0, "c1": 0, "c2": 0.2, "c3": 0.2, "c4": 0 }, "jointOffsetsRad": [ 0, 0 ] },)"),
+            "geometry.jointOffsetsRad: must be a list of six" },
+        { Profile(Joint(1), R"( "geometry": { "opwMetres": { "a1": 0, "a2": 0, "b": 0, "c1": 0, "c2": 0.2, "c3": 0.2, "c4": 0 }, "tool": { "wM": 1 } },)"),
+            "geometry.tool.wM: is not a profile item" },
         { R"({ "format": "e-robot-arm profile", "version": 2 })", "version: is not a version this reader knows" },
         { R"({ "format": "something else" })", "format: must be \"e-robot-arm profile\"" },
         { R"({ "format": "e-robot-arm profile", "version": 1, "controlPeriodMs": 5 })", "name: is missing" },
