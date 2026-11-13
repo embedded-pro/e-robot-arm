@@ -14,6 +14,8 @@ target_link_libraries(e_robot_arm.tool.simulator.view_models PUBLIC
 target_sources(e_robot_arm.tool.simulator.view_models PRIVATE
     ArmSceneModel.cpp
     ArmSceneModel.hpp
+    ConfigurationFlow.cpp
+    ConfigurationFlow.hpp
     ControlRules.cpp
     ControlRules.hpp
     EventLog.cpp
@@ -22,6 +24,8 @@ target_sources(e_robot_arm.tool.simulator.view_models PRIVATE
     JointRows.hpp
     MotorControllerPresenter.cpp
     MotorControllerPresenter.hpp
+    MotorPresenter.cpp
+    MotorPresenter.hpp
     ProfileView.cpp
     ProfileView.hpp
     SimulatorPresenter.cpp

@@ -8,6 +8,7 @@
 #include "tools/simulator/app/Panels.hpp"
 #include "tools/simulator/app/StatusStripBar.hpp"
 #include "tools/simulator/view_models/MotorControllerPresenter.hpp"
+#include "tools/simulator/view_models/MotorPresenter.hpp"
 #include "tools/simulator/view_models/SimulatorPresenter.hpp"
 #include "ui/backend/qt/QtAppShell.hpp"
 #include <QByteArray>
@@ -37,6 +38,7 @@ namespace simulator
         QQuickWidget& ArmView();
         SimulatorPresenter& Presenter();
         MotorControllerPresenter& MotorController();
+        MotorPresenter& Motor();
         void LoadProfileFrom(const QString& path);
         void Frame();
 
@@ -56,6 +58,7 @@ namespace simulator
         void RestoreSettings();
         QGroupBox* Group(const QString& title, QWidget* content);
         QDockWidget* Dock(const QString& title, const QString& name, QWidget* content, Qt::DockWidgetArea area);
+        QDockWidget* ConfigurationDock(const QString& title, const QString& name, ConfigurationPanel* panel, QDockWidget* tabbedWith);
         void ChooseTarget(int choice);
         void ConfirmRearm(std::string_view prompt);
         void SaveLog();
@@ -78,8 +81,10 @@ namespace simulator
         ScopePanel* scope;
         ArmSceneState sceneState{ nullptr };
         SimulatorPresenter presenter;
-        MotorControllerPanel* motorControllerPanel;
+        ConfigurationPanel* motorControllerPanel;
         MotorControllerPresenter motorController;
+        ConfigurationPanel* motorPanel;
+        MotorPresenter motor;
         ProfilePanel* profilePanel;
         QString profilePath;
         EventLogPanel* logPanel;

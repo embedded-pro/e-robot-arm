@@ -240,7 +240,9 @@ through the joint configurator ([joint-configurator.md](joint-configurator.md)).
 The form's **state** is shown under the gains: **Read** (as the joint reported it), **Edited** (changed since),
 **Applying…**, **Applied**, **Verified** (`Ok`, the joint reports exactly what was applied), **Differs** (`Fault`,
 with every differing item listed in the hint, for example "Speed bandwidth: applied 150, joint reports 120"), or
-**Failed** (`Fault`, with the reason). Selecting another joint reads it.
+**Failed** (`Fault`, with the reason). Selecting another joint reads it while the panel's tab is showing; a panel
+behind another tab reads its joint when its tab is brought forward, so two panels never ask the joint configurator
+at once.
 
 ### Part I — Profile panel and files (phase 8b)
 

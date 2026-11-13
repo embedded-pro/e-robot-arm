@@ -7,7 +7,6 @@ namespace simulator
 {
     namespace
     {
-        using ui::model::ActionSpec;
         using ui::model::FieldKind;
         using ui::model::GroupId;
         using ui::model::OptionSpec;
@@ -28,13 +27,6 @@ namespace simulator
         constexpr std::array<OptionSpec, 4> currentOptions{ { { "PID" }, { "Decoupled PID" }, { "Deadbeat" }, { "Sliding mode" } } };
         constexpr std::array<OptionSpec, 4> speedOptions{ { { "PID" }, { "LQI" }, { "ADRC" }, { "Two-DOF" } } };
         constexpr std::array<OptionSpec, 5> positionOptions{ { { "PID" }, { "Cascade P" }, { "LQR" }, { "LQI" }, { "Two-DOF" } } };
-
-        constexpr std::array<ActionSpec, 4> actions{ {
-            { MotorControllerAction::read, "Read" },
-            { MotorControllerAction::apply, "Apply", ui::theme::ButtonRole::Primary },
-            { MotorControllerAction::verify, "Verify" },
-            { MotorControllerAction::applyToAll, "Apply to All Joints" },
-        } };
 
         struct GainView
         {
@@ -139,7 +131,7 @@ namespace simulator
     }
 
     MotorControllerPresenter::Form::Form()
-        : spec{ groups, fields, actions, {} }
+        : spec{ groups, fields, configurationActions, {} }
         , model(spec, values, {})
     {
         fields[0] = { MotorControllerField::joint, jointGroup, FieldKind::Choice, "Joint", "", {}, jointOptions, {}, {} };
@@ -152,12 +144,12 @@ namespace simulator
     }
 
     MotorControllerPresenter::MotorControllerPresenter(arm_host::ArmCommands& arm, ui::shell::FormView& view)
-        : arm(arm)
-        , view(view)
+        : view(view)
+        , flow(arm, view, *this, { arm_host::ArmEventKind::controllerApplied, arm_host::ArmEventKind::controllerRead })
     {
         form.model.onActionTriggered = [this](ui::model::ActionId action)
         {
-            OnAction(action);
+            flow.Trigger(action);
         };
         view.Build(form.model);
         viewFieldChanged = form.model.onFieldChanged;
@@ -168,20 +160,16 @@ namespace simulator
             OnFieldChanged(field);
         };
         Load(arm::ControllerSettings{});
-        Enter(ConfigurationState::unknown);
     }
 
-    void MotorControllerPresenter::Refresh(const arm_host::ArmSnapshot& newSnapshot, std::span<const arm_host::ArmEvent> events)
+    void MotorControllerPresenter::Refresh(const arm_host::ArmSnapshot& snapshot, std::span<const arm_host::ArmEvent> events)
     {
-        snapshot = newSnapshot;
-        for (const auto& event : events)
-            Handle(event);
-        UpdateActions();
+        flow.Refresh(snapshot, events);
     }
 
     void MotorControllerPresenter::SelectJoint(std::size_t newJoint)
     {
-        if (newJoint >= arm::jointCount || newJoint == joint)
+        if (newJoint >= arm::jointCount || newJoint == flow.Joint())
             return;
 
         form.model.SetSelection(MotorControllerField::joint, newJoint);
@@ -193,36 +181,34 @@ namespace simulator
         jointSelected = handler;
     }
 
+    void MotorControllerPresenter::SetShown(bool shown)
+    {
+        flow.SetShown(shown);
+    }
+
     std::size_t MotorControllerPresenter::Joint() const
     {
-        return joint;
+        return flow.Joint();
     }
 
     ConfigurationState MotorControllerPresenter::State() const
     {
-        return state;
+        return flow.State();
     }
 
     const std::string& MotorControllerPresenter::StateText() const
     {
-        return stateText;
+        return flow.StateText();
     }
 
     ui::theme::StatusLevel MotorControllerPresenter::StateLevel() const
     {
-        using enum ConfigurationState;
-        if (state == verified)
-            return ui::theme::StatusLevel::Ok;
-        if (state == differs || state == failed)
-            return ui::theme::StatusLevel::Fault;
-        if (state == edited)
-            return ui::theme::StatusLevel::Warning;
-        return ui::theme::StatusLevel::Neutral;
+        return flow.StateLevel();
     }
 
     const std::string& MotorControllerPresenter::Hint() const
     {
-        return hint;
+        return flow.Hint();
     }
 
     arm::ControllerSettings MotorControllerPresenter::FormSettings() const
@@ -242,16 +228,29 @@ namespace simulator
         return settings;
     }
 
-    void MotorControllerPresenter::OnAction(ui::model::ActionId action)
+    arm_host::ArmCommand MotorControllerPresenter::ReadCommand(std::size_t joint) const
     {
-        if (action == MotorControllerAction::read)
-            Post(Pending::read, arm_host::ReadController{ joint });
-        else if (action == MotorControllerAction::apply)
-            Post(Pending::apply, arm_host::ApplyController{ joint, FormSettings() });
-        else if (action == MotorControllerAction::verify && applied[joint].has_value())
-            Post(Pending::verify, arm_host::ReadController{ joint });
-        else if (action == MotorControllerAction::applyToAll)
-            Post(Pending::applyToAll, arm_host::ApplyController{ 0, FormSettings() });
+        return arm_host::ReadController{ joint };
+    }
+
+    arm_host::ArmCommand MotorControllerPresenter::ApplyCommand(std::size_t joint) const
+    {
+        return arm_host::ApplyController{ joint, FormSettings() };
+    }
+
+    void MotorControllerPresenter::Applied(std::size_t joint)
+    {
+        applied[joint] = FormSettings();
+    }
+
+    std::string MotorControllerPresenter::Read(const arm_host::ArmEvent& event, bool verifying)
+    {
+        flow.SetNote(std::format("mode {} (reported)", modeNames[static_cast<std::size_t>(event.controller.mode)]));
+        if (verifying)
+            return Mismatches(applied[event.joint], event.controller.settings);
+
+        Load(event.controller.settings);
+        return {};
     }
 
     void MotorControllerPresenter::OnFieldChanged(ui::model::FieldId field)
@@ -261,87 +260,14 @@ namespace simulator
 
         if (field == MotorControllerField::joint)
         {
-            joint = form.model.Selection(MotorControllerField::joint);
+            const auto joint = form.model.Selection(MotorControllerField::joint);
             if (jointSelected)
                 jointSelected(joint);
-            if (pending == Pending::none && snapshot.state == arm::ArmState::ready)
-                Post(Pending::read, arm_host::ReadController{ joint });
-            else
-                Enter(ConfigurationState::unknown);
+            flow.JointChosen(joint);
             return;
         }
 
-        if (state != ConfigurationState::unknown)
-            Enter(ConfigurationState::edited);
-        UpdateActions();
-    }
-
-    void MotorControllerPresenter::Handle(const arm_host::ArmEvent& event)
-    {
-        using enum arm_host::ArmEventKind;
-        if (pending == Pending::none)
-            return;
-
-        if (event.kind == refused && event.command == postedCommand)
-            Failed(event.reason);
-        else if (event.kind == controllerApplied)
-            Applied(event.joint);
-        else if (event.kind == controllerRead && event.joint == joint)
-            Read(event.joint, event.controller);
-        else if (event.kind == controllerFailed)
-            Failed(event.reason);
-    }
-
-    void MotorControllerPresenter::Applied(std::size_t appliedJoint)
-    {
-        applied[appliedJoint] = FormSettings();
-        if (pending == Pending::applyToAll && appliedJoint + 1 < arm::jointCount)
-        {
-            postedCommand = arm.Post(arm_host::ApplyController{ appliedJoint + 1, FormSettings() });
-            stateText = std::format("Applying… (J{} of {})", appliedJoint + 2, arm::jointCount);
-            return;
-        }
-
-        pending = Pending::none;
-        Enter(ConfigurationState::applied);
-    }
-
-    void MotorControllerPresenter::Read(std::size_t readJoint, const arm::ControllerReading& reading)
-    {
-        reportedMode = std::string{ modeNames[static_cast<std::size_t>(reading.mode)] };
-        const auto operation = pending;
-        pending = Pending::none;
-
-        if (operation == Pending::verify && applied[readJoint].has_value())
-        {
-            detail = Mismatches(*applied[readJoint], reading.settings);
-            Enter(detail.empty() ? ConfigurationState::verified : ConfigurationState::differs);
-            return;
-        }
-
-        Load(reading.settings);
-        Enter(ConfigurationState::read);
-    }
-
-    void MotorControllerPresenter::Failed(std::string_view reason)
-    {
-        pending = Pending::none;
-        detail = std::string{ reason };
-        Enter(ConfigurationState::failed);
-    }
-
-    void MotorControllerPresenter::Post(Pending operation, const arm_host::ArmCommand& command)
-    {
-        pending = operation;
-        detail.clear();
-        postedCommand = arm.Post(command);
-        if (operation == Pending::read)
-            Enter(ConfigurationState::reading);
-        else if (operation == Pending::verify)
-            Enter(ConfigurationState::verifying);
-        else
-            Enter(ConfigurationState::applying);
-        UpdateActions();
+        flow.Edited();
     }
 
     void MotorControllerPresenter::Load(const arm::ControllerSettings& settings)
@@ -360,39 +286,6 @@ namespace simulator
         }
         loading = false;
         view.Refresh();
-    }
-
-    void MotorControllerPresenter::Enter(ConfigurationState newState)
-    {
-        static constexpr std::array<std::string_view, 10> names{ "Not read", "Reading…", "Read", "Edited", "Applying…", "Applied", "Verifying…", "Verified",
-            "Differs", "Failed" };
-
-        state = newState;
-        stateText = std::string{ names[static_cast<std::size_t>(state)] };
-        if (!reportedMode.empty() && state != ConfigurationState::unknown)
-            stateText += std::format(" — mode {} (reported)", reportedMode);
-    }
-
-    void MotorControllerPresenter::UpdateActions()
-    {
-        const bool ready = snapshot.targetReady && snapshot.state == arm::ArmState::ready;
-        const bool idle = pending == Pending::none;
-        std::string blocked;
-        if (!ready)
-            blocked = std::format("Not ready: {}", arm_host::StateName(snapshot.state));
-        else if (!idle)
-            blocked = "Busy";
-
-        for (const auto& action : actions)
-            view.SetActionEnabled(action.id, blocked.empty() && (action.id != MotorControllerAction::verify || applied[joint].has_value()));
-
-        hint.clear();
-        if (!blocked.empty())
-            hint = std::format("Read, Apply, Verify: {}", blocked);
-        else if (!applied[joint].has_value())
-            hint = "Verify: Nothing applied yet";
-        if (!detail.empty())
-            hint += std::format("{}{}", hint.empty() ? "" : "\n", detail);
     }
 
     std::string MotorControllerPresenter::Mismatches(const arm::ControllerSettings& expected, const arm::ControllerSettings& actual) const

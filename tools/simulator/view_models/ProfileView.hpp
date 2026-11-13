@@ -19,6 +19,7 @@ namespace simulator
         std::string speed;
         std::string acceleration;
         std::string controller;
+        std::string motor;
 
         bool operator==(const ProfileRow& other) const = default;
     };
@@ -32,8 +33,8 @@ namespace simulator
         bool operator==(const ProfileView& other) const = default;
     };
 
-    inline constexpr std::array<std::string_view, 10> profileColumns{ "Joint", "Node", "Ratio", "Dir", "Offset rad", "Lower rad", "Upper rad", "Speed rad/s",
-        "Accel rad/s²", "Motor controller" };
+    inline constexpr std::array<std::string_view, 11> profileColumns{ "Joint", "Node", "Ratio", "Dir", "Offset rad", "Lower rad", "Upper rad", "Speed rad/s",
+        "Accel rad/s²", "Motor controller", "Motor" };
 
     ProfileView DescribeProfile(const arm_host::ArmSnapshot& snapshot);
 }

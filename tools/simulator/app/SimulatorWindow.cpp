@@ -63,8 +63,10 @@ namespace simulator
         , move{ new FormPanel{ this } }
         , scope{ new ScopePanel{ this } }
         , presenter{ host, shell, operate->Form(), move->Form(), limits, start }
-        , motorControllerPanel{ new MotorControllerPanel{ this } }
+        , motorControllerPanel{ new ConfigurationPanel{ this } }
         , motorController{ host, motorControllerPanel->Form() }
+        , motorPanel{ new ConfigurationPanel{ this } }
+        , motor{ host, motorPanel->Form() }
         , profilePanel{ new ProfilePanel{ this } }
         , logPanel{ new EventLogPanel{ presenter.Log(), this } }
         , emergencyStopKey{ *QCoreApplication::instance(), [this]()
@@ -127,6 +129,11 @@ namespace simulator
         return motorController;
     }
 
+    MotorPresenter& SimulatorWindow::Motor()
+    {
+        return motor;
+    }
+
     void SimulatorWindow::Frame()
     {
         const auto snapshot = host.Snapshot();
@@ -144,10 +151,16 @@ namespace simulator
         move->SetHint(presenter.MoveHint());
 
         if (const auto selected = presenter.Scene().Selected())
+        {
             motorController.SelectJoint(*selected);
+            motor.SelectJoint(*selected);
+        }
         motorController.Refresh(snapshot, events);
         motorControllerPanel->SetState(motorController.StateText(), motorController.StateLevel());
         motorControllerPanel->SetHint(motorController.Hint());
+        motor.Refresh(snapshot, events);
+        motorPanel->SetState(motor.StateText(), motor.StateLevel());
+        motorPanel->SetHint(motor.Hint());
         profilePanel->Update(DescribeProfile(snapshot), profilePath);
 
         scope->Add(trace);
@@ -189,15 +202,33 @@ namespace simulator
         scroll->setMinimumWidth(480);
         auto* armDock = Dock("Arm", "armDock", scroll, Qt::RightDockWidgetArea);
 
-        auto* controllerScroll = new QScrollArea{ this };
-        controllerScroll->setWidgetResizable(true);
-        controllerScroll->setFrameShape(QFrame::NoFrame);
-        controllerScroll->setWidget(motorControllerPanel);
-        tabifyDockWidget(armDock, Dock("Motor Controller", "motorControllerDock", controllerScroll, Qt::RightDockWidgetArea));
+        const auto showing = [this](auto& panelPresenter)
+        {
+            return [&panelPresenter](bool visible)
+            {
+                panelPresenter.SetShown(visible);
+            };
+        };
+        connect(ConfigurationDock("Motor Controller", "motorControllerDock", motorControllerPanel, armDock), &QDockWidget::visibilityChanged, this,
+            showing(motorController));
+        connect(ConfigurationDock("Motor", "motorDock", motorPanel, armDock), &QDockWidget::visibilityChanged, this, showing(motor));
+        motorController.SetShown(false);
+        motor.SetShown(false);
         tabifyDockWidget(armDock, Dock("Profile", "profileDock", profilePanel, Qt::RightDockWidgetArea));
         armDock->raise();
         Dock("Scope", "scopeDock", scope, Qt::BottomDockWidgetArea);
         Dock("Event Log", "logDock", logPanel, Qt::BottomDockWidgetArea);
+    }
+
+    QDockWidget* SimulatorWindow::ConfigurationDock(const QString& title, const QString& name, ConfigurationPanel* panel, QDockWidget* tabbedWith)
+    {
+        auto* panelScroll = new QScrollArea{ this };
+        panelScroll->setWidgetResizable(true);
+        panelScroll->setFrameShape(QFrame::NoFrame);
+        panelScroll->setWidget(panel);
+        auto* dock = Dock(title, name, panelScroll, Qt::RightDockWidgetArea);
+        tabifyDockWidget(tabbedWith, dock);
+        return dock;
     }
 
     QGroupBox* SimulatorWindow::Group(const QString& title, QWidget* content)
@@ -350,11 +381,13 @@ namespace simulator
                 if (presenter.SelectJoint(joint))
                     scope->SelectJoint(static_cast<std::size_t>(joint));
             });
-        motorController.SetJointSelected([this](std::size_t joint)
-            {
-                if (presenter.SelectJoint(static_cast<int>(joint)))
-                    scope->SelectJoint(joint);
-            });
+        const auto selectElsewhere = [this](std::size_t joint)
+        {
+            if (presenter.SelectJoint(static_cast<int>(joint)))
+                scope->SelectJoint(joint);
+        };
+        motorController.SetJointSelected(selectElsewhere);
+        motor.SetJointSelected(selectElsewhere);
         presenter.SetRearmPrompt([this](std::string_view prompt)
             {
                 ConfirmRearm(prompt);
@@ -492,6 +525,7 @@ namespace simulator
         sceneState.ApplyTheme(theme);
         strip->ApplyTheme();
         motorControllerPanel->ApplyTheme();
+        motorPanel->ApplyTheme();
         ui::backend::qt::StyleStatusLabel(*banner, ui::theme::StatusLevel::Warning);
         Settings().setValue("lightTheme", light);
     }

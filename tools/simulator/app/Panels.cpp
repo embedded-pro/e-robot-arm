@@ -45,7 +45,7 @@ namespace simulator
             hint->setText(value);
     }
 
-    MotorControllerPanel::MotorControllerPanel(QWidget* parent)
+    ConfigurationPanel::ConfigurationPanel(QWidget* parent)
         : FormPanel{ parent }
         , state{ new QLabel{ this } }
     {
@@ -55,7 +55,7 @@ namespace simulator
         static_cast<QVBoxLayout*>(layout())->insertWidget(0, state);
     }
 
-    void MotorControllerPanel::SetState(const std::string& text, ui::theme::StatusLevel newLevel)
+    void ConfigurationPanel::SetState(const std::string& text, ui::theme::StatusLevel newLevel)
     {
         const auto value = QString::fromStdString(text);
         if (state->text() != value)
@@ -67,7 +67,7 @@ namespace simulator
         }
     }
 
-    void MotorControllerPanel::ApplyTheme()
+    void ConfigurationPanel::ApplyTheme()
     {
         ui::backend::qt::StyleStatusLabel(*state, level);
     }
@@ -128,12 +128,12 @@ namespace simulator
         for (int row = 0; row != table->rowCount(); ++row)
         {
             const auto& joint = view.rows[static_cast<std::size_t>(row)];
-            const std::array<const std::string*, 10> cells{ &joint.joint, &joint.node, &joint.ratio, &joint.direction, &joint.offset, &joint.lower, &joint.upper,
-                &joint.speed, &joint.acceleration, &joint.controller };
+            const std::array<const std::string*, profileColumns.size()> cells{ &joint.joint, &joint.node, &joint.ratio, &joint.direction, &joint.offset, &joint.lower,
+                &joint.upper, &joint.speed, &joint.acceleration, &joint.controller, &joint.motor };
             for (int column = 0; column != table->columnCount(); ++column)
             {
                 auto* cell = new QTableWidgetItem{ ui::backend::qt::ToQt(*cells[static_cast<std::size_t>(column)]) };
-                cell->setTextAlignment(column == 0 || column == 3 ? Qt::AlignCenter : (column == 9 ? Qt::AlignLeft | Qt::AlignVCenter : Qt::AlignRight | Qt::AlignVCenter));
+                cell->setTextAlignment(column == 0 || column == 3 ? Qt::AlignCenter : (column >= 9 ? Qt::AlignLeft | Qt::AlignVCenter : Qt::AlignRight | Qt::AlignVCenter));
                 table->setItem(row, column, cell);
             }
         }
