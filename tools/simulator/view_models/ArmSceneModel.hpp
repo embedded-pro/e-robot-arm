@@ -6,6 +6,7 @@
 #include "tools/simulator/view_models/ToolReadout.hpp"
 #include "ui/theme/Theme.hpp"
 #include <array>
+#include <deque>
 #include <optional>
 
 namespace simulator
@@ -14,6 +15,9 @@ namespace simulator
     {
     public:
         static constexpr float ghostThresholdDegrees{ 0.5f };
+        static constexpr std::size_t trailCapacity{ 500 };
+        static constexpr float trailSpacingCentimetres{ 0.2f };
+        using Trail = std::deque<std::array<float, 3>>;
 
         void Update(const arm_host::ArmSnapshot& snapshot);
         bool Select(int pickedJoint);
@@ -30,9 +34,13 @@ namespace simulator
         uint32_t PartsRevision() const;
         float Extent() const;
         const std::string& SingularityWarning() const;
+        const ScenePose& ToolNode() const;
+        const Trail& ToolTrail() const;
+        uint32_t TrailRevision() const;
 
     private:
         void UpdateNodes(const arm_host::ArmSnapshot& snapshot);
+        void UpdateTrail(bool live, bool rebuilt);
 
         std::array<float, arm::jointCount> measured{};
         std::array<float, arm::jointCount> commanded{};
@@ -45,6 +53,9 @@ namespace simulator
         uint32_t partsRevision{ 0 };
         float extent{ 0.0f };
         std::string singularityWarning;
+        ScenePose toolNode{};
+        Trail trail;
+        uint32_t trailRevision{ 0 };
     };
 }
 

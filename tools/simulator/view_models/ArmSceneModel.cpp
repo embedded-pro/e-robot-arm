@@ -38,14 +38,47 @@ namespace simulator
 
         measuredNodes = SceneNodePoses(model, geometry, measuredJoints);
         commandedNodes = SceneNodePoses(model, geometry, snapshot.commanded.value_or(measuredJoints));
+        toolNode = ToScene(model.ToolPose(measuredJoints));
 
         auto built = BuildSceneParts(geometry);
-        if (built != parts)
+        const bool rebuilt = built != parts;
+        if (rebuilt)
         {
             parts = std::move(built);
             extent = ArmExtent(geometry);
             ++partsRevision;
         }
+        UpdateTrail(ModelIsLive(snapshot), rebuilt);
+    }
+
+    void ArmSceneModel::UpdateTrail(bool live, bool rebuilt)
+    {
+        if (!live || rebuilt)
+        {
+            if (!trail.empty())
+            {
+                trail.clear();
+                ++trailRevision;
+            }
+            if (!live)
+                return;
+        }
+
+        const auto& point = toolNode.position;
+        if (!trail.empty())
+        {
+            const auto& last = trail.back();
+            const auto dx = point[0] - last[0];
+            const auto dy = point[1] - last[1];
+            const auto dz = point[2] - last[2];
+            if (dx * dx + dy * dy + dz * dz < trailSpacingCentimetres * trailSpacingCentimetres)
+                return;
+        }
+
+        trail.push_back(point);
+        if (trail.size() > trailCapacity)
+            trail.pop_front();
+        ++trailRevision;
     }
 
     bool ArmSceneModel::Select(int pickedJoint)
@@ -115,5 +148,20 @@ namespace simulator
     const std::string& ArmSceneModel::SingularityWarning() const
     {
         return singularityWarning;
+    }
+
+    const ScenePose& ArmSceneModel::ToolNode() const
+    {
+        return toolNode;
+    }
+
+    const ArmSceneModel::Trail& ArmSceneModel::ToolTrail() const
+    {
+        return trail;
+    }
+
+    uint32_t ArmSceneModel::TrailRevision() const
+    {
+        return trailRevision;
     }
 }

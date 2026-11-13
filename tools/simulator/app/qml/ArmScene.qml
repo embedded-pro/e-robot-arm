@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQml
 import QtQuick
 import QtQuick3D
@@ -134,6 +136,58 @@ Rectangle {
             accentColor: ArmSceneState.accentColor
             faultColor: ArmSceneState.faultColor
             faultPulse: root.pulse
+        }
+
+        Node {
+            id: toolTriad
+            objectName: "toolTriad"
+            visible: ArmSceneState.trail.length > 0
+            position: ArmSceneState.toolPosition
+            rotation: ArmSceneState.toolRotation
+
+            readonly property real axisLength: ArmSceneState.extent * 0.12
+
+            Repeater3D {
+                model: [
+                    { color: "#e53935", rotation: Qt.vector3d(0, 0, -90) },
+                    { color: "#43a047", rotation: Qt.vector3d(0, 0, 0) },
+                    { color: "#1e88e5", rotation: Qt.vector3d(90, 0, 0) }
+                ]
+
+                Node {
+                    id: axis
+                    required property var modelData
+                    eulerRotation: axis.modelData.rotation
+
+                    Model {
+                        source: "#Cylinder"
+                        position: Qt.vector3d(0, toolTriad.axisLength / 2, 0)
+                        scale: Qt.vector3d(0.004, toolTriad.axisLength / 100, 0.004)
+                        castsShadows: false
+                        receivesShadows: false
+                        pickable: false
+                        materials: DefaultMaterial {
+                            lighting: DefaultMaterial.NoLighting
+                            diffuseColor: axis.modelData.color
+                        }
+                    }
+                }
+            }
+        }
+
+        Model {
+            objectName: "toolTrail"
+            visible: ArmSceneState.trail.length > 1
+            castsShadows: false
+            receivesShadows: false
+            pickable: false
+            geometry: TrailGeometry {
+                points: ArmSceneState.trail
+            }
+            materials: DefaultMaterial {
+                lighting: DefaultMaterial.NoLighting
+                diffuseColor: ArmSceneState.accentColor
+            }
         }
 
         ArmModel {

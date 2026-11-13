@@ -9,7 +9,7 @@ qt_add_qml_module(e_robot_arm.tool.simulator.app
     PLUGIN_TARGET e_robot_arm.tool.simulator.qml_plugin
     CLASS_NAME SimulatorPlugin
     OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/Simulator
-    DEPENDENCIES QtQuick
+    DEPENDENCIES QtQuick QtQuick3D
     NO_CACHEGEN
     QML_FILES
         qml/ArmModel.qml
@@ -20,6 +20,8 @@ qt_add_qml_module(e_robot_arm.tool.simulator.app
     SOURCES
         ArmSceneState.cpp
         ArmSceneState.hpp
+        TrailGeometry.cpp
+        TrailGeometry.hpp
 )
 
 target_include_directories(e_robot_arm.tool.simulator.app PUBLIC

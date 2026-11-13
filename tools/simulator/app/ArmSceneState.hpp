@@ -5,7 +5,9 @@
 #include "ui/theme/Theme.hpp"
 #include <QColor>
 #include <QObject>
+#include <QQuaternion>
 #include <QVariantList>
+#include <QVector3D>
 #include <QtQml/qqmlregistration.h>
 
 class QJSEngine;
@@ -25,6 +27,9 @@ namespace simulator
         Q_PROPERTY(QVariantList parts READ Parts NOTIFY partsChanged)
         Q_PROPERTY(double extent READ Extent NOTIFY partsChanged)
         Q_PROPERTY(QString singularityWarning READ SingularityWarning NOTIFY changed)
+        Q_PROPERTY(QVector3D toolPosition READ ToolPosition NOTIFY changed)
+        Q_PROPERTY(QQuaternion toolRotation READ ToolRotation NOTIFY changed)
+        Q_PROPERTY(QVariantList trail READ Trail NOTIFY trailChanged)
         Q_PROPERTY(QColor warningColor READ WarningColor NOTIFY themeChanged)
         Q_PROPERTY(QVariantList levels READ Levels NOTIFY changed)
         Q_PROPERTY(bool ghostVisible READ GhostVisible NOTIFY changed)
@@ -50,6 +55,9 @@ namespace simulator
         QVariantList Parts() const;
         double Extent() const;
         QString SingularityWarning() const;
+        QVector3D ToolPosition() const;
+        QQuaternion ToolRotation() const;
+        QVariantList Trail() const;
         QColor WarningColor() const;
         QVariantList Levels() const;
         bool GhostVisible() const;
@@ -68,6 +76,7 @@ namespace simulator
         void changed();
         void themeChanged();
         void partsChanged();
+        void trailChanged();
         void jointPicked(int joint);
         void cameraPresetRequested(int preset);
 
@@ -78,6 +87,10 @@ namespace simulator
         uint32_t partsRevision{ 0 };
         double extent{ 100.0 };
         QString singularityWarning;
+        QVector3D toolPosition;
+        QQuaternion toolRotation;
+        QVariantList trail;
+        uint32_t trailRevision{ 0 };
         QColor warning;
         QVariantList levels;
         bool ghostVisible{ false };

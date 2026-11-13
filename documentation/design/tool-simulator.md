@@ -2,7 +2,7 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.11.0
+version: 0.12.0
 component: "tool-simulator"
 date: 2026-11-12
 ---
@@ -12,7 +12,7 @@ date: 2026-11-12
 | Title     | Simulator Screen Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.11.0                  |
+| Version   | 0.12.0                  |
 | Component | tool-simulator          |
 | Date      | 2026-11-12              |
 
@@ -195,6 +195,13 @@ Qt Quick 3D in a `QQuickWidget`, scene in QML, following the `qt-3d-gui` skill:
   each frame moves the seven link nodes.
 - **Ghost arm:** the same nodes, accent colour, opacity 0.3, blended, no depth write; visible only while a move
   runs or the commanded and measured arms differ by more than 0.5°.
+- **Tool triad** (phase 8c): three thin bars at the tool centre point along the tool frame's axes, x red, y green,
+  z blue (the usual robotics convention, unlit so they read in both themes), each 12 % of the arm's height long. It
+  follows the measured arm; the ghost has none.
+- **Tool trail** (phase 8c): a line through the tool centre point's recent positions, in the accent colour. A
+  point is added when the tool has moved 2 mm from the last one, and the trail keeps the newest 500 points, so its
+  memory and drawing cost are bounded. It is a one-pixel line strip: Qt 6.4 has no line width. It is cleared when a profile changes the geometry and while the arm is not
+  live (no target, or a joint silent), so it never joins positions of two different arms.
 - **Selection:** clicking a part selects its joint (in the table too, both ways); its housing's emissive rises in
   the accent colour. A faulted joint's housing pulses in the `Fault` colour, and the table says it in text.
 - **Camera:** perspective, 40° field of view, framed on the arm's height (the sum of its OPW lengths); orbit, pan,

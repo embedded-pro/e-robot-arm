@@ -185,6 +185,13 @@ TEST_F(SimulatorWindowTest, loads_the_lit_scene_and_shows_a_move_with_its_ghost)
         10000));
     EXPECT_FALSE(warning->isVisible());
     EXPECT_NE("—", position->text());
+    auto* trail = window.ArmView().rootObject()->findChild<QObject*>("toolTrail");
+    auto* triad = window.ArmView().rootObject()->findChild<QObject*>("toolTriad");
+    ASSERT_NE(nullptr, trail);
+    ASSERT_NE(nullptr, triad);
+    EXPECT_TRUE(trail->property("visible").toBool());
+    EXPECT_TRUE(triad->property("visible").toBool());
+    EXPECT_GT(window.Presenter().Scene().ToolTrail().size(), 2u);
 }
 
 TEST_F(SimulatorWindowTest, an_injected_fault_trips_the_arm_and_names_its_source)
