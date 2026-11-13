@@ -33,17 +33,17 @@ cruise speed. The arm then starts and stops as one.
 
 ## Prerequisites
 
-| Symbol          | Meaning                                              | Unit   |
-|-----------------|------------------------------------------------------|--------|
-| $q_0$, $q_f$    | Start and target position of a joint                 | rad    |
-| $d$             | Distance to travel, $\lvert q_f - q_0 \rvert$        | rad    |
-| $v_{max}$       | Joint speed limit                                    | rad/s  |
-| $a_{max}$       | Joint acceleration limit                             | rad/s² |
-| $v$             | Cruise (peak) speed of the profile                   | rad/s  |
-| $t_a$           | Duration of the acceleration and of the deceleration | s      |
-| $t_c$           | Duration of the cruise                               | s      |
-| $T_i$           | Fastest duration of joint $i$ on its own             | s      |
-| $T^\ast$        | Common duration of the move                          | s      |
+| Symbol       | Meaning                                              | Unit   |
+|--------------|------------------------------------------------------|--------|
+| $q_0$, $q_f$ | Start and target position of a joint                 | rad    |
+| $d$          | Distance to travel, $\lvert q_f - q_0 \rvert$        | rad    |
+| $v_{max}$    | Joint speed limit                                    | rad/s  |
+| $a_{max}$    | Joint acceleration limit                             | rad/s² |
+| $v$          | Cruise (peak) speed of the profile                   | rad/s  |
+| $t_a$        | Duration of the acceleration and of the deceleration | s      |
+| $t_c$        | Duration of the cruise                               | s      |
+| $T_i$        | Fastest duration of joint $i$ on its own             | s      |
+| $T^\ast$     | Common duration of the move                          | s      |
 
 ---
 
@@ -112,12 +112,12 @@ flowchart LR
 
 ## Numerical Properties
 
-| Property   | Value / Condition                                                                                   |
-|------------|-----------------------------------------------------------------------------------------------------|
-| Complexity | O(1) per joint to plan and to sample; six joints per move                                            |
+| Property   | Value / Condition                                                                                                                |
+|------------|----------------------------------------------------------------------------------------------------------------------------------|
+| Complexity | O(1) per joint to plan and to sample; six joints per move                                                                        |
 | Precision  | Single-precision floats; the second form of $v$ avoids the cancellation of the first when $4 a_{max} d \ll a_{max}^2 T^{\ast 2}$ |
-| Stability  | No iteration and no accumulated state: each sample is computed from the time since the start       |
-| Range      | Any finite distance; a non-positive acceleration or duration, or a negative discriminant, has no profile |
+| Stability  | No iteration and no accumulated state: each sample is computed from the time since the start                                     |
+| Range      | Any finite distance; a non-positive acceleration or duration, or a negative discriminant, has no profile                         |
 
 The samples are taken once per control period, so the last sample at or after $T^\ast$ is the target itself and is
 sent exactly once.
@@ -128,10 +128,10 @@ sent exactly once.
 
 Two joints, both with $v_{max} = 1$ rad/s and $a_{max} = 2$ rad/s².
 
-| Joint | $d$ (rad) | Shape     | $T_i$ (s)                         |
-|-------|-----------|-----------|-----------------------------------|
-| 1     | 0.5       | trapezoid | $0.5 / 1 + 1 / 2 = 1.000$         |
-| 2     | 0.2       | triangle  | $2 \sqrt{0.2 / 2} = 0.632$        |
+| Joint | $d$ (rad) | Shape     | $T_i$ (s)                  |
+|-------|-----------|-----------|----------------------------|
+| 1     | 0.5       | trapezoid | $0.5 / 1 + 1 / 2 = 1.000$  |
+| 2     | 0.2       | triangle  | $2 \sqrt{0.2 / 2} = 0.632$ |
 
 The common duration is $T^\ast = 1.000$ s. Joint 2 is stretched:
 
