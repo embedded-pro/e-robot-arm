@@ -80,6 +80,12 @@ namespace arm
         virtual void OnCommandDelivered(JointCommand command) = 0;
         virtual void OnCommandFailed(JointCommand command, CommandFailure failure) = 0;
 
+        virtual void OnAlgorithms(std::size_t, const can::FocAlgorithms&)
+        {}
+
+        virtual void OnParameter(std::size_t, can::FocParameter, can::FocParameterValue)
+        {}
+
     protected:
         ~JointBusObserver() = default;
     };
@@ -102,6 +108,11 @@ namespace arm
         virtual bool EmergencyStop() = 0;
         virtual bool SendPositions(const JointPositions& positions) = 0;
         virtual bool RequestTelemetry() = 0;
+
+        virtual bool SelectAlgorithm(std::size_t joint, can::FocControlLoop loop, uint8_t algorithm) = 0;
+        virtual bool QueryAlgorithms(std::size_t joint) = 0;
+        virtual bool SetParameter(std::size_t joint, can::FocParameter parameter, float value) = 0;
+        virtual bool QueryParameter(std::size_t joint, can::FocParameter parameter) = 0;
 
         virtual const JointReading& Reading(std::size_t joint) const = 0;
         virtual uint32_t Period() const = 0;

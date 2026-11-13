@@ -4,12 +4,14 @@
 #include "ui/backend/qt/QtTheme.hpp"
 #include "gmock/gmock.h"
 #include <QApplication>
+#include <QDockWidget>
 #include <QElapsedTimer>
 #include <QImage>
 #include <QKeyEvent>
 #include <QMenu>
 #include <QMenuBar>
 #include <QMessageBox>
+#include <QPushButton>
 #include <QQuickItem>
 #include <QQuickWidget>
 #include <QQuickWindow>
@@ -62,6 +64,14 @@ namespace
             for (int x = 0; x < image.width(); x += 8)
                 differing += image.pixel(x, y) != reference ? 1 : 0;
         return differing > 100;
+    }
+
+    QPushButton* Button(QWidget& parent, const QString& text)
+    {
+        for (auto* button : parent.findChildren<QPushButton*>())
+            if (button->text() == text)
+                return button;
+        return nullptr;
     }
 
     class SimulatorWindowTest
@@ -165,6 +175,53 @@ TEST_F(SimulatorWindowTest, an_injected_fault_trips_the_arm_and_names_its_source
     EXPECT_EQ(ui::theme::StatusLevel::Fault, window.Presenter().Status().tripLevel);
     EXPECT_FALSE(window.Presenter().State(simulator::Control::move).enabled);
     EXPECT_TRUE(window.Presenter().State(simulator::Control::emergencyStop).enabled);
+}
+
+TEST_F(SimulatorWindowTest, the_motor_controller_reads_the_selected_joint_then_applies_and_verifies_it)
+{
+    host.Post(arm_host::BringUp{});
+    ASSERT_TRUE(Eventually([this]()
+        {
+            return window.Presenter().State(simulator::Control::enable).enabled;
+        }));
+
+    window.Presenter().SelectJoint(2);
+    ASSERT_TRUE(Eventually([this]()
+        {
+            return window.MotorController().Joint() == 2 && window.MotorController().State() == simulator::ConfigurationState::read;
+        }));
+
+    auto* dock = window.findChild<QDockWidget*>("motorControllerDock");
+    ASSERT_NE(nullptr, dock);
+    auto* apply = Button(*dock, "Apply");
+    auto* verify = Button(*dock, "Verify");
+    ASSERT_NE(nullptr, apply);
+    ASSERT_NE(nullptr, verify);
+    EXPECT_FALSE(verify->isEnabled());
+
+    apply->click();
+    ASSERT_TRUE(Eventually([this]()
+        {
+            return window.MotorController().State() == simulator::ConfigurationState::applied;
+        }));
+
+    ASSERT_TRUE(Eventually([verify]()
+        {
+            return verify->isEnabled();
+        }));
+    verify->click();
+    EXPECT_TRUE(Eventually([this]()
+        {
+            return window.MotorController().State() == simulator::ConfigurationState::verified;
+        }));
+    EXPECT_EQ(ui::theme::StatusLevel::Ok, window.MotorController().StateLevel());
+
+    if (const auto* path = std::getenv("SIMULATOR_FRAME_CAPTURE"))
+    {
+        dock->raise();
+        QApplication::processEvents();
+        window.grab().save(QString{ path }.replace(".png", "-motor-controller.png"));
+    }
 }
 
 int main(int argc, char* argv[])

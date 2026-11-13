@@ -6,6 +6,7 @@
 #include "ui/backend/qt/QtFormView.hpp"
 #include "ui/backend/qt/QtPaintedWidget.hpp"
 #include "ui/scope/ScopeCore.hpp"
+#include "ui/theme/Theme.hpp"
 #include <QWidget>
 #include <span>
 
@@ -30,6 +31,22 @@ namespace simulator
     private:
         ui::backend::qt::QtFormView* form;
         QLabel* hint;
+    };
+
+    class MotorControllerPanel
+        : public FormPanel
+    {
+        Q_OBJECT
+
+    public:
+        explicit MotorControllerPanel(QWidget* parent);
+
+        void SetState(const std::string& text, ui::theme::StatusLevel level);
+        void ApplyTheme();
+
+    private:
+        QLabel* state;
+        ui::theme::StatusLevel level{ ui::theme::StatusLevel::Neutral };
     };
 
     class ScopePanel

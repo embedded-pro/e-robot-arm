@@ -43,6 +43,33 @@ namespace simulator
             hint->setText(value);
     }
 
+    MotorControllerPanel::MotorControllerPanel(QWidget* parent)
+        : FormPanel{ parent }
+        , state{ new QLabel{ this } }
+    {
+        state->setWordWrap(true);
+        state->setAccessibleName("Motor controller state");
+        ui::backend::qt::StyleStatusLabel(*state, level);
+        static_cast<QVBoxLayout*>(layout())->insertWidget(0, state);
+    }
+
+    void MotorControllerPanel::SetState(const std::string& text, ui::theme::StatusLevel newLevel)
+    {
+        const auto value = QString::fromStdString(text);
+        if (state->text() != value)
+            state->setText(value);
+        if (newLevel != level)
+        {
+            level = newLevel;
+            ui::backend::qt::StyleStatusLabel(*state, level);
+        }
+    }
+
+    void MotorControllerPanel::ApplyTheme()
+    {
+        ui::backend::qt::StyleStatusLabel(*state, level);
+    }
+
     ScopePanel::ScopePanel(QWidget* parent)
         : QWidget{ parent }
         , joints{ new QComboBox{ this } }

@@ -7,6 +7,7 @@
 #include "tools/simulator/app/JointTable.hpp"
 #include "tools/simulator/app/Panels.hpp"
 #include "tools/simulator/app/StatusStripBar.hpp"
+#include "tools/simulator/view_models/MotorControllerPresenter.hpp"
 #include "tools/simulator/view_models/SimulatorPresenter.hpp"
 #include "ui/backend/qt/QtAppShell.hpp"
 #include <QByteArray>
@@ -34,6 +35,7 @@ namespace simulator
 
         QQuickWidget& ArmView();
         SimulatorPresenter& Presenter();
+        MotorControllerPresenter& MotorController();
         void Frame();
 
     protected:
@@ -72,6 +74,8 @@ namespace simulator
         ScopePanel* scope;
         ArmSceneState sceneState{ nullptr };
         SimulatorPresenter presenter;
+        MotorControllerPanel* motorControllerPanel;
+        MotorControllerPresenter motorController;
         EventLogPanel* logPanel;
         EmergencyStopKey emergencyStopKey;
         QMenu* simulationMenu{ nullptr };

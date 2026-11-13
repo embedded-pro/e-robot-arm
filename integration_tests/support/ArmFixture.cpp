@@ -24,10 +24,26 @@ namespace integration
 
     }
 
-    ArmEvents::ArmEvents(arm::SafetySupervisor& safety, arm::JointMotion& motion)
+    ArmEvents::ArmEvents(arm::SafetySupervisor& safety, arm::JointMotion& motion, arm::JointConfigurator& configurator)
         : arm::JointBusObserver(safety)
         , arm::JointMotionObserver(motion)
+        , arm::JointConfiguratorObserver(configurator)
     {}
+
+    void ArmEvents::OnApplied(std::size_t joint)
+    {
+        applied = joint;
+    }
+
+    void ArmEvents::OnRead(std::size_t, const arm::ControllerReading& reading)
+    {
+        read = reading;
+    }
+
+    void ArmEvents::OnConfigurationFailed(std::size_t, arm::ConfigurationFailure)
+    {
+        configurationFailed = true;
+    }
 
     void ArmEvents::OnContractsResolved(can::ContractCompatibility compatibility)
     {

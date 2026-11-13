@@ -6,6 +6,7 @@ target_include_directories(e_robot_arm.tool.simulated_arm PUBLIC
 
 target_link_libraries(e_robot_arm.tool.simulated_arm PUBLIC
     e_robot_arm.joint_bus.interfaces
+    e_robot_arm.joint_configurator.interfaces
     e_foc_protocol.server
     can_lite.server
     infra.event

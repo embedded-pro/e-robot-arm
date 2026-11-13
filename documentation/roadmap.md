@@ -7,19 +7,20 @@ request as the work it describes. The tracking issue is
 
 ## Where the arm stands
 
-| Component         | Where                  | Design                                        |
-|-------------------|------------------------|-----------------------------------------------|
-| Joint bus         | `core/joint_bus/`      | [joint-bus.md](design/joint-bus.md)           |
-| Safety supervisor | `core/safety/`         | [safety.md](design/safety.md)                 |
-| Joint motion      | `core/motion/`         | [joint-motion.md](design/joint-motion.md)     |
-| Control loop      | `core/control_loop/`   | [control-loop.md](design/control-loop.md)     |
-| Arm lifecycle     | `core/lifecycle/`      | [arm-lifecycle.md](design/arm-lifecycle.md)   |
-| Arm composition   | `core/arm/`            | [arm-console.md](design/arm-console.md)       |
-| Console           | `tools/arm_console/`   | [arm-console.md](design/arm-console.md)       |
-| Simulated arm     | `tools/simulated_arm/` | [simulator.md](design/simulator.md)           |
-| Arm host          | `tools/arm_host/`      | [simulator.md](design/simulator.md)           |
-| Simulator         | `tools/simulator/`     | [tool-simulator.md](design/tool-simulator.md) |
-| Arm scenarios     | `integration_tests/`   | [requirements](requirements/arm/arm.yaml)     |
+| Component          | Where                      | Design                                                |
+|--------------------|----------------------------|-------------------------------------------------------|
+| Joint bus          | `core/joint_bus/`          | [joint-bus.md](design/joint-bus.md)                   |
+| Safety supervisor  | `core/safety/`             | [safety.md](design/safety.md)                         |
+| Joint motion       | `core/motion/`             | [joint-motion.md](design/joint-motion.md)             |
+| Control loop       | `core/control_loop/`       | [control-loop.md](design/control-loop.md)             |
+| Arm lifecycle      | `core/lifecycle/`          | [arm-lifecycle.md](design/arm-lifecycle.md)           |
+| Joint configurator | `core/joint_configurator/` | [joint-configurator.md](design/joint-configurator.md) |
+| Arm composition    | `core/arm/`                | [arm-console.md](design/arm-console.md)               |
+| Console            | `tools/arm_console/`       | [arm-console.md](design/arm-console.md)               |
+| Simulated arm      | `tools/simulated_arm/`     | [simulator.md](design/simulator.md)                   |
+| Arm host           | `tools/arm_host/`          | [simulator.md](design/simulator.md)                   |
+| Simulator          | `tools/simulator/`         | [tool-simulator.md](design/tool-simulator.md)         |
+| Arm scenarios      | `integration_tests/`       | [requirements](requirements/arm/arm.yaml)             |
 
 ## Order of work
 

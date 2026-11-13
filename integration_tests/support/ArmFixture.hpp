@@ -13,15 +13,19 @@ namespace integration
     class ArmEvents
         : private arm::JointBusObserver
         , private arm::JointMotionObserver
+        , private arm::JointConfiguratorObserver
     {
     public:
-        ArmEvents(arm::SafetySupervisor& safety, arm::JointMotion& motion);
+        ArmEvents(arm::SafetySupervisor& safety, arm::JointMotion& motion, arm::JointConfigurator& configurator);
 
         std::optional<can::ContractCompatibility> contracts;
         std::vector<std::size_t> faultedJoints;
         std::vector<std::size_t> silentJoints;
         std::vector<arm::JointCommand> deliveredCommands;
         std::vector<arm::JointCommand> failedCommands;
+        std::optional<std::size_t> applied;
+        std::optional<arm::ControllerReading> read;
+        bool configurationFailed{ false };
         uint32_t movesDone{ 0 };
         uint32_t movesAborted{ 0 };
 
@@ -31,6 +35,9 @@ namespace integration
         void OnJointSilent(std::size_t joint) override;
         void OnCommandDelivered(arm::JointCommand command) override;
         void OnCommandFailed(arm::JointCommand command, arm::CommandFailure failure) override;
+        void OnApplied(std::size_t joint) override;
+        void OnRead(std::size_t joint, const arm::ControllerReading& reading) override;
+        void OnConfigurationFailed(std::size_t joint, arm::ConfigurationFailure failure) override;
         void OnMoveDone() override;
         void OnMoveAborted() override;
     };
@@ -46,7 +53,8 @@ namespace integration
         simulation::SimulatedArm simulatedArm;
         can::FocMotorCanClient client{ simulatedArm.ArmSide() };
         arm::Arm arm;
-        ArmEvents events{ arm.Safety(), arm.Motion() };
+        ArmEvents events{ arm.Safety(), arm.Motion(), arm.Configurator() };
+        arm::ControllerSettings controller{};
         arm::JointPositions start{};
         arm::JointPositions target{};
         bool lastAccepted{ false };

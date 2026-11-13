@@ -2,7 +2,7 @@
 title: "Joint Bus Design"
 type: design
 status: draft
-version: 0.7.0
+version: 0.8.0
 component: "joint_bus"
 date: 2026-11-12
 ---
@@ -12,7 +12,7 @@ date: 2026-11-12
 | Title     | Joint Bus Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.7.0            |
+| Version   | 0.8.0            |
 | Component | joint_bus        |
 | Date      | 2026-11-12       |
 
@@ -32,6 +32,7 @@ date: 2026-11-12
 - Keeping the latest position, speed, state and fault reported by each joint.
 - Reporting a joint that enters a fault, naming the joint.
 - Requesting telemetry from every joint and reporting a joint that stops answering.
+- Sending one joint its algorithm and parameter requests and passing their answers on.
 - Converting between joint space and each motor's shaft through the joint's transmission, so that everything
   above the bus speaks joint angles.
 
@@ -125,6 +126,14 @@ bus converts every setpoint on the way out and every motion reading on the way i
 limits and trajectories stay in joint space. The e-foc node's own position limits are in motor space: whoever
 brings a joint up sets them from the joint limits through the same transformation. An identity transmission
 (ratio 1, direction +1, offset 0) sends joint angles unchanged.
+
+### Part G — Per-joint configuration
+
+Besides the commands to all six joints, the bus sends four requests to one joint: select a loop's algorithm,
+query the algorithms, set a parameter and query a parameter. Each is one frame, sent at once or refused when the
+transmit queue is full; nothing is held or retried. Their answers are passed on naming the joint: the algorithms
+(with the active mode) and a parameter's value. The joint configurator ([joint-configurator.md](joint-configurator.md))
+paces them one at a time.
 
 ---
 

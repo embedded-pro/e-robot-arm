@@ -19,6 +19,10 @@ namespace arm
         MOCK_METHOD(bool, EmergencyStop, (), (override));
         MOCK_METHOD(bool, SendPositions, (const JointPositions& positions), (override));
         MOCK_METHOD(bool, RequestTelemetry, (), (override));
+        MOCK_METHOD(bool, SelectAlgorithm, (std::size_t joint, can::FocControlLoop loop, uint8_t algorithm), (override));
+        MOCK_METHOD(bool, QueryAlgorithms, (std::size_t joint), (override));
+        MOCK_METHOD(bool, SetParameter, (std::size_t joint, can::FocParameter parameter, float value), (override));
+        MOCK_METHOD(bool, QueryParameter, (std::size_t joint, can::FocParameter parameter), (override));
         MOCK_METHOD(const JointReading&, Reading, (std::size_t joint), (const, override));
         MOCK_METHOD(uint32_t, Period, (), (const, override));
         MOCK_METHOD(bool, Tripped, (), (const, override));

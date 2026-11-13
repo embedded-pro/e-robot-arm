@@ -28,6 +28,7 @@ namespace arm_host
             : private arm::JointBusObserver
             , private arm::JointMotionObserver
             , private arm::ArmLifecycleObserver
+            , private arm::JointConfiguratorObserver
         {
         public:
             Events(ArmSession& session, arm::Arm& arm);
@@ -41,6 +42,9 @@ namespace arm_host
             void OnMoveDone() override;
             void OnMoveAborted() override;
             void OnStateChanged(arm::ArmState state) override;
+            void OnApplied(std::size_t joint) override;
+            void OnRead(std::size_t joint, const arm::ControllerReading& reading) override;
+            void OnConfigurationFailed(std::size_t joint, arm::ConfigurationFailure failure) override;
 
             ArmSession& session;
         };

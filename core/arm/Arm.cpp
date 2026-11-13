@@ -7,6 +7,7 @@ namespace arm
         , safety(jointBus, config.positionLimits)
         , motion(safety, config.positionLimits, config.motionLimits, config.controlPeriod)
         , lifecycle(safety, motion, config.enableMode)
+        , configurator(safety, lifecycle)
         , loop(safety, config.controlPeriod, [this]()
               {
                   motion.Step();
@@ -32,6 +33,16 @@ namespace arm
     const JointMotion& Arm::Motion() const
     {
         return motion;
+    }
+
+    JointConfigurator& Arm::Configurator()
+    {
+        return configurator;
+    }
+
+    const JointConfigurator& Arm::Configurator() const
+    {
+        return configurator;
     }
 
     ArmLifecycle& Arm::Lifecycle()

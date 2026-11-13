@@ -8,6 +8,7 @@ target_include_directories(e_robot_arm.arm PUBLIC
 target_link_libraries(e_robot_arm.arm PUBLIC
     e_robot_arm.control_loop.implementations
     e_robot_arm.joint_bus.implementations
+    e_robot_arm.joint_configurator.implementations
     e_robot_arm.lifecycle.implementations
     e_robot_arm.motion.implementations
     e_robot_arm.safety.implementations
