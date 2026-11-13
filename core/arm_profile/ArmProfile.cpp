@@ -705,10 +705,17 @@ namespace arm
             static std::size_t ShortestDecimals(float value, double magnitude, float scale)
             {
                 int32_t exponent{ 0 };
-                for (auto mantissa = magnitude; mantissa >= 10.0; mantissa /= 10.0)
+                auto mantissa = magnitude;
+                while (mantissa >= 10.0)
+                {
+                    mantissa /= 10.0;
                     ++exponent;
-                for (auto mantissa = magnitude; mantissa > 0.0 && mantissa < 1.0; mantissa *= 10.0)
+                }
+                while (mantissa > 0.0 && mantissa < 1.0)
+                {
+                    mantissa *= 10.0;
                     --exponent;
+                }
 
                 for (int32_t digits = 6; digits <= 9; ++digits)
                 {
