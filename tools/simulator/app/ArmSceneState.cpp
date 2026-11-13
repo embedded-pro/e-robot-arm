@@ -85,6 +85,7 @@ namespace simulator
             anyFault = anyFault || model.Level(joint) == ui::theme::StatusLevel::Fault;
         }
         ghostVisible = model.GhostVisible();
+        singularityWarning = QString::fromStdString(model.SingularityWarning());
         selectedJoint = model.Selected() ? static_cast<int>(*model.Selected()) : -1;
         emit changed();
     }
@@ -100,6 +101,7 @@ namespace simulator
         grid = dark ? QColor::fromHslF(0.0f, 0.0f, 0.42f) : ToQt(theme.Get(ColorRole::GridMajor));
         accent = ToQt(theme.Get(ColorRole::Accent));
         fault = ToQt(theme.Get(ColorRole::Fault));
+        warning = ToQt(theme.Get(ColorRole::Warning));
         emit themeChanged();
     }
 
@@ -121,6 +123,16 @@ namespace simulator
     double ArmSceneState::Extent() const
     {
         return extent;
+    }
+
+    QString ArmSceneState::SingularityWarning() const
+    {
+        return singularityWarning;
+    }
+
+    QColor ArmSceneState::WarningColor() const
+    {
+        return warning;
     }
 
     QVariantList ArmSceneState::Levels() const

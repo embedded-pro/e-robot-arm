@@ -14,6 +14,7 @@ namespace simulator
             numberColumn,
             positionColumn,
             speedColumn,
+            gravityColumn,
             stateColumn,
             faultColumn,
             limitColumn,
@@ -41,7 +42,7 @@ namespace simulator
     {
         setObjectName("jointTable");
         setAccessibleName("Joints");
-        setHorizontalHeaderLabels({ "#", "Position", "Speed", "State", "Fault", "Limit" });
+        setHorizontalHeaderLabels({ "#", "Position", "Speed", "Gravity", "State", "Fault", "Limit" });
         verticalHeader()->setVisible(false);
         horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
         horizontalHeader()->setSectionResizeMode(limitColumn, QHeaderView::Stretch);
@@ -78,6 +79,7 @@ namespace simulator
             SetCell(row, numberColumn, joint.number, Qt::AlignCenter);
             SetCell(row, positionColumn, joint.position, Qt::AlignRight | Qt::AlignVCenter);
             SetCell(row, speedColumn, joint.speed, Qt::AlignRight | Qt::AlignVCenter);
+            SetCell(row, gravityColumn, joint.gravity, Qt::AlignRight | Qt::AlignVCenter);
             SetCell(row, stateColumn, joint.state, Qt::AlignLeft | Qt::AlignVCenter);
             SetCell(row, faultColumn, joint.fault, Qt::AlignLeft | Qt::AlignVCenter);
 

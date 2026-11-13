@@ -184,6 +184,7 @@ namespace simulator
 
         FollowLimits();
         rows = JointRows(snapshot, limits);
+        tool = ToolReadoutOf(snapshot);
         scene.Update(snapshot);
         UpdateStatus();
         UpdateControls();
@@ -260,6 +261,11 @@ namespace simulator
     const std::array<JointRow, arm::jointCount>& SimulatorPresenter::Rows() const
     {
         return rows;
+    }
+
+    const ToolReadout& SimulatorPresenter::Tool() const
+    {
+        return tool;
     }
 
     const ArmSceneModel& SimulatorPresenter::Scene() const

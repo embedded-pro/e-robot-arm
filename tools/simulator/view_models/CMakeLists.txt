@@ -32,6 +32,8 @@ target_sources(e_robot_arm.tool.simulator.view_models PRIVATE
     ProfileView.hpp
     SimulatorPresenter.cpp
     SimulatorPresenter.hpp
+    ToolReadout.cpp
+    ToolReadout.hpp
 )
 
 add_subdirectory(test)

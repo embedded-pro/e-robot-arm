@@ -146,6 +146,28 @@ Rectangle {
         }
     }
 
+    Rectangle {
+        objectName: "singularityWarning"
+        visible: ArmSceneState.singularityWarning.length > 0
+        anchors.left: parent.left
+        anchors.top: parent.top
+        anchors.margins: 12
+        width: warningText.implicitWidth + 24
+        height: warningText.implicitHeight + 12
+        radius: 4
+        color: Qt.rgba(ArmSceneState.warningColor.r, ArmSceneState.warningColor.g, ArmSceneState.warningColor.b, 0.85)
+
+        Text {
+            id: warningText
+            anchors.centerIn: parent
+            text: "⚠ " + ArmSceneState.singularityWarning
+            color: "#1d1f21"
+            font.bold: true
+            Accessible.role: Accessible.AlertMessage
+            Accessible.name: ArmSceneState.singularityWarning
+        }
+    }
+
     OrbitCameraController {
         anchors.fill: parent
         origin: pivot

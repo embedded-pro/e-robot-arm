@@ -6,6 +6,7 @@
 #include "tools/simulator/view_models/ControlRules.hpp"
 #include "tools/simulator/view_models/EventLog.hpp"
 #include "tools/simulator/view_models/JointRows.hpp"
+#include "tools/simulator/view_models/ToolReadout.hpp"
 #include "ui/core/Callback.hpp"
 #include "ui/model/FormModel.hpp"
 #include "ui/shell/AppShell.hpp"
@@ -83,6 +84,7 @@ namespace simulator
         const ControlState& State(Control control) const;
         const StatusStrip& Status() const;
         const std::array<JointRow, arm::jointCount>& Rows() const;
+        const ToolReadout& Tool() const;
         const ArmSceneModel& Scene() const;
         const EventLog& Log() const;
         const std::string& OperateHint() const;
@@ -125,6 +127,7 @@ namespace simulator
         arm_host::ArmSnapshot snapshot;
         std::array<ControlState, controlCount> states;
         std::array<JointRow, arm::jointCount> rows;
+        ToolReadout tool;
         StatusStrip status;
         ArmSceneModel scene;
         EventLog log;

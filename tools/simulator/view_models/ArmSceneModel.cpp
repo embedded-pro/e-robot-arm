@@ -25,6 +25,7 @@ namespace simulator
         }
         ghostVisible = snapshot.targetReady && (snapshot.moving || apart);
         UpdateNodes(snapshot);
+        singularityWarning = ToolReadoutOf(snapshot).warning;
     }
 
     void ArmSceneModel::UpdateNodes(const arm_host::ArmSnapshot& snapshot)
@@ -109,5 +110,10 @@ namespace simulator
     float ArmSceneModel::Extent() const
     {
         return extent;
+    }
+
+    const std::string& ArmSceneModel::SingularityWarning() const
+    {
+        return singularityWarning;
     }
 }

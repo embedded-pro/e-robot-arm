@@ -76,6 +76,7 @@ namespace simulator
         QLabel* banner;
         QQuickWidget* armView;
         JointTable* joints;
+        ToolPanel* tool;
         FormPanel* operate;
         FormPanel* move;
         ScopePanel* scope;

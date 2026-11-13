@@ -4,6 +4,7 @@
 #include <QComboBox>
 #include <QFile>
 #include <QFontDatabase>
+#include <QGridLayout>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
@@ -70,6 +71,55 @@ namespace simulator
     void ConfigurationPanel::ApplyTheme()
     {
         ui::backend::qt::StyleStatusLabel(*state, level);
+    }
+
+    ToolPanel::ToolPanel(QWidget* parent)
+        : QWidget{ parent }
+        , position{ new QLabel{ "—", this } }
+        , rotation{ new QLabel{ "—", this } }
+        , manipulability{ new QLabel{ "—", this } }
+        , singularity{ new QLabel{ "—", this } }
+    {
+        const auto fixed = QFontDatabase::systemFont(QFontDatabase::FixedFont);
+        auto* layout = new QGridLayout{ this };
+        layout->setContentsMargins(0, 0, 0, 0);
+        layout->setHorizontalSpacing(16);
+        layout->setVerticalSpacing(4);
+        const std::array<std::pair<const char*, QLabel*>, 4> rows{ { { "Position", position }, { "Rotation", rotation }, { "Manipulability", manipulability },
+            { "Singularity", singularity } } };
+        for (int row = 0; row != static_cast<int>(rows.size()); ++row)
+        {
+            auto* name = new QLabel{ rows[static_cast<std::size_t>(row)].first, this };
+            auto* value = rows[static_cast<std::size_t>(row)].second;
+            name->setBuddy(value);
+            value->setFont(fixed);
+            value->setAccessibleName(QString{ "Tool " } + rows[static_cast<std::size_t>(row)].first);
+            value->setTextInteractionFlags(Qt::TextSelectableByMouse);
+            layout->addWidget(name, row, 0);
+            layout->addWidget(value, row, 1);
+        }
+        layout->setColumnStretch(1, 1);
+        ui::backend::qt::StyleStatusLabel(*singularity, ui::theme::StatusLevel::Neutral);
+    }
+
+    void ToolPanel::Update(const ToolReadout& readout)
+    {
+        if (readout == shown)
+            return;
+
+        const bool levelChanged = readout.singularityLevel != shown.singularityLevel;
+        shown = readout;
+        position->setText(QString::fromStdString(readout.position));
+        rotation->setText(QString::fromStdString(readout.rotation));
+        manipulability->setText(QString::fromStdString(readout.manipulability));
+        singularity->setText(QString::fromStdString(readout.singularity));
+        if (levelChanged)
+            ApplyTheme();
+    }
+
+    void ToolPanel::ApplyTheme()
+    {
+        ui::backend::qt::StyleStatusLabel(*singularity, shown.singularityLevel);
     }
 
     ProfilePanel::ProfilePanel(QWidget* parent)

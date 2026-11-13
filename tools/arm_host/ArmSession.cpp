@@ -400,6 +400,7 @@ namespace arm_host
         snapshot.toolPose = arm::ToPlacement(model.ToolPose(measured));
         snapshot.singularities = model.Near(measured);
         snapshot.gravityTorque = model.GravityTorque(measured);
+        snapshot.manipulability = model.Manipulability(measured);
         snapshot.profileName.assign(profile.name.begin(), profile.name.end());
         snapshot.config = profile.config;
         sample.commanded = snapshot.commanded.value_or(sample.measured);
