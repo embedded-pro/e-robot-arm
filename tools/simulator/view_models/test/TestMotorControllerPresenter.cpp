@@ -212,10 +212,10 @@ TEST_F(MotorControllerPresenterTest, choosing_another_joint_reads_it_and_tells_t
 {
     presenter.Refresh(snapshot, {});
     std::size_t selected = 99;
-    presenter.onJointSelected = [&selected](std::size_t joint)
-    {
-        selected = joint;
-    };
+    presenter.SetJointSelected([&selected](std::size_t joint)
+        {
+            selected = joint;
+        });
 
     EXPECT_CALL(arm, Post(ReadsJoint(4))).WillOnce(Return(3));
     view.PickOption(MotorControllerField::joint, 4);

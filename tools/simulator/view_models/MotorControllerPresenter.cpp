@@ -111,15 +111,22 @@ namespace simulator
             return { loop, mask };
         }
 
+        ui::model::GroupId GroupOf(ui::model::FieldId loop)
+        {
+            if (loop == MotorControllerField::current)
+                return currentGroup;
+            if (loop == MotorControllerField::speed)
+                return speedGroup;
+            return positionGroup;
+        }
+
         ui::model::FieldSpec GainField(std::size_t index)
         {
             const auto gain = static_cast<arm::Gain>(index);
             const auto& view = gainViews[index];
             const auto descriptor = can::FindParameter(arm::gainParameters[index]);
             const arm::ControllerSettings defaults{};
-            const auto group = LoopField(gain) == MotorControllerField::current ? currentGroup
-                               : LoopField(gain) == MotorControllerField::speed ? speedGroup
-                                                                                : positionGroup;
+            const auto group = GroupOf(LoopField(gain));
             return { MotorControllerField::Gain(gain), group, gain == arm::Gain::currentTwoStepDeadbeat ? FieldKind::Toggle : FieldKind::Number, view.label,
                 view.suffix, { descriptor->minimum, descriptor->maximum, view.decimals == 2 ? 1.0 : 0.01, defaults.gains[index], view.decimals }, {},
                 VisibleWhen(gain), {} };
@@ -181,6 +188,11 @@ namespace simulator
         view.Refresh(MotorControllerField::joint);
     }
 
+    void MotorControllerPresenter::SetJointSelected(const ui::Callback<void(std::size_t joint)>& handler)
+    {
+        jointSelected = handler;
+    }
+
     std::size_t MotorControllerPresenter::Joint() const
     {
         return joint;
@@ -222,7 +234,10 @@ namespace simulator
         for (std::size_t gain = 0; gain != arm::gainCount; ++gain)
         {
             const auto field = MotorControllerField::Gain(static_cast<arm::Gain>(gain));
-            settings.gains[gain] = static_cast<arm::Gain>(gain) == arm::Gain::currentTwoStepDeadbeat ? (form.model.Flag(field) ? 1.0f : 0.0f) : form.model.Float(field);
+            if (static_cast<arm::Gain>(gain) == arm::Gain::currentTwoStepDeadbeat)
+                settings.gains[gain] = form.model.Flag(field) ? 1.0f : 0.0f;
+            else
+                settings.gains[gain] = form.model.Float(field);
         }
         return settings;
     }
@@ -247,8 +262,8 @@ namespace simulator
         if (field == MotorControllerField::joint)
         {
             joint = form.model.Selection(MotorControllerField::joint);
-            if (onJointSelected)
-                onJointSelected(joint);
+            if (jointSelected)
+                jointSelected(joint);
             if (pending == Pending::none && snapshot.state == arm::ArmState::ready)
                 Post(Pending::read, arm_host::ReadController{ joint });
             else
@@ -320,9 +335,12 @@ namespace simulator
         pending = operation;
         detail.clear();
         postedCommand = arm.Post(command);
-        Enter(operation == Pending::read     ? ConfigurationState::reading
-              : operation == Pending::verify ? ConfigurationState::verifying
-                                             : ConfigurationState::applying);
+        if (operation == Pending::read)
+            Enter(ConfigurationState::reading);
+        else if (operation == Pending::verify)
+            Enter(ConfigurationState::verifying);
+        else
+            Enter(ConfigurationState::applying);
         UpdateActions();
     }
 
@@ -359,8 +377,11 @@ namespace simulator
     {
         const bool ready = snapshot.targetReady && snapshot.state == arm::ArmState::ready;
         const bool idle = pending == Pending::none;
-        const std::string blocked = !ready ? std::format("Not ready: {}", arm_host::StateName(snapshot.state)) : !idle ? std::string{ "Busy" }
-                                                                                                                       : std::string{};
+        std::string blocked;
+        if (!ready)
+            blocked = std::format("Not ready: {}", arm_host::StateName(snapshot.state));
+        else if (!idle)
+            blocked = "Busy";
 
         for (const auto& action : actions)
             view.SetActionEnabled(action.id, blocked.empty() && (action.id != MotorControllerAction::verify || applied[joint].has_value()));

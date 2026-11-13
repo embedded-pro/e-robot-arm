@@ -342,11 +342,11 @@ namespace simulator
                 if (presenter.SelectJoint(joint))
                     scope->SelectJoint(static_cast<std::size_t>(joint));
             });
-        motorController.onJointSelected = [this](std::size_t joint)
-        {
-            if (presenter.SelectJoint(static_cast<int>(joint)))
-                scope->SelectJoint(joint);
-        };
+        motorController.SetJointSelected([this](std::size_t joint)
+            {
+                if (presenter.SelectJoint(static_cast<int>(joint)))
+                    scope->SelectJoint(joint);
+            });
         presenter.SetRearmPrompt([this](std::string_view prompt)
             {
                 ConfirmRearm(prompt);

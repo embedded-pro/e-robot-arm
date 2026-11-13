@@ -67,7 +67,7 @@ namespace simulator
         const std::string& Hint() const;
         arm::ControllerSettings FormSettings() const;
 
-        ui::Callback<void(std::size_t joint)> onJointSelected;
+        void SetJointSelected(const ui::Callback<void(std::size_t joint)>& handler);
 
     private:
         enum class Pending : uint8_t
@@ -107,6 +107,7 @@ namespace simulator
         ui::shell::FormView& view;
         Form form;
         ui::Callback<void(ui::model::FieldId)> viewFieldChanged;
+        ui::Callback<void(std::size_t joint)> jointSelected;
         arm_host::ArmSnapshot snapshot;
         std::array<std::optional<arm::ControllerSettings>, arm::jointCount> applied{};
         Pending pending{ Pending::none };
