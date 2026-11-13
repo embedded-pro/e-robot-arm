@@ -23,6 +23,7 @@ namespace arm
         void Step();
 
     private:
+        bool AnyReadingStale() const;
         JointPositions LatestPositions() const;
         void Finish();
 

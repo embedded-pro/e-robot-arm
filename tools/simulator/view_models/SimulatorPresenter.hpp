@@ -27,6 +27,8 @@ namespace simulator
         std::string contracts;
         std::string trip;
         ui::theme::StatusLevel tripLevel{ ui::theme::StatusLevel::Neutral };
+        std::string overruns;
+        ui::theme::StatusLevel overrunLevel{ ui::theme::StatusLevel::Neutral };
         bool realArm{ false };
     };
 

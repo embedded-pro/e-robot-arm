@@ -2,7 +2,7 @@
 title: "Joint Motion Design"
 type: design
 status: draft
-version: 0.4.0
+version: 0.5.0
 component: "motion"
 date: 2026-11-12
 ---
@@ -12,7 +12,7 @@ date: 2026-11-12
 | Title     | Joint Motion Design |
 | Type      | design              |
 | Status    | draft               |
-| Version   | 0.4.0               |
+| Version   | 0.5.0               |
 | Component | motion              |
 | Date      | 2026-11-12          |
 
@@ -52,8 +52,9 @@ Every other joint is then re-planned to take exactly that duration, at its own a
 its cruise speed. A joint that does not move stays where it is. All joints therefore start and stop at the same
 instants, and no joint exceeds its limits.
 
-A move is refused if a target is not finite, lies outside its joint's position limits, or another move is still
-running. Each joint moves monotonically from its start to its target, so a target within the limits keeps the
+A move is refused if a target is not finite, lies outside its joint's position limits, another move is still
+running, or a joint's latest position is stale: it answered neither the latest telemetry request nor the one before
+it ([joint-bus.md](joint-bus.md) Part E), so the move would start from where the joint no longer is. Each joint moves monotonically from its start to its target, so a target within the limits keeps the
 whole move within them; the safety supervisor still checks every setpoint set.
 
 ### Part B — Streaming

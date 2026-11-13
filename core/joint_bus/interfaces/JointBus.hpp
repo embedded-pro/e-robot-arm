@@ -42,7 +42,13 @@ namespace arm
         can::FocMotorState state{ can::FocMotorState::idle };
         can::FocFaultCode fault{ can::FocFaultCode::none };
         bool silent{ false };
+        uint32_t period{ 0 };
     };
+
+    inline bool Stale(const JointReading& reading, uint32_t currentPeriod)
+    {
+        return reading.period == 0 || currentPeriod - reading.period > 1;
+    }
 
     enum class JointCommand : uint8_t
     {
@@ -98,6 +104,7 @@ namespace arm
         virtual bool RequestTelemetry() = 0;
 
         virtual const JointReading& Reading(std::size_t joint) const = 0;
+        virtual uint32_t Period() const = 0;
 
     protected:
         ~JointBus() = default;

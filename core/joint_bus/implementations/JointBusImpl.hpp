@@ -32,6 +32,7 @@ namespace arm
         bool RequestTelemetry() override;
 
         const JointReading& Reading(std::size_t joint) const override;
+        uint32_t Period() const override;
 
     private:
         void OnSelectControlModeResponse(uint16_t sourceNodeId, can::FocMotorMode activeMode) override;
@@ -80,6 +81,7 @@ namespace arm
         uint8_t missedRequestsBeforeSilent;
         std::array<Liveness, jointCount> liveness{};
         bool telemetryRequested{ false };
+        uint32_t period{ 0 };
 
         infra::Duration commandTimeout;
         std::optional<HeldCommand> held;

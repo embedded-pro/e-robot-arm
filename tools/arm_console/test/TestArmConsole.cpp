@@ -98,6 +98,8 @@ TEST_F(ArmConsoleTest, status_prints_every_joint_the_trip_and_the_move_from_the_
     snapshot.readings[3] = { foc::Radians{ 0.25f }, foc::RadiansPerSecond{ -1.5f }, can::FocMotorState::fault, can::FocFaultCode::overCurrent };
     snapshot.readings[5].silent = true;
     snapshot.tripped = true;
+    snapshot.overruns = 4;
+    snapshot.state = arm::ArmState::tripped;
     EXPECT_CALL(arm, Snapshot()).WillOnce(Return(snapshot));
 
     const auto status = Run("status");
@@ -107,6 +109,8 @@ TEST_F(ArmConsoleTest, status_prints_every_joint_the_trip_and_the_move_from_the_
     EXPECT_THAT(status, HasSubstr("joint 6: position 0.000 rad, speed 0.000 rad/s, state idle, fault none, silent\n"));
     EXPECT_THAT(status, HasSubstr("safety: tripped\n"));
     EXPECT_THAT(status, HasSubstr("motion: idle\n"));
+    EXPECT_THAT(status, HasSubstr("overruns: 4\n"));
+    EXPECT_THAT(status, HasSubstr("arm: tripped\n"));
 }
 
 TEST_F(ArmConsoleTest, events_print_as_one_line_each_with_joints_numbered_from_one)

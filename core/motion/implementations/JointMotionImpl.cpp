@@ -31,7 +31,7 @@ namespace arm
 
     bool JointMotionImpl::MoveTo(const JointPositions& newTarget)
     {
-        if (Moving() || !std::ranges::all_of(newTarget, Finite) || !WithinLimits(positionLimits, newTarget))
+        if (Moving() || !std::ranges::all_of(newTarget, Finite) || !WithinLimits(positionLimits, newTarget) || AnyReadingStale())
             return false;
 
         target = newTarget;
@@ -61,6 +61,16 @@ namespace arm
     std::optional<JointPositions> JointMotionImpl::Setpoint() const
     {
         return setpoint;
+    }
+
+    bool JointMotionImpl::AnyReadingStale() const
+    {
+        const auto period = bus.Period();
+        for (std::size_t joint = 0; joint != jointCount; ++joint)
+            if (Stale(bus.Reading(joint), period))
+                return true;
+
+        return false;
     }
 
     JointPositions JointMotionImpl::LatestPositions() const

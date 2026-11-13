@@ -2,7 +2,7 @@
 title: "Control Loop Design"
 type: design
 status: draft
-version: 0.1.0
+version: 0.2.0
 component: "control_loop"
 date: 2026-11-12
 ---
@@ -12,7 +12,7 @@ date: 2026-11-12
 | Title     | Control Loop Design |
 | Type      | design              |
 | Status    | draft               |
-| Version   | 0.1.0               |
+| Version   | 0.2.0               |
 | Component | control_loop        |
 | Date      | 2026-11-12          |
 
@@ -59,15 +59,27 @@ sampled: the request, its six acknowledgements and its twelve answers take about
 setpoints with their six acknowledgements about 1.5 ms, so each half period is at least 3 ms. The arm runs at
 10 ms (100 Hz), which leaves the bus about 57 % idle.
 
+### Part C — Overruns
+
+Each phase is due half a period after the previous one, on a fixed grid from the start. When a phase runs, the loop
+compares the time with its due time. A phase that starts more than a quarter period late is an **overrun**: the
+event loop was busy elsewhere, so telemetry or setpoints went out late. A phase so late that a whole half period
+passed is counted once per due time it missed, because those phases never ran. The next due time is the next
+grid point after the late phase, so one stall is counted once and does not make every later phase look late.
+
+The overrun count only grows while the loop runs; restarting the loop keeps it. Due times follow the clock the
+timer service reads, so a step of that clock (a host's wall clock being set) also counts as an overrun. The arm host reads it once per
+period, and the console and the simulator show it.
+
 ---
 
 ## Interfaces
 
 ### Provided
 
-| Interface    | Purpose                  | Contract                                                       |
-|--------------|--------------------------|----------------------------------------------------------------|
-| Control loop | Start and stop the cycle | Starting a running loop or stopping a stopped one does nothing |
+| Interface    | Purpose                                 | Contract                                                                                  |
+|--------------|-----------------------------------------|-------------------------------------------------------------------------------------------|
+| Control loop | Start and stop the cycle; overrun count | Starting a running loop or stopping a stopped one does nothing; the count never decreases |
 
 ### Required
 
@@ -81,9 +93,10 @@ setpoints with their six acknowledgements about 1.5 ms, so each half period is a
 
 ## Data Model
 
-| Entity       | Field          | Type / Unit | Range                    | Notes                                   |
-|--------------|----------------|-------------|--------------------------|-----------------------------------------|
-| Control loop | control period | duration    | ≥ 6 ms, 10 ms by default | Telemetry and setpoint phases each half |
+| Entity       | Field          | Type / Unit | Range                    | Notes                                                     |
+|--------------|----------------|-------------|--------------------------|-----------------------------------------------------------|
+| Control loop | control period | duration    | ≥ 6 ms, 10 ms by default | Telemetry and setpoint phases each half                   |
+| Control loop | overruns       | count       | 0 …                      | Phases started more than a quarter period late, or missed |
 
 ---
 
@@ -132,7 +145,7 @@ sequenceDiagram
 
 ## Open Questions
 
-| # | Question                                                    | Options                                                                                 | Status |
-|---|-------------------------------------------------------------|-----------------------------------------------------------------------------------------|--------|
-| 1 | Whether to measure and report period overruns               | Report a late phase, count overruns                                                     | open   |
-| 2 | Whether setpoints and telemetry requests need acknowledging | Keep the acknowledgements, an unacknowledged form in a new e-foc-protocol minor version | open   |
+| # | Question                                                    | Options                                                                                 | Status                                                           |
+|---|-------------------------------------------------------------|-----------------------------------------------------------------------------------------|------------------------------------------------------------------|
+| 1 | Whether to measure and report period overruns               | Report a late phase, count overruns                                                     | closed: counted (Part C), shown by the console and the simulator |
+| 2 | Whether setpoints and telemetry requests need acknowledging | Keep the acknowledgements, an unacknowledged form in a new e-foc-protocol minor version | open                                                             |

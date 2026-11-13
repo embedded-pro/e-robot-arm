@@ -59,20 +59,20 @@ The console is a host program. It opens the CAN adapter named on its command lin
 interface or a serial slcan adapter) at the given bit rate, builds the FOC motor client and the arm, starts the
 control loop and reads one command per line from standard input:
 
-| Command                          | Effect                                                                                                  |           |                                         |
-| -------------------------------- | ----------------------------------------------------------------------------                            |           |                                         |
-| `bringup`                        | Bring the arm up: check the contracts, then wait for calibration ([arm-lifecycle.md](arm-lifecycle.md)) |           |                                         |
-| `enable`, `disable`              | Select the configured control mode and start the joints, or stop them                                   |           |                                         |
-| `contracts`                      | Query the contract version of all six joints                                                            |           |                                         |
-| `mode torque\                    | speed\                                                                                                  | position` | Select a control mode on all six joints |
-| `start`, `stop`                  | Start or stop all six joints                                                                            |           |                                         |
-| `estop`                          | Emergency stop of all six joints                                                                        |           |                                         |
-| `clear`                          | Clear the faults of all six joints                                                                      |           |                                         |
-| `rearm`                          | Re-arm the arm after a trip                                                                             |           |                                         |
-| `move q1 q2 q3 q4 q5 q6`         | Move the six joints to the positions, in radians; only while enabled                                    |           |                                         |
-| `abort`                          | Abort the running move                                                                                  |           |                                         |
-| `status`                         | Print each joint's position, speed, state and fault, the arm's lifecycle state, the trip and the move   |           |                                         |
-| `quit`                           | Stop the control loop and leave                                                                         |           |                                         |
+| Command                        | Effect                                                                                                                   |
+|--------------------------------|--------------------------------------------------------------------------------------------------------------------------|
+| `bringup`                      | Bring the arm up: check the contracts, then wait for calibration ([arm-lifecycle.md](arm-lifecycle.md))                  |
+| `enable`, `disable`            | Select the configured control mode and start the joints, or stop them                                                    |
+| `contracts`                    | Query the contract version of all six joints                                                                             |
+| `mode torque\|speed\|position` | Select a control mode on all six joints                                                                                  |
+| `start`, `stop`                | Start or stop all six joints                                                                                             |
+| `estop`                        | Emergency stop of all six joints                                                                                         |
+| `clear`                        | Clear the faults of all six joints                                                                                       |
+| `rearm`                        | Re-arm the arm after a trip                                                                                              |
+| `move q1 q2 q3 q4 q5 q6`       | Move the six joints to the positions, in radians; only while enabled                                                     |
+| `abort`                        | Abort the running move                                                                                                   |
+| `status`                       | Print each joint's position, speed, state and fault, the arm's lifecycle state, the trip, the move and the overrun count |
+| `quit`                         | Stop the control loop and leave                                                                                          |
 
 `bringup`, `enable`, `disable`, `rearm` and `move` go through the arm's lifecycle; `contracts`, `mode`, `start`,
 `stop`, `clear` and `estop` reach the joints directly, for debugging, and the lifecycle follows where they leave the

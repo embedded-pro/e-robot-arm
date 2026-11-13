@@ -51,6 +51,12 @@ namespace
                 Receive(node, can::focContractVersionResponseId, services::CanPayloadWriter{}.WriteUInt8(can::focContractVersionMajor).WriteUInt8(can::focContractVersionMinor));
         }
 
+        void ReportMotionFromEveryJoint()
+        {
+            for (const auto node : nodes)
+                Receive(node, can::focTelemetryMotionId, services::CanPayloadWriter{}.WriteFloat32(0.0f).WriteFloat32(0.0f));
+        }
+
         void ReportStatus(uint16_t node, can::FocMotorState state, can::FocFaultCode fault)
         {
             Receive(node, can::focTelemetryStatusResponseId, services::CanPayloadWriter{}.WriteUInt8(static_cast<uint8_t>(state)).WriteUInt8(static_cast<uint8_t>(fault)));
@@ -96,6 +102,7 @@ TEST_F(ArmTest, a_move_reaches_every_joint_through_the_supervisor_in_the_setpoin
 {
     AnswerCompatibleContracts();
     arm.Loop().Start();
+    ReportMotionFromEveryJoint();
 
     arm::JointPositions target{};
     target[0] = foc::Radians{ 0.5f };

@@ -20,6 +20,7 @@ namespace arm
         MOCK_METHOD(bool, SendPositions, (const JointPositions& positions), (override));
         MOCK_METHOD(bool, RequestTelemetry, (), (override));
         MOCK_METHOD(const JointReading&, Reading, (std::size_t joint), (const, override));
+        MOCK_METHOD(uint32_t, Period, (), (const, override));
     };
 
     class JointBusObserverMock

@@ -264,6 +264,19 @@ TEST_F(SimulatorPresenterTest, a_single_step_stop_reaches_running_joints_and_oth
     EXPECT_FALSE(presenter.SingleStep(simulator::Control::move));
 }
 
+TEST_F(SimulatorPresenterTest, shows_the_overrun_count_and_warns_once_any_phase_ran_late)
+{
+    presenter.Refresh(simulator::test::Running(), {});
+    EXPECT_EQ("Overruns: 0", presenter.Status().overruns);
+    EXPECT_EQ(ui::theme::StatusLevel::Neutral, presenter.Status().overrunLevel);
+
+    auto late = simulator::test::Running();
+    late.overruns = 3;
+    presenter.Refresh(late, {});
+    EXPECT_EQ("Overruns: 3", presenter.Status().overruns);
+    EXPECT_EQ(ui::theme::StatusLevel::Warning, presenter.Status().overrunLevel);
+}
+
 TEST_F(SimulatorPresenterTest, waiting_for_calibration_names_every_joint_not_yet_ready)
 {
     auto waiting = simulator::test::Compatible();

@@ -250,6 +250,23 @@ TEST_F(JointBusImplTest, motion_telemetry_of_a_geared_joint_is_converted_to_join
     EXPECT_NEAR(0.9f, bus.Reading(gearedJoint).position.Value(), tolerance);
 }
 
+TEST_F(JointBusImplTest, a_reading_records_the_telemetry_request_it_answered)
+{
+    EXPECT_EQ(0u, bus.Period());
+    EXPECT_TRUE(bus.RequestTelemetry());
+    EXPECT_TRUE(bus.RequestTelemetry());
+    EXPECT_EQ(2u, bus.Period());
+
+    ReportMotion(nodes[1], 0.0f, 0.1f);
+
+    EXPECT_EQ(2u, bus.Reading(1).period);
+    EXPECT_EQ(0u, bus.Reading(0).period);
+    EXPECT_FALSE(arm::Stale(bus.Reading(1), bus.Period()));
+    EXPECT_TRUE(arm::Stale(bus.Reading(0), bus.Period()));
+    EXPECT_FALSE(arm::Stale(bus.Reading(1), bus.Period() + 1));
+    EXPECT_TRUE(arm::Stale(bus.Reading(1), bus.Period() + 2));
+}
+
 TEST_F(JointBusImplTest, frames_from_nodes_outside_the_map_are_ignored)
 {
     EXPECT_CALL(observer, OnCommandDelivered(arm::JointCommand::queryContracts));

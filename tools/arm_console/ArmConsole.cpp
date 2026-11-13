@@ -122,6 +122,7 @@ namespace arm_console
         output << "arm: " << arm_host::StateName(snapshot.state) << "\n";
         output << "safety: " << (snapshot.tripped ? "tripped" : "armed") << "\n";
         output << "motion: " << (snapshot.moving ? "moving" : "idle") << "\n";
+        output << "overruns: " << snapshot.overruns << "\n";
     }
 
     void ArmConsole::Usage()

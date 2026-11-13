@@ -328,6 +328,7 @@ namespace arm_host
         snapshot.tripped = safety.Tripped();
         snapshot.moving = arm.Motion().Moving();
         snapshot.state = arm.Lifecycle().State();
+        snapshot.overruns = arm.Loop().OverrunCount();
         sample.commanded = snapshot.commanded.value_or(sample.measured);
 
         sink.OnSnapshot(snapshot);

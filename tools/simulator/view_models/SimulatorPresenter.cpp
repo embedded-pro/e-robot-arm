@@ -357,6 +357,8 @@ namespace simulator
         const std::string_view source = tripSource.empty() ? std::string_view{ "unknown source" } : std::string_view{ tripSource };
         status.trip = snapshot.tripped ? std::format("Tripped — {}", source) : std::string{ "Trip: —" };
         status.tripLevel = snapshot.tripped ? ui::theme::StatusLevel::Fault : ui::theme::StatusLevel::Neutral;
+        status.overruns = std::format("Overruns: {}", snapshot.overruns);
+        status.overrunLevel = snapshot.overruns == 0 ? ui::theme::StatusLevel::Neutral : ui::theme::StatusLevel::Warning;
     }
 
     void SimulatorPresenter::UpdateControls()
