@@ -2,6 +2,7 @@
 #include "tools/arm_host/ProfileFile.hpp"
 #include <array>
 #include <filesystem>
+#include <format>
 #include <iomanip>
 
 namespace arm_console
@@ -156,9 +157,9 @@ namespace arm_console
             return;
         }
 
-        output << std::fixed << std::setprecision(3) << "joints:";
+        output << "joints:";
         for (const auto& joint : *result.joints)
-            output << " " << joint.Value();
+            output << std::format(" {:.3f}", joint.Value());
         output << " rad\n";
     }
 
@@ -169,8 +170,8 @@ namespace arm_console
             return value > -5.0e-4f && value < 5.0e-4f ? 0.0f : value;
         };
 
-        output << std::fixed << std::setprecision(3) << "tool: x " << shown(pose.x) << " y " << shown(pose.y) << " z " << shown(pose.z) << " m, roll "
-               << shown(pose.roll) << " pitch " << shown(pose.pitch) << " yaw " << shown(pose.yaw) << " rad";
+        output << std::format("tool: x {:.3f} y {:.3f} z {:.3f} m, roll {:.3f} pitch {:.3f} yaw {:.3f} rad", shown(pose.x), shown(pose.y), shown(pose.z),
+            shown(pose.roll), shown(pose.pitch), shown(pose.yaw));
         if (singularities.Any())
             output << ", near " << (singularities.wrist ? "wrist " : "") << (singularities.elbow ? "elbow " : "") << (singularities.shoulder ? "shoulder " : "")
                    << "singularity";
