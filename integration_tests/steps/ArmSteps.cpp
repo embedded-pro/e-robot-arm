@@ -384,3 +384,42 @@ THEN(R"(the arm shall refuse to be enabled)")
 {
     EXPECT_FALSE(context.Get<ArmFixture>().arm.Lifecycle().Enable());
 }
+
+namespace
+{
+    const arm::MotorPreset& PresetNamed(const std::string& name)
+    {
+        const auto preset = std::ranges::find_if(arm::motorPresets, [&name](const arm::MotorPreset& candidate)
+            {
+                return candidate.name == name;
+            });
+        EXPECT_NE(arm::motorPresets.end(), preset) << name;
+        return preset == arm::motorPresets.end() ? arm::motorPresets.front() : *preset;
+    }
+}
+
+GIVEN(R"(an arm whose configuration gives joint {int} the {string} motor)", (std::int32_t joint, const std::string& name))
+{
+    arm::JointMotors motors{};
+    const auto& preset = PresetNamed(name);
+    motors[static_cast<std::size_t>(joint - 1)] = arm::JointMotor{ static_cast<std::size_t>(&preset - arm::motorPresets.data()), preset.settings };
+    context.Emplace<ArmFixture>(arm::JointTransmissions{}, arm::JointControllers{}, motors);
+}
+
+GIVEN(R"(joint {int} ignores changes to its resistance)", (std::int32_t joint))
+{
+    context.Get<ArmFixture>().Joint(static_cast<std::size_t>(joint)).IgnoreParameter(can::FocParameter::resistance);
+}
+
+THEN(R"(joint {int} shall hold the {string} motor)", (std::int32_t joint, const std::string& name))
+{
+    EXPECT_FALSE(arm::Compare(PresetNamed(name).settings, context.Get<ArmFixture>().Joint(static_cast<std::size_t>(joint)).Motor()).Any());
+}
+
+THEN(R"(the arm shall be misconfigured within {int} ms, naming the motor of joint {int})", (std::int32_t milliseconds, std::int32_t joint))
+{
+    auto& fixture = context.Get<ArmFixture>();
+    EXPECT_TRUE(ReachedWithin(fixture, arm::ArmState::misconfigured, milliseconds));
+    EXPECT_EQ((arm::Misconfiguration{ static_cast<std::size_t>(joint - 1), arm::MisconfigurationReason::differs, arm::ConfigurationPart::motor }),
+        fixture.arm.Lifecycle().MisconfiguredJoint());
+}

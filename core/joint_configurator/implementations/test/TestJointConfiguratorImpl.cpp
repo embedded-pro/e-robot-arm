@@ -199,3 +199,37 @@ TEST_F(JointConfiguratorImplTest, every_observer_hears_the_finished_joint_even_w
     EXPECT_CALL(second, OnApplied(joint)).WillOnce(Invoke(startNext));
     AnswerParameter(joint, arm::gainParameters.back(), settings.gains.back());
 }
+
+TEST_F(JointConfiguratorImplTest, apply_motor_sets_the_eleven_motor_parameters_one_at_a_time)
+{
+    auto motor = arm::motorPresets[0].settings;
+    motor[arm::MotorParameter::inertia] = 1.25e-5f;
+
+    EXPECT_CALL(bus, SetParameter(joint, arm::motorParameters[0], motor.values[0])).WillOnce(Return(true));
+    EXPECT_TRUE(configurator.ApplyMotor(joint, motor));
+    EXPECT_FALSE(configurator.Apply(joint, settings));
+
+    for (std::size_t parameter = 1; parameter != arm::motorParameterCount; ++parameter)
+    {
+        EXPECT_CALL(bus, SetParameter(joint, arm::motorParameters[parameter], motor.values[parameter])).WillOnce(Return(true));
+        AnswerParameter(joint, arm::motorParameters[parameter - 1], motor.values[parameter - 1]);
+    }
+
+    EXPECT_CALL(observer, OnMotorApplied(joint));
+    AnswerParameter(joint, arm::motorParameters.back(), motor.values.back());
+    EXPECT_FALSE(configurator.Busy());
+}
+
+TEST_F(JointConfiguratorImplTest, read_motor_collects_every_motor_parameter)
+{
+    EXPECT_CALL(bus, QueryParameter(joint, arm::motorParameters[0])).WillOnce(Return(true));
+    EXPECT_TRUE(configurator.ReadMotor(joint));
+
+    EXPECT_CALL(bus, QueryParameter(joint, _)).Times(arm::motorParameterCount - 1).WillRepeatedly(Return(true));
+    EXPECT_CALL(observer, OnMotorRead(joint, _)).WillOnce(Invoke([](std::size_t, const arm::MotorSettings& motor)
+        {
+            EXPECT_FALSE(arm::Compare(arm::motorPresets[1].settings, motor).Any());
+        }));
+    for (std::size_t parameter = 0; parameter != arm::motorParameterCount; ++parameter)
+        AnswerParameter(joint, arm::motorParameters[parameter], arm::motorPresets[1].settings.values[parameter]);
+}

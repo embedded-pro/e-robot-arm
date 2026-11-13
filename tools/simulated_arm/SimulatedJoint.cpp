@@ -63,6 +63,14 @@ namespace simulation
         return settings;
     }
 
+    arm::MotorSettings SimulatedJoint::Motor() const
+    {
+        arm::MotorSettings motor{};
+        for (std::size_t parameter = 0; parameter != arm::motorParameterCount; ++parameter)
+            motor.values[parameter] = node.parameters[static_cast<std::size_t>(arm::motorParameters[parameter])];
+        return motor;
+    }
+
     void SimulatedJoint::IgnoreParameter(can::FocParameter parameter)
     {
         node.ignored = parameter;
@@ -76,6 +84,8 @@ namespace simulation
         const arm::ControllerSettings defaults{};
         for (std::size_t gain = 0; gain != arm::gainCount; ++gain)
             parameters[static_cast<std::size_t>(arm::gainParameters[gain])] = defaults.gains[gain];
+        for (std::size_t parameter = 0; parameter != arm::motorParameterCount; ++parameter)
+            parameters[static_cast<std::size_t>(arm::motorParameters[parameter])] = arm::motorPresets[0].settings.values[parameter];
     }
 
     void SimulatedJoint::Node::Advance()

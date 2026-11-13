@@ -22,6 +22,8 @@ namespace
             settings.speed = can::FocSpeedAlgorithm::lqi;
             settings.position = can::FocPositionAlgorithm::lqr;
             snapshot.config.controllers[0] = settings;
+            snapshot.config.motors[0] = arm::JointMotor{ 1, arm::motorPresets[1].settings };
+            snapshot.config.motors[2] = arm::JointMotor{ 0, arm::motorPresets[1].settings };
         }
 
         arm_host::ArmSnapshot snapshot{ simulator::test::Connected() };
@@ -34,8 +36,10 @@ TEST_F(ProfileViewTest, describes_the_profile_in_effect_joint_by_joint)
 
     EXPECT_EQ("bench arm", view.name);
     EXPECT_EQ("Control period 5 ms · Enable mode position · Silent after 4 · Command timeout 3", view.summary);
-    EXPECT_EQ((simulator::ProfileRow{ "J1", "11", "50.00", "−", "0.125", "-1.500", "2.250", "1.000", "2.500", "sliding mode / LQI / LQR" }), view.rows[0]);
+    EXPECT_EQ((simulator::ProfileRow{ "J1", "11", "50.00", "−", "0.125", "-1.500", "2.250", "1.000", "2.500", "sliding mode / LQI / LQR", "Anaheim BLY172S-24V-4000" }), view.rows[0]);
     EXPECT_EQ("node's own", view.rows[1].controller);
+    EXPECT_EQ("node's own", view.rows[1].motor);
+    EXPECT_EQ("custom", view.rows[2].motor);
     EXPECT_EQ("J6", view.rows[5].joint);
 }
 

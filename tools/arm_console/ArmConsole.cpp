@@ -216,6 +216,12 @@ namespace arm_console
             case controllerFailed:
                 output << "joint " << event.joint + 1 << " controller failed: " << event.reason << "\n";
                 break;
+            case motorApplied:
+                output << "joint " << event.joint + 1 << " motor applied\n";
+                break;
+            case motorRead:
+                output << "joint " << event.joint + 1 << " motor read\n";
+                break;
             case profileLoaded:
                 output << "profile loaded: " << arm.Snapshot().profileName << "\n";
                 break;

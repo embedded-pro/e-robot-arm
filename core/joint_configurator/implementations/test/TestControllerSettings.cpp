@@ -1,4 +1,5 @@
 #include "core/joint_configurator/interfaces/ControllerSettings.hpp"
+#include "core/joint_configurator/interfaces/MotorSettings.hpp"
 #include "gmock/gmock.h"
 
 namespace
@@ -56,4 +57,16 @@ TEST_F(ControllerSettingsTest, each_algorithm_uses_its_own_gains_and_the_bandwid
     EXPECT_TRUE(arm::Uses(applied, arm::Gain::positionSpeedErrorWeight));
     EXPECT_FALSE(arm::Uses(applied, arm::Gain::positionIntegralWeight));
     EXPECT_FALSE(arm::Uses(applied, arm::Gain::positionReferenceTimeConstant));
+}
+
+TEST_F(ControllerSettingsTest, motor_values_compare_relative_to_their_size_even_when_tiny)
+{
+    auto actual = arm::motorPresets[0].settings;
+    EXPECT_FALSE(arm::Compare(arm::motorPresets[0].settings, actual).Any());
+
+    actual[arm::MotorParameter::inertia] *= 1.001f;
+    const auto mismatches = arm::Compare(arm::motorPresets[0].settings, actual);
+    EXPECT_TRUE(mismatches.Any());
+    EXPECT_TRUE(mismatches.values[static_cast<std::size_t>(arm::MotorParameter::inertia)]);
+    EXPECT_FALSE(mismatches.values[static_cast<std::size_t>(arm::MotorParameter::resistance)]);
 }

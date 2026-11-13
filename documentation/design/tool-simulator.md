@@ -2,7 +2,7 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.8.0
+version: 0.9.0
 component: "tool-simulator"
 date: 2026-11-12
 ---
@@ -12,7 +12,7 @@ date: 2026-11-12
 | Title     | Simulator Screen Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.8.0                   |
+| Version   | 0.9.0                   |
 | Component | tool-simulator          |
 | Date      | 2026-11-12              |
 
@@ -240,7 +240,9 @@ through the joint configurator ([joint-configurator.md](joint-configurator.md)).
 The form's **state** is shown under the gains: **Read** (as the joint reported it), **Edited** (changed since),
 **Applying…**, **Applied**, **Verified** (`Ok`, the joint reports exactly what was applied), **Differs** (`Fault`,
 with every differing item listed in the hint, for example "Speed bandwidth: applied 150, joint reports 120"), or
-**Failed** (`Fault`, with the reason). Selecting another joint reads it.
+**Failed** (`Fault`, with the reason). Selecting another joint reads it while the panel's tab is showing; a panel
+behind another tab reads its joint when its tab is brought forward, so two panels never ask the joint configurator
+at once.
 
 ### Part I — Profile panel and files (phase 8b)
 
@@ -272,6 +274,39 @@ while the arm is enabling, enabled, moving or disabling, with that reason in the
 otherwise the arm starts again unpowered and Bring Up configures the motor controllers the profile names. The Move
 form's ranges follow the loaded limits. The path of the last profile opened or saved is kept and the profile is
 loaded again on launch.
+
+### Part J — Motor panel (phase 8b)
+
+A **Motor** dock, tabbed with the others, shows one joint's motor ([joint-configurator.md](joint-configurator.md)
+Part D) and applies it like the Motor Controller panel (Part H): same joint selection, same actions and enablement
+(Read, Apply, Verify, Apply to All Joints, while the arm is Ready), same states.
+
+```text
+┌ Motor ───────────────────────────────────────────────┐
+│ Joint [J3 ▾]     Preset [Teknic M-2310P-LN-04K ▾]    │
+│ Motor model                                          │
+│   Resistance          [   0.360] Ω                   │
+│   Inductance          [   0.200] mH                  │
+│   Pole pairs          [       4]                     │
+│   Flux linkage        [   6.400] mWb                 │
+│   Rotor inertia       [  70.600] g·cm²               │
+│   Viscous friction    [  15.000] µN·m·s/rad          │
+│   Coulomb friction    [   3.700] mN·m                │
+│ Drive limits                                         │
+│   Continuous current  [   7.100] A                   │
+│   Peak current        [  20.000] A                   │
+│   Peak-current time   [   1.000] s                   │
+│   Overspeed limit     [ 754.000] rad/s               │
+│ State: Verified · Custom: differs from Teknic in R   │
+│ [Read] [Apply] [Verify] [Apply to All Joints]        │
+└──────────────────────────────────────────────────────┘
+```
+
+- **Preset** lists e-foc's reference motors and **Custom**. Choosing a preset fills the eleven fields; editing a
+  field turns the choice to Custom, and the hint names the preset it came from and every field that differs from it.
+- **Fields** carry the display units of Part D and the contract's ranges; pole pairs is a whole number.
+- Applying replaces what the node holds, its own identification included; the confirmation is the read-back
+  (Verify).
 
 ---
 

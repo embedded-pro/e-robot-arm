@@ -34,8 +34,9 @@ simulator runs the same core against e-foc virtual motors or the real arm.
     follows the readings, so the single-step commands still work for debugging.
     Design: `documentation/design/arm-lifecycle.md`.
   - `core/joint_configurator/` — `arm::JointConfigurator`: applies and reads one
-    joint's motor controller (algorithms and gains) over CAN while the arm is
-    Ready or Configuring, one request at a time. Design: `documentation/design/joint-configurator.md`.
+    joint's motor controller (algorithms and gains) and motor (model and drive
+    limits, with presets) over CAN while the arm is Ready or Configuring, one
+    request at a time. Design: `documentation/design/joint-configurator.md`.
   - `core/arm_profile/` — reads a JSON arm profile into `ArmConfig` and writes it
     back, heap-free on EMIL's JSON parser. Design: `documentation/design/arm-profile.md`.
   - `core/arm/` — `arm::Arm`: builds the joint bus, safety supervisor, motion,

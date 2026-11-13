@@ -90,7 +90,7 @@ namespace simulator
             if (!snapshot.misconfiguration.has_value())
                 return "Misconfigured";
             return std::format("Misconfigured: {} {}", jointLabels[snapshot.misconfiguration->joint],
-                arm_host::MisconfigurationText(snapshot.misconfiguration->reason));
+                arm_host::MisconfigurationText(*snapshot.misconfiguration));
         }
 
         std::pair<std::string, ui::theme::StatusLevel> Stage(const arm_host::ArmSnapshot& snapshot)

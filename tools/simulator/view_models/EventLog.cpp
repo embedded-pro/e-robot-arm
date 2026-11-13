@@ -61,6 +61,10 @@ namespace simulator
                     return { LogLevel::info, Joint(event.joint) + " controller applied" };
                 case controllerRead:
                     return { LogLevel::info, Joint(event.joint) + " controller read" };
+                case motorApplied:
+                    return { LogLevel::info, Joint(event.joint) + " motor applied" };
+                case motorRead:
+                    return { LogLevel::info, Joint(event.joint) + " motor read" };
                 case controllerFailed:
                     return { LogLevel::fault, Joint(event.joint) + " controller failed: " + Text(event.reason) };
                 case profileLoaded:

@@ -35,13 +35,13 @@ namespace simulator
         QLabel* hint;
     };
 
-    class MotorControllerPanel
+    class ConfigurationPanel
         : public FormPanel
     {
         Q_OBJECT
 
     public:
-        explicit MotorControllerPanel(QWidget* parent);
+        explicit ConfigurationPanel(QWidget* parent);
 
         void SetState(const std::string& text, ui::theme::StatusLevel level);
         void ApplyTheme();

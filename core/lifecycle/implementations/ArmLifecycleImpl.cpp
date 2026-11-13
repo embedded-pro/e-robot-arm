@@ -62,7 +62,7 @@ namespace arm
 
             Machine::Row<WaitingForCalibration, Observed, Ready>([](ArmLifecycleImpl& self, const WaitingForCalibration&, const Observed& event)
                 {
-                    return event.allCalibrated && !self.HasControllers();
+                    return event.allCalibrated && !self.HasConfiguration();
                 }),
             Machine::Row<WaitingForCalibration, Observed, Configuring>([](ArmLifecycleImpl&, const WaitingForCalibration&, const Observed& event)
                 {
@@ -182,7 +182,7 @@ namespace arm
     }
 
     ArmLifecycleImpl::ArmLifecycleImpl(SafetySupervisor& safety, JointMotion& motion, JointConfigurator& configurator, can::FocMotorMode enableMode,
-        const JointControllers& controllers)
+        const JointControllers& controllers, const JointMotors& motors)
         : JointBusObserver(safety)
         , JointMotionObserver(motion)
         , JointConfiguratorObserver(configurator)
@@ -191,6 +191,7 @@ namespace arm
         , configurator(configurator)
         , enableMode(enableMode)
         , controllers(controllers)
+        , motors(motors)
         , fsm(*this, services::Validated<ArmLifecycleImpl>())
     {
         fsm.Start<Unpowered>();
@@ -275,32 +276,41 @@ namespace arm
 
     void ArmLifecycleImpl::OnApplied(std::size_t joint)
     {
-        if (!fsm.Is<Configuring>() || configuringJoint != joint)
-            return;
-
-        if (!configurator.Read(joint))
+        if (WorkingOn(joint, ConfigurationPart::controller) && !configurator.Read(joint))
             Misconfigure(MisconfigurationReason::failed);
     }
 
     void ArmLifecycleImpl::OnRead(std::size_t joint, const ControllerReading& reading)
     {
-        if (!fsm.Is<Configuring>() || configuringJoint != joint)
+        if (!WorkingOn(joint, ConfigurationPart::controller))
             return;
 
         if (Compare(*controllers[joint], reading.settings).Any())
-        {
             Misconfigure(MisconfigurationReason::differs);
-            return;
-        }
+        else
+            Verified();
+    }
 
-        configuringJoint.reset();
-        nextJoint = joint + 1;
-        ConfigureNext();
+    void ArmLifecycleImpl::OnMotorApplied(std::size_t joint)
+    {
+        if (WorkingOn(joint, ConfigurationPart::motor) && !configurator.ReadMotor(joint))
+            Misconfigure(MisconfigurationReason::failed);
+    }
+
+    void ArmLifecycleImpl::OnMotorRead(std::size_t joint, const MotorSettings& motor)
+    {
+        if (!WorkingOn(joint, ConfigurationPart::motor))
+            return;
+
+        if (Compare(motors[joint]->settings, motor).Any())
+            Misconfigure(MisconfigurationReason::differs);
+        else
+            Verified();
     }
 
     void ArmLifecycleImpl::OnConfigurationFailed(std::size_t joint, ConfigurationFailure)
     {
-        if (fsm.Is<Configuring>() && configuringJoint == joint)
+        if (fsm.Is<Configuring>() && configuringStep.has_value() && *configuringStep / 2 == joint)
             Misconfigure(MisconfigurationReason::failed);
     }
 
@@ -362,43 +372,63 @@ namespace arm
             fsm.Dispatch(Failed{ JointCommand::stop });
     }
 
-    bool ArmLifecycleImpl::HasControllers() const
+    bool ArmLifecycleImpl::HasConfiguration() const
     {
-        return std::ranges::any_of(controllers, [](const std::optional<ControllerSettings>& controller)
-            {
-                return controller.has_value();
-            });
+        for (std::size_t configurationStep = 0; configurationStep != 2 * jointCount; ++configurationStep)
+            if (Configures(configurationStep))
+                return true;
+        return false;
+    }
+
+    bool ArmLifecycleImpl::Configures(std::size_t configurationStep) const
+    {
+        const auto joint = configurationStep / 2;
+        return configurationStep % 2 == 0 ? motors[joint].has_value() : controllers[joint].has_value();
+    }
+
+    bool ArmLifecycleImpl::WorkingOn(std::size_t joint, ConfigurationPart part) const
+    {
+        return fsm.Is<lifecycle::Configuring>() && configuringStep == 2 * joint + static_cast<std::size_t>(part);
     }
 
     void ArmLifecycleImpl::StartConfiguring()
     {
-        nextJoint = 0;
-        configuringJoint.reset();
+        nextStep = 0;
+        configuringStep.reset();
     }
 
     void ArmLifecycleImpl::ConfigureNext()
     {
-        if (configuringJoint.has_value() || configurator.Busy())
+        if (configuringStep.has_value() || configurator.Busy())
             return;
 
-        while (nextJoint != jointCount && !controllers[nextJoint].has_value())
-            ++nextJoint;
+        while (nextStep != 2 * jointCount && !Configures(nextStep))
+            ++nextStep;
 
-        if (nextJoint == jointCount)
+        if (nextStep == 2 * jointCount)
         {
             fsm.Dispatch(Configured{});
             return;
         }
 
-        configuringJoint = nextJoint;
-        if (!configurator.Apply(nextJoint, *controllers[nextJoint]))
+        configuringStep = nextStep;
+        const auto joint = nextStep / 2;
+        const bool started = nextStep % 2 == 0 ? configurator.ApplyMotor(joint, motors[joint]->settings) : configurator.Apply(joint, *controllers[joint]);
+        if (!started)
             Misconfigure(MisconfigurationReason::failed);
+    }
+
+    void ArmLifecycleImpl::Verified()
+    {
+        nextStep = *configuringStep + 1;
+        configuringStep.reset();
+        ConfigureNext();
     }
 
     void ArmLifecycleImpl::Misconfigure(MisconfigurationReason reason)
     {
-        const auto joint = *configuringJoint;
-        configuringJoint.reset();
-        fsm.Dispatch(lifecycle::Misconfigure{ { joint, reason } });
+        const auto step = *configuringStep;
+        configuringStep.reset();
+        fsm.Dispatch(lifecycle::Misconfigure{ { step / 2, reason, step % 2 == 0 ? ConfigurationPart::motor : ConfigurationPart::controller } });
     }
 }

@@ -26,7 +26,8 @@ namespace
 
     const std::string configuredJoint{ Joint(1,
         R"(, "transmission": { "ratio": 50, "direction": "negative", "offsetRad": -0.125 },)"
-        R"( "motorController": { "current": "slidingMode", "speed": "adrc", "position": "lqr", "gains": { "positionBandwidth": 25, "speedErrorWeight": 1.5 } })") };
+        R"( "motorController": { "current": "slidingMode", "speed": "adrc", "position": "lqr", "gains": { "positionBandwidth": 25, "speedErrorWeight": 1.5 } },)"
+        R"( "motor": { "preset": "teknic-m2310p-ln-04k", "inertiaGramCm2": 120.5 })") };
 
     class ArmProfileTest
         : public testing::Test
@@ -76,6 +77,13 @@ TEST_F(ArmProfileTest, reads_every_item_and_fills_in_the_defaults)
     EXPECT_NEAR(1.5f, controller[arm::Gain::speedErrorWeight], 1.0e-6f);
     EXPECT_NEAR(arm::ControllerSettings{}[arm::Gain::currentBandwidth], controller[arm::Gain::currentBandwidth], 1.0e-3f);
     EXPECT_FALSE(config.controllers[1].has_value());
+
+    ASSERT_TRUE(config.motors[0].has_value());
+    EXPECT_EQ(0u, config.motors[0]->preset);
+    EXPECT_NEAR(1.205e-5f, config.motors[0]->settings[arm::MotorParameter::inertia], 1.0e-10f);
+    EXPECT_NEAR(0.36f, config.motors[0]->settings[arm::MotorParameter::resistance], 1.0e-6f);
+    EXPECT_NEAR(0.0064f, config.motors[0]->settings[arm::MotorParameter::fluxLinkage], 1.0e-7f);
+    EXPECT_FALSE(config.motors[1].has_value());
 }
 
 TEST_F(ArmProfileTest, a_written_profile_reads_back_to_the_same_configuration)
@@ -87,7 +95,8 @@ TEST_F(ArmProfileTest, a_written_profile_reads_back_to_the_same_configuration)
     arm::WriteArmProfile(*original, stream);
     const auto& written = stream.Storage();
     const auto copy = Read(std::string{ written.begin(), written.end() });
-    ASSERT_TRUE(copy.has_value()) << Problem() << "\n" << std::string{ written.begin(), written.end() };
+    ASSERT_TRUE(copy.has_value()) << Problem() << "\n"
+                                  << std::string{ written.begin(), written.end() };
 
     EXPECT_EQ(original->name, copy->name);
     EXPECT_EQ(original->config.controlPeriod, copy->config.controlPeriod);
@@ -109,6 +118,12 @@ TEST_F(ArmProfileTest, a_written_profile_reads_back_to_the_same_configuration)
     const auto& after = *copy->config.controllers[0];
     EXPECT_EQ(before.position, after.position);
     EXPECT_FALSE(arm::Compare(before, after).Any());
+
+    ASSERT_TRUE(copy->config.motors[0].has_value());
+    EXPECT_EQ(original->config.motors[0]->preset, copy->config.motors[0]->preset);
+    EXPECT_FALSE(arm::Compare(original->config.motors[0]->settings, copy->config.motors[0]->settings).Any());
+    EXPECT_NE(std::string::npos, std::string(written.begin(), written.end()).find(R"("inertiaGramCm2": 120.5)"));
+    EXPECT_NE(std::string::npos, std::string(written.begin(), written.end()).find(R"("fluxLinkageMilliWeber": 6.4)"));
 }
 
 TEST_F(ArmProfileTest, refuses_a_profile_and_names_the_first_problem)
@@ -124,6 +139,13 @@ TEST_F(ArmProfileTest, refuses_a_profile_and_names_the_first_problem)
         { Profile(Joint(1, R"(, "motorController": { "current": "pid", "speed": "fuzzy", "position": "pid" })")),
             "joints[0].motorController.speed: must be pid, lqi, adrc or twoDof" },
         { Profile(Joint(1, R"(, "motorController": { "current": "pid", "speed": "pid" })")), "joints[0].motorController.position: is missing" },
+        { Profile(Joint(1, R"(, "motor": { "preset": "maxon-ec45" })")),
+            "joints[0].motor.preset: must be teknic-m2310p-ln-04k or anaheim-bly172s-24v-4000" },
+        { Profile(Joint(1, R"(, "motor": { "resistanceOhm": 0.4 })")), "joints[0].motor.inductanceMilliHenry: is missing" },
+        { Profile(Joint(1, R"(, "motor": { "preset": "teknic-m2310p-ln-04k", "polePairs": 4.5 })")), "joints[0].motor.polePairs: must be a whole number" },
+        { Profile(Joint(1, R"(, "motor": { "preset": "teknic-m2310p-ln-04k", "resistanceOhm": 500 })")),
+            "joints[0].motor.resistanceOhm: is outside the e-foc contract's range" },
+        { Profile(Joint(1, R"(, "motor": { "preset": "teknic-m2310p-ln-04k", "torque": 1 })")), "joints[0].motor.torque: is not a profile item" },
         { R"({ "format": "e-robot-arm profile", "version": 2 })", "version: is not a version this reader knows" },
         { R"({ "format": "something else" })", "format: must be \"e-robot-arm profile\"" },
         { R"({ "format": "e-robot-arm profile", "version": 1, "controlPeriodMs": 5 })", "name: is missing" },

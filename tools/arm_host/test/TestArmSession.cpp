@@ -267,5 +267,5 @@ TEST_F(ArmSessionConfiguringTest, names_the_joint_whose_motor_controller_reads_b
         });
     ASSERT_NE(sink.events.end(), event);
     EXPECT_EQ(1u, event->joint);
-    EXPECT_EQ("reads back different", event->reason);
+    EXPECT_EQ("motor controller reads back different", event->reason);
 }

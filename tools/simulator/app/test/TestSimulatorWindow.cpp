@@ -5,6 +5,7 @@
 #include "ui/backend/qt/QtTheme.hpp"
 #include "gmock/gmock.h"
 #include <QApplication>
+#include <QComboBox>
 #include <QDockWidget>
 #include <QElapsedTimer>
 #include <QImage>
@@ -189,14 +190,14 @@ TEST_F(SimulatorWindowTest, the_motor_controller_reads_the_selected_joint_then_a
             return window.Presenter().State(simulator::Control::enable).enabled;
         }));
 
+    auto* dock = window.findChild<QDockWidget*>("motorControllerDock");
+    ASSERT_NE(nullptr, dock);
+    dock->raise();
     window.Presenter().SelectJoint(2);
     ASSERT_TRUE(Eventually([this]()
         {
             return window.MotorController().Joint() == 2 && window.MotorController().State() == simulator::ConfigurationState::read;
         }));
-
-    auto* dock = window.findChild<QDockWidget*>("motorControllerDock");
-    ASSERT_NE(nullptr, dock);
     auto* apply = Button(*dock, "Apply");
     auto* verify = Button(*dock, "Verify");
     ASSERT_NE(nullptr, apply);
@@ -225,6 +226,57 @@ TEST_F(SimulatorWindowTest, the_motor_controller_reads_the_selected_joint_then_a
         dock->raise();
         QApplication::processEvents();
         window.grab().save(QString{ path }.replace(".png", "-motor-controller.png"));
+    }
+}
+
+TEST_F(SimulatorWindowTest, the_motor_panel_applies_a_preset_and_verifies_it)
+{
+    host.Post(arm_host::BringUp{});
+    ASSERT_TRUE(Eventually([this]()
+        {
+            return window.Presenter().State(simulator::Control::enable).enabled;
+        }));
+
+    auto* dock = window.findChild<QDockWidget*>("motorDock");
+    ASSERT_NE(nullptr, dock);
+    dock->raise();
+    window.Presenter().SelectJoint(4);
+    ASSERT_TRUE(Eventually([this]()
+        {
+            return window.Motor().Joint() == 4 && window.Motor().State() == simulator::ConfigurationState::read;
+        }));
+    EXPECT_EQ(0u, window.Motor().Preset());
+
+    QComboBox* preset = nullptr;
+    for (auto* combo : dock->findChildren<QComboBox*>())
+        if (combo->findText("Anaheim BLY172S-24V-4000") >= 0)
+            preset = combo;
+    ASSERT_NE(nullptr, preset);
+    preset->setCurrentIndex(preset->findText("Anaheim BLY172S-24V-4000"));
+    EXPECT_EQ(1u, window.Motor().Preset());
+
+    Button(*dock, "Apply")->click();
+    ASSERT_TRUE(Eventually([this]()
+        {
+            return window.Motor().State() == simulator::ConfigurationState::applied;
+        }));
+    auto* verify = Button(*dock, "Verify");
+    ASSERT_TRUE(Eventually([verify]()
+        {
+            return verify->isEnabled();
+        }));
+    verify->click();
+    EXPECT_TRUE(Eventually([this]()
+        {
+            return window.Motor().State() == simulator::ConfigurationState::verified;
+        }))
+        << window.Motor().Hint();
+
+    if (const auto* capture = std::getenv("SIMULATOR_FRAME_CAPTURE"))
+    {
+        dock->raise();
+        QApplication::processEvents();
+        window.grab().save(QString{ capture }.replace(".png", "-motor.png"));
     }
 }
 

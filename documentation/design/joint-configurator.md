@@ -2,7 +2,7 @@
 title: "Joint Configurator Design"
 type: design
 status: draft
-version: 0.2.0
+version: 0.3.0
 component: "joint_configurator"
 date: 2026-11-13
 ---
@@ -12,7 +12,7 @@ date: 2026-11-13
 | Title     | Joint Configurator Design |
 | Type      | design                    |
 | Status    | draft                     |
-| Version   | 0.2.0                     |
+| Version   | 0.3.0                     |
 | Component | joint_configurator        |
 | Date      | 2026-11-13                |
 
@@ -27,6 +27,7 @@ date: 2026-11-13
 
 - Applying one joint's motor-controller settings: the current, speed and position algorithms and the fourteen
   loop gains of the e-foc contract.
+- Applying one joint's motor: the seven motor-model parameters and four drive limits of the e-foc contract (Part D).
 - Reading one joint's settings back, and comparing them with the settings applied, item by item.
 - Sending one request at a time and waiting for its answer, so a configuration never competes with the control
   loop's bursts for the transmit queue.
@@ -36,7 +37,7 @@ date: 2026-11-13
 **Is NOT responsible for:**
 
 - The control mode: enabling the arm selects one mode for all six joints ([arm-lifecycle.md](arm-lifecycle.md)).
-- Motor characteristics, limits and the other e-foc parameters: later parts of phase 2.
+- The other e-foc parameters (supervision, temperatures, encoder, homing): phase 6 and phase 9.
 - Storing settings: the arm profile owns them ([arm-profile.md](arm-profile.md)); the configurator only applies and
   reads.
 
@@ -88,7 +89,42 @@ operation runs, another is refused.
 
 Two settings are compared item by item: each algorithm must be equal, and each gain equal within a relative
 tolerance of 10⁻⁴, which covers the float round trip. The result names every item that differs, so a screen can
-show what was applied next to what the joint reports.
+show what was applied next to what the joint reports. Motor settings compare the same way, each parameter within
+10⁻⁴.
+
+### Part D — Motor
+
+A joint's motor is eleven e-foc parameters, applied with eleven set-parameter requests and read with eleven
+queries, one at a time as in Part B:
+
+| Parameter              | Contract unit | Shown and stored as | Kind        |
+|------------------------|---------------|---------------------|-------------|
+| Resistance (per phase) | Ω             | Ω                   | Motor model |
+| Inductance (per phase) | mH            | mH                  | Motor model |
+| Pole pairs             | —             | —                   | Motor model |
+| Flux linkage           | Wb            | mWb                 | Motor model |
+| Rotor inertia          | kg·m²         | g·cm²               | Motor model |
+| Viscous friction       | N·m·s/rad     | µN·m·s/rad          | Motor model |
+| Coulomb friction       | N·m           | mN·m                | Motor model |
+| Continuous current     | A             | A                   | Drive limit |
+| Peak current           | A             | A                   | Drive limit |
+| Peak-current time      | s             | s                   | Drive limit |
+| Overspeed limit        | rad/s         | rad/s               | Drive limit |
+
+Small motors have inertias of a few 10⁻⁶ kg·m², so the profile and the screens use units that keep the numbers
+readable and within the profile's nine decimals; the configurator converts to the contract's units on the wire.
+Every value applied replaces what the node held, an identification of its own included.
+
+**Presets** are e-foc's reference motors (e-foc `documentation/theory/foc-plant-models.md`, "Reference motors"):
+
+| Preset                   | R Ω   | L mH | Pole pairs | Flux mWb | Inertia g·cm² | Viscous µN·m·s/rad | Coulomb mN·m | Continuous A | Peak A | Peak s | Overspeed rad/s |
+|--------------------------|-------|------|------------|----------|---------------|--------------------|--------------|--------------|--------|--------|-----------------|
+| Teknic M-2310P-LN-04K    | 0.36  | 0.2  | 4          | 6.4      | 70.6          | 15                 | 3.7          | 7.1          | 20     | 1      | 754             |
+| Anaheim BLY172S-24V-4000 | 0.405 | 0.64 | 4          | 5.44     | 48            | 10                 | 3.7          | 3.9          | 10     | 1      | 503             |
+
+The model parameters and the peak currents are e-foc's. The continuous current is the rated torque over the torque
+constant 1.5·p·ψ (0.274 N·m and 0.127 N·m); the overspeed limit is 1.2 times the rated speed (6000 rpm and 4000 rpm);
+the peak-current time, and the Anaheim's Coulomb friction (taken as the Teknic bench value), are assumed.
 
 ---
 
@@ -156,7 +192,7 @@ sequenceDiagram
 
 ## Open Questions
 
-| # | Question                                           | Options                                             | Status                     |
-|---|----------------------------------------------------|-----------------------------------------------------|----------------------------|
-| 1 | Whether to apply only the gains the algorithms use | All fourteen (simple, always verifiable), only used | decided: all fourteen      |
-| 2 | Motor characteristics and limits                   | The same configurator, a second one                 | open: next part of phase 2 |
+| # | Question                                           | Options                                             | Status                        |
+|---|----------------------------------------------------|-----------------------------------------------------|-------------------------------|
+| 1 | Whether to apply only the gains the algorithms use | All fourteen (simple, always verifiable), only used | decided: all fourteen         |
+| 2 | Motor characteristics and limits                   | The same configurator, a second one                 | decided: the same one, Part D |

@@ -2,7 +2,7 @@
 title: "Arm Profile Design"
 type: design
 status: draft
-version: 0.1.0
+version: 0.2.0
 component: "arm_profile"
 date: 2026-11-13
 ---
@@ -12,7 +12,7 @@ date: 2026-11-13
 | Title     | Arm Profile Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.1.0              |
+| Version   | 0.2.0              |
 | Component | arm_profile        |
 | Date      | 2026-11-13         |
 
@@ -35,7 +35,7 @@ date: 2026-11-13
 - Files: the host tools read and write them and hand the text over.
 - Applying the profile: the arm is built from its configuration, and the lifecycle applies the motor controllers
   while bringing the arm up ([arm-lifecycle.md](arm-lifecycle.md)).
-- Motor characteristics, arm geometry and arm controllers: later versions of the format, as phases 2 to 5 add them.
+- Arm geometry and arm controllers: later items of the format, as phases 3 to 5 add them.
 
 ---
 
@@ -68,6 +68,7 @@ Each joint:
 | Speed limit        | `motionLimits.speedRadPerS`         | rad/s, joint space, above 0                 | required            |
 | Acceleration limit | `motionLimits.accelerationRadPerS2` | rad/s², joint space, above 0                | required            |
 | Motor controller   | `motorController`                   | see below                                   | not configured      |
+| Motor              | `motor`                             | see below                                   | not configured      |
 
 A joint's motor controller names one algorithm per loop and any of its fourteen gains:
 
@@ -82,6 +83,23 @@ The three algorithms are required once `motorController` is present; a gain left
 default, and each gain must lie in the e-foc contract's range. A joint without `motorController` keeps whatever its
 node holds: the lifecycle does not configure it.
 
+A joint's motor holds the eleven parameters of [joint-configurator.md](joint-configurator.md) Part D, in its
+display units:
+
+| Item             | JSON key                        | Item               | JSON key                 |
+|------------------|---------------------------------|--------------------|--------------------------|
+| Preset           | `preset`                        | Coulomb friction   | `coulombFrictionMilliNm` |
+| Resistance       | `resistanceOhm`                 | Continuous current | `continuousCurrentA`     |
+| Inductance       | `inductanceMilliHenry`          | Peak current       | `peakCurrentA`           |
+| Pole pairs       | `polePairs`                     | Peak-current time  | `peakCurrentTimeS`       |
+| Flux linkage     | `fluxLinkageMilliWeber`         | Overspeed limit    | `overspeedLimitRadPerS`  |
+| Rotor inertia    | `inertiaGramCm2`                |                    |                          |
+| Viscous friction | `viscousFrictionMicroNmSPerRad` |                    |                          |
+
+`preset` names a preset (`teknic-m2310p-ln-04k`, `anaheim-bly172s-24v-4000`) whose values fill every parameter the
+motor leaves out; without a preset all eleven are required. Each value must lie in the e-foc contract's range, and
+pole pairs must be a whole number. A joint without `motor` keeps whatever its node holds.
+
 ### Part B — Reading
 
 Reading is strict, so a typing mistake never passes silently: an unknown key, a value of the wrong type, a value
@@ -91,7 +109,8 @@ written as integers or with up to nine decimals; exponents are not accepted.
 
 ### Part C — Writing
 
-Writing produces every item, defaults included, in the order of Part A, with up to nine decimals for real numbers
+Writing produces every item, defaults included, in the order of Part A (a motor with its preset, if it has one, and
+all eleven values), with up to nine decimals for real numbers
 and trailing zeros dropped. Read back, every item is the same; a gain comes back within the joint configurator's
 comparison tolerance ([joint-configurator.md](joint-configurator.md) Part C), since nine decimals hold fewer
 significant digits than a float below 0.1.
@@ -153,6 +172,7 @@ The example shows one joint; a profile lists six.
 | Profile | name        | bounded text                         | 1 to 48 characters | Shown by the tools                           |
 | Profile | config      | arm configuration                    | Part A             | What the arm is built from                   |
 | Config  | controllers | per joint, motor-controller settings | present or absent  | Absent: the lifecycle leaves the joint alone |
+| Config  | motors      | per joint, preset and motor settings | present or absent  | Absent: the lifecycle leaves the joint alone |
 
 ---
 
@@ -186,9 +206,9 @@ sequenceDiagram
 
 ## Open Questions
 
-| # | Question                                | Options                                       | Status                             |
-|---|-----------------------------------------|-----------------------------------------------|------------------------------------|
-| 1 | File format                             | JSON, binary image                            | decided: JSON                      |
-| 2 | How a loaded profile reaches the joints | Lifecycle step, operator button               | decided: lifecycle step            |
-| 3 | How a loaded profile changes the arm    | Rebuild the arm, profile at start only        | decided: rebuild while not enabled |
-| 4 | Motor characteristics and limits        | Added to `motorController`, a `motor` section | open: next part of phase 2         |
+| # | Question                                | Options                                       | Status                                  |
+|---|-----------------------------------------|-----------------------------------------------|-----------------------------------------|
+| 1 | File format                             | JSON, binary image                            | decided: JSON                           |
+| 2 | How a loaded profile reaches the joints | Lifecycle step, operator button               | decided: lifecycle step                 |
+| 3 | How a loaded profile changes the arm    | Rebuild the arm, profile at start only        | decided: rebuild while not enabled      |
+| 4 | Motor characteristics and limits        | Added to `motorController`, a `motor` section | decided: a `motor` section with presets |

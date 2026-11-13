@@ -66,3 +66,10 @@
     While bringing itself up, the arm shall apply each joint motor controller its configuration names and confirm
     it by reading it back before it can be enabled, and shall stop the bring-up and name the joint when one cannot
     be applied or reads back different.
+
+- id: REQ-ARM-012
+  title: Joint motor configuration
+  shall: >
+    The arm shall apply a joint's motor model and drive limits, from a reference motor or custom values, only while
+    every joint is calibrated and no joint is running, shall read them back to confirm them, and while bringing
+    itself up shall apply and confirm each motor its configuration names before that joint's motor controller.

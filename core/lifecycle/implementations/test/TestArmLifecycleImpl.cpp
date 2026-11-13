@@ -14,8 +14,9 @@ namespace
         : public Test
     {
     public:
-        explicit ArmLifecycleImplTest(const arm::JointControllers& controllers = {})
+        explicit ArmLifecycleImplTest(const arm::JointControllers& controllers = {}, const arm::JointMotors& motors = {})
             : controllers(controllers)
+            , motors(motors)
         {
             EXPECT_CALL(observer, OnStateChanged(_)).Times(AnyNumber());
             EXPECT_CALL(safety, Reading(_)).WillRepeatedly(Invoke([this](std::size_t joint) -> const arm::JointReading&
@@ -101,7 +102,8 @@ namespace
         StrictMock<arm::JointMotionMock> motion;
         StrictMock<arm::JointConfiguratorMock> configurator;
         arm::JointControllers controllers;
-        arm::ArmLifecycleImpl lifecycle{ safety, motion, configurator, can::FocMotorMode::speed, controllers };
+        arm::JointMotors motors;
+        arm::ArmLifecycleImpl lifecycle{ safety, motion, configurator, can::FocMotorMode::speed, controllers, motors };
         StrictMock<arm::ArmLifecycleObserverMock> observer{ lifecycle };
         arm::JointPositions target{};
     };
@@ -458,4 +460,64 @@ TEST_F(ArmLifecycleConfiguringTest, losing_calibration_waits_again_and_ignores_t
     Applied(1);
     EXPECT_CALL(configurator, Apply(1, _)).WillOnce(Return(true));
     lifecycle.Step();
+}
+
+namespace
+{
+    arm::JointMotors MotorOnJointOne()
+    {
+        arm::JointMotors motors{};
+        motors[1] = arm::JointMotor{ 0, arm::motorPresets[0].settings };
+        return motors;
+    }
+
+    class ArmLifecycleMotorFirstTest
+        : public ArmLifecycleImplTest
+    {
+    public:
+        ArmLifecycleMotorFirstTest()
+            : ArmLifecycleImplTest(TwoConfiguredJoints(), MotorOnJointOne())
+        {
+            EXPECT_CALL(configurator, Busy()).WillRepeatedly(Return(false));
+            EXPECT_CALL(safety, QueryContracts()).WillOnce(Return(true));
+            EXPECT_TRUE(lifecycle.BringUp());
+            ResolveContracts(can::ContractCompatibility::compatible);
+            Observe(can::FocMotorState::ready);
+        }
+
+        void MotorAnswers(std::size_t joint, const arm::MotorSettings& motor)
+        {
+            configurator.NotifyObservers([joint](auto& observer)
+                {
+                    observer.OnMotorApplied(joint);
+                });
+            configurator.NotifyObservers([joint, &motor](auto& observer)
+                {
+                    observer.OnMotorRead(joint, motor);
+                });
+        }
+    };
+}
+
+TEST_F(ArmLifecycleMotorFirstTest, configures_a_joints_motor_before_its_motor_controller)
+{
+    InSequence order;
+    EXPECT_CALL(configurator, ApplyMotor(1, _)).WillOnce(Return(true));
+    lifecycle.Step();
+
+    EXPECT_CALL(configurator, ReadMotor(1)).WillOnce(Return(true));
+    EXPECT_CALL(configurator, Apply(1, _)).WillOnce(Return(true));
+    MotorAnswers(1, arm::motorPresets[0].settings);
+    EXPECT_EQ(ArmState::configuring, lifecycle.State());
+}
+
+TEST_F(ArmLifecycleMotorFirstTest, a_motor_that_reads_back_different_names_the_joint_and_the_motor)
+{
+    EXPECT_CALL(configurator, ApplyMotor(1, _)).WillOnce(Return(true));
+    lifecycle.Step();
+
+    EXPECT_CALL(configurator, ReadMotor(1)).WillOnce(Return(true));
+    MotorAnswers(1, arm::motorPresets[1].settings);
+
+    EXPECT_EQ((arm::Misconfiguration{ 1, arm::MisconfigurationReason::differs, arm::ConfigurationPart::motor }), lifecycle.MisconfiguredJoint());
 }

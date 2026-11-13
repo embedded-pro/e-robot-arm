@@ -226,6 +226,16 @@ namespace arm_host
             return session.arm.Configurator().Read(read.joint);
         }
 
+        bool operator()(const ApplyMotor& apply) const
+        {
+            return session.arm.Configurator().ApplyMotor(apply.joint, apply.settings);
+        }
+
+        bool operator()(const ReadMotor& read) const
+        {
+            return session.arm.Configurator().ReadMotor(read.joint);
+        }
+
         ArmSession& session;
     };
 
@@ -251,7 +261,8 @@ namespace arm_host
             return arm.Lifecycle().State() == arm::ArmState::tripped ? "a joint is in fault" : "not tripped";
         if (LifecycleCommand(command))
             return StateName(arm.Lifecycle().State());
-        if (std::holds_alternative<ApplyController>(command) || std::holds_alternative<ReadController>(command))
+        if (std::holds_alternative<ApplyController>(command) || std::holds_alternative<ReadController>(command) || std::holds_alternative<ApplyMotor>(command) ||
+            std::holds_alternative<ReadMotor>(command))
             return arm.Configurator().Busy() ? "busy" : "the arm is not ready";
         if (NeedsMotionPermission(command) && arm.Safety().Tripped())
             return "tripped";
@@ -306,7 +317,7 @@ namespace arm_host
         const auto misconfiguration = session.arm.Lifecycle().MisconfiguredJoint();
         if (state == arm::ArmState::misconfigured && misconfiguration.has_value())
             session.Emit({ .kind = ArmEventKind::stateChanged,
-                .reason = MisconfigurationText(misconfiguration->reason),
+                .reason = MisconfigurationText(*misconfiguration),
                 .joint = misconfiguration->joint,
                 .state = state });
         else
@@ -316,6 +327,16 @@ namespace arm_host
     void ArmSession::Events::OnApplied(std::size_t joint)
     {
         session.Emit({ .kind = ArmEventKind::controllerApplied, .joint = joint });
+    }
+
+    void ArmSession::Events::OnMotorApplied(std::size_t joint)
+    {
+        session.Emit({ .kind = ArmEventKind::motorApplied, .joint = joint });
+    }
+
+    void ArmSession::Events::OnMotorRead(std::size_t joint, const arm::MotorSettings& motor)
+    {
+        session.Emit({ .kind = ArmEventKind::motorRead, .joint = joint, .motor = motor });
     }
 
     void ArmSession::Events::OnRead(std::size_t joint, const arm::ControllerReading& reading)

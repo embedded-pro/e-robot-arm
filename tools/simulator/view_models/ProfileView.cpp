@@ -19,6 +19,15 @@ namespace simulator
                 positionNames[static_cast<std::size_t>(controller->position)]);
         }
 
+        std::string Motor(const std::optional<arm::JointMotor>& motor)
+        {
+            if (!motor.has_value())
+                return "node's own";
+            if (motor->preset.has_value() && !arm::Compare(arm::motorPresets[*motor->preset].settings, motor->settings).Any())
+                return std::string{ arm::motorPresets[*motor->preset].name };
+            return "custom";
+        }
+
         ProfileRow Row(const arm::ArmConfig& config, std::size_t joint)
         {
             const auto& transmission = config.transmissions[joint];
@@ -27,7 +36,7 @@ namespace simulator
             return { std::format("J{}", joint + 1), std::format("{}", config.nodes[joint]), std::format("{:.2f}", transmission.ratio),
                 transmission.direction == arm::JointDirection::positive ? "+" : "−", std::format("{:.3f}", transmission.offset.Value()),
                 std::format("{:.3f}", limit.lower.Value()), std::format("{:.3f}", limit.upper.Value()), std::format("{:.3f}", motion.maxSpeed.Value()),
-                std::format("{:.3f}", motion.maxAcceleration.Value()), Controller(config.controllers[joint]) };
+                std::format("{:.3f}", motion.maxAcceleration.Value()), Controller(config.controllers[joint]), Motor(config.motors[joint]) };
         }
     }
 

@@ -3,6 +3,7 @@
 
 #include "core/joint_configurator/interfaces/ControllerSettings.hpp"
 #include "tools/arm_host/ArmCommands.hpp"
+#include "tools/simulator/view_models/ConfigurationFlow.hpp"
 #include "ui/core/Callback.hpp"
 #include "ui/model/FormModel.hpp"
 #include "ui/shell/FormView.hpp"
@@ -28,29 +29,10 @@ namespace simulator
         }
     };
 
-    struct MotorControllerAction
-    {
-        static constexpr ui::model::ActionId read{ 0 };
-        static constexpr ui::model::ActionId apply{ 1 };
-        static constexpr ui::model::ActionId verify{ 2 };
-        static constexpr ui::model::ActionId applyToAll{ 3 };
-    };
-
-    enum class ConfigurationState : uint8_t
-    {
-        unknown,
-        reading,
-        read,
-        edited,
-        applying,
-        applied,
-        verifying,
-        verified,
-        differs,
-        failed
-    };
+    using MotorControllerAction = ConfigurationAction;
 
     class MotorControllerPresenter
+        : private ConfigurationSubject
     {
     public:
         MotorControllerPresenter(arm_host::ArmCommands& arm, ui::shell::FormView& view);
@@ -59,6 +41,8 @@ namespace simulator
 
         void Refresh(const arm_host::ArmSnapshot& snapshot, std::span<const arm_host::ArmEvent> events);
         void SelectJoint(std::size_t joint);
+        void SetJointSelected(const ui::Callback<void(std::size_t joint)>& handler);
+        void SetShown(bool shown);
 
         std::size_t Joint() const;
         ConfigurationState State() const;
@@ -67,18 +51,7 @@ namespace simulator
         const std::string& Hint() const;
         arm::ControllerSettings FormSettings() const;
 
-        void SetJointSelected(const ui::Callback<void(std::size_t joint)>& handler);
-
     private:
-        enum class Pending : uint8_t
-        {
-            none,
-            read,
-            apply,
-            verify,
-            applyToAll
-        };
-
         struct Form
         {
             Form();
@@ -91,34 +64,22 @@ namespace simulator
             ui::model::FormModel model;
         };
 
-        void OnAction(ui::model::ActionId action);
+        arm_host::ArmCommand ReadCommand(std::size_t joint) const override;
+        arm_host::ArmCommand ApplyCommand(std::size_t joint) const override;
+        void Applied(std::size_t joint) override;
+        std::string Read(const arm_host::ArmEvent& event, bool verifying) override;
+
         void OnFieldChanged(ui::model::FieldId field);
-        void Handle(const arm_host::ArmEvent& event);
-        void Applied(std::size_t joint);
-        void Read(std::size_t joint, const arm::ControllerReading& reading);
-        void Failed(std::string_view reason);
-        void Post(Pending operation, const arm_host::ArmCommand& command);
         void Load(const arm::ControllerSettings& settings);
-        void Enter(ConfigurationState state);
-        void UpdateActions();
         std::string Mismatches(const arm::ControllerSettings& expected, const arm::ControllerSettings& actual) const;
 
-        arm_host::ArmCommands& arm;
         ui::shell::FormView& view;
         Form form;
+        ConfigurationFlow flow;
         ui::Callback<void(ui::model::FieldId)> viewFieldChanged;
         ui::Callback<void(std::size_t joint)> jointSelected;
-        arm_host::ArmSnapshot snapshot;
-        std::array<std::optional<arm::ControllerSettings>, arm::jointCount> applied{};
-        Pending pending{ Pending::none };
-        uint32_t postedCommand{ 0 };
-        std::size_t joint{ 0 };
+        std::array<arm::ControllerSettings, arm::jointCount> applied{};
         bool loading{ false };
-        ConfigurationState state{ ConfigurationState::unknown };
-        std::string stateText;
-        std::string detail;
-        std::string hint;
-        std::string reportedMode;
     };
 }
 

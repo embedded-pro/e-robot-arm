@@ -21,13 +21,17 @@ namespace arm
 
         bool Apply(std::size_t joint, const ControllerSettings& settings) override;
         bool Read(std::size_t joint) override;
+        bool ApplyMotor(std::size_t joint, const MotorSettings& motor) override;
+        bool ReadMotor(std::size_t joint) override;
         bool Busy() const override;
 
     private:
         enum class Operation : uint8_t
         {
-            apply,
-            read
+            applyController,
+            readController,
+            applyMotor,
+            readMotor
         };
 
         void OnContractsResolved(can::ContractCompatibility compatibility) override;
@@ -42,7 +46,10 @@ namespace arm
         std::size_t StepCount() const;
         std::size_t AlgorithmSteps() const;
         bool ExpectsAlgorithms() const;
-        std::optional<std::size_t> ExpectedGain() const;
+        std::optional<std::size_t> ExpectedParameter() const;
+        can::FocParameter ParameterAt(std::size_t index) const;
+        bool Applies() const;
+        bool OnMotor() const;
         void SendStep();
         void TrySend();
         bool SendCurrentStep();
@@ -57,6 +64,7 @@ namespace arm
         std::size_t step{ 0 };
         ControllerSettings settings{};
         ControllerReading reading{};
+        MotorSettings motor{};
         infra::TimerSingleShot retryTimer;
         infra::TimerSingleShot timeoutTimer;
     };

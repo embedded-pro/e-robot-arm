@@ -22,6 +22,8 @@ namespace arm
             "speedReferenceTimeConstant", "positionBandwidth", "positionErrorWeight", "positionSpeedErrorWeight", "positionIntegralWeight",
             "positionReferenceTimeConstant" };
 
+        constexpr std::array<double, 10> powersOfTen{ 1.0, 1.0e1, 1.0e2, 1.0e3, 1.0e4, 1.0e5, 1.0e6, 1.0e7, 1.0e8, 1.0e9 };
+
         using Path = infra::BoundedString::WithStorage<64>;
         using Value = infra::JsonValue;
 
@@ -351,7 +353,77 @@ namespace arm
                     return Mark(seen.motion, ReadMotion(path, value, config.motionLimits[joint]));
                 if (key == "motorController")
                     return ReadController(path, value, config.controllers[joint]);
+                if (key == "motor")
+                    return ReadMotor(path, value, config.motors[joint]);
                 return Unknown(path);
+            }
+
+            bool ReadMotor(const Path& path, const Value& value, std::optional<JointMotor>& result)
+            {
+                JointMotor motor{};
+                std::array<bool, motorParameterCount> seen{};
+                if (!ReadMembers(path, value, [this, &motor, &seen](const Path& item, infra::JsonString key, const Value& member)
+                        {
+                            return ReadMotorItem(item, key, member, motor, seen);
+                        }))
+                    return false;
+
+                for (std::size_t parameter = 0; parameter != motorParameterCount; ++parameter)
+                {
+                    if (seen[parameter])
+                        continue;
+                    if (!motor.preset.has_value())
+                        return Missing(path, infra::BoundedConstString{ motorUnits[parameter].key.data(), motorUnits[parameter].key.size() });
+                    motor.settings.values[parameter] = motorPresets[*motor.preset].settings.values[parameter];
+                }
+
+                result = motor;
+                return true;
+            }
+
+            bool ReadMotorItem(const Path& path, infra::JsonString key, const Value& value, JointMotor& motor, std::array<bool, motorParameterCount>& seen)
+            {
+                if (key == "preset")
+                    return ReadPreset(path, value, motor.preset);
+
+                const auto unit = std::ranges::find_if(motorUnits, [&key](const MotorUnit& candidate)
+                    {
+                        return key == infra::BoundedConstString{ candidate.key.data(), candidate.key.size() };
+                    });
+                if (unit == motorUnits.end())
+                    return Unknown(path);
+
+                const auto parameter = static_cast<std::size_t>(std::distance(motorUnits.begin(), unit));
+                return Mark(seen[parameter], ReadMotorValue(path, value, parameter, motor.settings.values[parameter]));
+            }
+
+            bool ReadPreset(const Path& path, const Value& value, std::optional<std::size_t>& preset)
+            {
+                if (const auto* text = std::get_if<infra::JsonString>(&value))
+                    for (std::size_t index = 0; index != motorPresets.size(); ++index)
+                        if (*text == infra::BoundedConstString{ motorPresets[index].key.data(), motorPresets[index].key.size() })
+                        {
+                            preset = index;
+                            return true;
+                        }
+
+                return Fail(path, "must be teknic-m2310p-ln-04k or anaheim-bly172s-24v-4000");
+            }
+
+            bool ReadMotorValue(const Path& path, const Value& value, std::size_t parameter, float& result)
+            {
+                const auto number = Number(value);
+                if (!number.has_value())
+                    return Fail(path, "must be a number");
+
+                result = static_cast<float>(*number / static_cast<double>(motorUnits[parameter].scale));
+                if (static_cast<MotorParameter>(parameter) == MotorParameter::polePairs && static_cast<float>(static_cast<int32_t>(result)) != result)
+                    return Fail(path, "must be a whole number");
+
+                const auto descriptor = can::FindParameter(motorParameters[parameter]);
+                if (descriptor.has_value() && (result < descriptor->minimum || result > descriptor->maximum))
+                    return Fail(path, "is outside the e-foc contract's range");
+                return true;
             }
 
             bool ReadNode(const Path& path, const Value& value, uint16_t& node)
@@ -561,7 +633,33 @@ namespace arm
                 stream << " }";
                 if (config.controllers[joint].has_value())
                     Controller(*config.controllers[joint]);
+                if (config.motors[joint].has_value())
+                    Motor(*config.motors[joint]);
                 stream << "\n    }";
+            }
+
+            void Motor(const JointMotor& motor)
+            {
+                stream << ",\n      \"motor\": {";
+                const char* separator = "\n";
+                if (motor.preset.has_value())
+                {
+                    const auto key = motorPresets[*motor.preset].key;
+                    stream << R"(
+        "preset": ")" << infra::BoundedConstString{ key.data(), key.size() }
+                           << R"(")";
+                    separator = ",\n";
+                }
+
+                for (std::size_t parameter = 0; parameter != motorParameterCount; ++parameter)
+                {
+                    const auto key = motorUnits[parameter].key;
+                    stream << separator << "        \"" << infra::BoundedConstString{ key.data(), key.size() } << "\": ";
+                    Number(motor.settings.values[parameter], motorUnits[parameter].scale);
+                    separator = ",\n";
+                }
+
+                stream << "\n      }";
             }
 
             void Controller(const ControllerSettings& settings)
@@ -579,21 +677,22 @@ namespace arm
                 stream << "\n        }\n      }";
             }
 
-            void Number(float value)
+            void Number(float value, float scale = 1.0f)
             {
-                constexpr uint64_t nano{ 1000000000 };
-                const auto magnitude = value < 0.0f ? -static_cast<double>(value) : static_cast<double>(value);
-                const auto scaled = static_cast<uint64_t>(magnitude * static_cast<double>(nano) + 0.5);
-                auto fraction = scaled % nano;
+                const auto magnitude = (value < 0.0f ? -static_cast<double>(value) : static_cast<double>(value)) * static_cast<double>(scale);
+                const auto decimals = ShortestDecimals(value, magnitude, scale);
+                const auto scaled = static_cast<uint64_t>(magnitude * powersOfTen[decimals] + 0.5);
+                const auto unit = static_cast<uint64_t>(powersOfTen[decimals]);
+                auto fraction = scaled % unit;
 
                 if (value < 0.0f && scaled != 0)
                     stream << "-";
-                stream << scaled / nano;
+                stream << scaled / unit;
 
                 if (fraction == 0)
                     return;
 
-                std::size_t digits{ 9 };
+                auto digits = decimals;
                 while (fraction % 10 == 0)
                 {
                     fraction /= 10;
@@ -601,6 +700,32 @@ namespace arm
                 }
 
                 stream << "." << infra::Width(digits, '0') << fraction;
+            }
+
+            static std::size_t ShortestDecimals(float value, double magnitude, float scale)
+            {
+                int32_t exponent{ 0 };
+                auto mantissa = magnitude;
+                while (mantissa >= 10.0)
+                {
+                    mantissa /= 10.0;
+                    ++exponent;
+                }
+                while (mantissa > 0.0 && mantissa < 1.0)
+                {
+                    mantissa *= 10.0;
+                    --exponent;
+                }
+
+                for (int32_t digits = 6; digits <= 9; ++digits)
+                {
+                    const auto decimals = static_cast<std::size_t>(std::clamp<int32_t>(digits - 1 - exponent, 0, 9));
+                    const auto rounded = static_cast<double>(static_cast<uint64_t>(magnitude * powersOfTen[decimals] + 0.5)) / powersOfTen[decimals];
+                    if (static_cast<float>((value < 0.0f ? -rounded : rounded) / static_cast<double>(scale)) == value)
+                        return decimals;
+                }
+
+                return 9;
             }
 
             void Text(infra::BoundedConstString text)
