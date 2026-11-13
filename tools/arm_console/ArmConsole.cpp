@@ -1,6 +1,7 @@
 #include "tools/arm_console/ArmConsole.hpp"
 #include "tools/arm_host/ProfileFile.hpp"
 #include <array>
+#include <filesystem>
 #include <iomanip>
 
 namespace arm_console
@@ -84,7 +85,7 @@ namespace arm_console
 
     ExecuteResult ArmConsole::Profile(std::string_view command, std::istringstream& arguments)
     {
-        std::string path;
+        std::filesystem::path path;
         std::string rest;
         if (!(arguments >> path) || (arguments >> rest))
         {
@@ -98,7 +99,7 @@ namespace arm_console
             arm::ArmProfile profile{ {}, snapshot.config };
             profile.name.assign(snapshot.profileName.substr(0, arm::profileNameSize));
             const auto problem = arm_host::WriteProfileFile(path, profile);
-            output << (problem.empty() ? "saved " + path : "save failed: " + problem) << "\n";
+            output << (problem.empty() ? "saved " + path.string() : "save failed: " + problem) << "\n";
             return { Outcome::done };
         }
 
