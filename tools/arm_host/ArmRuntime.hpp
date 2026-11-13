@@ -14,12 +14,13 @@ namespace arm_host
         static constexpr infra::Duration stopGrace{ std::chrono::milliseconds{ 100 } };
         static constexpr infra::Duration pollInterval{ std::chrono::milliseconds{ 1 } };
 
-        ArmRuntime(const arm::ArmConfig& config, const TargetOpener& opener, ArmSessionSink& sink, const ArmTarget& initial);
+        ArmRuntime(const arm::ArmProfile& profile, const TargetOpener& opener, ArmSessionSink& sink, const ArmTarget& initial);
         ArmRuntime(const ArmRuntime& other) = delete;
         ArmRuntime& operator=(const ArmRuntime& other) = delete;
 
         void Execute(uint32_t id, const ArmCommand& command);
         void SwitchTarget(uint32_t id, const ArmTarget& target);
+        void LoadProfile(uint32_t id, const arm::ArmProfile& profile);
 
     private:
         bool Open(const ArmTarget& target);
@@ -27,7 +28,7 @@ namespace arm_host
         void FinishSwitch();
         void Report(ArmEventKind kind, uint32_t id, std::string_view reason = {});
 
-        arm::ArmConfig config;
+        arm::ArmProfile profile;
         TargetOpener opener;
         ArmSessionSink& sink;
         ArmTarget current;

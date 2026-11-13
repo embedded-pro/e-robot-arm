@@ -12,6 +12,7 @@
 #include "ui/backend/qt/QtAppShell.hpp"
 #include <QByteArray>
 #include <QMainWindow>
+#include <QString>
 #include <QTimer>
 #include <utility>
 #include <vector>
@@ -36,6 +37,7 @@ namespace simulator
         QQuickWidget& ArmView();
         SimulatorPresenter& Presenter();
         MotorControllerPresenter& MotorController();
+        void LoadProfileFrom(const QString& path);
         void Frame();
 
     protected:
@@ -57,6 +59,8 @@ namespace simulator
         void ChooseTarget(int choice);
         void ConfirmRearm(std::string_view prompt);
         void SaveLog();
+        void OpenProfile();
+        void SaveProfile();
         void CaptureDefaultLayout();
         void ResetLayout();
         void UseTheme(bool light);
@@ -76,6 +80,8 @@ namespace simulator
         SimulatorPresenter presenter;
         MotorControllerPanel* motorControllerPanel;
         MotorControllerPresenter motorController;
+        ProfilePanel* profilePanel;
+        QString profilePath;
         EventLogPanel* logPanel;
         EmergencyStopKey emergencyStopKey;
         QMenu* simulationMenu{ nullptr };

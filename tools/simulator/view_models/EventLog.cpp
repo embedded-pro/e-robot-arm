@@ -63,6 +63,8 @@ namespace simulator
                     return { LogLevel::info, Joint(event.joint) + " controller read" };
                 case controllerFailed:
                     return { LogLevel::fault, Joint(event.joint) + " controller failed: " + Text(event.reason) };
+                case profileLoaded:
+                    return { LogLevel::info, "Profile loaded: the arm was rebuilt" };
             }
             return { LogLevel::info, "Unknown event" };
         }

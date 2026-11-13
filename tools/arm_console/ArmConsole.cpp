@@ -1,4 +1,5 @@
 #include "tools/arm_console/ArmConsole.hpp"
+#include "tools/arm_host/ProfileFile.hpp"
 #include <array>
 #include <iomanip>
 
@@ -39,6 +40,9 @@ namespace arm_console
             return { Outcome::done };
         }
 
+        if (command == "load" || command == "save")
+            return Profile(command, arguments);
+
         const auto parsed = Parse(command, arguments);
         if (!parsed)
         {
@@ -76,6 +80,36 @@ namespace arm_console
         if (command == "move")
             return Move(arguments);
         return std::nullopt;
+    }
+
+    ExecuteResult ArmConsole::Profile(std::string_view command, std::istringstream& arguments)
+    {
+        std::string path;
+        std::string rest;
+        if (!(arguments >> path) || (arguments >> rest))
+        {
+            Usage();
+            return { Outcome::done };
+        }
+
+        if (command == "save")
+        {
+            const auto snapshot = arm.Snapshot();
+            arm::ArmProfile profile{ {}, snapshot.config };
+            profile.name.assign(snapshot.profileName.substr(0, arm::profileNameSize));
+            const auto problem = arm_host::WriteProfileFile(path, profile);
+            output << (problem.empty() ? "saved " + path : "save failed: " + problem) << "\n";
+            return { Outcome::done };
+        }
+
+        auto read = arm_host::ReadProfileFile(path);
+        if (const auto* problem = std::get_if<std::string>(&read))
+        {
+            output << "profile refused: " << *problem << "\n";
+            return { Outcome::done };
+        }
+
+        return { Outcome::posted, arm.LoadProfile(std::get<arm::ArmProfile>(read)) };
     }
 
     std::optional<arm_host::ArmCommand> ArmConsole::Mode(std::istringstream& arguments) const
@@ -127,7 +161,7 @@ namespace arm_console
 
     void ArmConsole::Usage()
     {
-        output << "usage: bringup | enable | disable | move q1 q2 q3 q4 q5 q6 | rearm | contracts | mode torque|speed|position | start | stop | estop | clear | abort | status | quit\n";
+        output << "usage: bringup | enable | disable | move q1 q2 q3 q4 q5 q6 | rearm | contracts | mode torque|speed|position | start | stop | estop | clear | abort | load <file> | save <file> | status | quit\n";
     }
 
     void ArmConsole::Print(const arm_host::ArmEvent& event)
@@ -180,6 +214,9 @@ namespace arm_console
                 break;
             case controllerFailed:
                 output << "joint " << event.joint + 1 << " controller failed: " << event.reason << "\n";
+                break;
+            case profileLoaded:
+                output << "profile loaded: " << arm.Snapshot().profileName << "\n";
                 break;
         }
     }

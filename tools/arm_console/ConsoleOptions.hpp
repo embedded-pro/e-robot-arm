@@ -14,6 +14,7 @@ namespace arm_console
         std::string bus{ "virtual:arm" };
         uint32_t bitrate{ 1000000 };
         arm::JointNodeIds nodes{ 1, 2, 3, 4, 5, 6 };
+        std::string profile{};
     };
 
     std::optional<ConsoleOptions> ParseOptions(const std::vector<std::string>& arguments);

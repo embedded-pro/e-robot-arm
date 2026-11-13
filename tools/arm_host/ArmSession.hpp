@@ -2,6 +2,7 @@
 #define TOOLS_ARM_HOST_ARM_SESSION_HPP
 
 #include "core/arm/Arm.hpp"
+#include "core/arm_profile/ArmProfile.hpp"
 #include "e-foc-protocol/client/FocMotorCanClient.hpp"
 #include "infra/timer/Timer.hpp"
 #include "tools/arm_host/ArmCommand.hpp"
@@ -14,7 +15,7 @@ namespace arm_host
     class ArmSession
     {
     public:
-        ArmSession(hal::Can& can, const arm::ArmConfig& config, const ArmTarget& target, ArmSessionSink& sink, simulation::SimulatedArm* simulation);
+        ArmSession(hal::Can& can, const arm::ArmProfile& profile, const ArmTarget& target, ArmSessionSink& sink, simulation::SimulatedArm* simulation);
         ArmSession(const ArmSession& other) = delete;
         ArmSession& operator=(const ArmSession& other) = delete;
         ~ArmSession();
@@ -22,6 +23,7 @@ namespace arm_host
         void Execute(uint32_t id, const ArmCommand& command);
         void StopAll();
         bool Moving() const;
+        bool Running() const;
 
     private:
         class Events
@@ -72,6 +74,7 @@ namespace arm_host
         void Emit(ArmEvent event);
         void Publish();
 
+        arm::ArmProfile profile;
         can::FocMotorCanClient client;
         arm::Arm arm;
         ArmTarget target;

@@ -5,9 +5,11 @@
 #include <QFile>
 #include <QFontDatabase>
 #include <QHBoxLayout>
+#include <QHeaderView>
 #include <QLabel>
 #include <QPlainTextEdit>
 #include <QPushButton>
+#include <QTableWidget>
 #include <QTextStream>
 #include <QVBoxLayout>
 #include <algorithm>
@@ -68,6 +70,73 @@ namespace simulator
     void MotorControllerPanel::ApplyTheme()
     {
         ui::backend::qt::StyleStatusLabel(*state, level);
+    }
+
+    ProfilePanel::ProfilePanel(QWidget* parent)
+        : QWidget{ parent }
+        , name{ new QLabel{ this } }
+        , file{ new QLabel{ this } }
+        , summary{ new QLabel{ this } }
+        , table{ new QTableWidget{ static_cast<int>(arm::jointCount), static_cast<int>(profileColumns.size()), this } }
+    {
+        name->setAccessibleName("Profile name");
+        file->setAccessibleName("Profile file");
+        file->setTextInteractionFlags(Qt::TextSelectableByMouse);
+        summary->setAccessibleName("Profile timing and enable mode");
+        summary->setWordWrap(true);
+        auto font = name->font();
+        font.setBold(true);
+        name->setFont(font);
+
+        QStringList headings;
+        for (const auto heading : profileColumns)
+            headings << ui::backend::qt::ToQt(heading);
+        table->setObjectName("profileTable");
+        table->setAccessibleName("Profile per joint");
+        table->setHorizontalHeaderLabels(headings);
+        table->verticalHeader()->setVisible(false);
+        table->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+        table->horizontalHeader()->setStretchLastSection(true);
+        table->setEditTriggers(QAbstractItemView::NoEditTriggers);
+        table->setSelectionMode(QAbstractItemView::NoSelection);
+        table->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
+
+        auto* header = new QHBoxLayout{};
+        header->addWidget(name);
+        header->addStretch();
+        header->addWidget(file);
+
+        auto* layout = new QVBoxLayout{ this };
+        layout->setContentsMargins(8, 8, 8, 8);
+        layout->setSpacing(8);
+        layout->addLayout(header);
+        layout->addWidget(summary);
+        layout->addWidget(table, 1);
+    }
+
+    void ProfilePanel::Update(const ProfileView& view, const QString& path)
+    {
+        if (view == shown && path == shownPath)
+            return;
+
+        shown = view;
+        shownPath = path;
+        name->setText(ui::backend::qt::ToQt(view.name));
+        file->setText(path.isEmpty() ? QString{ "built-in profile" } : path);
+        summary->setText(ui::backend::qt::ToQt(view.summary));
+
+        for (int row = 0; row != table->rowCount(); ++row)
+        {
+            const auto& joint = view.rows[static_cast<std::size_t>(row)];
+            const std::array<const std::string*, 10> cells{ &joint.joint, &joint.node, &joint.ratio, &joint.direction, &joint.offset, &joint.lower, &joint.upper,
+                &joint.speed, &joint.acceleration, &joint.controller };
+            for (int column = 0; column != table->columnCount(); ++column)
+            {
+                auto* cell = new QTableWidgetItem{ ui::backend::qt::ToQt(*cells[static_cast<std::size_t>(column)]) };
+                cell->setTextAlignment(column == 0 || column == 3 ? Qt::AlignCenter : (column == 9 ? Qt::AlignLeft | Qt::AlignVCenter : Qt::AlignRight | Qt::AlignVCenter));
+                table->setItem(row, column, cell);
+            }
+        }
     }
 
     ScopePanel::ScopePanel(QWidget* parent)

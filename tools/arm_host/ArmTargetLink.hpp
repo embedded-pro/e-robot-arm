@@ -23,7 +23,7 @@ namespace arm_host
         virtual simulation::SimulatedArm* Simulation() = 0;
     };
 
-    using TargetOpener = std::function<std::unique_ptr<ArmTargetLink>(const ArmTarget& target)>;
+    using TargetOpener = std::function<std::unique_ptr<ArmTargetLink>(const ArmTarget& target, const arm::JointNodeIds& nodes)>;
 
     class SimulatedTargetLink
         : public ArmTargetLink

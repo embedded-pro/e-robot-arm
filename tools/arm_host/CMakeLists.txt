@@ -6,6 +6,7 @@ target_include_directories(e_robot_arm.tool.arm_host PUBLIC
 
 target_link_libraries(e_robot_arm.tool.arm_host PUBLIC
     e_robot_arm.arm
+    e_robot_arm.arm_profile
     e_robot_arm.tool.simulated_arm
     e_foc_protocol.client
     hal.generic
@@ -32,6 +33,8 @@ target_sources(e_robot_arm.tool.arm_host PRIVATE
     ArmTargetLink.hpp
     DefaultArmConfig.cpp
     DefaultArmConfig.hpp
+    ProfileFile.cpp
+    ProfileFile.hpp
 )
 
 if (TARGET can_lite.drivers.platform)

@@ -73,6 +73,7 @@ namespace simulator
         void Refresh(const arm_host::ArmSnapshot& snapshot, std::span<const arm_host::ArmEvent> events);
         void EmergencyStop();
         void SwitchTarget(const arm_host::ArmTarget& target);
+        void LoadProfile(const arm::ArmProfile& profile);
         void ConfirmRearm();
         bool InjectFault(std::size_t joint);
         bool SilenceJoint(std::size_t joint);
@@ -111,6 +112,7 @@ namespace simulator
         void UpdateControls();
         void UpdateStatus();
         void TrackSequence();
+        void FollowLimits();
         std::string TargetProblem() const;
         std::string Hint(std::span<const std::pair<Control, std::string_view>> controls) const;
 

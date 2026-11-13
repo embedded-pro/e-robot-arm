@@ -27,7 +27,8 @@ namespace arm_host
         stateChanged,
         controllerApplied,
         controllerRead,
-        controllerFailed
+        controllerFailed,
+        profileLoaded
     };
 
     inline constexpr std::size_t noJoint{ std::numeric_limits<std::size_t>::max() };

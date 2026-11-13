@@ -38,7 +38,7 @@ namespace
         arm_host::ArmTarget target{ arm_host::TargetKind::simulated, "" };
         simulation::SimulatedArm simulatedArm{ arm_host::test::nodes, 50ms };
         arm_host::test::RecordingSink sink;
-        arm_host::ArmSession session{ simulatedArm.ArmSide(), arm_host::test::Config(), target, sink, &simulatedArm };
+        arm_host::ArmSession session{ simulatedArm.ArmSide(), arm_host::test::Profile(), target, sink, &simulatedArm };
     };
 }
 
@@ -249,7 +249,7 @@ namespace
         arm_host::ArmTarget target{ arm_host::TargetKind::simulated, "" };
         simulation::SimulatedArm simulatedArm{ arm_host::test::nodes, 50ms };
         arm_host::test::RecordingSink sink;
-        arm_host::ArmSession session{ simulatedArm.ArmSide(), ConfigWithController(), target, sink, &simulatedArm };
+        arm_host::ArmSession session{ simulatedArm.ArmSide(), arm_host::test::Profile(ConfigWithController()), target, sink, &simulatedArm };
     };
 }
 

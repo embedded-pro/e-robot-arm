@@ -35,6 +35,7 @@ namespace arm_console
 
     private:
         std::optional<arm_host::ArmCommand> Parse(std::string_view command, std::istringstream& arguments) const;
+        ExecuteResult Profile(std::string_view command, std::istringstream& arguments);
         std::optional<arm_host::ArmCommand> Mode(std::istringstream& arguments) const;
         std::optional<arm_host::ArmCommand> Move(std::istringstream& arguments) const;
         void Status();

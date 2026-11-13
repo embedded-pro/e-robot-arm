@@ -2,8 +2,8 @@
 
 namespace arm_host
 {
-    ArmRuntime::ArmRuntime(const arm::ArmConfig& config, const TargetOpener& opener, ArmSessionSink& sink, const ArmTarget& initial)
-        : config(config)
+    ArmRuntime::ArmRuntime(const arm::ArmProfile& profile, const TargetOpener& opener, ArmSessionSink& sink, const ArmTarget& initial)
+        : profile(profile)
         , opener(opener)
         , sink(sink)
         , poll(pollInterval, [this]()
@@ -47,17 +47,36 @@ namespace arm_host
             });
     }
 
+    void ArmRuntime::LoadProfile(uint32_t id, const arm::ArmProfile& newProfile)
+    {
+        const auto refuse = [this, id](std::string_view reason)
+        {
+            sink.OnEvent({ .kind = ArmEventKind::refused, .time = infra::Now(), .command = id, .commandName = "load profile", .reason = reason });
+        };
+
+        if (switching)
+            return refuse("switching target");
+        if (session && session->Running())
+            return refuse("the arm is enabled: disable it first");
+
+        profile = newProfile;
+        Close();
+        if (!Open(current))
+            return Report(ArmEventKind::targetFailed, id, "the adapter could not be opened");
+        sink.OnEvent({ .kind = ArmEventKind::profileLoaded, .time = infra::Now(), .command = id, .commandName = "load profile" });
+    }
+
     bool ArmRuntime::Open(const ArmTarget& target)
     {
         current = target;
-        link = opener(target);
+        link = opener(target, profile.config.nodes);
         if (!link)
         {
             sink.OnSnapshot({ .target = target });
             return false;
         }
 
-        session.emplace(link->Can(), config, target, sink, link->Simulation());
+        session.emplace(link->Can(), profile, target, sink, link->Simulation());
         return true;
     }
 

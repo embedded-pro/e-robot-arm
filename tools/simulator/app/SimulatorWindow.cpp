@@ -1,4 +1,5 @@
 #include "tools/simulator/app/SimulatorWindow.hpp"
+#include "tools/arm_host/ProfileFile.hpp"
 #include "ui/backend/qt/QtConversions.hpp"
 #include "ui/backend/qt/QtTheme.hpp"
 #include <QAction>
@@ -6,6 +7,7 @@
 #include <QCoreApplication>
 #include <QDockWidget>
 #include <QFileDialog>
+#include <QFileInfo>
 #include <QGroupBox>
 #include <QInputDialog>
 #include <QLabel>
@@ -63,6 +65,7 @@ namespace simulator
         , presenter{ host, shell, operate->Form(), move->Form(), limits, start }
         , motorControllerPanel{ new MotorControllerPanel{ this } }
         , motorController{ host, motorControllerPanel->Form() }
+        , profilePanel{ new ProfilePanel{ this } }
         , logPanel{ new EventLogPanel{ presenter.Log(), this } }
         , emergencyStopKey{ *QCoreApplication::instance(), [this]()
             {
@@ -145,6 +148,7 @@ namespace simulator
         motorController.Refresh(snapshot, events);
         motorControllerPanel->SetState(motorController.StateText(), motorController.StateLevel());
         motorControllerPanel->SetHint(motorController.Hint());
+        profilePanel->Update(DescribeProfile(snapshot), profilePath);
 
         scope->Add(trace);
         if (std::ranges::any_of(events, [](const arm_host::ArmEvent& event)
@@ -190,6 +194,7 @@ namespace simulator
         controllerScroll->setFrameShape(QFrame::NoFrame);
         controllerScroll->setWidget(motorControllerPanel);
         tabifyDockWidget(armDock, Dock("Motor Controller", "motorControllerDock", controllerScroll, Qt::RightDockWidgetArea));
+        tabifyDockWidget(armDock, Dock("Profile", "profileDock", profilePanel, Qt::RightDockWidgetArea));
         armDock->raise();
         Dock("Scope", "scopeDock", scope, Qt::BottomDockWidgetArea);
         Dock("Event Log", "logDock", logPanel, Qt::BottomDockWidgetArea);
@@ -217,6 +222,9 @@ namespace simulator
     void SimulatorWindow::BuildMenus()
     {
         auto* file = menuBar()->addMenu("&File");
+        file->addAction("&Open Profile…", QKeySequence::Open, this, &SimulatorWindow::OpenProfile);
+        file->addAction("Save &Profile…", QKeySequence{ "Ctrl+Shift+S" }, this, &SimulatorWindow::SaveProfile);
+        file->addSeparator();
         file->addAction("&Save Log…", QKeySequence::Save, this, &SimulatorWindow::SaveLog);
         file->addSeparator();
         file->addAction("&Quit", QKeySequence::Quit, this, &QWidget::close);
@@ -406,6 +414,60 @@ namespace simulator
             shell.ShowAlert("Save Log", "The log could not be written to " + path.toStdString() + ".");
     }
 
+    void SimulatorWindow::OpenProfile()
+    {
+        const auto path = QFileDialog::getOpenFileName(this, "Open Profile", profilePath, "Arm profiles (*.json)");
+        if (!path.isEmpty())
+            LoadProfileFrom(path);
+    }
+
+    void SimulatorWindow::LoadProfileFrom(const QString& path)
+    {
+        auto read = arm_host::ReadProfileFile(path.toStdString());
+        if (const auto* problem = std::get_if<std::string>(&read))
+        {
+            shell.ShowAlert("Open Profile", "The profile was not loaded.\n\n" + *problem);
+            return;
+        }
+
+        const auto& profile = std::get<arm::ArmProfile>(read);
+        const auto snapshot = host.Snapshot();
+        if (snapshot.target.kind == arm_host::TargetKind::real)
+        {
+            QMessageBox confirm{ QMessageBox::Warning, "Load Profile on the Real Arm",
+                QString{ "Load profile \"%1\" onto the real arm on %2?\n\nThe arm is rebuilt and must be brought up again." }
+                    .arg(QString::fromUtf8(profile.name.data(), static_cast<qsizetype>(profile.name.size())), ui::backend::qt::ToQt(snapshot.target.bus)),
+                QMessageBox::NoButton, this };
+            auto* loadButton = confirm.addButton("Load", QMessageBox::AcceptRole);
+            confirm.setDefaultButton(confirm.addButton(QMessageBox::Cancel));
+            confirm.exec();
+            if (confirm.clickedButton() != loadButton)
+                return;
+        }
+
+        presenter.LoadProfile(profile);
+        profilePath = path;
+        Settings().setValue("profile", path);
+    }
+
+    void SimulatorWindow::SaveProfile()
+    {
+        const auto snapshot = host.Snapshot();
+        const auto path = QFileDialog::getSaveFileName(this, "Save Profile", profilePath.isEmpty() ? QString{ "arm-profile.json" } : profilePath, "Arm profiles (*.json)");
+        if (path.isEmpty())
+            return;
+
+        arm::ArmProfile profile{ {}, snapshot.config };
+        profile.name.assign(snapshot.profileName.substr(0, arm::profileNameSize));
+        const auto problem = arm_host::WriteProfileFile(path.toStdString(), profile);
+        if (!problem.empty())
+            return shell.ShowAlert("Save Profile", "The profile was not saved.\n\n" + problem);
+
+        profilePath = path;
+        Settings().setValue("profile", path);
+        shell.SetStatus("Profile saved to " + path.toStdString());
+    }
+
     void SimulatorWindow::CaptureDefaultLayout()
     {
         const auto saved = saveState();
@@ -447,6 +509,10 @@ namespace simulator
         UseTheme(settings.value("lightTheme", false).toBool());
         restoreGeometry(settings.value("geometry").toByteArray());
         restoreState(settings.value("layout").toByteArray());
+
+        const auto profile = settings.value("profile").toString();
+        if (!profile.isEmpty() && QFileInfo::exists(profile))
+            LoadProfileFrom(profile);
     }
 
     void SimulatorWindow::closeEvent(QCloseEvent* event)

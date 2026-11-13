@@ -1,5 +1,6 @@
 #include "tools/arm_host/AdapterTargetLink.hpp"
 #include "tools/arm_host/DefaultArmConfig.hpp"
+#include "tools/arm_host/ProfileFile.hpp"
 #include "tools/simulator/app/SimulatorWindow.hpp"
 #include "ui/backend/qt/QtTheme.hpp"
 #include "gmock/gmock.h"
@@ -15,11 +16,14 @@
 #include <QQuickItem>
 #include <QQuickWidget>
 #include <QQuickWindow>
+#include <QSettings>
 #include <QSurfaceFormat>
+#include <QTableWidget>
 #include <QtQml/QQmlExtensionPlugin>
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
+#include <filesystem>
 #include <functional>
 #include <string>
 
@@ -104,10 +108,10 @@ namespace
                 << LogText(window.Presenter());
         }
 
-        arm::ArmConfig config{ arm_host::DefaultArmConfig(arm_host::defaultNodes) };
+        arm::ArmProfile profile{ arm_host::DefaultArmProfile(arm_host::defaultNodes) };
         infra::TimePoint start{ std::chrono::system_clock::now() };
-        arm_host::ArmHost host{ config, arm_host::HostTargetOpener(arm_host::defaultNodes, arm_host::simulatedTimeConstant, 1000000), {} };
-        simulator::SimulatorWindow window{ host, config.positionLimits, start };
+        arm_host::ArmHost host{ profile, arm_host::HostTargetOpener(arm_host::simulatedTimeConstant, 1000000), {} };
+        simulator::SimulatorWindow window{ host, profile.config.positionLimits, start };
     };
 }
 
@@ -222,6 +226,47 @@ TEST_F(SimulatorWindowTest, the_motor_controller_reads_the_selected_joint_then_a
         QApplication::processEvents();
         window.grab().save(QString{ path }.replace(".png", "-motor-controller.png"));
     }
+}
+
+TEST_F(SimulatorWindowTest, a_loaded_profile_rebuilds_the_arm_and_bring_up_configures_its_motor_controllers)
+{
+    auto profile = arm_host::DefaultArmProfile({ 41, 42, 43, 44, 45, 46 });
+    profile.name = "window test arm";
+    arm::ControllerSettings settings{};
+    settings.position = can::FocPositionAlgorithm::lqr;
+    profile.config.controllers[1] = settings;
+    const auto path = std::filesystem::temp_directory_path() / "e-robot-arm-window-test.json";
+    ASSERT_TRUE(arm_host::WriteProfileFile(path, profile).empty());
+
+    window.LoadProfileFrom(QString::fromStdString(path.string()));
+    ASSERT_TRUE(Eventually([this]()
+        {
+            return host.Snapshot().profileName == "window test arm";
+        }));
+    auto* table = window.findChild<QTableWidget*>("profileTable");
+    ASSERT_NE(nullptr, table);
+    EXPECT_TRUE(Eventually([table]()
+        {
+            return table->item(1, 1) != nullptr && table->item(1, 1)->text() == "42" && table->item(1, 9)->text() == "PID / PID / LQR";
+        }));
+
+    host.Post(arm_host::BringUp{});
+    EXPECT_TRUE(Eventually([this]()
+        {
+            return window.Presenter().State(simulator::Control::enable).enabled;
+        }))
+        << LogText(window.Presenter());
+    EXPECT_TRUE(Logged(window.Presenter(), "configuring motor controllers"));
+
+    if (const auto* capture = std::getenv("SIMULATOR_FRAME_CAPTURE"))
+    {
+        window.findChild<QDockWidget*>("profileDock")->raise();
+        QApplication::processEvents();
+        window.grab().save(QString{ capture }.replace(".png", "-profile.png"));
+    }
+
+    std::filesystem::remove(path);
+    QSettings{ "embedded-pro", "e-robot-arm Simulator" }.remove("profile");
 }
 
 int main(int argc, char* argv[])

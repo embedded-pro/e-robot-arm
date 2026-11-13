@@ -27,13 +27,13 @@ namespace
 
         static arm_host::TargetOpener Opener()
         {
-            return [](const arm_host::ArmTarget&) -> std::unique_ptr<arm_host::ArmTargetLink>
+            return [](const arm_host::ArmTarget&, const arm::JointNodeIds& nodes) -> std::unique_ptr<arm_host::ArmTargetLink>
             {
-                return std::make_unique<arm_host::SimulatedTargetLink>(arm_host::test::nodes, 20ms);
+                return std::make_unique<arm_host::SimulatedTargetLink>(nodes, 20ms);
             };
         }
 
-        std::optional<arm_host::ArmHost> host{ std::in_place, arm_host::test::Config(), Opener(), arm_host::ArmTarget{} };
+        std::optional<arm_host::ArmHost> host{ std::in_place, arm_host::test::Profile(), Opener(), arm_host::ArmTarget{} };
         std::vector<arm_host::ArmEvent> events;
     };
 }

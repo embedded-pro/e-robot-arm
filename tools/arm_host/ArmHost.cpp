@@ -25,9 +25,9 @@ namespace arm_host
         return request;
     }
 
-    ArmHost::ArmHost(const arm::ArmConfig& config, const TargetOpener& opener, const ArmTarget& initial)
+    ArmHost::ArmHost(const arm::ArmProfile& profile, const TargetOpener& opener, const ArmTarget& initial)
     {
-        runtime.emplace(config, opener, mailbox, initial);
+        runtime.emplace(profile, opener, mailbox, initial);
         thread = std::jthread{ [this]()
             {
                 dispatcher.ExecuteUntil([this]()
@@ -57,6 +57,11 @@ namespace arm_host
         return Enqueue(target);
     }
 
+    uint32_t ArmHost::LoadProfile(const arm::ArmProfile& profile)
+    {
+        return Enqueue(profile);
+    }
+
     ArmSnapshot ArmHost::Snapshot() const
     {
         return mailbox.Snapshot();
@@ -72,7 +77,7 @@ namespace arm_host
         return mailbox.TakeTrace();
     }
 
-    uint32_t ArmHost::Enqueue(std::variant<ArmCommand, ArmTarget> what)
+    uint32_t ArmHost::Enqueue(std::variant<ArmCommand, ArmTarget, arm::ArmProfile> what)
     {
         const auto id = nextId++;
         requests.Push({ id, std::move(what) });
@@ -92,7 +97,9 @@ namespace arm_host
 
         if (const auto* command = std::get_if<ArmCommand>(&request->what))
             runtime->Execute(request->id, *command);
+        else if (const auto* target = std::get_if<ArmTarget>(&request->what))
+            runtime->SwitchTarget(request->id, *target);
         else
-            runtime->SwitchTarget(request->id, std::get<ArmTarget>(request->what));
+            runtime->LoadProfile(request->id, std::get<arm::ArmProfile>(request->what));
     }
 }

@@ -3,6 +3,7 @@
 #include "tools/arm_host/AdapterTargetLink.hpp"
 #include "tools/arm_host/ArmHost.hpp"
 #include "tools/arm_host/DefaultArmConfig.hpp"
+#include "tools/arm_host/ProfileFile.hpp"
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
@@ -61,7 +62,8 @@ namespace
             {
                 std::scoped_lock lock{ mutex };
                 console.Print(event);
-                if (event.kind == arm_host::ArmEventKind::accepted || event.kind == arm_host::ArmEventKind::refused)
+                if (event.kind == arm_host::ArmEventKind::accepted || event.kind == arm_host::ArmEventKind::refused ||
+                    event.kind == arm_host::ArmEventKind::profileLoaded || event.kind == arm_host::ArmEventKind::targetFailed)
                     answered.insert(event.command);
                 answeredCondition.notify_all();
             }
@@ -85,8 +87,19 @@ int main(int argc, const char* const argv[])
         return EXIT_FAILURE;
     }
 
-    arm_host::ArmHost host{ arm_host::DefaultArmConfig(options->nodes), arm_host::HostTargetOpener(options->nodes, arm_host::simulatedTimeConstant, options->bitrate),
-        TargetFor(options->bus) };
+    auto profile = arm_host::DefaultArmProfile(options->nodes);
+    if (!options->profile.empty())
+    {
+        auto read = arm_host::ReadProfileFile(options->profile);
+        if (const auto* problem = std::get_if<std::string>(&read))
+        {
+            std::cerr << "profile refused: " << *problem << "\n";
+            return EXIT_FAILURE;
+        }
+        profile = std::get<arm::ArmProfile>(read);
+    }
+
+    arm_host::ArmHost host{ profile, arm_host::HostTargetOpener(arm_host::simulatedTimeConstant, options->bitrate), TargetFor(options->bus) };
     arm_console::ArmConsole console{ host, std::cout };
     EventPrinter printer{ host, console };
 

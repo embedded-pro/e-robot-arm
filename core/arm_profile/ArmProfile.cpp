@@ -547,8 +547,8 @@ namespace arm
                 const auto& transmission = config.transmissions[joint];
                 stream << "    {\n      \"node\": " << static_cast<uint32_t>(config.nodes[joint]) << ",\n      \"transmission\": { \"ratio\": ";
                 Number(transmission.ratio);
-                stream << ", \"direction\": \"" << (transmission.direction == JointDirection::positive ? directionNames[0] : directionNames[1])
-                       << "\", \"offsetRad\": ";
+                stream << R"(, "direction": ")" << (transmission.direction == JointDirection::positive ? directionNames[0] : directionNames[1])
+                       << R"(", "offsetRad": )";
                 Number(transmission.offset.Value());
                 stream << " },\n      \"positionLimitsRad\": { \"lower\": ";
                 Number(config.positionLimits[joint].lower.Value());

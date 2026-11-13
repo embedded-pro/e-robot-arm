@@ -351,3 +351,22 @@ TEST_F(SimulatorPresenterTest, a_rearm_prompt_without_a_known_source_says_so)
 
     EXPECT_EQ("Re-arm after the trip by an unknown source?", prompt);
 }
+
+TEST_F(SimulatorPresenterTest, a_loaded_profile_is_requested_and_its_limits_reach_the_move_form)
+{
+    arm::ArmProfile profile{ "bench arm", {} };
+    EXPECT_CALL(arm, LoadProfile(_)).WillOnce(Return(7));
+    presenter.LoadProfile(profile);
+    EXPECT_EQ("Load profile bench arm requested…", shell.Statuses().back());
+
+    auto snapshot = simulator::test::Compatible();
+    snapshot.profileName = "bench arm";
+    for (auto& limit : snapshot.config.positionLimits)
+        limit = { foc::Radians{ -0.5f }, foc::Radians{ 0.5f } };
+    const std::array events{ arm_host::ArmEvent{ .kind = arm_host::ArmEventKind::profileLoaded, .command = 7 } };
+    presenter.Refresh(snapshot, events);
+
+    EXPECT_EQ("Load profile bench arm: accepted", shell.Statuses().back());
+    EXPECT_NEAR(0.5, presenter.MoveForm().Spec().fields[0].number.maximum, 1.0e-6);
+    EXPECT_NEAR(-0.5, presenter.MoveForm().Spec().fields[5].number.minimum, 1.0e-6);
+}
