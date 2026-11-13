@@ -1,6 +1,7 @@
 #ifndef CORE_ARM_ARM_CONFIG_HPP
 #define CORE_ARM_ARM_CONFIG_HPP
 
+#include "core/arm_model/ArmGeometry.hpp"
 #include "core/joint_bus/interfaces/JointBus.hpp"
 #include "core/joint_configurator/interfaces/ControllerSettings.hpp"
 #include "core/joint_configurator/interfaces/MotorSettings.hpp"
@@ -23,6 +24,7 @@ namespace arm
         can::FocMotorMode enableMode{ can::FocMotorMode::position };
         JointControllers controllers{};
         JointMotors motors{};
+        ArmGeometry geometry{ ReferenceGeometry() };
     };
 }
 

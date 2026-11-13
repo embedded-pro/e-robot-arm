@@ -2,6 +2,7 @@
 #include "tools/arm_host/ProfileFile.hpp"
 #include <array>
 #include <filesystem>
+#include <format>
 #include <iomanip>
 
 namespace arm_console
@@ -43,6 +44,12 @@ namespace arm_console
 
         if (command == "load" || command == "save")
             return Profile(command, arguments);
+
+        if (command == "pose" || command == "fk" || command == "ik")
+        {
+            Kinematics(command, arguments);
+            return { Outcome::done };
+        }
 
         const auto parsed = Parse(command, arguments);
         if (!parsed)
@@ -113,6 +120,64 @@ namespace arm_console
         return { Outcome::posted, arm.LoadProfile(std::get<arm::ArmProfile>(read)) };
     }
 
+    void ArmConsole::Kinematics(std::string_view command, std::istringstream& arguments)
+    {
+        const auto snapshot = arm.Snapshot();
+        std::array<float, arm::jointCount> values{};
+        const bool wantsValues = command != "pose";
+        for (auto& value : values)
+            if (wantsValues && !(arguments >> value))
+            {
+                Usage();
+                return;
+            }
+
+        std::string rest;
+        if (arguments >> rest)
+        {
+            Usage();
+            return;
+        }
+
+        if (command == "pose")
+            return PrintPose(snapshot.toolPose, snapshot.singularities);
+
+        const arm::ArmModel model{ snapshot.config.geometry, snapshot.config.positionLimits };
+        arm::JointPositions current{};
+        for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+            current[joint] = command == "fk" ? foc::Radians{ values[joint] } : snapshot.readings[joint].position;
+
+        if (command == "fk")
+            return PrintPose(arm::ToPlacement(model.ToolPose(current)), model.Near(current));
+
+        const auto result = model.Inverse(arm::ToTransform({ values[0], values[1], values[2], values[3], values[4], values[5] }), current);
+        if (!result.joints.has_value())
+        {
+            output << "ik refused: " << (result.failure == arm::IkFailure::unreachable ? "unreachable" : "outside joint limits") << "\n";
+            return;
+        }
+
+        output << "joints:";
+        for (const auto& joint : *result.joints)
+            output << std::format(" {:.3f}", joint.Value());
+        output << " rad\n";
+    }
+
+    void ArmConsole::PrintPose(const arm::Placement& pose, const arm::Singularities& singularities)
+    {
+        const auto shown = [](float value)
+        {
+            return value > -5.0e-4f && value < 5.0e-4f ? 0.0f : value;
+        };
+
+        output << std::format("tool: x {:.3f} y {:.3f} z {:.3f} m, roll {:.3f} pitch {:.3f} yaw {:.3f} rad", shown(pose.x), shown(pose.y), shown(pose.z),
+            shown(pose.roll), shown(pose.pitch), shown(pose.yaw));
+        if (singularities.Any())
+            output << ", near " << (singularities.wrist ? "wrist " : "") << (singularities.elbow ? "elbow " : "") << (singularities.shoulder ? "shoulder " : "")
+                   << "singularity";
+        output << "\n";
+    }
+
     std::optional<arm_host::ArmCommand> ArmConsole::Mode(std::istringstream& arguments) const
     {
         std::string name;
@@ -162,7 +227,7 @@ namespace arm_console
 
     void ArmConsole::Usage()
     {
-        output << "usage: bringup | enable | disable | move q1 q2 q3 q4 q5 q6 | rearm | contracts | mode torque|speed|position | start | stop | estop | clear | abort | load <file> | save <file> | status | quit\n";
+        output << "usage: bringup | enable | disable | move q1 q2 q3 q4 q5 q6 | rearm | contracts | mode torque|speed|position | start | stop | estop | clear | abort | load <file> | save <file> | pose | fk q1..q6 | ik x y z roll pitch yaw | status | quit\n";
     }
 
     void ArmConsole::Print(const arm_host::ArmEvent& event)

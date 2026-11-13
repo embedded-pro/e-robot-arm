@@ -79,6 +79,7 @@ namespace arm_host
         arm::ArmProfile profile;
         can::FocMotorCanClient client;
         arm::Arm arm;
+        arm::ArmModel model;
         ArmTarget target;
         ArmSessionSink& sink;
         simulation::SimulatedArm* simulation;

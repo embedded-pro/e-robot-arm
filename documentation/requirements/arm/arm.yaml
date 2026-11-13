@@ -73,3 +73,16 @@
     The arm shall apply a joint's motor model and drive limits, from a reference motor or custom values, only while
     every joint is calibrated and no joint is running, shall read them back to confirm them, and while bringing
     itself up shall apply and confirm each motor its configuration names before that joint's motor controller.
+
+- id: REQ-MOD-001
+  title: Tool pose from the joint positions
+  shall: >
+    The arm shall report its tool pose, position and orientation in the base frame, from the measured joint
+    positions once per control period, and name the singularity it is near.
+
+- id: REQ-MOD-002
+  title: Unreachable poses refused
+  shall: >
+    The arm shall convert a tool pose to joint positions within the joint limits, choosing the solution closest to
+    the current joints, and shall refuse a pose it cannot reach or can reach only outside the joint limits, saying
+    which.

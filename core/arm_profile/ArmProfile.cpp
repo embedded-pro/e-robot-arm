@@ -22,6 +22,9 @@ namespace arm
             "speedReferenceTimeConstant", "positionBandwidth", "positionErrorWeight", "positionSpeedErrorWeight", "positionIntegralWeight",
             "positionReferenceTimeConstant" };
 
+        constexpr std::array<const char*, 7> opwLengthNames{ "a1", "a2", "b", "c1", "c2", "c3", "c4" };
+        constexpr std::array<const char*, 6> placementNames{ "xM", "yM", "zM", "rollRad", "pitchRad", "yawRad" };
+
         constexpr std::array<double, 10> powersOfTen{ 1.0, 1.0e1, 1.0e2, 1.0e3, 1.0e4, 1.0e5, 1.0e6, 1.0e7, 1.0e8, 1.0e9 };
 
         using Path = infra::BoundedString::WithStorage<64>;
@@ -229,7 +232,114 @@ namespace arm
                     return ReadMode(path, value, profile.config);
                 if (key == "joints")
                     return Mark(seen.joints, ReadJoints(path, value, profile.config));
+                if (key == "geometry")
+                    return ReadGeometry(path, value, profile.config.geometry);
                 return Unknown(path);
+            }
+
+            bool ReadGeometry(const Path& path, const Value& value, ArmGeometry& geometry)
+            {
+                geometry = ArmGeometry{};
+                bool lengths{ false };
+                if (!ReadMembers(path, value, [this, &geometry, &lengths](const Path& item, infra::JsonString key, const Value& member)
+                        {
+                            if (key == "opwMetres")
+                                return Mark(lengths, ReadLengths(item, member, geometry.opw));
+                            if (key == "jointSigns")
+                                return ReadSigns(item, member, geometry.opw.signs);
+                            if (key == "jointOffsetsRad")
+                                return ReadOffsets(item, member, geometry.opw.offsets);
+                            if (key == "tool")
+                                return ReadPlacement(item, member, geometry.tool);
+                            if (key == "base")
+                                return ReadPlacement(item, member, geometry.base);
+                            return Unknown(item);
+                        }))
+                    return false;
+
+                if (!lengths)
+                    return Missing(path, "opwMetres");
+                return true;
+            }
+
+            bool ReadLengths(const Path& path, const Value& value, kinematics::OpwParameters<float>& opw)
+            {
+                std::array<bool, opwLengthNames.size()> seen{};
+                std::array<float*, opwLengthNames.size()> lengths{ &opw.a1, &opw.a2, &opw.b, &opw.c1, &opw.c2, &opw.c3, &opw.c4 };
+                if (!ReadMembers(path, value, [this, &seen, &lengths](const Path& item, infra::JsonString key, const Value& member)
+                        {
+                            for (std::size_t index = 0; index != opwLengthNames.size(); ++index)
+                                if (key == opwLengthNames[index])
+                                    return Mark(seen[index], ReadReal(item, member, *lengths[index]));
+                            return Unknown(item);
+                        }))
+                    return false;
+
+                for (std::size_t index = 0; index != opwLengthNames.size(); ++index)
+                    if (!seen[index])
+                        return Missing(path, opwLengthNames[index]);
+                if (!(opw.c2 > 0.0f))
+                    return Fail(Child(path, "c2"), "must be above 0");
+                if (!(opw.c3 > 0.0f))
+                    return Fail(Child(path, "c3"), "must be above 0");
+                return true;
+            }
+
+            template<class Item, class ReadItem>
+            bool ReadSix(const Path& path, const Value& value, std::array<Item, 6>& result, ReadItem readItem)
+            {
+                const auto* found = std::get_if<infra::JsonArray>(&value);
+                if (found == nullptr)
+                    return Fail(path, "must be a list of six");
+
+                auto list = *found;
+                std::size_t count{ 0 };
+                for (const auto& element : list)
+                {
+                    if (count == result.size())
+                        return Fail(path, "must be a list of six");
+                    if (!readItem(Element(path, count), element, result[count]))
+                        return false;
+                    ++count;
+                }
+
+                if (list.Error())
+                    return Fail(path, "is not valid JSON");
+                if (count != result.size())
+                    return Fail(path, "must be a list of six");
+                return true;
+            }
+
+            bool ReadSigns(const Path& path, const Value& value, std::array<int8_t, 6>& signs)
+            {
+                return ReadSix(path, value, signs, [this](const Path& item, const Value& element, int8_t& sign)
+                    {
+                        const auto* integer = std::get_if<int32_t>(&element);
+                        if (integer == nullptr || (*integer != 1 && *integer != -1))
+                            return Fail(item, "must be 1 or -1");
+                        sign = static_cast<int8_t>(*integer);
+                        return true;
+                    });
+            }
+
+            bool ReadOffsets(const Path& path, const Value& value, std::array<float, 6>& offsets)
+            {
+                return ReadSix(path, value, offsets, [this](const Path& item, const Value& element, float& offset)
+                    {
+                        return ReadReal(item, element, offset);
+                    });
+            }
+
+            bool ReadPlacement(const Path& path, const Value& value, Placement& placement)
+            {
+                std::array<float*, placementNames.size()> fields{ &placement.x, &placement.y, &placement.z, &placement.roll, &placement.pitch, &placement.yaw };
+                return ReadMembers(path, value, [this, &fields](const Path& item, infra::JsonString key, const Value& member)
+                    {
+                        for (std::size_t index = 0; index != placementNames.size(); ++index)
+                            if (key == placementNames[index])
+                                return ReadReal(item, member, *fields[index]);
+                        return Unknown(item);
+                    });
             }
 
             bool ReadFormat(const Path& path, const Value& value, bool& seen)
@@ -610,7 +720,45 @@ namespace arm
                     Joint(config, joint);
                 }
 
-                stream << "\n  ]\n}\n";
+                stream << "\n  ],\n  \"geometry\": {\n    \"opwMetres\": { ";
+                Geometry(config.geometry);
+                stream << "\n  }\n}\n";
+            }
+
+            void Geometry(const ArmGeometry& geometry)
+            {
+                const std::array<float, opwLengthNames.size()> lengths{ geometry.opw.a1, geometry.opw.a2, geometry.opw.b, geometry.opw.c1, geometry.opw.c2,
+                    geometry.opw.c3, geometry.opw.c4 };
+                for (std::size_t index = 0; index != lengths.size(); ++index)
+                {
+                    stream << (index == 0 ? "\"" : ", \"") << opwLengthNames[index] << "\": ";
+                    Number(lengths[index]);
+                }
+
+                stream << " },\n    \"jointSigns\": [ ";
+                for (std::size_t joint = 0; joint != jointCount; ++joint)
+                    stream << (joint == 0 ? "" : ", ") << static_cast<int32_t>(geometry.opw.signs[joint]);
+                stream << " ],\n    \"jointOffsetsRad\": [ ";
+                for (std::size_t joint = 0; joint != jointCount; ++joint)
+                {
+                    stream << (joint == 0 ? "" : ", ");
+                    Number(geometry.opw.offsets[joint]);
+                }
+                stream << " ],\n    \"tool\": ";
+                Placement(geometry.tool);
+                stream << ",\n    \"base\": ";
+                Placement(geometry.base);
+            }
+
+            void Placement(const arm::Placement& placement)
+            {
+                const std::array<float, placementNames.size()> values{ placement.x, placement.y, placement.z, placement.roll, placement.pitch, placement.yaw };
+                for (std::size_t index = 0; index != values.size(); ++index)
+                {
+                    stream << (index == 0 ? "{ \"" : ", \"") << placementNames[index] << "\": ";
+                    Number(values[index]);
+                }
+                stream << " }";
             }
 
         private:

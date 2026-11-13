@@ -55,6 +55,7 @@ namespace arm_host
         : profile(profile)
         , client(can)
         , arm(client.CategoryClient(), profile.config)
+        , model(profile.config.geometry, profile.config.positionLimits)
         , target(target)
         , sink(sink)
         , simulation(simulation)
@@ -393,6 +394,11 @@ namespace arm_host
         snapshot.state = arm.Lifecycle().State();
         snapshot.misconfiguration = arm.Lifecycle().MisconfiguredJoint();
         snapshot.overruns = arm.Loop().OverrunCount();
+        arm::JointPositions measured{};
+        for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+            measured[joint] = snapshot.readings[joint].position;
+        snapshot.toolPose = arm::ToPlacement(model.ToolPose(measured));
+        snapshot.singularities = model.Near(measured);
         snapshot.profileName.assign(profile.name.begin(), profile.name.end());
         snapshot.config = profile.config;
         sample.commanded = snapshot.commanded.value_or(sample.measured);

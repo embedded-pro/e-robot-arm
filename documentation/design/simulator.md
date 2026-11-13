@@ -201,19 +201,20 @@ The commanded positions are joint motion's last sampled setpoint. Joint motion g
 
 ## Data Model
 
-| Entity          | Field                 | Type / Unit                         | Range                 | Notes                                   |
-|-----------------|-----------------------|-------------------------------------|-----------------------|-----------------------------------------|
-| Snapshot        | sequence              | count                               | —                     | Increments per publish                  |
-| Snapshot        | target                | simulated, virtual, real + name     | —                     | Name: bus or adapter                    |
-| Snapshot        | readings              | 6 × (rad, rad/s, state, fault)      | —                     | Empty until the joint first answers     |
-| Snapshot        | commanded             | 6 × rad, optional                   | Joint limits          | Joint motion's last setpoint            |
-| Snapshot        | joint liveness        | 6 × answered, silent                | —                     | From the joint bus                      |
-| Snapshot        | contracts             | unchecked, compatible, incompatible | —                     | Per joint                               |
-| Snapshot        | tripped, moving, loop | bool                                | —                     |                                         |
-| Snapshot        | profile               | name and arm configuration          | —                     | The profile in effect                   |
-| Event queue     | capacity              | events                              | 512                   | Oldest dropped when full; drops counted |
-| Trace queue     | capacity              | samples                             | 1024 (10 s at 100 Hz) | Oldest dropped when full; drops counted |
-| Simulated joint | τ                     | s                                   | ≥ 0                   | 0 follows exactly; simulator 0.05       |
+| Entity          | Field                 | Type / Unit                         | Range                 | Notes                                                   |
+|-----------------|-----------------------|-------------------------------------|-----------------------|---------------------------------------------------------|
+| Snapshot        | sequence              | count                               | —                     | Increments per publish                                  |
+| Snapshot        | target                | simulated, virtual, real + name     | —                     | Name: bus or adapter                                    |
+| Snapshot        | readings              | 6 × (rad, rad/s, state, fault)      | —                     | Empty until the joint first answers                     |
+| Snapshot        | commanded             | 6 × rad, optional                   | Joint limits          | Joint motion's last setpoint                            |
+| Snapshot        | joint liveness        | 6 × answered, silent                | —                     | From the joint bus                                      |
+| Snapshot        | contracts             | unchecked, compatible, incompatible | —                     | Per joint                                               |
+| Snapshot        | tripped, moving, loop | bool                                | —                     |                                                         |
+| Snapshot        | profile               | name and arm configuration          | —                     | The profile in effect                                   |
+| Snapshot        | tool pose             | m, rad; singularity flags           | —                     | From the measured joints ([arm-model.md](arm-model.md)) |
+| Event queue     | capacity              | events                              | 512                   | Oldest dropped when full; drops counted                 |
+| Trace queue     | capacity              | samples                             | 1024 (10 s at 100 Hz) | Oldest dropped when full; drops counted                 |
+| Simulated joint | τ                     | s                                   | ≥ 0                   | 0 follows exactly; simulator 0.05                       |
 
 ---
 

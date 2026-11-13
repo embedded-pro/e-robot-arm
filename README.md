@@ -11,7 +11,8 @@ build system, dev container, CI and documentation scaffolding.
 > (`core/safety/`) guards it, joint motion (`core/motion/`) moves all six joints together to a target, and the
 > control loop (`core/control_loop/`) paces telemetry and setpoints, and the lifecycle (`core/lifecycle/`) walks the arm
 > through bring-up, enable and re-arm; the joint configurator (`core/joint_configurator/`) applies and verifies each
-> joint's motor controller, which the arm profile (`core/arm_profile/`, JSON) describes. `core/arm/` puts them
+> joint's motor controller, which the arm profile (`core/arm_profile/`, JSON) describes, and the arm model
+> (`core/arm_model/`) turns joint positions into the tool pose and back. `core/arm/` puts them
 > together and the `e-robot-arm-console` host tool and the simulator drive them over any can-lite adapter; the rest
 > of the arm is planned in the [roadmap](documentation/roadmap.md).
 

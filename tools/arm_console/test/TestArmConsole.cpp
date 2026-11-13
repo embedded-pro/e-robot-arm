@@ -162,3 +162,19 @@ TEST_F(ArmConsoleTest, a_profile_that_cannot_be_read_is_refused_with_the_reason)
     EXPECT_EQ("profile refused: cannot open /no/such/profile.json\n", Run("load /no/such/profile.json"));
     EXPECT_THAT(Run("load"), HasSubstr("usage:"));
 }
+
+TEST_F(ArmConsoleTest, pose_fk_and_ik_convert_without_moving_the_arm)
+{
+    arm_host::ArmSnapshot snapshot{};
+    snapshot.config = arm_host::DefaultArmConfig({ 1, 2, 3, 4, 5, 6 });
+    snapshot.toolPose = { 0.02f, 0.0f, 0.71f, 0.0f, 0.0f, 0.0f };
+    snapshot.singularities = { true, true, false };
+    EXPECT_CALL(arm, Snapshot()).WillRepeatedly(Return(snapshot));
+
+    EXPECT_EQ("tool: x 0.020 y 0.000 z 0.710 m, roll 0.000 pitch 0.000 yaw 0.000 rad, near wrist elbow singularity\n", Run("pose"));
+    EXPECT_EQ("tool: x 0.580 y 0.000 z 0.150 m, roll 0.000 pitch 1.571 yaw 0.000 rad, near wrist elbow singularity\n", Run("fk 0 1.5707963 0 0 0 0"));
+    EXPECT_EQ("tool: x 0.562 y 0.000 z 0.258 m, roll 0.000 pitch 1.571 yaw 0.000 rad\n", Run("fk 0 1.2 0.3 0 0.0707963 0"));
+    EXPECT_THAT(Run("ik 0.4 0.1 0.3 0 1.5707963 0"), StartsWith("joints:"));
+    EXPECT_EQ("ik refused: unreachable\n", Run("ik 2 0 0 0 0 0"));
+    EXPECT_THAT(Run("fk 1 2"), HasSubstr("usage:"));
+}

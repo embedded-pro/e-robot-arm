@@ -2,7 +2,7 @@
 title: "Arm Profile Design"
 type: design
 status: draft
-version: 0.2.0
+version: 0.3.0
 component: "arm_profile"
 date: 2026-11-13
 ---
@@ -12,7 +12,7 @@ date: 2026-11-13
 | Title     | Arm Profile Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.2.0              |
+| Version   | 0.3.0              |
 | Component | arm_profile        |
 | Date      | 2026-11-13         |
 
@@ -35,7 +35,7 @@ date: 2026-11-13
 - Files: the host tools read and write them and hand the text over.
 - Applying the profile: the arm is built from its configuration, and the lifecycle applies the motor controllers
   while bringing the arm up ([arm-lifecycle.md](arm-lifecycle.md)).
-- Arm geometry and arm controllers: later items of the format, as phases 3 to 5 add them.
+- Mass properties and arm controllers: later items of the format, as phases 3 to 5 add them.
 
 ---
 
@@ -55,6 +55,17 @@ A profile holds what `ArmConfig` holds:
 | Command timeout          | `commandTimeoutPeriods`      | periods, 1 to 255             | 3                   |
 | Enable mode              | `enableMode`                 | `torque`, `speed`, `position` | `position`          |
 | Joints                   | `joints`                     | exactly six, in order         | required            |
+| Geometry                 | `geometry`                   | see below                     | the reference arm   |
+
+The geometry is the arm model's ([arm-model.md](arm-model.md) Part A):
+
+| Item          | JSON key                                                    | Unit, range          | Default when absent |
+|---------------|-------------------------------------------------------------|----------------------|---------------------|
+| OPW lengths   | `opwMetres.a1`, `.a2`, `.b`, `.c1`, `.c2`, `.c3`, `.c4`     | m; c2 and c3 above 0 | required            |
+| Joint signs   | `jointSigns`                                                | six of 1 or −1       | all 1               |
+| Joint offsets | `jointOffsetsRad`                                           | six, rad             | all 0               |
+| Tool          | `tool.xM`, `.yM`, `.zM`, `.rollRad`, `.pitchRad`, `.yawRad` | m, rad               | identity            |
+| Base          | `base`, as `tool`                                           | m, rad               | identity            |
 
 Each joint:
 
@@ -167,12 +178,13 @@ The example shows one joint; a profile lists six.
 
 ## Data Model
 
-| Entity  | Field       | Type / Unit                          | Range              | Notes                                        |
-|---------|-------------|--------------------------------------|--------------------|----------------------------------------------|
-| Profile | name        | bounded text                         | 1 to 48 characters | Shown by the tools                           |
-| Profile | config      | arm configuration                    | Part A             | What the arm is built from                   |
-| Config  | controllers | per joint, motor-controller settings | present or absent  | Absent: the lifecycle leaves the joint alone |
-| Config  | motors      | per joint, preset and motor settings | present or absent  | Absent: the lifecycle leaves the joint alone |
+| Entity  | Field       | Type / Unit                             | Range              | Notes                                        |
+|---------|-------------|-----------------------------------------|--------------------|----------------------------------------------|
+| Profile | name        | bounded text                            | 1 to 48 characters | Shown by the tools                           |
+| Profile | config      | arm configuration                       | Part A             | What the arm is built from                   |
+| Config  | controllers | per joint, motor-controller settings    | present or absent  | Absent: the lifecycle leaves the joint alone |
+| Config  | motors      | per joint, preset and motor settings    | present or absent  | Absent: the lifecycle leaves the joint alone |
+| Config  | geometry    | OPW lengths, signs, offsets, tool, base | —                  | The reference arm when absent                |
 
 ---
 
