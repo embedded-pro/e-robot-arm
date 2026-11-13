@@ -50,9 +50,9 @@ verify with `arm-none-eabi-objdump -d -C`.
 
 ### Naming Conventions
 
-- Classes/Methods `PascalCase` (`AccumulatorImpl`, `Add()`)
-- Member variables `camelCase` (`total`, `initialized`)
-- Namespaces lowercase (`example`, `platform`)
+- Classes/Methods `PascalCase` (`ControlLoopImpl`, `Start()`)
+- Member variables `camelCase` (`halfPeriod`, `overruns`)
+- Namespaces lowercase (`arm`, `platform`)
 
 ### Documentation-First — Behavioral Changes
 
@@ -64,17 +64,17 @@ image references are **not allowed**.
 ### Brace Style — Allman, 4-Space Indent
 
 ```cpp
-namespace example
+namespace arm
 {
-    class AccumulatorImpl
-        : public Accumulator
+    class ControlLoopImpl
+        : public ControlLoop
     {
     public:
-        void Add(int32_t value) override;
-        int32_t Total() const override;
+        void Start() override;
+        uint32_t OverrunCount() const override;
 
     private:
-        int32_t total{ 0 };
+        uint32_t overruns{ 0 };
     };
 }
 ```
@@ -98,23 +98,22 @@ namespace example
 Test files: `core/<component>/implementations/test/Test{ComponentName}.cpp`.
 
 ```cpp
-#include "core/example_component/implementations/AccumulatorImpl.hpp"
-#include <gtest/gtest.h>
+#include "core/joint_bus/interfaces/JointTransmission.hpp"
+#include "gmock/gmock.h"
 
 namespace
 {
-    class AccumulatorImplTest : public ::testing::Test
+    class JointTransmissionTest
+        : public testing::Test
     {
-    protected:
-        example::AccumulatorImpl accumulator;
+    public:
+        arm::JointTransmission geared{ 10.0f, arm::JointDirection::negative, foc::Radians{ 0.5f } };
     };
 }
 
-TEST_F(AccumulatorImplTest, accumulates_added_values)
+TEST_F(JointTransmissionTest, a_motor_reading_converts_back_to_the_joint)
 {
-    accumulator.Add(2);
-    accumulator.Add(3);
-    EXPECT_EQ(5, accumulator.Total());
+    EXPECT_NEAR(0.9f, geared.JointPosition(foc::Radians{ -4.0f }).Value(), 1.0e-5f);
 }
 ```
 

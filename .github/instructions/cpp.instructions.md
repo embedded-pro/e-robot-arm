@@ -47,9 +47,9 @@ functions defined in a header (class body or template), never on one defined in 
 
 ## Naming
 
-- Classes/Methods: `PascalCase` (e.g., `AccumulatorImpl`, `Add()`)
-- Member variables: `camelCase` (e.g., `total`, `initialized`)
-- Namespaces: lowercase (`example`, `platform`)
+- Classes/Methods: `PascalCase` (e.g., `ControlLoopImpl`, `Start()`)
+- Member variables: `camelCase` (e.g., `halfPeriod`, `overruns`)
+- Namespaces: lowercase (`arm`, `platform`)
 
 ## Style
 

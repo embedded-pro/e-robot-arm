@@ -2,15 +2,14 @@
 
 Concise, task-oriented guidance for AI coding agents. This repository is the
 controller of a six-joint robot arm driving e-foc motor nodes over CAN, bootstrapped
-from embedded-scaffold; the `example_*` components are the scaffold's examples and
-are replaced by the arm's own components. See [`CLAUDE.md`](../CLAUDE.md) for the
+from embedded-scaffold. See [`CLAUDE.md`](../CLAUDE.md) for the
 full guide — this file is a short summary.
 
 ## 1. Architecture (short)
 
 - `core/` — reusable libraries only (no entry points); `interfaces/` +
-  `implementations/` (+ `test/`). See `core/example_component/`.
-- `targets/` — application entry points (`example_app`) and platform
+  `implementations/` (+ `test/`) + `test_doubles/`. See `core/joint_bus/`.
+- `targets/` — application entry points (none yet) and platform
   implementations (`platform_implementations/{host,st,ti}`), selected by
   `E_ROBOT_ARM_TARGET_PLATFORM`.
 - `tools/` — host-side developer tools that reuse `core/` libraries.
@@ -43,7 +42,8 @@ Embedded builds use the board presets in `CMakePresets.json`.
 
 ## 4. Patterns
 
-- New component: copy `core/example_component/`; interfaces vs implementations split.
+- New component: design first in `documentation/design/`, then lay it out like
+  `core/joint_bus/` (interfaces, implementations with tests, test doubles).
 - Platform abstraction: application logic depends on interfaces; the platform
   `Board` (see `targets/platform_implementations/host/`) is injected via the
   constructor, never global state.

@@ -1,5 +1,4 @@
 add_library(e_robot_arm.integration_tests.steps OBJECT
-    AccumulatorSteps.cpp
     ArmSteps.cpp
 )
 

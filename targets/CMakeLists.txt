@@ -19,8 +19,3 @@ target_compile_definitions(e_robot_arm.platform_impl INTERFACE
 target_link_libraries(e_robot_arm.platform_impl INTERFACE
     e_robot_arm.platform_${E_ROBOT_ARM_TARGET_PLATFORM}
 )
-
-# example_app is a trivial host-only demo of using a core library directly.
-if (E_ROBOT_ARM_TARGET_PLATFORM STREQUAL "host")
-    add_subdirectory(example_app)
-endif()

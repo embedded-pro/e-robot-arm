@@ -6,7 +6,7 @@ endif()
 
 option(CMAKE_COMPILE_WARNING_AS_ERROR "Enable warnings-as-error" On)
 option(E_ROBOT_ARM_INCLUDE_DEFAULT_INIT "Include default initialization code; turn off when providing custom initialization" On)
-option(E_ROBOT_ARM_BUILD_TESTS "Enable build of the examples" Off)
+option(E_ROBOT_ARM_BUILD_TESTS "Enable build of the tests" Off)
 option(E_ROBOT_ARM_BUILD_SIMULATOR "Enable build of the Qt simulator applications" Off)
 option(E_ROBOT_ARM_BUILD_HIL_TESTS "Build hardware-in-the-loop tests" Off)
 option(E_ROBOT_ARM_EMBEDDED_BUILD "Building for an embedded target" Off)

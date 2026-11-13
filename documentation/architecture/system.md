@@ -2,7 +2,7 @@
 title: "System Architecture"
 type: architecture
 status: draft
-version: 0.9.0
+version: 0.10.0
 component: "system"
 date: 2026-11-12
 ---
@@ -12,17 +12,18 @@ date: 2026-11-12
 | Title     | System Architecture |
 | Type      | architecture        |
 | Status    | draft               |
-| Version   | 0.9.0               |
+| Version   | 0.10.0              |
 | Component | system              |
 | Date      | 2026-11-12          |
 
 > Target architecture of e-robot-arm. The repository is bootstrapped from embedded-scaffold: the joint bus
 > (`core/joint_bus/`, [design](../design/joint-bus.md)), the safety supervisor (`core/safety/`,
 > [design](../design/safety.md)), joint-space motion (`core/motion/`, [design](../design/joint-motion.md)) and the
-> control loop (`core/control_loop/`, [design](../design/control-loop.md)) exist, put together by `core/arm/` and
-> driven from a terminal by `tools/arm_console/` ([design](../design/arm-console.md)). The other components below
-> are planned in the [roadmap](../roadmap.md), one GitHub issue per phase. The scaffold's `example_*` components
-> stay until phase 1 removes them. Diagrams are Mermaid or ASCII art only.
+> control loop (`core/control_loop/`, [design](../design/control-loop.md)) and the lifecycle (`core/lifecycle/`,
+> [design](../design/arm-lifecycle.md)) exist, put together by `core/arm/` and driven by the console
+> (`tools/arm_console/`, [design](../design/arm-console.md)) and the simulator (`tools/simulator/`,
+> [design](../design/simulator.md)). The other components below are planned in the [roadmap](../roadmap.md), one
+> GitHub issue per phase. Diagrams are Mermaid or ASCII art only.
 
 ---
 

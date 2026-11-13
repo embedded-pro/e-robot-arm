@@ -5,25 +5,26 @@ develop and validate the firmware. They build only for the host platform.
 
 ```
 tools/
-└── example_tool/        # Worked example: a CLI that reuses a core library
-    └── Main.cpp
+├── arm_console/         # e-robot-arm-console: text commands to the arm
+├── arm_host/            # the arm on its own thread with its target; shared by console and simulator
+├── simulated_arm/       # six simulated e-foc joints on an in-process CAN bus
+└── simulator/           # the Qt simulator: view models (no Qt) and the app
 ```
 
-`example_tool` links the same `core/` library the firmware uses, demonstrating
-how tools share code with the application instead of duplicating it:
+The tools link the same `core/` libraries the firmware will, so they share code with the controller instead of
+duplicating it:
 
 ```
-e_robot_arm.tool.example 2 3 4   # -> total = 9
+e-robot-arm-console --bus simulated
 ```
 
 ## Qt GUI tools
 
-The devcontainer ships Qt6, so GUI tools (e.g. a simulator) are supported. See
-the commented `find_package(Qt6 ...)` block in `CMakeLists.txt` for how to enable
-them, and the README's "How to Run the Simulator" section for X-server setup.
+The simulator builds with the `host-qt` preset (Qt 6 with Qt Quick 3D); see `documentation/design/tool-simulator.md`
+and the README's "The simulator" section.
 
 ## Add a new tool
 
-1. Copy `example_tool/` to `tools/<your_tool>/`.
-2. Update the executable name and sources.
+1. Create `tools/<your_tool>/` with its `CMakeLists.txt`, sources and a `test/` folder, as `arm_console/` does.
+2. Keep its logic in a library tested without I/O, and its `main` thin.
 3. Add `add_subdirectory(<your_tool>)` to this file.

@@ -11,8 +11,8 @@ build system, dev container, CI and documentation scaffolding.
 > (`core/safety/`) guards it, joint motion (`core/motion/`) moves all six joints together to a target, and the
 > control loop (`core/control_loop/`) paces telemetry and setpoints, and the lifecycle (`core/lifecycle/`) walks the arm
 > through bring-up, enable and re-arm. `core/arm/` puts them together and the
-> `e-robot-arm-console` host tool drives them over any can-lite adapter; the rest of the arm is planned. The `example_*` components and `example_tool` are the scaffold's worked examples and will be
-> replaced by the arm's own components.
+> `e-robot-arm-console` host tool and the simulator drive them over any can-lite adapter; the rest of the arm is
+> planned in the [roadmap](documentation/roadmap.md).
 
 ## Overview
 
@@ -86,9 +86,9 @@ e-robot-arm/
 │   ├── safety/                #   joint limits and emergency stop in front of the joint bus
 │   ├── motion/                #   synchronised point-to-point joint moves
 │   ├── control_loop/          #   the fixed control period: telemetry, then setpoints
+│   ├── lifecycle/             #   the start-up sequence: bring up, enable, move, trip and re-arm
 │   ├── arm/                   #   the composition of the components above
-│   ├── platform_abstraction/  #   platform::Platform interface (+ mock)
-│   └── example_component/     #   scaffold example, to be replaced
+│   └── platform_abstraction/  #   platform::Platform interface (+ mock)
 ├── targets/                   # Application entry points + platform implementations (host, st, ti)
 ├── tools/                     # Host-side tools: simulator, arm_console, arm_host, simulated_arm
 ├── integration_tests/         # BDD integration tests (cucumber-cpp / Gherkin)
@@ -116,20 +116,22 @@ copies of embedded-infra-lib, can-lite and numerical-toolbox rather than fetchin
 
 ## Documentation
 
-| Document                                                                           | Description                                            |
-|------------------------------------------------------------------------------------|--------------------------------------------------------|
-| [Roadmap](documentation/roadmap.md)                                                | Phases, issues and decisions still open                |
-| [System Architecture](documentation/architecture/system.md)                        | Planned components, interfaces and decisions           |
-| [Joint Bus Design](documentation/design/joint-bus.md)                              | The six e-foc joints as one set of commands            |
-| [Safety Supervisor Design](documentation/design/safety.md)                         | Limits and emergency stop in front of the bus          |
-| [Joint Motion Design](documentation/design/joint-motion.md)                        | Synchronised point-to-point joint moves                |
-| [Control Loop Design](documentation/design/control-loop.md)                        | Telemetry and setpoint phases of each period           |
-| [Arm Composition and Console](documentation/design/arm-console.md)                 | Wiring the arm and driving it from a terminal          |
-| [Simulator Design](documentation/design/simulator.md)                              | The arm host, targets and threads behind the simulator |
-| [Simulator Screen Design](documentation/design/tool-simulator.md)                  | Layout, controls, flows and look of the simulator      |
-| [Documentation Templates](documentation/templates/)                                | Starting points for new documents                      |
-| [Performance Optimization Guide](documentation/performance-optimization/README.md) | Embedded performance techniques and cycle budgets      |
-| [AI Agent Instructions](CLAUDE.md)                                                 | Development guidelines, patterns and constraints       |
+| Document                                                                                 | Description                                            |
+|------------------------------------------------------------------------------------------|--------------------------------------------------------|
+| [Roadmap](documentation/roadmap.md)                                                      | Phases, issues and decisions still open                |
+| [System Architecture](documentation/architecture/system.md)                              | Planned components, interfaces and decisions           |
+| [Joint Bus Design](documentation/design/joint-bus.md)                                    | The six e-foc joints as one set of commands            |
+| [Safety Supervisor Design](documentation/design/safety.md)                               | Limits and emergency stop in front of the bus          |
+| [Joint Motion Design](documentation/design/joint-motion.md)                              | Synchronised point-to-point joint moves                |
+| [Control Loop Design](documentation/design/control-loop.md)                              | Telemetry and setpoint phases of each period           |
+| [Arm Lifecycle Design](documentation/design/arm-lifecycle.md)                            | The start-up sequence, trip and re-arm                 |
+| [Synchronised Trapezoidal Moves](documentation/theory/synchronised-trapezoidal-moves.md) | The theory behind joint motion's moves                 |
+| [Arm Composition and Console](documentation/design/arm-console.md)                       | Wiring the arm and driving it from a terminal          |
+| [Simulator Design](documentation/design/simulator.md)                                    | The arm host, targets and threads behind the simulator |
+| [Simulator Screen Design](documentation/design/tool-simulator.md)                        | Layout, controls, flows and look of the simulator      |
+| [Documentation Templates](documentation/templates/)                                      | Starting points for new documents                      |
+| [Performance Optimization Guide](documentation/performance-optimization/README.md)       | Embedded performance techniques and cycle budgets      |
+| [AI Agent Instructions](CLAUDE.md)                                                       | Development guidelines, patterns and constraints       |
 
 ## License
 

@@ -2,8 +2,7 @@
 
 This file is a concise, task-oriented guide for Claude and AI agents to be
 immediately productive in this repository. e-robot-arm was bootstrapped from
-embedded-scaffold: the `example_*` components and `example_tool` are the
-scaffold's worked examples and are replaced by the arm's own components as they arrive.
+embedded-scaffold, whose example components phase 1 removed.
 The planned architecture is in `documentation/architecture/system.md`; the phases still to build are in
 `documentation/roadmap.md`, one GitHub issue per phase (tracking issue #16). A change that completes or reshapes a
 phase updates the roadmap in the same pull request.
@@ -38,8 +37,6 @@ simulator runs the same core against e-foc virtual motors or the real arm.
     `ArmConfig`; heap-free.
   - `core/platform_abstraction/` — the `platform::Platform` interface (the seam
     between portable logic and hardware) plus a `PlatformMock` for tests.
-  - `core/example_component/` — a trivial `interfaces/` + `implementations/` +
-    `test/` example showing the component conventions.
 - `targets/` — application entry points and platform-specific implementations.
   - An application's `Main.cpp` includes `PLATFORM_IMPL_HEADER` (set per platform in
     `targets/CMakeLists.txt`) to construct the selected `PlatformImpl`, so one entry
@@ -62,7 +59,6 @@ simulator runs the same core against e-foc virtual motors or the real arm.
     the Qt Quick 3D scene as the `Simulator` QML module, built with the
     `host-qt` preset). Design: `documentation/design/simulator.md` and
     `tool-simulator.md`.
-  - `tools/example_tool/` — the scaffold's example.
 - `integration_tests/` — BDD tests (cucumber-cpp / Gherkin): `features/`, `steps/`,
   `support/`, `hooks/`, `main/`.
 - `infra/numerical-toolbox/` — generic numerical algorithms (PID, filters,
@@ -126,7 +122,7 @@ path. Host tools, simulators, and test code may use normal heap patterns.
 - No recursion in embedded/runtime paths (stack must be predictable)
 - No `virtual ~Dtor() = 0` (pure virtual destructors) — adds flash/RAM overhead.
   Use a protected non-virtual destructor on interfaces (see
-  `core/example_component/interfaces/Accumulator.hpp`).
+  `core/joint_bus/interfaces/JointBus.hpp`).
 
 ### Real-Time — Hot Paths
 
@@ -151,34 +147,34 @@ path. Host tools, simulators, and test code may use normal heap patterns.
 
 ## 4. Naming Conventions
 
-- **Classes/Methods**: `PascalCase` (`AccumulatorImpl`, `Add()`, `Total()`)
-- **Member variables**: `camelCase` (`total`, `initialized`)
-- **Namespaces**: lowercase (`example`, `platform`, `integration`)
+- **Classes/Methods**: `PascalCase` (`ControlLoopImpl`, `Start()`, `OverrunCount()`)
+- **Member variables**: `camelCase` (`halfPeriod`, `overruns`)
+- **Namespaces**: lowercase (`arm`, `platform`, `integration`)
 - **CMake libraries**: `e_robot_arm.<area>.<layer>`
 
 ## 5. Brace Style — Allman, 4-Space Indent
 
 ```cpp
-namespace example
+namespace arm
 {
-    class AccumulatorImpl
-        : public Accumulator
+    class ControlLoopImpl
+        : public ControlLoop
     {
     public:
-        void Add(int32_t value) override;
-        int32_t Total() const override;
+        void Start() override;
+        uint32_t OverrunCount() const override;
 
     private:
-        int32_t total{ 0 };
+        uint32_t overruns{ 0 };
     };
 }
 ```
 
 ## 6. Patterns & Code Locations
 
-- **New core component**: copy `core/example_component/`; keep interfaces in
-  `interfaces/`, implementations in `implementations/`, tests in
-  `implementations/test/`.
+- **New core component**: design it in `documentation/design/` first, then lay it out
+  like `core/joint_bus/`: interfaces in `interfaces/`, implementations in
+  `implementations/`, tests in `implementations/test/`, mocks in `test_doubles/`.
 - **New application**: write the logic in `core/` against `platform::Platform`; add a
   thin `targets/<app>/Main.cpp` that includes
   `PLATFORM_IMPL_HEADER` and constructs it. Unit-test the logic on the host with
@@ -187,9 +183,10 @@ namespace example
   each `targets/platform_implementations/<platform>/PlatformImpl`, and update the mock.
 - **New board**: copy a `PlatformImpl` (e.g. `st/`), wire its peripherals via
   `infra/hal/<vendor>`, and add a preset in `CMakePresets.json`.
-- **New tool**: copy `tools/example_tool/`.
+- **New tool**: lay it out like `tools/arm_console/`: logic in a library tested
+  without I/O, a thin `main/`.
 - **Include paths** are rooted at the repository root, e.g.
-  `#include "core/example_component/implementations/AccumulatorImpl.hpp"`.
+  `#include "core/joint_bus/implementations/JointBusImpl.hpp"`.
 
 ## 7. Testing
 

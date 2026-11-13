@@ -33,26 +33,27 @@ Tests are executable specifications. Write tests **before** implementation.
 ## Fixture Test Pattern (single type)
 
 ```cpp
-#include "core/example_component/implementations/AccumulatorImpl.hpp"
-#include <gtest/gtest.h>
+#include "core/joint_bus/interfaces/JointTransmission.hpp"
+#include "gmock/gmock.h"
 
 namespace
 {
-    class AccumulatorImplTest : public ::testing::Test
+    class JointTransmissionTest
+        : public testing::Test
     {
-    protected:
-        example::AccumulatorImpl accumulator;
+    public:
+        arm::JointTransmission geared{ 10.0f, arm::JointDirection::negative, foc::Radians{ 0.5f } };
     };
 }
 
-TEST_F(AccumulatorImplTest, accumulates_added_values)
+TEST_F(JointTransmissionTest, a_motor_reading_converts_back_to_the_joint)
 {
     // Arrange
+    const foc::Radians motor{ -4.0f };
     // Act
-    accumulator.Add(2);
-    accumulator.Add(3);
+    const auto joint = geared.JointPosition(motor);
     // Assert
-    EXPECT_EQ(5, accumulator.Total());
+    EXPECT_NEAR(0.9f, joint.Value(), 1.0e-5f);
 }
 ```
 
