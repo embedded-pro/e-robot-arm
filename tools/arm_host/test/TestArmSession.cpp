@@ -50,6 +50,15 @@ TEST_F(ArmSessionTest, publishes_a_ready_snapshot_of_its_target_at_once)
     EXPECT_FALSE(sink.snapshot.commanded.has_value());
 }
 
+TEST_F(ArmSessionTest, publishes_the_tool_pose_of_the_measured_joints)
+{
+    Execute(1, arm_host::CheckContracts{});
+
+    EXPECT_NEAR(0.02f, sink.snapshot.toolPose.x, 1.0e-4f);
+    EXPECT_NEAR(0.71f, sink.snapshot.toolPose.z, 1.0e-4f);
+    EXPECT_TRUE(sink.snapshot.singularities.elbow);
+}
+
 TEST_F(ArmSessionTest, publishes_a_snapshot_and_a_trace_sample_every_control_period)
 {
     ForwardTime(100ms);
