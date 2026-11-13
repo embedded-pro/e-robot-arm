@@ -1,12 +1,14 @@
 #ifndef CORE_JOINT_CONFIGURATOR_INTERFACES_CONTROLLER_SETTINGS_HPP
 #define CORE_JOINT_CONFIGURATOR_INTERFACES_CONTROLLER_SETTINGS_HPP
 
+#include "core/joint_bus/interfaces/JointBus.hpp"
 #include "e-foc-protocol/contract/FocMotorMessages.hpp"
 #include "numerical/math/Math.hpp"
 #include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 
 namespace arm
 {
@@ -54,6 +56,8 @@ namespace arm
             return gains[static_cast<std::size_t>(gain)];
         }
     };
+
+    using JointControllers = std::array<std::optional<ControllerSettings>, jointCount>;
 
     struct ControllerReading
     {
