@@ -31,10 +31,17 @@ namespace arm
         differs
     };
 
+    enum class ConfigurationPart : uint8_t
+    {
+        motor,
+        controller
+    };
+
     struct Misconfiguration
     {
         std::size_t joint;
         MisconfigurationReason reason;
+        ConfigurationPart part{ ConfigurationPart::controller };
 
         bool operator==(const Misconfiguration& other) const = default;
     };

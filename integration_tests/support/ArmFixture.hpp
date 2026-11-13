@@ -25,6 +25,8 @@ namespace integration
         std::vector<arm::JointCommand> failedCommands;
         std::optional<std::size_t> applied;
         std::optional<arm::ControllerReading> read;
+        std::optional<std::size_t> motorApplied;
+        std::optional<arm::MotorSettings> motorRead;
         bool configurationFailed{ false };
         uint32_t movesDone{ 0 };
         uint32_t movesAborted{ 0 };
@@ -37,6 +39,8 @@ namespace integration
         void OnCommandFailed(arm::JointCommand command, arm::CommandFailure failure) override;
         void OnApplied(std::size_t joint) override;
         void OnRead(std::size_t joint, const arm::ControllerReading& reading) override;
+        void OnMotorApplied(std::size_t joint) override;
+        void OnMotorRead(std::size_t joint, const arm::MotorSettings& motor) override;
         void OnConfigurationFailed(std::size_t joint, arm::ConfigurationFailure failure) override;
         void OnMoveDone() override;
         void OnMoveAborted() override;
@@ -45,7 +49,7 @@ namespace integration
     struct ArmFixture
         : infra::ClockFixture
     {
-        explicit ArmFixture(const arm::JointTransmissions& transmissions = {}, const arm::JointControllers& controllers = {});
+        explicit ArmFixture(const arm::JointTransmissions& transmissions = {}, const arm::JointControllers& controllers = {}, const arm::JointMotors& motors = {});
 
         simulation::SimulatedJoint& Joint(std::size_t number);
         void StartInPositionMode();

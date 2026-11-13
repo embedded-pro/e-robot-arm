@@ -11,11 +11,12 @@ namespace integration
 
         constexpr arm::JointNodeIds nodes{ 11, 12, 13, 14, 15, 16 };
 
-        arm::ArmConfig Config(const arm::JointTransmissions& transmissions, const arm::JointControllers& controllers)
+        arm::ArmConfig Config(const arm::JointTransmissions& transmissions, const arm::JointControllers& controllers, const arm::JointMotors& motors)
         {
             arm::ArmConfig config{ nodes, 3, {}, {}, 10ms };
             config.transmissions = transmissions;
             config.controllers = controllers;
+            config.motors = motors;
             for (auto& limit : config.positionLimits)
                 limit = { foc::Radians{ -std::numbers::pi_v<float> }, foc::Radians{ std::numbers::pi_v<float> } };
             for (auto& limit : config.motionLimits)
@@ -39,6 +40,16 @@ namespace integration
     void ArmEvents::OnRead(std::size_t, const arm::ControllerReading& reading)
     {
         read = reading;
+    }
+
+    void ArmEvents::OnMotorApplied(std::size_t joint)
+    {
+        motorApplied = joint;
+    }
+
+    void ArmEvents::OnMotorRead(std::size_t, const arm::MotorSettings& motor)
+    {
+        motorRead = motor;
     }
 
     void ArmEvents::OnConfigurationFailed(std::size_t, arm::ConfigurationFailure)
@@ -81,9 +92,9 @@ namespace integration
         ++movesAborted;
     }
 
-    ArmFixture::ArmFixture(const arm::JointTransmissions& transmissions, const arm::JointControllers& controllers)
+    ArmFixture::ArmFixture(const arm::JointTransmissions& transmissions, const arm::JointControllers& controllers, const arm::JointMotors& motors)
         : simulatedArm(nodes, infra::Duration{})
-        , arm(client.CategoryClient(), Config(transmissions, controllers))
+        , arm(client.CategoryClient(), Config(transmissions, controllers, motors))
     {}
 
     simulation::SimulatedJoint& ArmFixture::Joint(std::size_t number)

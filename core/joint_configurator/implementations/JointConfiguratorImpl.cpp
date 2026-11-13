@@ -28,14 +28,34 @@ namespace arm
 
     bool JointConfiguratorImpl::Apply(std::size_t newJoint, const ControllerSettings& newSettings)
     {
+        if (operation.has_value())
+            return false;
         settings = newSettings;
-        return Start(Operation::apply, newJoint);
+        return Start(Operation::applyController, newJoint);
     }
 
     bool JointConfiguratorImpl::Read(std::size_t newJoint)
     {
+        if (operation.has_value())
+            return false;
         reading = ControllerReading{};
-        return Start(Operation::read, newJoint);
+        return Start(Operation::readController, newJoint);
+    }
+
+    bool JointConfiguratorImpl::ApplyMotor(std::size_t newJoint, const MotorSettings& newMotor)
+    {
+        if (operation.has_value())
+            return false;
+        motor = newMotor;
+        return Start(Operation::applyMotor, newJoint);
+    }
+
+    bool JointConfiguratorImpl::ReadMotor(std::size_t newJoint)
+    {
+        if (operation.has_value())
+            return false;
+        motor = MotorSettings{};
+        return Start(Operation::readMotor, newJoint);
     }
 
     bool JointConfiguratorImpl::Busy() const
@@ -63,7 +83,7 @@ namespace arm
         if (!operation.has_value() || answering != joint || !ExpectsAlgorithms())
             return;
 
-        if (operation == Operation::read)
+        if (operation == Operation::readController)
         {
             reading.mode = algorithms.mode;
             reading.settings.current = algorithms.current;
@@ -76,12 +96,14 @@ namespace arm
 
     void JointConfiguratorImpl::OnParameter(std::size_t answering, can::FocParameter parameter, can::FocParameterValue value)
     {
-        const auto gain = ExpectedGain();
-        if (!operation.has_value() || answering != joint || !gain.has_value() || gainParameters[*gain] != parameter)
+        const auto index = ExpectedParameter();
+        if (!operation.has_value() || answering != joint || !index.has_value() || ParameterAt(*index) != parameter)
             return;
 
-        if (operation == Operation::read)
-            reading.settings.gains[*gain] = value.value;
+        if (operation == Operation::readController)
+            reading.settings.gains[*index] = value.value;
+        else if (operation == Operation::readMotor)
+            motor.values[*index] = value.value;
 
         Advance();
     }
@@ -101,12 +123,29 @@ namespace arm
 
     std::size_t JointConfiguratorImpl::StepCount() const
     {
-        return AlgorithmSteps() + gainCount;
+        return AlgorithmSteps() + (OnMotor() ? motorParameterCount : gainCount);
     }
 
     std::size_t JointConfiguratorImpl::AlgorithmSteps() const
     {
-        return operation == Operation::apply ? loops.size() : 1;
+        if (OnMotor())
+            return 0;
+        return operation == Operation::applyController ? loops.size() : 1;
+    }
+
+    bool JointConfiguratorImpl::Applies() const
+    {
+        return operation == Operation::applyController || operation == Operation::applyMotor;
+    }
+
+    bool JointConfiguratorImpl::OnMotor() const
+    {
+        return operation == Operation::applyMotor || operation == Operation::readMotor;
+    }
+
+    can::FocParameter JointConfiguratorImpl::ParameterAt(std::size_t index) const
+    {
+        return OnMotor() ? motorParameters[index] : gainParameters[index];
     }
 
     bool JointConfiguratorImpl::ExpectsAlgorithms() const
@@ -114,7 +153,7 @@ namespace arm
         return step < AlgorithmSteps();
     }
 
-    std::optional<std::size_t> JointConfiguratorImpl::ExpectedGain() const
+    std::optional<std::size_t> JointConfiguratorImpl::ExpectedParameter() const
     {
         if (ExpectsAlgorithms())
             return std::nullopt;
@@ -143,13 +182,13 @@ namespace arm
 
     bool JointConfiguratorImpl::SendCurrentStep()
     {
-        if (operation == Operation::apply && ExpectsAlgorithms())
-            return bus.SelectAlgorithm(joint, loops[step], AlgorithmOf(settings, step));
-        if (operation == Operation::apply)
-            return bus.SetParameter(joint, gainParameters[*ExpectedGain()], settings.gains[*ExpectedGain()]);
         if (ExpectsAlgorithms())
-            return bus.QueryAlgorithms(joint);
-        return bus.QueryParameter(joint, gainParameters[*ExpectedGain()]);
+            return Applies() ? bus.SelectAlgorithm(joint, loops[step], AlgorithmOf(settings, step)) : bus.QueryAlgorithms(joint);
+
+        const auto index = *ExpectedParameter();
+        if (!Applies())
+            return bus.QueryParameter(joint, ParameterAt(index));
+        return bus.SetParameter(joint, ParameterAt(index), OnMotor() ? motor.values[index] : settings.gains[index]);
     }
 
     void JointConfiguratorImpl::Advance()
@@ -166,20 +205,38 @@ namespace arm
         const auto finished = *operation;
         const auto finishedJoint = joint;
         const auto finishedReading = reading;
+        const auto finishedMotor = motor;
         operation.reset();
         retryTimer.Cancel();
         timeoutTimer.Cancel();
 
-        if (finished == Operation::apply)
-            NotifyObservers([finishedJoint](auto& observer)
-                {
-                    observer.OnApplied(finishedJoint);
-                });
-        else
-            NotifyObservers([finishedJoint, &finishedReading](auto& observer)
-                {
-                    observer.OnRead(finishedJoint, finishedReading);
-                });
+        switch (finished)
+        {
+            case Operation::applyController:
+                NotifyObservers([finishedJoint](auto& observer)
+                    {
+                        observer.OnApplied(finishedJoint);
+                    });
+                break;
+            case Operation::readController:
+                NotifyObservers([finishedJoint, &finishedReading](auto& observer)
+                    {
+                        observer.OnRead(finishedJoint, finishedReading);
+                    });
+                break;
+            case Operation::applyMotor:
+                NotifyObservers([finishedJoint](auto& observer)
+                    {
+                        observer.OnMotorApplied(finishedJoint);
+                    });
+                break;
+            case Operation::readMotor:
+                NotifyObservers([finishedJoint, &finishedMotor](auto& observer)
+                    {
+                        observer.OnMotorRead(finishedJoint, finishedMotor);
+                    });
+                break;
+        }
     }
 
     void JointConfiguratorImpl::Fail(ConfigurationFailure failure)

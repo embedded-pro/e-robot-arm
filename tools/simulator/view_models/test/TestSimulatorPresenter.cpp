@@ -304,7 +304,7 @@ TEST_F(SimulatorPresenterTest, a_misconfigured_arm_names_the_joint_and_offers_br
     snapshot.state = arm::ArmState::misconfigured;
     snapshot.misconfiguration = arm::Misconfiguration{ 2, arm::MisconfigurationReason::failed };
     presenter.Refresh(snapshot, {});
-    EXPECT_EQ("Misconfigured: J3 could not be configured", presenter.Status().stage);
+    EXPECT_EQ("Misconfigured: J3 motor controller could not be configured", presenter.Status().stage);
     EXPECT_EQ(ui::theme::StatusLevel::Fault, presenter.Status().stageLevel);
     EXPECT_TRUE(presenter.State(simulator::Control::bringUp).enabled);
     EXPECT_EQ("Misconfigured: bring the arm up again", presenter.State(simulator::Control::enable).reason);

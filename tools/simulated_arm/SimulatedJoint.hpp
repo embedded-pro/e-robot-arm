@@ -3,6 +3,7 @@
 
 #include "can-lite/server/CanProtocolServer.hpp"
 #include "core/joint_configurator/interfaces/ControllerSettings.hpp"
+#include "core/joint_configurator/interfaces/MotorSettings.hpp"
 #include "e-foc-protocol/server/FocMotorCategoryServer.hpp"
 #include "infra/timer/Timer.hpp"
 #include "tools/simulated_arm/VirtualCanBus.hpp"
@@ -29,6 +30,7 @@ namespace simulation
         foc::Radians Target() const;
         uint32_t EmergencyStops() const;
         arm::ControllerSettings Controller() const;
+        arm::MotorSettings Motor() const;
         void IgnoreParameter(can::FocParameter parameter);
 
     private:

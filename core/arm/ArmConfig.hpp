@@ -3,6 +3,7 @@
 
 #include "core/joint_bus/interfaces/JointBus.hpp"
 #include "core/joint_configurator/interfaces/ControllerSettings.hpp"
+#include "core/joint_configurator/interfaces/MotorSettings.hpp"
 #include "core/motion/interfaces/JointMotion.hpp"
 #include "e-foc-protocol/contract/FocMotorMessages.hpp"
 #include "infra/timer/Timer.hpp"
@@ -21,6 +22,7 @@ namespace arm
         JointTransmissions transmissions{};
         can::FocMotorMode enableMode{ can::FocMotorMode::position };
         JointControllers controllers{};
+        JointMotors motors{};
     };
 }
 

@@ -165,7 +165,7 @@ namespace arm
         static constexpr Machine::Rules Rules();
 
         ArmLifecycleImpl(SafetySupervisor& safety, JointMotion& motion, JointConfigurator& configurator, can::FocMotorMode enableMode,
-            const JointControllers& controllers);
+            const JointControllers& controllers, const JointMotors& motors = {});
 
         bool BringUp() override;
         bool Enable() override;
@@ -187,6 +187,8 @@ namespace arm
         void OnMoveAborted() override;
         void OnApplied(std::size_t joint) override;
         void OnRead(std::size_t joint, const ControllerReading& reading) override;
+        void OnMotorApplied(std::size_t joint) override;
+        void OnMotorRead(std::size_t joint, const MotorSettings& motor) override;
         void OnConfigurationFailed(std::size_t joint, ConfigurationFailure failure) override;
 
         class StateReporter
@@ -207,7 +209,10 @@ namespace arm
         void SelectMode();
         void StartJoints();
         void StopJoints();
-        bool HasControllers() const;
+        bool HasConfiguration() const;
+        bool Configures(std::size_t configurationStep) const;
+        bool WorkingOn(std::size_t joint, ConfigurationPart part) const;
+        void Verified();
         void StartConfiguring();
         void ConfigureNext();
         void Misconfigure(MisconfigurationReason reason);
@@ -217,8 +222,9 @@ namespace arm
         JointConfigurator& configurator;
         can::FocMotorMode enableMode;
         JointControllers controllers;
-        std::size_t nextJoint{ 0 };
-        std::optional<std::size_t> configuringJoint;
+        JointMotors motors;
+        std::size_t nextStep{ 0 };
+        std::optional<std::size_t> configuringStep;
         std::optional<Misconfiguration> misconfiguration;
         Machine::WithStorage<4> fsm;
         StateReporter reporter{ *this, fsm };

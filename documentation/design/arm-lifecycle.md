@@ -2,7 +2,7 @@
 title: "Arm Lifecycle Design"
 type: design
 status: draft
-version: 0.2.0
+version: 0.3.0
 component: "lifecycle"
 date: 2026-11-13
 ---
@@ -12,7 +12,7 @@ date: 2026-11-13
 | Title     | Arm Lifecycle Design |
 | Type      | design               |
 | Status    | draft                |
-| Version   | 0.2.0                |
+| Version   | 0.3.0                |
 | Component | lifecycle            |
 | Date      | 2026-11-13           |
 
@@ -97,12 +97,13 @@ delivered while disabling emergency-stops the arm and trips it.
 
 ### Part D — Configuring
 
-The configuration may name a motor controller for each joint ([arm-profile.md](arm-profile.md)). In Configuring the
-lifecycle takes the named joints in order: it applies the joint's settings through the joint configurator, reads
-them back and compares them ([joint-configurator.md](joint-configurator.md) Part C). When every named joint matches,
-the arm is Ready. An apply or read that fails, or a read-back that differs, ends in Misconfigured with that joint and
-the reason; bring up starts the whole sequence again. A joint the configuration does not name keeps what its node
-holds.
+The configuration may name a motor and a motor controller for each joint ([arm-profile.md](arm-profile.md)). In
+Configuring the lifecycle takes the named joints in order, and for each its motor first, then its motor controller,
+since the node designs its loops from the motor: it applies the settings through the joint configurator, reads them
+back and compares them ([joint-configurator.md](joint-configurator.md) Parts C and D). When every named joint matches,
+the arm is Ready. An apply or read that fails, or a read-back that differs, ends in Misconfigured with that joint,
+the part (motor or motor controller) and the reason; bring up starts the whole sequence again. A joint the
+configuration does not name keeps what its node holds.
 
 Configuring is entered each time the arm reaches calibration again, after a re-arm included, so a node that was
 power-cycled gets its settings back before the arm can be enabled. A configurator outcome that arrives after the arm

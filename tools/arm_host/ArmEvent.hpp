@@ -3,6 +3,7 @@
 
 #include "core/joint_bus/interfaces/JointBus.hpp"
 #include "core/joint_configurator/interfaces/ControllerSettings.hpp"
+#include "core/joint_configurator/interfaces/MotorSettings.hpp"
 #include "core/lifecycle/interfaces/ArmLifecycle.hpp"
 #include "infra/timer/Timer.hpp"
 #include <cstddef>
@@ -28,6 +29,8 @@ namespace arm_host
         controllerApplied,
         controllerRead,
         controllerFailed,
+        motorApplied,
+        motorRead,
         profileLoaded
     };
 
@@ -45,6 +48,7 @@ namespace arm_host
         can::ContractCompatibility contracts{ can::ContractCompatibility::unknown };
         arm::ArmState state{ arm::ArmState::unpowered };
         arm::ControllerReading controller{};
+        arm::MotorSettings motor{};
     };
 }
 

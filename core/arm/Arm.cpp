@@ -7,7 +7,7 @@ namespace arm
         , safety(jointBus, config.positionLimits)
         , motion(safety, config.positionLimits, config.motionLimits, config.controlPeriod)
         , configurator(safety, lifecycle)
-        , lifecycle(safety, motion, configurator, config.enableMode, config.controllers)
+        , lifecycle(safety, motion, configurator, config.enableMode, config.controllers, config.motors)
         , loop(safety, config.controlPeriod, [this]()
               {
                   motion.Step();

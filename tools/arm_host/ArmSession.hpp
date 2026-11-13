@@ -46,6 +46,8 @@ namespace arm_host
             void OnStateChanged(arm::ArmState state) override;
             void OnApplied(std::size_t joint) override;
             void OnRead(std::size_t joint, const arm::ControllerReading& reading) override;
+            void OnMotorApplied(std::size_t joint) override;
+            void OnMotorRead(std::size_t joint, const arm::MotorSettings& motor) override;
             void OnConfigurationFailed(std::size_t joint, arm::ConfigurationFailure failure) override;
 
             ArmSession& session;

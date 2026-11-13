@@ -12,4 +12,5 @@ target_link_libraries(e_robot_arm.joint_configurator.interfaces INTERFACE
 target_sources(e_robot_arm.joint_configurator.interfaces PRIVATE
     ControllerSettings.hpp
     JointConfigurator.hpp
+    MotorSettings.hpp
 )

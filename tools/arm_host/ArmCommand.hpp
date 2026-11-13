@@ -3,6 +3,7 @@
 
 #include "core/joint_bus/interfaces/JointBus.hpp"
 #include "core/joint_configurator/interfaces/ControllerSettings.hpp"
+#include "core/joint_configurator/interfaces/MotorSettings.hpp"
 #include "core/lifecycle/interfaces/ArmLifecycle.hpp"
 #include <cstddef>
 #include <string_view>
@@ -72,12 +73,23 @@ namespace arm_host
         std::size_t joint;
     };
 
+    struct ApplyMotor
+    {
+        std::size_t joint;
+        arm::MotorSettings settings;
+    };
+
+    struct ReadMotor
+    {
+        std::size_t joint;
+    };
+
     using ArmCommand = std::variant<CheckContracts, SelectMode, StartJoints, StopJoints, ClearFaults, EmergencyStop, Rearm, MoveTo, AbortMove, InjectFault, SilenceJoint,
-        BringUp, Enable, Disable, ApplyController, ReadController>;
+        BringUp, Enable, Disable, ApplyController, ReadController, ApplyMotor, ReadMotor>;
 
     std::string_view CommandName(const ArmCommand& command);
     std::string_view StateName(arm::ArmState state);
-    std::string_view MisconfigurationText(arm::MisconfigurationReason reason);
+    std::string_view MisconfigurationText(const arm::Misconfiguration& misconfiguration);
 }
 
 #endif
