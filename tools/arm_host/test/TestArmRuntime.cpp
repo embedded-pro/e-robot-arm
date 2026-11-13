@@ -173,3 +173,13 @@ TEST_F(ArmRuntimeTest, refuses_to_load_a_profile_while_the_arm_runs_or_a_switch_
     EXPECT_EQ("switching target", sink.Last()->reason);
     EXPECT_EQ(2u, opened.size());
 }
+
+TEST_F(ArmRuntimeTest, a_profile_loaded_on_a_target_that_does_not_open_reports_the_target_failed)
+{
+    runtime.emplace(arm_host::test::Profile(), Opener(), sink, realArm);
+    runtime->LoadProfile(9, arm_host::test::Profile());
+
+    EXPECT_EQ(ArmEventKind::targetFailed, sink.Last()->kind);
+    EXPECT_EQ(9u, sink.Last()->command);
+    EXPECT_EQ("the adapter could not be opened", sink.Last()->reason);
+}

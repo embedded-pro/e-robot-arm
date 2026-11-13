@@ -1,4 +1,5 @@
 #include "tools/arm_host/ArmHost.hpp"
+#include "tools/arm_host/DefaultArmConfig.hpp"
 #include "tools/arm_host/test/ArmHostTestSupport.hpp"
 #include "gmock/gmock.h"
 #include <chrono>
@@ -71,4 +72,23 @@ TEST_F(ArmHostTest, shuts_down_with_commands_still_queued)
     host.reset();
 
     EXPECT_FALSE(host.has_value());
+}
+
+TEST_F(ArmHostTest, a_loaded_profile_rebuilds_the_arm_and_answers_with_its_id)
+{
+    const auto id = host->LoadProfile(arm_host::DefaultArmProfile({ 31, 32, 33, 34, 35, 36 }));
+
+    EXPECT_TRUE(Eventually([this, id]()
+        {
+            for (const auto& event : host->TakeEvents())
+                events.push_back(event);
+            return std::ranges::any_of(events, [id](const arm_host::ArmEvent& event)
+                {
+                    return event.command == id && event.kind == arm_host::ArmEventKind::profileLoaded;
+                });
+        }));
+    EXPECT_TRUE(Eventually([this]()
+        {
+            return host->Snapshot().profileName == "generic six-joint" && host->Snapshot().config.nodes[0] == 31;
+        }));
 }

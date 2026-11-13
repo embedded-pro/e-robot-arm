@@ -27,11 +27,12 @@ TEST_F(ConsoleOptionsTest, defaults_to_the_virtual_arm_bus_at_one_megabit_with_n
     EXPECT_EQ((arm::JointNodeIds{ 1, 2, 3, 4, 5, 6 }), options->nodes);
 }
 
-TEST_F(ConsoleOptionsTest, reads_the_bus_the_bitrate_and_the_nodes)
+TEST_F(ConsoleOptionsTest, reads_the_bus_the_bitrate_the_nodes_and_the_profile)
 {
-    const auto options = Parse({ "--bus", "can0", "--bitrate", "500000", "--nodes", "11,12,13,14,15,16" });
+    const auto options = Parse({ "--bus", "can0", "--bitrate", "500000", "--nodes", "11,12,13,14,15,16", "--profile", "bench.json" });
 
     ASSERT_TRUE(options.has_value());
+    EXPECT_EQ("bench.json", options->profile);
     EXPECT_EQ("can0", options->bus);
     EXPECT_EQ(500000u, options->bitrate);
     EXPECT_EQ((arm::JointNodeIds{ 11, 12, 13, 14, 15, 16 }), options->nodes);
