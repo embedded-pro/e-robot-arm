@@ -12,4 +12,9 @@ namespace arm_host
             limit = { foc::RadiansPerSecond{ 1.0f }, foc::RadiansPerSecondSquared{ 2.0f } };
         return config;
     }
+
+    arm::ArmProfile DefaultArmProfile(const arm::JointNodeIds& nodes)
+    {
+        return { "generic six-joint", DefaultArmConfig(nodes) };
+    }
 }

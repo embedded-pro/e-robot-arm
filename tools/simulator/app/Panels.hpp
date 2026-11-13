@@ -3,6 +3,7 @@
 
 #include "tools/arm_host/ArmSnapshot.hpp"
 #include "tools/simulator/view_models/EventLog.hpp"
+#include "tools/simulator/view_models/ProfileView.hpp"
 #include "ui/backend/qt/QtFormView.hpp"
 #include "ui/backend/qt/QtPaintedWidget.hpp"
 #include "ui/scope/ScopeCore.hpp"
@@ -14,6 +15,7 @@ class QComboBox;
 class QLabel;
 class QPlainTextEdit;
 class QPushButton;
+class QTableWidget;
 
 namespace simulator
 {
@@ -47,6 +49,25 @@ namespace simulator
     private:
         QLabel* state;
         ui::theme::StatusLevel level{ ui::theme::StatusLevel::Neutral };
+    };
+
+    class ProfilePanel
+        : public QWidget
+    {
+        Q_OBJECT
+
+    public:
+        explicit ProfilePanel(QWidget* parent);
+
+        void Update(const ProfileView& view, const QString& path);
+
+    private:
+        QLabel* name;
+        QLabel* file;
+        QLabel* summary;
+        QTableWidget* table;
+        ProfileView shown;
+        QString shownPath;
     };
 
     class ScopePanel

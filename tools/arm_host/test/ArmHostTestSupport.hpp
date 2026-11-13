@@ -2,6 +2,7 @@
 #define TOOLS_ARM_HOST_TEST_ARM_HOST_TEST_SUPPORT_HPP
 
 #include "core/arm/Arm.hpp"
+#include "core/arm_profile/ArmProfile.hpp"
 #include "tools/arm_host/ArmSnapshot.hpp"
 #include <algorithm>
 #include <chrono>
@@ -20,6 +21,11 @@ namespace arm_host::test
         for (auto& limit : config.motionLimits)
             limit = { foc::RadiansPerSecond{ 1.0f }, foc::RadiansPerSecondSquared{ 2.0f } };
         return config;
+    }
+
+    inline arm::ArmProfile Profile(const arm::ArmConfig& config = Config())
+    {
+        return { "test arm", config };
     }
 
     class RecordingSink

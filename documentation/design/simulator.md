@@ -2,7 +2,7 @@
 title: "Simulator Design"
 type: design
 status: draft
-version: 0.5.0
+version: 0.6.0
 component: "simulator"
 date: 2026-11-12
 ---
@@ -12,7 +12,7 @@ date: 2026-11-12
 | Title     | Simulator Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.5.0            |
+| Version   | 0.6.0            |
 | Component | simulator        |
 | Date      | 2026-11-12       |
 
@@ -92,6 +92,8 @@ A target switch builds everything anew; nothing carries over:
 3. The arm, its client and the adapter are destroyed; the new target, client and arm are built.
 4. The new arm starts stopped, untripped and with its contracts unchecked.
 
+A target is opened for the node ids of the profile in effect, so simulated joints answer on the profile's nodes.
+
 ### Part D — Simulated joints
 
 A `SimulatedJoint` is an e-foc node on the in-process bus (a `FocMotorCategoryServer`), moved from
@@ -111,6 +113,7 @@ A `SimulatedJoint` is an e-foc node on the in-process bus (a `FocMotorCategorySe
 |------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `Post(command)`        | One of: bring up, enable, disable, check contracts, select position mode, start, stop, clear faults, emergency stop, re-arm, move, abort, inject fault, silence joint. Its result arrives as an event. Bring up, enable, disable, re-arm and move go through the arm's lifecycle ([arm-lifecycle.md](arm-lifecycle.md)), so a move is refused unless the arm is enabled |
 | `SwitchTarget(target)` | Part C; its result arrives as an event                                                                                                                                                                                                                                                                                                                                  |
+| `LoadProfile(profile)` | Rebuilds the arm from the profile on the current target, as a target switch does; refused while the arm is enabling, enabled, moving or disabling, or while a target switch runs. Answered `profileLoaded` or `refused` with the reason ([arm-profile.md](arm-profile.md))                                                                                              |
 | `Snapshot()`           | A copy of the latest snapshot                                                                                                                                                                                                                                                                                                                                           |
 | `TakeEvents()`         | Every event since the last call, in order                                                                                                                                                                                                                                                                                                                               |
 | `TakeTrace()`          | Every trace sample since the last call, in order                                                                                                                                                                                                                                                                                                                        |
@@ -207,6 +210,7 @@ The commanded positions are joint motion's last sampled setpoint. Joint motion g
 | Snapshot        | joint liveness        | 6 × answered, silent                | —                     | From the joint bus                      |
 | Snapshot        | contracts             | unchecked, compatible, incompatible | —                     | Per joint                               |
 | Snapshot        | tripped, moving, loop | bool                                | —                     |                                         |
+| Snapshot        | profile               | name and arm configuration          | —                     | The profile in effect                   |
 | Event queue     | capacity              | events                              | 512                   | Oldest dropped when full; drops counted |
 | Trace queue     | capacity              | samples                             | 1024 (10 s at 100 Hz) | Oldest dropped when full; drops counted |
 | Simulated joint | τ                     | s                                   | ≥ 0                   | 0 follows exactly; simulator 0.05       |
@@ -223,6 +227,7 @@ stateDiagram-v2
     Running --> Switching : switch target, no move running
     Switching --> Building : old target stopped and destroyed
     Failed --> Building : switch target
+    Running --> Building : load profile, arm not enabled
     Running --> [*] : shut down
 ```
 

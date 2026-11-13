@@ -48,6 +48,8 @@ namespace arm_console
                     return false;
                 options.bitrate = *bitrate;
             }
+            else if (name == "--profile")
+                options.profile = value;
             else if (name == "--nodes")
             {
                 const auto nodes = Nodes(value);
@@ -74,6 +76,6 @@ namespace arm_console
 
     std::string OptionsUsage()
     {
-        return "usage: e-robot-arm-console [--bus virtual:<name>|<socketcan interface>|<serial port>] [--bitrate <bits/s>] [--nodes n1,n2,n3,n4,n5,n6]";
+        return "usage: e-robot-arm-console [--bus virtual:<name>|<socketcan interface>|<serial port>] [--bitrate <bits/s>] [--nodes n1,n2,n3,n4,n5,n6] [--profile <file>]";
     }
 }

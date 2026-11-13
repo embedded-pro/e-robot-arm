@@ -40,9 +40,9 @@ namespace arm_host
         return nullptr;
     }
 
-    TargetOpener HostTargetOpener(const arm::JointNodeIds& nodes, infra::Duration simulatedTimeConstant, uint32_t bitrate)
+    TargetOpener HostTargetOpener(infra::Duration simulatedTimeConstant, uint32_t bitrate)
     {
-        return [nodes, simulatedTimeConstant, bitrate](const ArmTarget& target) -> std::unique_ptr<ArmTargetLink>
+        return [simulatedTimeConstant, bitrate](const ArmTarget& target, const arm::JointNodeIds& nodes) -> std::unique_ptr<ArmTargetLink>
         {
             if (target.kind == TargetKind::simulated)
                 return std::make_unique<SimulatedTargetLink>(nodes, simulatedTimeConstant);

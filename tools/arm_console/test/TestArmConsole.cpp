@@ -1,6 +1,9 @@
 #include "tools/arm_console/ArmConsole.hpp"
+#include "tools/arm_host/DefaultArmConfig.hpp"
+#include "tools/arm_host/ProfileFile.hpp"
 #include "tools/arm_host/test_doubles/ArmCommandsMock.hpp"
 #include "gmock/gmock.h"
+#include <filesystem>
 #include <sstream>
 
 namespace
@@ -131,4 +134,31 @@ TEST_F(ArmConsoleTest, events_print_as_one_line_each_with_joints_numbered_from_o
 TEST_F(ArmConsoleTest, quit_ends_the_console)
 {
     EXPECT_EQ(arm_console::Outcome::quit, console.Execute("quit").outcome);
+}
+
+TEST_F(ArmConsoleTest, load_reads_a_profile_file_and_save_writes_the_profile_in_effect)
+{
+    const auto path = std::filesystem::temp_directory_path() / "e-robot-arm-console-test.json";
+    arm_host::ArmSnapshot snapshot{};
+    snapshot.profileName = "bench arm";
+    snapshot.config = arm_host::DefaultArmConfig({ 31, 32, 33, 34, 35, 36 });
+    EXPECT_CALL(arm, Snapshot()).WillRepeatedly(Return(snapshot));
+
+    EXPECT_EQ("saved " + path.string() + "\n", Run("save " + path.string()));
+
+    EXPECT_CALL(arm, LoadProfile(_)).WillOnce(Invoke([](const arm::ArmProfile& profile)
+        {
+            EXPECT_EQ("bench arm", std::string(profile.name.begin(), profile.name.end()));
+            EXPECT_EQ(31, profile.config.nodes[0]);
+            return 12u;
+        }));
+    EXPECT_EQ(12u, console.Execute("load " + path.string()).command);
+    EXPECT_EQ("profile loaded: bench arm\n", Printed({ .kind = ArmEventKind::profileLoaded, .command = 12 }));
+    std::filesystem::remove(path);
+}
+
+TEST_F(ArmConsoleTest, a_profile_that_cannot_be_read_is_refused_with_the_reason)
+{
+    EXPECT_EQ("profile refused: cannot open /no/such/profile.json\n", Run("load /no/such/profile.json"));
+    EXPECT_THAT(Run("load"), HasSubstr("usage:"));
 }

@@ -22,6 +22,8 @@ target_sources(e_robot_arm.tool.simulator.view_models PRIVATE
     JointRows.hpp
     MotorControllerPresenter.cpp
     MotorControllerPresenter.hpp
+    ProfileView.cpp
+    ProfileView.hpp
     SimulatorPresenter.cpp
     SimulatorPresenter.hpp
 )

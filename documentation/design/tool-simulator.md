@@ -2,7 +2,7 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.7.0
+version: 0.8.0
 component: "tool-simulator"
 date: 2026-11-12
 ---
@@ -12,7 +12,7 @@ date: 2026-11-12
 | Title     | Simulator Screen Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.7.0                   |
+| Version   | 0.8.0                   |
 | Component | tool-simulator          |
 | Date      | 2026-11-12              |
 
@@ -242,6 +242,37 @@ The form's **state** is shown under the gains: **Read** (as the joint reported i
 with every differing item listed in the hint, for example "Speed bandwidth: applied 150, joint reports 120"), or
 **Failed** (`Fault`, with the reason). Selecting another joint reads it.
 
+### Part I — Profile panel and files (phase 8b)
+
+A **Profile** dock, tabbed with the Arm and Motor Controller docks, shows the arm profile in effect
+([arm-profile.md](arm-profile.md)) as the snapshot reports it. It is read-only: a profile is edited as a file and
+loaded, so the file stays the single description of the arm.
+
+```text
+┌ Profile ─────────────────────────────────────────────────────────────────────────────┐
+│ generic six-joint                                    /home/me/arms/bench.json        │
+│ Control period 10 ms · Enable mode position · Silent after 3 · Command timeout 3      │
+│ Joint Node Ratio Dir  Offset rad  Lower rad  Upper rad  Speed rad/s  Accel rad/s²  Motor controller │
+│ J1      11  50.0  +      0.000     -3.142     3.142       1.000        2.000    PID / PID / LQR       │
+│ J2      12   1.0  −      0.000     -1.571     1.571       1.000        2.000    node's own            │
+│ …                                                                                     │
+└──────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+| Menu item            | Shortcut     | Enabled when      | Does                                                         |
+|----------------------|--------------|-------------------|--------------------------------------------------------------|
+| File → Open Profile… | Ctrl+O       | A target is built | Reads a profile file and loads it into the arm host          |
+| File → Save Profile… | Ctrl+Shift+S | A target is built | Writes the profile in effect, under the name and path chosen |
+
+**Open** reads the file first. A file that cannot be read or that the profile reader refuses shows one dialog with
+the reader's message, which names the item (a broken profile blocks the task, so it is modal); nothing is loaded.
+On the real arm a confirmation names the profile and the adapter and says that the arm is rebuilt and must be
+brought up again. Loading rebuilds the arm on the same target ([simulator.md](simulator.md) Part E): it is refused
+while the arm is enabling, enabled, moving or disabling, with that reason in the status bar and the log, and
+otherwise the arm starts again unpowered and Bring Up configures the motor controllers the profile names. The Move
+form's ranges follow the loaded limits. The path of the last profile opened or saved is kept and the profile is
+loaded again on launch.
+
 ---
 
 ## Interfaces
@@ -330,3 +361,4 @@ sequenceDiagram
 | 4 | Naming every joint an emergency stop did not reach                                           | Per-joint delivery reports from the joint bus         | phase 1a (#17)                                                     |
 | 5 | Bus load and period overruns in the status strip                                             | Control-loop overrun count, bus-load estimate         | overruns shown (phase 1d); bus load open                           |
 | 6 | Marking a differing gain on its field rather than in the hint                                | A per-field status in ui-cpp forms                    | open: needs a ui-cpp primitive                                     |
+| 7 | Editing a profile in the simulator                                                           | A profile editor form, a file edited outside          | decided: edited as a file, shown read-only                         |

@@ -51,13 +51,14 @@ namespace arm_host
         }
     }
 
-    ArmSession::ArmSession(hal::Can& can, const arm::ArmConfig& config, const ArmTarget& target, ArmSessionSink& sink, simulation::SimulatedArm* simulation)
-        : client(can)
-        , arm(client.CategoryClient(), config)
+    ArmSession::ArmSession(hal::Can& can, const arm::ArmProfile& profile, const ArmTarget& target, ArmSessionSink& sink, simulation::SimulatedArm* simulation)
+        : profile(profile)
+        , client(can)
+        , arm(client.CategoryClient(), profile.config)
         , target(target)
         , sink(sink)
         , simulation(simulation)
-        , publishTimer(config.controlPeriod, [this]()
+        , publishTimer(profile.config.controlPeriod, [this]()
               {
                   Publish();
               })
@@ -125,6 +126,12 @@ namespace arm_host
     bool ArmSession::Moving() const
     {
         return arm.Motion().Moving();
+    }
+
+    bool ArmSession::Running() const
+    {
+        const auto state = arm.Lifecycle().State();
+        return state == arm::ArmState::enabling || state == arm::ArmState::enabled || state == arm::ArmState::moving || state == arm::ArmState::disabling;
     }
 
     struct ArmSession::Runner
@@ -365,6 +372,8 @@ namespace arm_host
         snapshot.state = arm.Lifecycle().State();
         snapshot.misconfiguration = arm.Lifecycle().MisconfiguredJoint();
         snapshot.overruns = arm.Loop().OverrunCount();
+        snapshot.profileName.assign(profile.name.begin(), profile.name.end());
+        snapshot.config = profile.config;
         sample.commanded = snapshot.commanded.value_or(sample.measured);
 
         sink.OnSnapshot(snapshot);

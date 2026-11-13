@@ -182,6 +182,7 @@ namespace simulator
         for (const auto& event : events)
             Handle(event);
 
+        FollowLimits();
         rows = JointRows(snapshot, limits);
         scene.Update(snapshot);
         UpdateStatus();
@@ -326,6 +327,35 @@ namespace simulator
         shell.SetStatus(std::format("{} requested…", name));
     }
 
+    void SimulatorPresenter::LoadProfile(const arm::ArmProfile& profile)
+    {
+        const auto name = std::format("Load profile {}", std::string_view{ profile.name.data(), profile.name.size() });
+        pending[arm.LoadProfile(profile)] = name;
+        shell.SetStatus(std::format("{} requested…", name));
+    }
+
+    void SimulatorPresenter::FollowLimits()
+    {
+        if (!snapshot.targetReady || snapshot.profileName.empty())
+            return;
+
+        const auto& loaded = snapshot.config.positionLimits;
+        const bool same = std::ranges::equal(loaded, limits, [](const arm::JointLimit& left, const arm::JointLimit& right)
+            {
+                return left.lower == right.lower && left.upper == right.upper;
+            });
+        if (same)
+            return;
+
+        limits = loaded;
+        for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+        {
+            forms.moveFields[joint].number.minimum = limits[joint].lower.Value();
+            forms.moveFields[joint].number.maximum = limits[joint].upper.Value();
+        }
+        moveView.Build(forms.moveModel);
+    }
+
     void SimulatorPresenter::Handle(const arm_host::ArmEvent& event)
     {
         log.Add(event);
@@ -335,10 +365,10 @@ namespace simulator
 
         using enum arm_host::ArmEventKind;
         const auto request = pending.find(event.command);
-        if (request == pending.end() || (event.kind != accepted && event.kind != refused && event.kind != targetReady && event.kind != targetFailed))
+        if (request == pending.end() || (event.kind != accepted && event.kind != refused && event.kind != targetReady && event.kind != targetFailed && event.kind != profileLoaded))
             return;
 
-        if (event.kind == accepted)
+        if (event.kind == accepted || event.kind == profileLoaded)
             shell.SetStatus(std::format("{}: accepted", request->second));
         else if (event.kind == targetReady)
             shell.SetStatus(std::format("{}: done", request->second));

@@ -27,10 +27,10 @@ int main(int argc, char* argv[])
     QApplication::setOrganizationName("embedded-pro");
     ui::backend::qt::ApplyTheme(ui::theme::Instrument());
 
-    const auto config = arm_host::DefaultArmConfig(arm_host::defaultNodes);
+    const auto profile = arm_host::DefaultArmProfile(arm_host::defaultNodes);
     const auto start = std::chrono::system_clock::now();
-    arm_host::ArmHost host{ config, arm_host::HostTargetOpener(arm_host::defaultNodes, arm_host::simulatedTimeConstant, 1000000), {} };
-    simulator::SimulatorWindow window{ host, config.positionLimits, start };
+    arm_host::ArmHost host{ profile, arm_host::HostTargetOpener(arm_host::simulatedTimeConstant, 1000000), {} };
+    simulator::SimulatorWindow window{ host, profile.config.positionLimits, start };
     window.show();
 
     return QApplication::exec();

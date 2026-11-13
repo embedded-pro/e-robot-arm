@@ -2,6 +2,7 @@
 #define TOOLS_ARM_HOST_DEFAULT_ARM_CONFIG_HPP
 
 #include "core/arm/Arm.hpp"
+#include "core/arm_profile/ArmProfile.hpp"
 #include "infra/timer/Timer.hpp"
 
 namespace arm_host
@@ -10,6 +11,7 @@ namespace arm_host
     inline constexpr infra::Duration simulatedTimeConstant{ std::chrono::milliseconds{ 50 } };
 
     arm::ArmConfig DefaultArmConfig(const arm::JointNodeIds& nodes);
+    arm::ArmProfile DefaultArmProfile(const arm::JointNodeIds& nodes);
 }
 
 #endif

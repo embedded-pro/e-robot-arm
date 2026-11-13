@@ -28,7 +28,7 @@ namespace arm_host
         bool connected{ false };
     };
 
-    TargetOpener HostTargetOpener(const arm::JointNodeIds& nodes, infra::Duration simulatedTimeConstant, uint32_t bitrate);
+    TargetOpener HostTargetOpener(infra::Duration simulatedTimeConstant, uint32_t bitrate);
 }
 
 #endif

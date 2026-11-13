@@ -1,6 +1,7 @@
 #ifndef TOOLS_ARM_HOST_ARM_SNAPSHOT_HPP
 #define TOOLS_ARM_HOST_ARM_SNAPSHOT_HPP
 
+#include "core/arm/ArmConfig.hpp"
 #include "core/joint_bus/interfaces/JointBus.hpp"
 #include "infra/timer/Timer.hpp"
 #include "tools/arm_host/ArmEvent.hpp"
@@ -8,6 +9,7 @@
 #include <array>
 #include <cstdint>
 #include <optional>
+#include <string>
 
 namespace arm_host
 {
@@ -24,6 +26,8 @@ namespace arm_host
         arm::ArmState state{ arm::ArmState::unpowered };
         std::optional<arm::Misconfiguration> misconfiguration{};
         uint32_t overruns{ 0 };
+        std::string profileName{};
+        arm::ArmConfig config{};
     };
 
     struct TraceSample
