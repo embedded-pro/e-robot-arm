@@ -2,7 +2,7 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.10.0
+version: 0.11.0
 component: "tool-simulator"
 date: 2026-11-12
 ---
@@ -12,7 +12,7 @@ date: 2026-11-12
 | Title     | Simulator Screen Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.10.0                  |
+| Version   | 0.11.0                  |
 | Component | tool-simulator          |
 | Date      | 2026-11-12              |
 
@@ -56,11 +56,16 @@ Layout** restores this one.
 │                                                                                    │ EMERGENCY STOP │ │
 │                                                                                    │      Esc       │ │
 ├──────────────────────────────────────────────────────────────┬─────────────────────┴────────────────┤
-│                                                              │ Joints                                │
-│                                                              │  #  Position   Speed     State  Fault │
-│                                                              │  1  0.000 rad  0.00 rad/s Run   —     │
+│ ⚠ Near wrist singularity                                     │ Joints                                │
+│                                                              │  #  Position  Speed  Gravity  State … │
+│                                                              │  1  0.000 rad 0.00 rad/s 0.00 N·m Run │
 │                    3-D arm view                              │     ▕────●───────────▏ limit bar      │
 │     measured arm, commanded ghost, floor with shadows        │  …  (joints 2–6)                      │
+│                                                              ├──────────────────────────────────────┤
+│                                                              │ Tool                                  │
+│                                                              │  Position  x 0.020 y 0.000 z 0.710 m  │
+│                                                              │  Rotation  roll 0.000 pitch 0.000 yaw │
+│                                                              │  Manipulability 1.23e-03  Singular: — │
 │                                                              ├──────────────────────────────────────┤
 │                                                              │ Operate                               │
 │   [Front] [Side] [Top] [Iso] [Frame]       camera presets    │  [Bring Up] [Enable] [Disable]        │
@@ -90,8 +95,8 @@ Layout** restores this one.
 - **Real-arm banner:** on the real target a full-width strip under the menu reads **REAL ARM — `<adapter>`** in the
   theme's `Warning` colour with an icon, and the window title gains the same text. It cannot be hidden.
 - **Centre:** the 3-D view (Part E).
-- **Right:** one scrollable **Arm** dock with three groups: Joints (the table and a limit bar per joint), Operate
-  and Move.
+- **Right:** one scrollable **Arm** dock with four groups: Joints (the table and a limit bar per joint), Tool
+  (Part K), Operate and Move.
 - **Bottom:** scope and event log, side by side.
 
 ### Part B — Controls and their states
@@ -174,15 +179,15 @@ Qt Quick 3D in a `QQuickWidget`, scene in QML, following the `qt-3d-gui` skill:
   primitives sized by the OPW lengths, with a thickness $R$ of 15 % of the longer of c2 and c3, between 1.5 and
   8 cm:
 
-  | Link            | Parts, in the link's frame                                           | Material                               |
-  |-----------------|----------------------------------------------------------------------|----------------------------------------|
-  | Base (fixed)    | Pedestal, Ø 2.8R, from the floor to a quarter of c1                  | Cast: #3c4043, metal 0.6, rough 0.55   |
-  | 1, turret       | Housing on J1; column Ø 2R up to c1; arm (a1, b) across to J2        | Painted: theme accent, rough 0.4       |
-  | 2, upper arm    | Housing across J2; beam 1.2R square from J2 to J3 (c2)               | Anodised housing, painted beam         |
-  | 3, forearm      | Housing across J3; beam 1.1R square over a2, then up c3 to the wrist | Anodised housing, painted beam         |
-  | 4, wrist roll   | Cylinder Ø 1.1R along J4, ending at the wrist centre                 | Anodised: #9aa0a6, metal 1, rough 0.35 |
-  | 5, wrist pitch  | Housing Ø 1R across J5 at the wrist centre                           | Anodised                               |
-  | 6, flange       | Stem Ø 0.6R from the wrist centre to the flange (c4), disc Ø 1.2R    | Rubber cap #1d1f21                     |
+  | Link           | Parts, in the link's frame                                           | Material                               |
+  |----------------|----------------------------------------------------------------------|----------------------------------------|
+  | Base (fixed)   | Pedestal, Ø 2.8R, from the floor to a quarter of c1                  | Cast: #3c4043, metal 0.6, rough 0.55   |
+  | 1, turret      | Housing on J1; column Ø 2R up to c1; arm (a1, b) across to J2        | Painted: theme accent, rough 0.4       |
+  | 2, upper arm   | Housing across J2; beam 1.2R square from J2 to J3 (c2)               | Anodised housing, painted beam         |
+  | 3, forearm     | Housing across J3; beam 1.1R square over a2, then up c3 to the wrist | Anodised housing, painted beam         |
+  | 4, wrist roll  | Cylinder Ø 1.1R along J4, ending at the wrist centre                 | Anodised: #9aa0a6, metal 1, rough 0.35 |
+  | 5, wrist pitch | Housing Ø 1R across J5 at the wrist centre                           | Anodised                               |
+  | 6, flange      | Stem Ø 0.6R from the wrist centre to the flange (c4), disc Ø 1.2R    | Rubber cap #1d1f21                     |
 
   Joint axes follow the model: J1, J4 and J6 along z of their links, J2, J3 and J5 along y. Every pose is
   converted once from the model's frame (Z-up, metres) to the scene's (Y-up, centimetres):
@@ -316,6 +321,24 @@ Part D) and applies it like the Motor Controller panel (Part H): same joint sele
 - **Fields** carry the display units of Part D and the contract's ranges; pole pairs is a whole number.
 - Applying replaces what the node holds, its own identification included; the confirmation is the read-back
   (Verify).
+
+### Part K — Tool read-outs and singularity warning (phase 8c)
+
+The arm model's view of the measured arm ([arm-model.md](arm-model.md) Parts B and F), from each snapshot:
+
+- **Joints table, Gravity column:** the torque each joint holds against gravity at the measured joints, `N·m`,
+  two decimals.
+- **Tool group** in the Arm dock, fixed-width digits:
+  - **Position** x, y, z in `m`, three decimals, in the world frame (base mount included);
+  - **Rotation** roll, pitch, yaw in `rad`, three decimals;
+  - **Manipulability** |det J|, three significant digits in scientific notation, so its magnitude reads at a
+    glance as the arm nears a singularity;
+  - **Singularity:** "—", or the singularities the arm is near (wrist, elbow, shoulder) at `Warning` level.
+- **Singularity warning** over the 3-D view, top left: "Near wrist singularity" (or elbow, shoulder, several
+  joined by commas) on a `Warning` badge, hidden when the arm is near none. The text carries the meaning, not only
+  the colour.
+- Without a target, or while any joint is silent, every read-out shows "—" and the warning hides: the model of a
+  stale arm is not shown as live.
 
 ---
 

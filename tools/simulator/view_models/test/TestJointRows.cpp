@@ -17,6 +17,7 @@ TEST_F(JointRowsTest, without_a_target_shows_placeholders_and_neutral_status)
     EXPECT_EQ("6", rows[5].number);
     EXPECT_EQ("—", rows[0].position);
     EXPECT_EQ("—", rows[0].state);
+    EXPECT_EQ("—", rows[0].gravity);
     EXPECT_EQ(ui::theme::StatusLevel::Neutral, rows[0].level);
 }
 
@@ -25,11 +26,15 @@ TEST_F(JointRowsTest, formats_readings_with_units_and_fixed_precision)
     auto snapshot = simulator::test::Running();
     snapshot.readings[1].position = foc::Radians{ 1.0f };
     snapshot.readings[1].speed = foc::RadiansPerSecond{ -0.126f };
+    snapshot.gravityTorque[1] = foc::NewtonMeter{ -7.016f };
+    snapshot.gravityTorque[2] = foc::NewtonMeter{ -0.004f };
 
     const auto rows = simulator::JointRows(snapshot, simulator::test::Limits());
 
     EXPECT_EQ("1.000 rad", rows[1].position);
     EXPECT_EQ("-0.13 rad/s", rows[1].speed);
+    EXPECT_EQ("-7.02 N·m", rows[1].gravity);
+    EXPECT_EQ("0.00 N·m", rows[2].gravity);
     EXPECT_EQ("Running", rows[1].state);
     EXPECT_EQ("—", rows[1].fault);
     EXPECT_EQ(ui::theme::StatusLevel::Ok, rows[1].level);

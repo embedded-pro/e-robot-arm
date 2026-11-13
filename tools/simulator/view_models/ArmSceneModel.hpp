@@ -3,6 +3,7 @@
 
 #include "tools/arm_host/ArmSnapshot.hpp"
 #include "tools/simulator/view_models/ArmSceneGeometry.hpp"
+#include "tools/simulator/view_models/ToolReadout.hpp"
 #include "ui/theme/Theme.hpp"
 #include <array>
 #include <optional>
@@ -28,6 +29,7 @@ namespace simulator
         const SceneParts& Parts() const;
         uint32_t PartsRevision() const;
         float Extent() const;
+        const std::string& SingularityWarning() const;
 
     private:
         void UpdateNodes(const arm_host::ArmSnapshot& snapshot);
@@ -42,6 +44,7 @@ namespace simulator
         SceneParts parts{};
         uint32_t partsRevision{ 0 };
         float extent{ 0.0f };
+        std::string singularityWarning;
     };
 }
 

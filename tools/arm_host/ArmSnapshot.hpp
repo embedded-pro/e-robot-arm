@@ -30,6 +30,7 @@ namespace arm_host
         arm::Placement toolPose{};
         arm::Singularities singularities{};
         arm::JointTorques gravityTorque{};
+        float manipulability{ 0.0f };
         std::string profileName{};
         arm::ArmConfig config{};
     };

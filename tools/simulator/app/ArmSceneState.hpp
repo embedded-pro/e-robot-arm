@@ -24,6 +24,8 @@ namespace simulator
         Q_PROPERTY(QVariantList commandedNodes READ CommandedNodes NOTIFY changed)
         Q_PROPERTY(QVariantList parts READ Parts NOTIFY partsChanged)
         Q_PROPERTY(double extent READ Extent NOTIFY partsChanged)
+        Q_PROPERTY(QString singularityWarning READ SingularityWarning NOTIFY changed)
+        Q_PROPERTY(QColor warningColor READ WarningColor NOTIFY themeChanged)
         Q_PROPERTY(QVariantList levels READ Levels NOTIFY changed)
         Q_PROPERTY(bool ghostVisible READ GhostVisible NOTIFY changed)
         Q_PROPERTY(bool anyFault READ AnyFault NOTIFY changed)
@@ -47,6 +49,8 @@ namespace simulator
         QVariantList CommandedNodes() const;
         QVariantList Parts() const;
         double Extent() const;
+        QString SingularityWarning() const;
+        QColor WarningColor() const;
         QVariantList Levels() const;
         bool GhostVisible() const;
         bool AnyFault() const;
@@ -73,6 +77,8 @@ namespace simulator
         QVariantList parts;
         uint32_t partsRevision{ 0 };
         double extent{ 100.0 };
+        QString singularityWarning;
+        QColor warning;
         QVariantList levels;
         bool ghostVisible{ false };
         bool anyFault{ false };

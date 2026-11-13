@@ -10,6 +10,7 @@
 #include <QElapsedTimer>
 #include <QImage>
 #include <QKeyEvent>
+#include <QLabel>
 #include <QMenu>
 #include <QMenuBar>
 #include <QMessageBox>
@@ -71,6 +72,14 @@ namespace
         return differing > 100;
     }
 
+    QLabel* Labelled(QWidget& parent, const QString& accessibleName)
+    {
+        for (auto* label : parent.findChildren<QLabel*>())
+            if (label->accessibleName() == accessibleName)
+                return label;
+        return nullptr;
+    }
+
     QPushButton* Button(QWidget& parent, const QString& text)
     {
         for (auto* button : parent.findChildren<QPushButton*>())
@@ -120,6 +129,14 @@ TEST_F(SimulatorWindowTest, loads_the_lit_scene_and_shows_a_move_with_its_ghost)
 {
     ASSERT_EQ(QQuickWidget::Ready, window.ArmView().status());
     ASSERT_NE(nullptr, window.ArmView().rootObject());
+    auto* warning = window.ArmView().rootObject()->findChild<QQuickItem*>("singularityWarning");
+    ASSERT_NE(nullptr, warning);
+    auto* position = Labelled(window, "Tool Position");
+    ASSERT_NE(nullptr, position);
+    EXPECT_TRUE(Eventually([warning, position]()
+        {
+            return warning->isVisible() && position->text() == "x 0.020  y 0.000  z 0.710 m";
+        }));
 
     const arm::JointPositions target{ foc::Radians{ 0.7f }, foc::Radians{ -0.5f }, foc::Radians{ 0.6f }, foc::Radians{ 0.4f }, foc::Radians{ 0.8f },
         foc::Radians{ 0.0f } };
@@ -166,6 +183,8 @@ TEST_F(SimulatorWindowTest, loads_the_lit_scene_and_shows_a_move_with_its_ghost)
             return Logged(window.Presenter(), "Move done");
         },
         10000));
+    EXPECT_FALSE(warning->isVisible());
+    EXPECT_NE("—", position->text());
 }
 
 TEST_F(SimulatorWindowTest, an_injected_fault_trips_the_arm_and_names_its_source)

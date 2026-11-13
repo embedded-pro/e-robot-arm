@@ -1,5 +1,6 @@
 #include "tools/simulator/view_models/JointRows.hpp"
 #include <algorithm>
+#include <cmath>
 #include <format>
 
 namespace simulator
@@ -10,7 +11,8 @@ namespace simulator
 
         std::string Fixed(float value, int decimals, std::string_view unit)
         {
-            return std::format("{:.{}f} {}", value, decimals, unit);
+            const auto halfStep = 0.5f * std::pow(10.0f, static_cast<float>(-decimals));
+            return std::format("{:.{}f} {}", std::abs(value) < halfStep ? 0.0f : value, decimals, unit);
         }
 
         float LimitFraction(foc::Radians position, const arm::JointLimit& limit)
@@ -56,13 +58,23 @@ namespace simulator
         }
     }
 
+    bool ModelIsLive(const arm_host::ArmSnapshot& snapshot)
+    {
+        return snapshot.targetReady && std::ranges::none_of(snapshot.readings, [](const arm::JointReading& reading)
+                                           {
+                                               return reading.silent;
+                                           });
+    }
+
     std::array<JointRow, arm::jointCount> JointRows(const arm_host::ArmSnapshot& snapshot, const arm::JointLimits& limits)
     {
         std::array<JointRow, arm::jointCount> rows{};
+        const auto live = ModelIsLive(snapshot);
         for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
         {
             auto& row = rows[joint];
             row.number = std::to_string(joint + 1);
+            row.gravity = live ? Fixed(snapshot.gravityTorque[joint].Value(), 2, "N·m") : std::string{ placeholder };
             if (!snapshot.targetReady)
             {
                 row.position = placeholder;

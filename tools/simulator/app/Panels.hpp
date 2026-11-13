@@ -4,6 +4,7 @@
 #include "tools/arm_host/ArmSnapshot.hpp"
 #include "tools/simulator/view_models/EventLog.hpp"
 #include "tools/simulator/view_models/ProfileView.hpp"
+#include "tools/simulator/view_models/ToolReadout.hpp"
 #include "ui/backend/qt/QtFormView.hpp"
 #include "ui/backend/qt/QtPaintedWidget.hpp"
 #include "ui/scope/ScopeCore.hpp"
@@ -49,6 +50,25 @@ namespace simulator
     private:
         QLabel* state;
         ui::theme::StatusLevel level{ ui::theme::StatusLevel::Neutral };
+    };
+
+    class ToolPanel
+        : public QWidget
+    {
+        Q_OBJECT
+
+    public:
+        explicit ToolPanel(QWidget* parent);
+
+        void Update(const ToolReadout& readout);
+        void ApplyTheme();
+
+    private:
+        QLabel* position;
+        QLabel* rotation;
+        QLabel* manipulability;
+        QLabel* singularity;
+        ToolReadout shown;
     };
 
     class ProfilePanel

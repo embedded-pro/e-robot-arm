@@ -81,6 +81,18 @@ TEST_F(ArmSceneModelTest, status_levels_follow_the_joints_and_are_neutral_withou
     EXPECT_EQ(ui::theme::StatusLevel::Neutral, scene.Level(1));
 }
 
+TEST_F(ArmSceneModelTest, warns_while_the_arm_is_near_a_singularity)
+{
+    auto snapshot = simulator::test::Running();
+    snapshot.singularities = { true, false, false };
+    scene.Update(snapshot);
+    EXPECT_EQ("Near wrist singularity", scene.SingularityWarning());
+
+    snapshot.singularities = {};
+    scene.Update(snapshot);
+    EXPECT_TRUE(scene.SingularityWarning().empty());
+}
+
 TEST_F(ArmSceneModelTest, a_silent_joint_is_shown_at_fault_level)
 {
     auto snapshot = simulator::test::Running();

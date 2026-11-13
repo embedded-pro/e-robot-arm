@@ -59,6 +59,7 @@ namespace simulator
         , banner{ new QLabel{ this } }
         , armView{ new QQuickWidget{ this } }
         , joints{ new JointTable{ this } }
+        , tool{ new ToolPanel{ this } }
         , operate{ new FormPanel{ this } }
         , move{ new FormPanel{ this } }
         , scope{ new ScopePanel{ this } }
@@ -147,6 +148,7 @@ namespace simulator
 
         joints->Update(presenter.Rows());
         joints->Select(presenter.Scene().Selected());
+        tool->Update(presenter.Tool());
         operate->SetHint(presenter.OperateHint());
         move->SetHint(presenter.MoveHint());
 
@@ -191,6 +193,7 @@ namespace simulator
         layout->setContentsMargins(8, 8, 8, 8);
         layout->setSpacing(16);
         layout->addWidget(Group("Joints", joints));
+        layout->addWidget(Group("Tool", tool));
         layout->addWidget(Group("Operate", operate));
         layout->addWidget(Group("Move", move));
         layout->addStretch();
@@ -526,6 +529,7 @@ namespace simulator
         strip->ApplyTheme();
         motorControllerPanel->ApplyTheme();
         motorPanel->ApplyTheme();
+        tool->ApplyTheme();
         ui::backend::qt::StyleStatusLabel(*banner, ui::theme::StatusLevel::Warning);
         Settings().setValue("lightTheme", light);
     }
