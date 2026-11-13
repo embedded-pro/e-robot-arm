@@ -2,6 +2,7 @@
 #define TOOLS_ARM_HOST_ARM_EVENT_HPP
 
 #include "core/joint_bus/interfaces/JointBus.hpp"
+#include "core/joint_configurator/interfaces/ControllerSettings.hpp"
 #include "core/lifecycle/interfaces/ArmLifecycle.hpp"
 #include "infra/timer/Timer.hpp"
 #include <cstddef>
@@ -23,7 +24,10 @@ namespace arm_host
         moveAborted,
         targetReady,
         targetFailed,
-        stateChanged
+        stateChanged,
+        controllerApplied,
+        controllerRead,
+        controllerFailed
     };
 
     inline constexpr std::size_t noJoint{ std::numeric_limits<std::size_t>::max() };
@@ -39,6 +43,7 @@ namespace arm_host
         can::FocFaultCode fault{ can::FocFaultCode::none };
         can::ContractCompatibility contracts{ can::ContractCompatibility::unknown };
         arm::ArmState state{ arm::ArmState::unpowered };
+        arm::ControllerReading controller{};
     };
 }
 

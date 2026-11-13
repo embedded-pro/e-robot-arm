@@ -115,6 +115,30 @@ namespace arm
             });
     }
 
+    bool JointBusImpl::SelectAlgorithm(std::size_t joint, can::FocControlLoop loop, uint8_t algorithm)
+    {
+        really_assert(joint < jointCount);
+        return client.SendSelectAlgorithm(nodes[joint], loop, algorithm);
+    }
+
+    bool JointBusImpl::QueryAlgorithms(std::size_t joint)
+    {
+        really_assert(joint < jointCount);
+        return client.SendQueryAlgorithms(nodes[joint]);
+    }
+
+    bool JointBusImpl::SetParameter(std::size_t joint, can::FocParameter parameter, float value)
+    {
+        really_assert(joint < jointCount);
+        return client.SendSetParameter(nodes[joint], parameter, value);
+    }
+
+    bool JointBusImpl::QueryParameter(std::size_t joint, can::FocParameter parameter)
+    {
+        really_assert(joint < jointCount);
+        return client.SendQueryParameter(nodes[joint], parameter);
+    }
+
     const JointReading& JointBusImpl::Reading(std::size_t joint) const
     {
         really_assert(joint < jointCount);
@@ -180,11 +204,29 @@ namespace arm
             ResolveContracts(can::ContractCompatibility::compatible);
     }
 
-    void JointBusImpl::OnAlgorithmsResponse(uint16_t, const can::FocAlgorithms&)
-    {}
+    void JointBusImpl::OnAlgorithmsResponse(uint16_t sourceNodeId, const can::FocAlgorithms& algorithms)
+    {
+        const auto joint = JointOf(sourceNodeId);
+        if (!joint.has_value())
+            return;
 
-    void JointBusImpl::OnParameterResponse(uint16_t, can::FocParameter, can::FocParameterValue)
-    {}
+        NotifyObservers([joint = *joint, &algorithms](auto& observer)
+            {
+                observer.OnAlgorithms(joint, algorithms);
+            });
+    }
+
+    void JointBusImpl::OnParameterResponse(uint16_t sourceNodeId, can::FocParameter parameter, can::FocParameterValue value)
+    {
+        const auto joint = JointOf(sourceNodeId);
+        if (!joint.has_value())
+            return;
+
+        NotifyObservers([joint = *joint, parameter, value](auto& observer)
+            {
+                observer.OnParameter(joint, parameter, value);
+            });
+    }
 
     void JointBusImpl::OnFaultRecordResponse(uint16_t, uint8_t, can::FocFaultCode, can::FocMotorMode, uint32_t)
     {}

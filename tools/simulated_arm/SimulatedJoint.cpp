@@ -55,11 +55,23 @@ namespace simulation
         return node.emergencyStops;
     }
 
+    arm::ControllerSettings SimulatedJoint::Controller() const
+    {
+        arm::ControllerSettings settings{ node.algorithms.current, node.algorithms.speed, node.algorithms.position, {} };
+        for (std::size_t gain = 0; gain != arm::gainCount; ++gain)
+            settings.gains[gain] = node.parameters[static_cast<std::size_t>(arm::gainParameters[gain])];
+        return settings;
+    }
+
     SimulatedJoint::Node::Node(can::FocMotorCategoryServer& server, infra::Duration timeConstant)
         : can::FocMotorCategoryServerObserver(server)
         , server(server)
         , timeConstant(timeConstant)
-    {}
+    {
+        const arm::ControllerSettings defaults{};
+        for (std::size_t gain = 0; gain != arm::gainCount; ++gain)
+            parameters[static_cast<std::size_t>(arm::gainParameters[gain])] = defaults.gains[gain];
+    }
 
     void SimulatedJoint::Node::Advance()
     {
@@ -151,24 +163,32 @@ namespace simulation
         onDone();
     }
 
-    void SimulatedJoint::Node::OnSelectAlgorithm(can::FocControlLoop, uint8_t, const infra::Function<void(const can::FocAlgorithms&)>& onDone)
+    void SimulatedJoint::Node::OnSelectAlgorithm(can::FocControlLoop loop, uint8_t algorithm, const infra::Function<void(const can::FocAlgorithms&)>& onDone)
     {
-        onDone(can::FocAlgorithms{});
+        if (loop == can::FocControlLoop::current)
+            algorithms.current = static_cast<can::FocCurrentAlgorithm>(algorithm);
+        else if (loop == can::FocControlLoop::speed)
+            algorithms.speed = static_cast<can::FocSpeedAlgorithm>(algorithm);
+        else
+            algorithms.position = static_cast<can::FocPositionAlgorithm>(algorithm);
+        OnQueryAlgorithms(onDone);
     }
 
     void SimulatedJoint::Node::OnQueryAlgorithms(const infra::Function<void(const can::FocAlgorithms&)>& onDone)
     {
-        onDone(can::FocAlgorithms{});
+        algorithms.mode = mode;
+        onDone(algorithms);
     }
 
-    void SimulatedJoint::Node::OnSetParameter(can::FocParameter, float value, const infra::Function<void(can::FocParameterValue)>& onDone)
+    void SimulatedJoint::Node::OnSetParameter(can::FocParameter parameter, float value, const infra::Function<void(can::FocParameterValue)>& onDone)
     {
+        parameters[static_cast<std::size_t>(parameter)] = value;
         onDone(can::FocParameterValue{ value, false });
     }
 
-    void SimulatedJoint::Node::OnQueryParameter(can::FocParameter, const infra::Function<void(can::FocParameterValue)>& onDone)
+    void SimulatedJoint::Node::OnQueryParameter(can::FocParameter parameter, const infra::Function<void(can::FocParameterValue)>& onDone)
     {
-        onDone(can::FocParameterValue{});
+        onDone(can::FocParameterValue{ parameters[static_cast<std::size_t>(parameter)], false });
     }
 
     void SimulatedJoint::Node::OnCalibrate(const infra::Function<void(services::CanAckStatus)>& onDone)

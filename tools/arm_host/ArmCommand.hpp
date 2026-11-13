@@ -2,6 +2,7 @@
 #define TOOLS_ARM_HOST_ARM_COMMAND_HPP
 
 #include "core/joint_bus/interfaces/JointBus.hpp"
+#include "core/joint_configurator/interfaces/ControllerSettings.hpp"
 #include "core/lifecycle/interfaces/ArmLifecycle.hpp"
 #include <cstddef>
 #include <string_view>
@@ -60,8 +61,19 @@ namespace arm_host
     struct Disable
     {};
 
+    struct ApplyController
+    {
+        std::size_t joint;
+        arm::ControllerSettings settings;
+    };
+
+    struct ReadController
+    {
+        std::size_t joint;
+    };
+
     using ArmCommand = std::variant<CheckContracts, SelectMode, StartJoints, StopJoints, ClearFaults, EmergencyStop, Rearm, MoveTo, AbortMove, InjectFault, SilenceJoint,
-        BringUp, Enable, Disable>;
+        BringUp, Enable, Disable, ApplyController, ReadController>;
 
     std::string_view CommandName(const ArmCommand& command);
     std::string_view StateName(arm::ArmState state);

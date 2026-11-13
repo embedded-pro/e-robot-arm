@@ -209,6 +209,16 @@ namespace arm_host
             return session.arm.Lifecycle().Disable();
         }
 
+        bool operator()(const ApplyController& apply) const
+        {
+            return session.arm.Configurator().Apply(apply.joint, apply.settings);
+        }
+
+        bool operator()(const ReadController& read) const
+        {
+            return session.arm.Configurator().Read(read.joint);
+        }
+
         ArmSession& session;
     };
 
@@ -234,6 +244,8 @@ namespace arm_host
             return arm.Lifecycle().State() == arm::ArmState::tripped ? "a joint is in fault" : "not tripped";
         if (LifecycleCommand(command))
             return StateName(arm.Lifecycle().State());
+        if (std::holds_alternative<ApplyController>(command) || std::holds_alternative<ReadController>(command))
+            return arm.Configurator().Busy() ? "busy" : "the arm is not ready";
         if (NeedsMotionPermission(command) && arm.Safety().Tripped())
             return "tripped";
         if (NeedsMotionPermission(command) && arm.Safety().Contracts() != can::ContractCompatibility::compatible)
@@ -251,6 +263,7 @@ namespace arm_host
         : arm::JointBusObserver(arm.Safety())
         , arm::JointMotionObserver(arm.Motion())
         , arm::ArmLifecycleObserver(arm.Lifecycle())
+        , arm::JointConfiguratorObserver(arm.Configurator())
         , session(session)
     {}
 
@@ -284,6 +297,21 @@ namespace arm_host
     void ArmSession::Events::OnStateChanged(arm::ArmState state)
     {
         session.Emit({ .kind = ArmEventKind::stateChanged, .state = state });
+    }
+
+    void ArmSession::Events::OnApplied(std::size_t joint)
+    {
+        session.Emit({ .kind = ArmEventKind::controllerApplied, .joint = joint });
+    }
+
+    void ArmSession::Events::OnRead(std::size_t joint, const arm::ControllerReading& reading)
+    {
+        session.Emit({ .kind = ArmEventKind::controllerRead, .joint = joint, .controller = reading });
+    }
+
+    void ArmSession::Events::OnConfigurationFailed(std::size_t joint, arm::ConfigurationFailure)
+    {
+        session.Emit({ .kind = ArmEventKind::controllerFailed, .reason = "no answer within 100 ms", .joint = joint });
     }
 
     void ArmSession::Events::OnMoveDone()

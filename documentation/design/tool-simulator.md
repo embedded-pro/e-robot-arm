@@ -2,7 +2,7 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.5.0
+version: 0.6.0
 component: "tool-simulator"
 date: 2026-11-12
 ---
@@ -12,7 +12,7 @@ date: 2026-11-12
 | Title     | Simulator Screen Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.5.0                   |
+| Version   | 0.6.0                   |
 | Component | tool-simulator          |
 | Date      | 2026-11-12              |
 
@@ -197,6 +197,48 @@ from the same theme roles. The platform UI font; tabular digits in every numeric
 (rad 3 decimals, rad/s 2). A 4 px grid: 8 px within a group, 16 px between groups. Status colours follow
 `StatusLevel`; disconnected is `Neutral`; every colour has a text or icon alongside it.
 
+### Part H — Motor Controller panel (phase 8b)
+
+A **Motor Controller** dock, tabbed with the Arm dock, shows one joint's e-foc motor controller and applies it
+through the joint configurator ([joint-configurator.md](joint-configurator.md)).
+
+```text
+┌ Motor Controller ─────────────────────────────────────┐
+│ Joint [J3 ▾]          Mode (reported)  position       │
+│ Current loop  [Sliding mode ▾]                        │
+│   Bandwidth          [ 6283.19] rad/s                  │
+│   Switching gain     [    0.20] A                      │
+│   Boundary layer     [    0.50] A                      │
+│ Speed loop    [LQI ▾]                                 │
+│   Bandwidth          [  188.50] rad/s                  │
+│   Error weight       [    1.00]                        │
+│   Integral weight    [    0.10]                        │
+│ Position loop [PID ▾]                                 │
+│   Bandwidth          [   18.85] rad/s                  │
+│ State: Verified                                       │
+│ [Read] [Apply] [Verify] [Apply to All Joints]         │
+└───────────────────────────────────────────────────────┘
+```
+
+- **Joint** follows the selection: picking a joint in the 3-D view or the joint table selects it here, and
+  choosing it here selects it there. Joints are J1–J6.
+- **Algorithms** are the contract's, one choice per loop. A loop shows only the gains its algorithm uses
+  (joint-configurator.md Part A); the others keep their values and are still applied.
+- **Gains** carry the contract's units and ranges; a value outside its range is refused as typed.
+- **Mode** is reported by the joint and not editable: Enable selects one mode for all joints.
+
+| Action              | Enabled when                           | Disabled reason shown          | Does                                                    |
+|---------------------|----------------------------------------|--------------------------------|---------------------------------------------------------|
+| Read                | The arm is Ready, no operation running | "Not ready: <state>", "Busy"   | Reads the joint's settings into the form                |
+| Apply               | As Read                                | As Read                        | Applies the form to the joint                           |
+| Verify              | As Read, and the form was applied      | As Read, "Nothing applied yet" | Reads the joint back and compares with what was applied |
+| Apply to All Joints | As Read                                | As Read                        | Applies the form to J1 to J6, one after the other       |
+
+The form's **state** is shown under the gains: **Read** (as the joint reported it), **Edited** (changed since),
+**Applying…**, **Applied**, **Verified** (`Ok`, the joint reports exactly what was applied), **Differs** (`Fault`,
+with every differing item listed in the hint, for example "Speed bandwidth: applied 150, joint reports 120"), or
+**Failed** (`Fault`, with the reason). Selecting another joint reads it.
+
 ---
 
 ## Interfaces
@@ -283,3 +325,4 @@ sequenceDiagram
 | 3 | Default-role buttons (Check Contracts, Position Mode) draw flat in ui-cpp's Instrument theme | Give `ButtonRole::Default` a raised surface in ui-cpp | resolved: ui-cpp#24 gives Default buttons a raised fill and border |
 | 4 | Naming every joint an emergency stop did not reach                                           | Per-joint delivery reports from the joint bus         | phase 1a (#17)                                                     |
 | 5 | Bus load and period overruns in the status strip                                             | Control-loop overrun count, bus-load estimate         | overruns shown (phase 1d); bus load open                           |
+| 6 | Marking a differing gain on its field rather than in the hint                                | A per-field status in ui-cpp forms                    | open: needs a ui-cpp primitive                                     |

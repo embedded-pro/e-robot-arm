@@ -209,3 +209,23 @@ TEST_F(ArmSessionTest, commands_replaced_before_every_joint_accepted_them_are_re
     EXPECT_EQ(3u, sink.events.back().command);
     EXPECT_EQ(ArmEventKind::accepted, sink.events.back().kind);
 }
+
+TEST_F(ArmSessionTest, applies_and_reads_a_joint_controller_once_the_arm_is_ready)
+{
+    arm::ControllerSettings settings{};
+    settings.speed = can::FocSpeedAlgorithm::adrc;
+    settings[arm::Gain::speedObserverBandwidthRatio] = 8.0f;
+
+    Execute(1, arm_host::ApplyController{ 3, settings });
+    EXPECT_EQ("the arm is not ready", sink.Last()->reason);
+
+    Execute(2, arm_host::BringUp{});
+    Execute(3, arm_host::ApplyController{ 3, settings });
+    ASSERT_NE(nullptr, sink.Find(ArmEventKind::controllerApplied));
+    EXPECT_EQ(3u, sink.Find(ArmEventKind::controllerApplied)->joint);
+    EXPECT_FALSE(arm::Compare(settings, simulatedArm.Joint(3).Controller()).Any());
+
+    Execute(4, arm_host::ReadController{ 3 });
+    ASSERT_NE(nullptr, sink.Find(ArmEventKind::controllerRead));
+    EXPECT_FALSE(arm::Compare(settings, sink.Find(ArmEventKind::controllerRead)->controller.settings).Any());
+}

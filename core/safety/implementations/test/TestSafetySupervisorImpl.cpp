@@ -213,3 +213,26 @@ TEST_F(SafetySupervisorImplTest, passes_command_delivery_outcomes_on)
             observer.OnCommandFailed(arm::JointCommand::stop, arm::CommandFailure::timedOut);
         });
 }
+
+TEST_F(SafetySupervisorImplTest, passes_per_joint_configuration_through_and_its_answers_on)
+{
+    EXPECT_CALL(bus, SelectAlgorithm(2, can::FocControlLoop::current, 3)).WillOnce(Return(true));
+    EXPECT_TRUE(supervisor.SelectAlgorithm(2, can::FocControlLoop::current, 3));
+    EXPECT_CALL(bus, QueryAlgorithms(2)).WillOnce(Return(true));
+    EXPECT_TRUE(supervisor.QueryAlgorithms(2));
+    EXPECT_CALL(bus, SetParameter(2, can::FocParameter::currentBandwidth, 500.0f)).WillOnce(Return(false));
+    EXPECT_FALSE(supervisor.SetParameter(2, can::FocParameter::currentBandwidth, 500.0f));
+    EXPECT_CALL(bus, QueryParameter(2, can::FocParameter::currentBandwidth)).WillOnce(Return(true));
+    EXPECT_TRUE(supervisor.QueryParameter(2, can::FocParameter::currentBandwidth));
+
+    EXPECT_CALL(observer, OnAlgorithms(5, _));
+    bus.NotifyObservers([](auto& joints)
+        {
+            joints.OnAlgorithms(5, can::FocAlgorithms{});
+        });
+    EXPECT_CALL(observer, OnParameter(5, can::FocParameter::speedBandwidth, can::FocParameterValue{ 80.0f, true }));
+    bus.NotifyObservers([](auto& joints)
+        {
+            joints.OnParameter(5, can::FocParameter::speedBandwidth, can::FocParameterValue{ 80.0f, true });
+        });
+}

@@ -267,6 +267,35 @@ TEST_F(JointBusImplTest, a_reading_records_the_telemetry_request_it_answered)
     EXPECT_TRUE(arm::Stale(bus.Reading(1), bus.Period() + 2));
 }
 
+TEST_F(JointBusImplTest, sends_configuration_requests_to_one_joint)
+{
+    EXPECT_TRUE(bus.SelectAlgorithm(3, can::FocControlLoop::speed, static_cast<uint8_t>(can::FocSpeedAlgorithm::lqi)));
+    EXPECT_TRUE(bus.QueryAlgorithms(3));
+    EXPECT_TRUE(bus.SetParameter(3, can::FocParameter::speedBandwidth, 120.0f));
+    EXPECT_TRUE(bus.QueryParameter(3, can::FocParameter::speedBandwidth));
+
+    ASSERT_EQ(4u, sent.size());
+    EXPECT_EQ(nodes[3], sent[0].node);
+    EXPECT_EQ(can::focSelectAlgorithmId, sent[0].messageType);
+    EXPECT_EQ(can::focQueryAlgorithmsId, sent[1].messageType);
+    EXPECT_EQ(can::focSetParameterId, sent[2].messageType);
+    EXPECT_EQ(can::focQueryParameterId, sent[3].messageType);
+    EXPECT_EQ(nodes[3], sent[3].node);
+}
+
+TEST_F(JointBusImplTest, passes_algorithm_and_parameter_answers_on_naming_the_joint)
+{
+    EXPECT_CALL(observer, OnAlgorithms(4, _)).WillOnce(Invoke([](std::size_t, const can::FocAlgorithms& algorithms)
+        {
+            EXPECT_EQ(can::FocMotorMode::position, algorithms.mode);
+            EXPECT_EQ(can::FocSpeedAlgorithm::adrc, algorithms.speed);
+        }));
+    Receive(nodes[4], can::focAlgorithmsResponseId, services::CanPayloadWriter{}.WriteUInt8(2).WriteUInt8(0).WriteUInt8(2).WriteUInt8(0));
+
+    EXPECT_CALL(observer, OnParameter(1, can::FocParameter::positionBandwidth, can::FocParameterValue{ 30.0f, false }));
+    Receive(nodes[1], can::focParameterResponseId, services::CanPayloadWriter{}.WriteUInt8(static_cast<uint8_t>(can::FocParameter::positionBandwidth)).WriteUInt8(0).WriteFloat32(30.0f));
+}
+
 TEST_F(JointBusImplTest, frames_from_nodes_outside_the_map_are_ignored)
 {
     EXPECT_CALL(observer, OnCommandDelivered(arm::JointCommand::queryContracts));

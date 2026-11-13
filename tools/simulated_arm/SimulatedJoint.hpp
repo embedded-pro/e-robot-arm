@@ -2,9 +2,11 @@
 #define TOOLS_SIMULATED_ARM_SIMULATED_JOINT_HPP
 
 #include "can-lite/server/CanProtocolServer.hpp"
+#include "core/joint_configurator/interfaces/ControllerSettings.hpp"
 #include "e-foc-protocol/server/FocMotorCategoryServer.hpp"
 #include "infra/timer/Timer.hpp"
 #include "tools/simulated_arm/VirtualCanBus.hpp"
+#include <array>
 #include <cstdint>
 
 namespace simulation
@@ -25,6 +27,7 @@ namespace simulation
         foc::Radians Position() const;
         foc::Radians Target() const;
         uint32_t EmergencyStops() const;
+        arm::ControllerSettings Controller() const;
 
     private:
         class Node
@@ -67,6 +70,8 @@ namespace simulation
             foc::RadiansPerSecond speed{ 0.0f };
             foc::Radians target{ 0.0f };
             uint32_t emergencyStops{ 0 };
+            can::FocAlgorithms algorithms{};
+            std::array<float, 256> parameters{};
             can::FocMotorCategoryServer& server;
             infra::Duration timeConstant;
             infra::TimePoint lastUpdate{ infra::Now() };

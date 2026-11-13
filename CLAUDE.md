@@ -32,8 +32,11 @@ simulator runs the same core against e-foc virtual motors or the real arm.
     calibration, enable, move) and trip/re-arm, on EMIL's table state machine; it
     follows the readings, so the single-step commands still work for debugging.
     Design: `documentation/design/arm-lifecycle.md`.
+  - `core/joint_configurator/` — `arm::JointConfigurator`: applies and reads one
+    joint's motor controller (algorithms and gains) over CAN while the arm is
+    Ready, one request at a time. Design: `documentation/design/joint-configurator.md`.
   - `core/arm/` — `arm::Arm`: builds the joint bus, safety supervisor, motion,
-    lifecycle and control loop from one `FocMotorCategoryClient` and an
+    lifecycle, joint configurator and control loop from one `FocMotorCategoryClient` and an
     `ArmConfig`; heap-free.
   - `core/platform_abstraction/` — the `platform::Platform` interface (the seam
     between portable logic and hardware) plus a `PlatformMock` for tests.

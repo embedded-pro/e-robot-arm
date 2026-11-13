@@ -3,6 +3,7 @@
 
 #include "core/control_loop/implementations/ControlLoopImpl.hpp"
 #include "core/joint_bus/implementations/JointBusImpl.hpp"
+#include "core/joint_configurator/implementations/JointConfiguratorImpl.hpp"
 #include "core/lifecycle/implementations/ArmLifecycleImpl.hpp"
 #include "core/motion/implementations/JointMotionImpl.hpp"
 #include "core/safety/implementations/SafetySupervisorImpl.hpp"
@@ -35,6 +36,8 @@ namespace arm
         const SafetySupervisor& Safety() const;
         JointMotion& Motion();
         const JointMotion& Motion() const;
+        JointConfigurator& Configurator();
+        const JointConfigurator& Configurator() const;
         ArmLifecycle& Lifecycle();
         const ArmLifecycle& Lifecycle() const;
         ControlLoop& Loop();
@@ -44,6 +47,7 @@ namespace arm
         SafetySupervisorImpl safety;
         JointMotionImpl motion;
         ArmLifecycleImpl lifecycle;
+        JointConfiguratorImpl configurator;
         ControlLoopImpl loop;
     };
 }

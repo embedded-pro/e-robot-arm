@@ -66,6 +66,26 @@ namespace arm
         return bus.RequestTelemetry();
     }
 
+    bool SafetySupervisorImpl::SelectAlgorithm(std::size_t joint, can::FocControlLoop loop, uint8_t algorithm)
+    {
+        return bus.SelectAlgorithm(joint, loop, algorithm);
+    }
+
+    bool SafetySupervisorImpl::QueryAlgorithms(std::size_t joint)
+    {
+        return bus.QueryAlgorithms(joint);
+    }
+
+    bool SafetySupervisorImpl::SetParameter(std::size_t joint, can::FocParameter parameter, float value)
+    {
+        return bus.SetParameter(joint, parameter, value);
+    }
+
+    bool SafetySupervisorImpl::QueryParameter(std::size_t joint, can::FocParameter parameter)
+    {
+        return bus.QueryParameter(joint, parameter);
+    }
+
     const JointReading& SafetySupervisorImpl::Reading(std::size_t joint) const
     {
         return bus.Reading(joint);
@@ -129,6 +149,22 @@ namespace arm
         NotifyObservers([command, failure](auto& observer)
             {
                 observer.OnCommandFailed(command, failure);
+            });
+    }
+
+    void SafetySupervisorImpl::OnAlgorithms(std::size_t joint, const can::FocAlgorithms& algorithms)
+    {
+        NotifyObservers([joint, &algorithms](auto& observer)
+            {
+                observer.OnAlgorithms(joint, algorithms);
+            });
+    }
+
+    void SafetySupervisorImpl::OnParameter(std::size_t joint, can::FocParameter parameter, can::FocParameterValue value)
+    {
+        NotifyObservers([joint, parameter, value](auto& observer)
+            {
+                observer.OnParameter(joint, parameter, value);
             });
     }
 

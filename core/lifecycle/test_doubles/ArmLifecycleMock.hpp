@@ -6,6 +6,18 @@
 
 namespace arm
 {
+    class ArmLifecycleMock
+        : public ArmLifecycle
+    {
+    public:
+        MOCK_METHOD(bool, BringUp, (), (override));
+        MOCK_METHOD(bool, Enable, (), (override));
+        MOCK_METHOD(bool, Disable, (), (override));
+        MOCK_METHOD(bool, Rearm, (), (override));
+        MOCK_METHOD(bool, MoveTo, (const JointPositions& target), (override));
+        MOCK_METHOD(ArmState, State, (), (const, override));
+    };
+
     class ArmLifecycleObserverMock
         : public ArmLifecycleObserver
     {

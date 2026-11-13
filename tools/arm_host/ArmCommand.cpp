@@ -6,7 +6,8 @@ namespace arm_host
     std::string_view CommandName(const ArmCommand& command)
     {
         static constexpr std::array<std::string_view, std::variant_size_v<ArmCommand>> names{ "check contracts", "select mode", "start", "stop",
-            "clear faults", "emergency stop", "re-arm", "move", "abort", "inject fault", "silence joint", "bring up", "enable", "disable" };
+            "clear faults", "emergency stop", "re-arm", "move", "abort", "inject fault", "silence joint", "bring up", "enable", "disable", "apply controller",
+            "read controller" };
 
         return names[command.index()];
     }

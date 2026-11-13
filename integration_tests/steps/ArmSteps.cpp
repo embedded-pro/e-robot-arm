@@ -293,3 +293,37 @@ WHEN(R"(the faults are cleared, the arm is re-armed and the joints are started a
     EXPECT_TRUE(fixture.arm.Safety().Start());
     fixture.ForwardTime(20ms);
 }
+
+WHEN(R"(joint {int} is given sliding-mode current, LQI speed and two-DOF position control with a speed bandwidth of {float} radians per second)", (std::int32_t joint, float bandwidth))
+{
+    auto& fixture = context.Get<ArmFixture>();
+    fixture.controller.current = can::FocCurrentAlgorithm::slidingMode;
+    fixture.controller.speed = can::FocSpeedAlgorithm::lqi;
+    fixture.controller.position = can::FocPositionAlgorithm::twoDof;
+    fixture.controller[arm::Gain::speedBandwidth] = bandwidth;
+    fixture.lastAccepted = fixture.arm.Configurator().Apply(static_cast<std::size_t>(joint - 1), fixture.controller);
+    fixture.ForwardTime(200ms);
+}
+
+THEN(R"(the configuration shall be applied to joint {int})", (std::int32_t joint))
+{
+    auto& fixture = context.Get<ArmFixture>();
+    EXPECT_TRUE(fixture.lastAccepted);
+    EXPECT_FALSE(fixture.events.configurationFailed);
+    ASSERT_TRUE(fixture.events.applied.has_value());
+    EXPECT_EQ(static_cast<std::size_t>(joint - 1), *fixture.events.applied);
+}
+
+THEN(R"(reading joint {int} back shall report exactly what was applied)", (std::int32_t joint))
+{
+    auto& fixture = context.Get<ArmFixture>();
+    EXPECT_TRUE(fixture.arm.Configurator().Read(static_cast<std::size_t>(joint - 1)));
+    fixture.ForwardTime(200ms);
+    ASSERT_TRUE(fixture.events.read.has_value());
+    EXPECT_FALSE(arm::Compare(fixture.controller, fixture.events.read->settings).Any());
+}
+
+THEN(R"(the configuration shall be refused)")
+{
+    EXPECT_FALSE(context.Get<ArmFixture>().lastAccepted);
+}

@@ -169,6 +169,15 @@ namespace arm_console
             case stateChanged:
                 output << "arm: " << arm_host::StateName(event.state) << "\n";
                 break;
+            case controllerApplied:
+                output << "joint " << event.joint + 1 << " controller applied\n";
+                break;
+            case controllerRead:
+                output << "joint " << event.joint + 1 << " controller read\n";
+                break;
+            case controllerFailed:
+                output << "joint " << event.joint + 1 << " controller failed: " << event.reason << "\n";
+                break;
         }
     }
 }

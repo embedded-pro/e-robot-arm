@@ -1,6 +1,7 @@
 add_subdirectory(arm)
 add_subdirectory(control_loop)
 add_subdirectory(joint_bus)
+add_subdirectory(joint_configurator)
 add_subdirectory(lifecycle)
 add_subdirectory(motion)
 add_subdirectory(platform_abstraction)
