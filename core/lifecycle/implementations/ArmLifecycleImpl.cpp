@@ -127,7 +127,7 @@ namespace arm
                 }),
 
             Machine::InternalRow<Tripped, Trip>(),
-            Machine::RowFromAny<Trip, Tripped>(nullptr, [](ArmLifecycleImpl& self, lifecycle::State& from, const Trip&)
+            Machine::RowFromAny<Trip, Tripped>(nullptr, [](ArmLifecycleImpl& self, const lifecycle::State& from, const Trip&)
                 {
                     if (std::holds_alternative<Moving>(from))
                         self.motion.Abort();

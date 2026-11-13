@@ -12,6 +12,8 @@
 #include <QByteArray>
 #include <QMainWindow>
 #include <QTimer>
+#include <utility>
+#include <vector>
 
 class QGroupBox;
 class QLabel;
@@ -42,6 +44,8 @@ namespace simulator
         void BuildDocks();
         void BuildMenus();
         void BuildArmMenu();
+        void BuildSingleStepMenu(QMenu& menu);
+        void UpdateSingleStepMenu();
         void BuildSimulationMenu();
         void BuildViewMenu();
         void ConnectSignals();
@@ -71,6 +75,7 @@ namespace simulator
         EventLogPanel* logPanel;
         EmergencyStopKey emergencyStopKey;
         QMenu* simulationMenu{ nullptr };
+        std::vector<std::pair<QAction*, Control>> singleStepActions;
         QTimer frameTimer;
         QByteArray defaultLayout;
     };

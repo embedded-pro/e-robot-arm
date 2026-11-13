@@ -228,6 +228,35 @@ namespace simulator
                 presenter.MoveForm().TriggerAction(MoveAction::abort);
             });
         abortAction->setShortcut(QKeySequence{ "Ctrl+." });
+
+        armMenu->addSeparator();
+        BuildSingleStepMenu(*armMenu->addMenu("Single &Step"));
+    }
+
+    void SimulatorWindow::BuildSingleStepMenu(QMenu& menu)
+    {
+        menu.setToolTipsVisible(true);
+        for (const auto& item : singleStepItems)
+        {
+            auto* action = menu.addAction(ui::backend::qt::ToQt(item.label), this, [this, control = item.control]()
+                {
+                    presenter.SingleStep(control);
+                });
+            singleStepActions.push_back({ action, item.control });
+        }
+
+        connect(&menu, &QMenu::aboutToShow, this, &SimulatorWindow::UpdateSingleStepMenu);
+    }
+
+    void SimulatorWindow::UpdateSingleStepMenu()
+    {
+        for (const auto& [action, control] : singleStepActions)
+        {
+            const auto& state = presenter.State(control);
+            action->setEnabled(state.enabled);
+            action->setToolTip(ui::backend::qt::ToQt(state.reason));
+            action->setStatusTip(ui::backend::qt::ToQt(state.reason));
+        }
     }
 
     void SimulatorWindow::BuildSimulationMenu()

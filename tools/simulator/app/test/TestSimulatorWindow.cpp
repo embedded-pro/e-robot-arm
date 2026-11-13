@@ -7,6 +7,8 @@
 #include <QElapsedTimer>
 #include <QImage>
 #include <QKeyEvent>
+#include <QMenu>
+#include <QMenuBar>
 #include <QMessageBox>
 #include <QQuickItem>
 #include <QQuickWidget>
@@ -17,6 +19,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <functional>
+#include <string>
 
 Q_IMPORT_QML_PLUGIN(SimulatorPlugin)
 
@@ -43,6 +46,14 @@ namespace
             });
     }
 
+    std::string LogText(const simulator::SimulatorPresenter& presenter)
+    {
+        std::string text;
+        for (const auto& line : presenter.Log().Lines())
+            text += std::to_string(line.seconds) + " " + line.message + "\n";
+        return text;
+    }
+
     bool HasDetail(const QImage& image)
     {
         const auto reference = image.pixel(0, 0);
@@ -65,18 +76,22 @@ namespace
 
         void BringUpAndMove(const arm::JointPositions& target)
         {
-            host.Post(arm_host::CheckContracts{});
+            host.Post(arm_host::BringUp{});
             ASSERT_TRUE(Eventually([this]()
                 {
-                    return window.Presenter().State(simulator::Control::positionMode).enabled;
+                    return window.Presenter().State(simulator::Control::enable).enabled;
                 }));
-            host.Post(arm_host::SelectMode{ can::FocMotorMode::position });
-            host.Post(arm_host::StartJoints{});
+            host.Post(arm_host::Enable{});
             ASSERT_TRUE(Eventually([this]()
                 {
                     return window.Presenter().State(simulator::Control::move).enabled;
                 }));
             host.Post(arm_host::MoveTo{ target });
+            ASSERT_TRUE(Eventually([this]()
+                {
+                    return Logged(window.Presenter(), "Move: accepted");
+                }))
+                << LogText(window.Presenter());
         }
 
         arm::ArmConfig config{ arm_host::DefaultArmConfig(arm_host::defaultNodes) };
@@ -185,4 +200,26 @@ TEST_F(SimulatorWindowTest, escape_stops_the_arm_even_while_a_modal_dialog_is_op
         {
             return Logged(window.Presenter(), "mergency stop: accepted");
         }));
+}
+
+TEST_F(SimulatorWindowTest, the_single_step_menu_follows_the_rules_and_names_why_an_item_is_disabled)
+{
+    host.Post(arm_host::BringUp{});
+    ASSERT_TRUE(Eventually([this]()
+        {
+            return window.Presenter().State(simulator::Control::enable).enabled;
+        }));
+
+    QMenu* singleStep = nullptr;
+    for (auto* menu : window.menuBar()->findChildren<QMenu*>())
+        if (menu->title() == "Single &Step")
+            singleStep = menu;
+    ASSERT_NE(nullptr, singleStep);
+
+    emit singleStep->aboutToShow();
+    const auto actions = singleStep->actions();
+    ASSERT_EQ(4, actions.size());
+    EXPECT_TRUE(actions[0]->isEnabled());
+    EXPECT_FALSE(actions[3]->isEnabled());
+    EXPECT_EQ("No joint running", actions[3]->toolTip());
 }

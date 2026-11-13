@@ -16,6 +16,7 @@ namespace simulator::test
     {
         auto snapshot = Connected();
         snapshot.contracts = can::ContractCompatibility::compatible;
+        snapshot.state = arm::ArmState::ready;
         return snapshot;
     }
 
@@ -24,6 +25,7 @@ namespace simulator::test
         auto snapshot = Compatible();
         for (auto& reading : snapshot.readings)
             reading.state = can::FocMotorState::running;
+        snapshot.state = arm::ArmState::enabled;
         return snapshot;
     }
 

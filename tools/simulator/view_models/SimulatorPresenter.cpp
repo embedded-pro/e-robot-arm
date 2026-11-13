@@ -10,11 +10,10 @@ namespace simulator
         using ui::model::ActionSpec;
         using ui::theme::ButtonRole;
 
-        constexpr std::array<ActionSpec, 6> operateActions{ {
-            { OperateAction::checkContracts, "Check Contracts" },
-            { OperateAction::positionMode, "Position Mode" },
-            { OperateAction::start, "Start", ButtonRole::Start },
-            { OperateAction::stop, "Stop", ButtonRole::Stop },
+        constexpr std::array<ActionSpec, 5> operateActions{ {
+            { OperateAction::bringUp, "Bring Up" },
+            { OperateAction::enable, "Enable", ButtonRole::Start },
+            { OperateAction::disable, "Disable", ButtonRole::Stop },
             { OperateAction::clearFaults, "Clear Faults", ButtonRole::Reset },
             { OperateAction::rearm, "Re-arm…" },
         } };
@@ -26,11 +25,10 @@ namespace simulator
 
         constexpr std::array<std::string_view, arm::jointCount> jointLabels{ "J1", "J2", "J3", "J4", "J5", "J6" };
 
-        constexpr std::array<std::pair<Control, std::string_view>, 6> operateControls{ {
-            { Control::checkContracts, "Check Contracts" },
-            { Control::positionMode, "Position Mode" },
-            { Control::start, "Start" },
-            { Control::stop, "Stop" },
+        constexpr std::array<std::pair<Control, std::string_view>, 5> operateControls{ {
+            { Control::bringUp, "Bring Up" },
+            { Control::enable, "Enable" },
+            { Control::disable, "Disable" },
             { Control::clearFaults, "Clear Faults" },
             { Control::rearm, "Re-arm" },
         } };
@@ -75,26 +73,49 @@ namespace simulator
             return "Unknown target";
         }
 
+        std::string WaitingForCalibration(const arm_host::ArmSnapshot& snapshot)
+        {
+            std::string text{ "Waiting for calibration:" };
+            for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+            {
+                const auto state = snapshot.readings[joint].state;
+                if (state != can::FocMotorState::ready && state != can::FocMotorState::running)
+                    text += std::format("{} {}", text.back() == ':' ? "" : ",", jointLabels[joint]);
+            }
+            return text;
+        }
+
         std::pair<std::string, ui::theme::StatusLevel> Stage(const arm_host::ArmSnapshot& snapshot)
         {
             using ui::theme::StatusLevel;
+            using enum arm::ArmState;
 
             if (!snapshot.targetReady)
                 return { "Disconnected", StatusLevel::Neutral };
-            if (snapshot.tripped)
-                return { "Tripped", StatusLevel::Fault };
-            if (snapshot.contracts == can::ContractCompatibility::unknown)
-                return { "Contracts unchecked", StatusLevel::Neutral };
-            if (snapshot.contracts == can::ContractCompatibility::incompatible)
-                return { "Contracts incompatible", StatusLevel::Fault };
-            if (snapshot.moving)
-                return { "Moving", StatusLevel::Ok };
-            if (std::ranges::any_of(snapshot.readings, [](const arm::JointReading& reading)
-                    {
-                        return reading.state == can::FocMotorState::running;
-                    }))
-                return { "Running", StatusLevel::Ok };
-            return { "Ready", StatusLevel::Neutral };
+            switch (snapshot.state)
+            {
+                case unpowered:
+                    return { "Unpowered", StatusLevel::Neutral };
+                case checking:
+                    return { "Checking contracts…", StatusLevel::Neutral };
+                case incompatible:
+                    return { "Contracts incompatible", StatusLevel::Fault };
+                case waitingForCalibration:
+                    return { WaitingForCalibration(snapshot), StatusLevel::Warning };
+                case ready:
+                    return { "Ready", StatusLevel::Neutral };
+                case enabling:
+                    return { "Enabling…", StatusLevel::Neutral };
+                case enabled:
+                    return { "Enabled", StatusLevel::Ok };
+                case moving:
+                    return { "Moving", StatusLevel::Ok };
+                case disabling:
+                    return { "Disabling…", StatusLevel::Neutral };
+                case tripped:
+                    return { "Tripped", StatusLevel::Fault };
+            }
+            return { "Unknown", StatusLevel::Neutral };
         }
 
         std::string ContractsText(can::ContractCompatibility contracts)
@@ -195,6 +216,24 @@ namespace simulator
         return scene.Select(joint);
     }
 
+    bool SimulatorPresenter::SingleStep(Control control)
+    {
+        if (!State(control).enabled)
+            return false;
+
+        if (control == Control::checkContracts)
+            Post(arm_host::CheckContracts{});
+        else if (control == Control::positionMode)
+            Post(arm_host::SelectMode{ can::FocMotorMode::position });
+        else if (control == Control::start)
+            Post(arm_host::StartJoints{});
+        else if (control == Control::stop)
+            Post(arm_host::StopJoints{});
+        else
+            return false;
+        return true;
+    }
+
     const ControlState& SimulatorPresenter::State(Control control) const
     {
         return states[static_cast<std::size_t>(control)];
@@ -242,14 +281,12 @@ namespace simulator
 
     void SimulatorPresenter::OnOperateAction(ui::model::ActionId action)
     {
-        if (action == OperateAction::checkContracts)
-            Post(arm_host::CheckContracts{});
-        else if (action == OperateAction::positionMode)
-            Post(arm_host::SelectMode{ can::FocMotorMode::position });
-        else if (action == OperateAction::start)
-            Post(arm_host::StartJoints{});
-        else if (action == OperateAction::stop)
-            Post(arm_host::StopJoints{});
+        if (action == OperateAction::bringUp)
+            Post(arm_host::BringUp{});
+        else if (action == OperateAction::enable)
+            Post(arm_host::Enable{});
+        else if (action == OperateAction::disable)
+            Post(arm_host::Disable{});
         else if (action == OperateAction::clearFaults)
             Post(arm_host::ClearFaults{});
         else if (action == OperateAction::rearm && rearmPrompt)

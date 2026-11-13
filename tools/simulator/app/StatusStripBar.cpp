@@ -23,7 +23,7 @@ namespace simulator
         : QToolBar{ "Status", parent }
         , targets{ new QComboBox{ this } }
         , connection{ StatusLabel(this, "Connection") }
-        , stage{ StatusLabel(this, "Arm stage") }
+        , stage{ StatusLabel(this, "Arm state") }
         , contracts{ StatusLabel(this, "Contracts") }
         , trip{ StatusLabel(this, "Trip") }
         , emergencyStop{ new QPushButton{ "EMERGENCY STOP\nEsc", this } }

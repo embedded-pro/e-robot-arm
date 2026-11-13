@@ -62,6 +62,7 @@ TEST_F(ControlRulesTest, a_trip_blocks_motion_and_allows_rearm_once_no_joint_is_
 {
     auto tripped = simulator::test::Running();
     tripped.tripped = true;
+    tripped.state = arm::ArmState::tripped;
     tripped.readings[2].state = can::FocMotorState::fault;
 
     ExpectDisabled(Control::start, tripped, "Tripped");
@@ -74,12 +75,9 @@ TEST_F(ControlRulesTest, a_trip_blocks_motion_and_allows_rearm_once_no_joint_is_
     ExpectDisabled(Control::rearm, simulator::test::Running(), "Not tripped");
 }
 
-TEST_F(ControlRulesTest, move_needs_every_joint_running_and_valid_targets)
+TEST_F(ControlRulesTest, move_needs_an_enabled_arm_and_valid_targets)
 {
-    auto oneStopped = simulator::test::Running();
-    oneStopped.readings[4].state = can::FocMotorState::ready;
-
-    ExpectDisabled(Control::move, oneStopped, "Joint 5 not running");
+    ExpectDisabled(Control::move, simulator::test::Compatible(), "Enable the arm first");
     ExpectDisabled(Control::move, simulator::test::Running(), "J2 outside its limits", "J2 outside its limits");
     ExpectEnabled(Control::move, simulator::test::Running());
 }
@@ -88,6 +86,7 @@ TEST_F(ControlRulesTest, a_running_move_allows_abort_and_blocks_what_would_distu
 {
     auto moving = simulator::test::Running();
     moving.moving = true;
+    moving.state = arm::ArmState::moving;
 
     ExpectEnabled(Control::abort, moving);
     ExpectDisabled(Control::move, moving, "Moving");
@@ -102,4 +101,44 @@ TEST_F(ControlRulesTest, stop_and_clear_faults_need_something_to_act_on)
     ExpectDisabled(Control::stop, simulator::test::Compatible(), "No joint running");
     ExpectEnabled(Control::stop, simulator::test::Running());
     ExpectDisabled(Control::clearFaults, simulator::test::Running(), "No joint in fault");
+}
+
+TEST_F(ControlRulesTest, bring_up_is_offered_while_the_arm_is_unpowered_or_its_contracts_are_incompatible)
+{
+    ExpectDisabled(Control::bringUp, arm_host::ArmSnapshot{}, "Not connected");
+    ExpectEnabled(Control::bringUp, simulator::test::Connected());
+
+    auto incompatible = simulator::test::Connected();
+    incompatible.state = arm::ArmState::incompatible;
+    ExpectEnabled(Control::bringUp, incompatible);
+
+    auto checking = simulator::test::Connected();
+    checking.state = arm::ArmState::checking;
+    ExpectDisabled(Control::bringUp, checking, "Checking contracts");
+    ExpectDisabled(Control::bringUp, simulator::test::Compatible(), "Already brought up");
+}
+
+TEST_F(ControlRulesTest, enable_is_offered_only_when_the_arm_is_ready_and_says_why_otherwise)
+{
+    ExpectEnabled(Control::enable, simulator::test::Compatible());
+    ExpectDisabled(Control::enable, simulator::test::Connected(), "Bring the arm up first");
+
+    auto waiting = simulator::test::Compatible();
+    waiting.state = arm::ArmState::waitingForCalibration;
+    ExpectDisabled(Control::enable, waiting, "Waiting for calibration");
+    ExpectDisabled(Control::enable, simulator::test::Running(), "Already enabled");
+
+    auto tripped = simulator::test::Compatible();
+    tripped.state = arm::ArmState::tripped;
+    ExpectDisabled(Control::enable, tripped, "Tripped");
+}
+
+TEST_F(ControlRulesTest, disable_is_offered_while_enabled_and_asks_to_abort_a_move_first)
+{
+    ExpectEnabled(Control::disable, simulator::test::Running());
+    ExpectDisabled(Control::disable, simulator::test::Compatible(), "Not enabled");
+
+    auto moving = simulator::test::Running();
+    moving.state = arm::ArmState::moving;
+    ExpectDisabled(Control::disable, moving, "Moving: abort first");
 }

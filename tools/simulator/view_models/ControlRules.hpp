@@ -2,6 +2,7 @@
 #define TOOLS_SIMULATOR_VIEW_MODELS_CONTROL_RULES_HPP
 
 #include "tools/arm_host/ArmSnapshot.hpp"
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <string_view>
@@ -19,8 +20,13 @@ namespace simulator
         rearm,
         move,
         abort,
-        target
+        target,
+        bringUp,
+        enable,
+        disable
     };
+
+    inline constexpr std::size_t controlCount{ 13 };
 
     struct ControlState
     {

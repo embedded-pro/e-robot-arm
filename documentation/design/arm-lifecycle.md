@@ -2,7 +2,7 @@
 title: "Arm Lifecycle Design"
 type: design
 status: draft
-version: 0.1.0
+version: 0.1.1
 component: "lifecycle"
 date: 2026-11-12
 ---
@@ -12,7 +12,7 @@ date: 2026-11-12
 | Title     | Arm Lifecycle Design |
 | Type      | design               |
 | Status    | draft                |
-| Version   | 0.1.0                |
+| Version   | 0.1.1                |
 | Component | lifecycle            |
 | Date      | 2026-11-12           |
 
@@ -196,7 +196,7 @@ sequenceDiagram
 
 ## Open Questions
 
-| # | Question                                                          | Options                                                | Status                          |
-|---|-------------------------------------------------------------------|--------------------------------------------------------|---------------------------------|
-| 1 | Whether the arm should start calibration of an uncalibrated joint | Operator calibrates on the node, the arm commands it   | closed: the operator calibrates |
-| 2 | Whether the simulator drives the lifecycle                        | Lifecycle state and bring-up controls in the simulator | open: follow-up to phase 1c     |
+| # | Question                                                          | Options                                                | Status                                                                                        |
+|---|-------------------------------------------------------------------|--------------------------------------------------------|-----------------------------------------------------------------------------------------------|
+| 1 | Whether the arm should start calibration of an uncalibrated joint | Operator calibrates on the node, the arm commands it   | closed: the operator calibrates                                                               |
+| 2 | Whether the simulator drives the lifecycle                        | Lifecycle state and bring-up controls in the simulator | closed: the Operate group and status strip follow it ([tool-simulator.md](tool-simulator.md)) |
