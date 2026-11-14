@@ -15,6 +15,17 @@ namespace arm_host
                    std::holds_alternative<StopJoints>(command) || std::holds_alternative<ClearFaults>(command);
         }
 
+        std::optional<arm::ArmControllerId> ArmControllerOf(const ArmCommand& command)
+        {
+            if (const auto* enable = std::get_if<EnableArmController>(&command))
+                return enable->id;
+            if (const auto* disable = std::get_if<DisableArmController>(&command))
+                return disable->id;
+            if (const auto* select = std::get_if<SelectArmController>(&command))
+                return select->id;
+            return std::nullopt;
+        }
+
         bool LifecycleCommand(const ArmCommand& command)
         {
             return std::holds_alternative<BringUp>(command) || std::holds_alternative<Enable>(command) || std::holds_alternative<Disable>(command);
@@ -237,6 +248,21 @@ namespace arm_host
             return session.arm.Configurator().ReadMotor(read.joint);
         }
 
+        bool operator()(const EnableArmController& enable) const
+        {
+            return session.arm.Controllers().Enable(enable.id);
+        }
+
+        bool operator()(const DisableArmController& disable) const
+        {
+            return session.arm.Controllers().Disable(disable.id);
+        }
+
+        bool operator()(const SelectArmController& select) const
+        {
+            return session.arm.Controllers().Select(select.id);
+        }
+
         ArmSession& session;
     };
 
@@ -258,6 +284,8 @@ namespace arm_host
     {
         if (std::holds_alternative<InjectFault>(command) || std::holds_alternative<SilenceJoint>(command))
             return simulation == nullptr ? "not a simulated target" : "no such joint";
+        if (const auto id = ArmControllerOf(command))
+            return ArmControllerRefusal(*id);
         if (std::holds_alternative<Rearm>(command))
             return arm.Lifecycle().State() == arm::ArmState::tripped ? "a joint is in fault" : "not tripped";
         if (LifecycleCommand(command))
@@ -278,11 +306,22 @@ namespace arm_host
         return "CAN transmit queue full";
     }
 
+    std::string_view ArmSession::ArmControllerRefusal(arm::ArmControllerId id) const
+    {
+        const auto& controllers = arm.Controllers();
+        if (id >= controllers.Count())
+            return "no such arm controller";
+        if (!controllers.Enabled(id))
+            return "the arm controller is disabled";
+        return "a move runs and the arm controller cannot take over without a step";
+    }
+
     ArmSession::Events::Events(ArmSession& session, arm::Arm& arm)
         : arm::JointBusObserver(arm.Safety())
         , arm::JointMotionObserver(arm.Motion())
         , arm::ArmLifecycleObserver(arm.Lifecycle())
         , arm::JointConfiguratorObserver(arm.Configurator())
+        , arm::ArmControllersObserver(arm.Controllers())
         , session(session)
     {}
 
@@ -350,6 +389,12 @@ namespace arm_host
         session.Emit({ .kind = ArmEventKind::controllerFailed, .reason = "no answer within 100 ms", .joint = joint });
     }
 
+    void ArmSession::Events::OnActiveControllerChanged(std::optional<arm::ArmControllerId> active)
+    {
+        const auto name = active.has_value() ? session.arm.Controllers().Name(*active) : infra::BoundedConstString{ "none" };
+        session.Emit({ .kind = ArmEventKind::armControllerChanged, .armController = std::string_view{ name.data(), name.size() } });
+    }
+
     void ArmSession::Events::OnMoveDone()
     {
         session.Emit({ .kind = ArmEventKind::moveDone });
@@ -406,6 +451,12 @@ namespace arm_host
         snapshot.manipulability = model.Manipulability(measured);
         snapshot.profileName.assign(profile.name.begin(), profile.name.end());
         snapshot.config = profile.config;
+        const auto& controllers = arm.Controllers();
+        for (arm::ArmControllerId id = 0; id != controllers.Count(); ++id)
+        {
+            const auto name = controllers.Name(id);
+            snapshot.armControllers.push_back({ std::string{ name.data(), name.size() }, controllers.Enabled(id), controllers.Active() == id });
+        }
         sample.commanded = snapshot.commanded.value_or(sample.measured);
 
         sink.OnSnapshot(snapshot);

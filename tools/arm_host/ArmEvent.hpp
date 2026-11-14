@@ -31,7 +31,8 @@ namespace arm_host
         controllerFailed,
         motorApplied,
         motorRead,
-        profileLoaded
+        profileLoaded,
+        armControllerChanged
     };
 
     inline constexpr std::size_t noJoint{ std::numeric_limits<std::size_t>::max() };
@@ -49,6 +50,7 @@ namespace arm_host
         arm::ArmState state{ arm::ArmState::unpowered };
         arm::ControllerReading controller{};
         arm::MotorSettings motor{};
+        std::string_view armController{};
     };
 }
 

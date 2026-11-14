@@ -93,3 +93,11 @@
     The arm shall report the gravity torque of each joint at the measured joint positions once per control period,
     and shall convert a joint motion of positions, speeds and accelerations to joint torques, from its geometry, the
     mass properties of its links and its payload.
+
+- id: REQ-ARM-013
+  title: Arm controllers switched at run time
+  shall: >
+    The arm shall let its operator enable, disable and select among more than one arm controller while it runs,
+    shall refuse a switch during a move unless the new controller takes over from the measured joint positions
+    without a setpoint step, and shall stop a running move with the joints held where they are when the active
+    controller is disabled.
