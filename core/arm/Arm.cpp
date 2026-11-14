@@ -8,12 +8,19 @@ namespace arm
         , motion(safety, config.positionLimits, config.motionLimits, config.controlPeriod)
         , configurator(safety, lifecycle)
         , lifecycle(safety, motion, configurator, config.enableMode, config.controllers, config.motors)
+        , smoothed(config.controlPeriod, config.smoothingTimeConstant)
+        , controllers(safety, motion)
+        , engagement(lifecycle, controllers)
         , loop(safety, config.controlPeriod, [this]()
               {
-                  motion.Step();
-                  lifecycle.Step();
+                  Step();
               })
-    {}
+    {
+        const auto passThroughId = controllers.Register("pass-through", passThrough);
+        controllers.Enable(passThroughId);
+        controllers.Enable(controllers.Register("smoothed", smoothed));
+        controllers.Select(passThroughId);
+    }
 
     SafetySupervisor& Arm::Safety()
     {
@@ -55,8 +62,26 @@ namespace arm
         return lifecycle;
     }
 
+    ArmControllers& Arm::Controllers()
+    {
+        return controllers;
+    }
+
+    const ArmControllers& Arm::Controllers() const
+    {
+        return controllers;
+    }
+
     ControlLoop& Arm::Loop()
     {
         return loop;
+    }
+
+    void Arm::Step()
+    {
+        const auto reference = motion.Step();
+        if (!controllers.Step(reference))
+            motion.Abort();
+        lifecycle.Step();
     }
 }

@@ -25,6 +25,7 @@ namespace arm
         std::optional<ArmControllerId> Find(infra::BoundedConstString name) const override;
         bool Enabled(ArmControllerId id) const override;
         std::optional<ArmControllerId> Active() const override;
+        std::optional<JointSetpoints> LastSetpoints() const override;
 
         bool Enable(ArmControllerId id) override;
         bool Disable(ArmControllerId id) override;
@@ -34,7 +35,6 @@ namespace arm
         void Disengage();
         bool Streaming() const;
         bool Step(const std::optional<JointPositions>& reference);
-        std::optional<JointSetpoints> LastSetpoints() const;
 
     private:
         struct Entry

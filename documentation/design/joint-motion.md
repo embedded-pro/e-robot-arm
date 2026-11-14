@@ -2,9 +2,9 @@
 title: "Joint Motion Design"
 type: design
 status: draft
-version: 0.5.0
+version: 0.6.0
 component: "motion"
-date: 2026-11-12
+date: 2026-11-14
 ---
 
 | Field     | Value               |
@@ -12,9 +12,9 @@ date: 2026-11-12
 | Title     | Joint Motion Design |
 | Type      | design              |
 | Status    | draft               |
-| Version   | 0.5.0               |
+| Version   | 0.6.0               |
 | Component | motion              |
-| Date      | 2026-11-12          |
+| Date      | 2026-11-14          |
 
 > Moving the six joints together from where they are to a target, in joint space. Behaviour only; diagrams are
 > Mermaid.
@@ -28,13 +28,15 @@ date: 2026-11-12
 - Planning a point-to-point move of all six joints that starts and ends at rest, within each joint's speed and
   acceleration limits.
 - Synchronising the joints so that they start together and arrive together.
-- Streaming the planned positions to the joint bus once per control period, and the target last.
+- Sampling the planned positions once per control period, and the target last, as the reference the arm
+  controllers follow ([arm-controllers.md](arm-controllers.md)).
 - Reporting when the move is done, or when it was aborted.
 
 **Is NOT responsible for:**
 
-- Guarding setpoints, faults and silence: the safety supervisor in front of the joint bus does, and a setpoint
-  set it refuses aborts the move. Joint motion only refuses a target outside the position limits up front.
+- Sending setpoints: the active arm controller turns the reference into setpoint sets, and the safety supervisor
+  guards them; a set it refuses aborts the move. Joint motion only refuses a target outside the position limits up
+  front.
 - Requesting telemetry: the arm's control loop paces the requests.
 - Paths through waypoints, Cartesian moves, jerk limits and dynamics: planned with the arm model.
 
@@ -57,15 +59,18 @@ running, or a joint's latest position is stale: it answered neither the latest t
 it ([joint-bus.md](joint-bus.md) Part E), so the move would start from where the joint no longer is. Each joint moves monotonically from its start to its target, so a target within the limits keeps the
 whole move within them; the safety supervisor still checks every setpoint set.
 
-### Part B — Streaming
+### Part B — Sampling
 
 Joint motion has no clock of its own: the control loop runs its step once per control period, in the setpoint
-phase. While a move is running, each step advances the move by one period, samples the joint positions at that
-time, measured from the start of the move, and sends them to the joint bus as one setpoint set; with no move
-running a step does nothing. The first set goes out at the first step after the start. The set sampled at or after the move's end is the target itself; it is sent once and the move is done.
+phase. While a move is running, each step advances the move by one period and samples the joint positions at that
+time, measured from the start of the move: that is the period's reference, which the arm controllers turn into a
+setpoint set right after. With no move running a step has no reference. The first sample is taken at the first
+step after the start. The sample at or after the move's end is the target itself; it is given once and the move
+is done.
 
-If the joint bus refuses a set, the move is aborted: nothing more is sent and the abort is reported. Aborting a
-move by request stops the streaming the same way; the joints hold the last position they were sent.
+If the arm cannot send the period's set (the safety supervisor refuses it, or no arm controller is active), the
+arm aborts the move. Aborting a move, by request or so, stops the sampling; the arm controllers hold the last
+reference, so the joints stay where the move left them.
 
 ---
 
@@ -73,18 +78,18 @@ move by request stops the streaming the same way; the joints hold the last posit
 
 ### Provided
 
-| Interface           | Purpose                                      | Contract                                                        |
-|---------------------|----------------------------------------------|-----------------------------------------------------------------|
-| Joint motion        | Move to a target, abort, whether moving      | One move at a time; refused targets send nothing                |
-| Joint motion events | Move done, move aborted                      | Exactly one of the two per accepted move                        |
-| Setpoint            | The last setpoint set the joint bus accepted | Empty until the first; kept after a move ends; for display only |
+| Interface           | Purpose                                 | Contract                                           |
+|---------------------|-----------------------------------------|----------------------------------------------------|
+| Joint motion        | Move to a target, abort, whether moving | One move at a time; refused targets send nothing   |
+| Joint motion events | Move done, move aborted                 | Exactly one of the two per accepted move           |
+| Reference           | One sample per step while a move runs   | None without a move; the target is the last sample |
 
 ### Required
 
-| Interface | Purpose                                     | Contract                                       |
-|-----------|---------------------------------------------|------------------------------------------------|
-| Joint bus | Latest positions; setpoint sets each period | The safety supervisor, so refusals abort moves |
-| Step      | One step per control period                 | Run by the control loop's setpoint phase       |
+| Interface | Purpose                     | Contract                                 |
+|-----------|-----------------------------|------------------------------------------|
+| Joint bus | Latest positions            | The safety supervisor                    |
+| Step      | One step per control period | Run by the control loop's setpoint phase |
 
 ---
 
@@ -106,7 +111,7 @@ stateDiagram-v2
     [*] --> Idle
     Idle --> Moving : move [target finite]
     Moving --> Idle : target sent / done
-    Moving --> Idle : setpoints refused / aborted
+    Moving --> Idle : set not sent / aborted
     Moving --> Idle : abort / aborted
 ```
 
@@ -119,12 +124,13 @@ sequenceDiagram
     participant C as Controller
     participant M as Joint motion
     participant B as Joint bus (safety supervisor)
+    participant A as Arm controllers
     C->>M: move to target
     M->>B: latest positions
     loop each control loop step
-        M->>B: sampled positions
+        M->>A: sampled reference
     end
-    M->>B: target
+    M->>A: target
     M-->>C: done
 ```
 

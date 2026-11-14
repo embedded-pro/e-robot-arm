@@ -2,7 +2,7 @@
 title: "Simulator Design"
 type: design
 status: draft
-version: 0.6.2
+version: 0.6.3
 component: "simulator"
 date: 2026-11-12
 ---
@@ -12,7 +12,7 @@ date: 2026-11-12
 | Title     | Simulator Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.6.2            |
+| Version   | 0.6.3            |
 | Component | simulator        |
 | Date      | 2026-11-12       |
 
@@ -148,8 +148,8 @@ The snapshot is what the screen shows; events are what the log shows; traces are
   state as well.
 - **Trace samples** — one per control period: the time, the six commanded positions and the six measured positions.
 
-The commanded positions are joint motion's last sampled setpoint. Joint motion gains a read-only accessor for it
-(`JointMotion::Setpoint()`, empty when no move has run); nothing else in `core/` changes for the simulator.
+The commanded positions are the last setpoint set the active arm controller sent (`ArmControllers::LastSetpoints()`,
+empty until the arm has been enabled); nothing else in `core/` changes for the simulator.
 
 ### Part G — The Qt application
 
@@ -193,7 +193,7 @@ The commanded positions are joint motion's last sampled setpoint. Joint motion g
 
 | Interface                          | Purpose                             | Contract                                                         |
 |------------------------------------|-------------------------------------|------------------------------------------------------------------|
-| `arm::Arm`                         | The arm stack                       | Unchanged, plus `JointMotion::Setpoint()`                        |
+| `arm::Arm`                         | The arm stack                       | Unchanged, plus `ArmControllers::LastSetpoints()`                |
 | can-lite `PlatformCanAdapter`, hub | Virtual and real targets            | `virtual:`, `socketcan:`, `slcan:`                               |
 | ui-cpp (`infra/ui-cpp`)            | Shell, forms, scopes, theme, meshes | Tier 1 always built; Qt and Quick 3D backends with the simulator |
 | Qt 6 Widgets, Quick, Quick 3D      | Window, 3-D view                    | Qt ≥ 6.4; 6.5+ features behind version guards                    |

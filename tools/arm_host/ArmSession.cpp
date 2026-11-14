@@ -387,7 +387,10 @@ namespace arm_host
             sample.measured[joint] = snapshot.readings[joint].position;
         }
 
-        snapshot.commanded = arm.Motion().Setpoint();
+        if (const auto setpoints = arm.Controllers().LastSetpoints())
+            snapshot.commanded = setpoints->positions;
+        else
+            snapshot.commanded.reset();
         snapshot.contracts = safety.Contracts();
         snapshot.tripped = safety.Tripped();
         snapshot.moving = arm.Motion().Moving();
