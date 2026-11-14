@@ -284,7 +284,7 @@ namespace arm_host
     {
         if (std::holds_alternative<InjectFault>(command) || std::holds_alternative<SilenceJoint>(command))
             return simulation == nullptr ? "not a simulated target" : "no such joint";
-        if (const auto id = ArmControllerOf(command))
+        if (const auto id = ArmControllerOf(command); id.has_value())
             return ArmControllerRefusal(*id);
         if (std::holds_alternative<Rearm>(command))
             return arm.Lifecycle().State() == arm::ArmState::tripped ? "a joint is in fault" : "not tripped";
@@ -455,7 +455,7 @@ namespace arm_host
         for (arm::ArmControllerId id = 0; id != controllers.Count(); ++id)
         {
             const auto name = controllers.Name(id);
-            snapshot.armControllers.push_back({ std::string{ name.data(), name.size() }, controllers.Enabled(id), controllers.Active() == id });
+            snapshot.armControllers.emplace_back(std::string{ name.data(), name.size() }, controllers.Enabled(id), controllers.Active() == id);
         }
         sample.commanded = snapshot.commanded.value_or(sample.measured);
 
