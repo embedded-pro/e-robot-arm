@@ -9,7 +9,8 @@ integration_tests/
 ├── features/        # Gherkin .feature files (the specification)
 │   ├── arm.feature           #   the arm against six simulated e-foc joints (REQ-ARM-001…006)
 │   ├── transmission.feature  #   joint transmissions (REQ-ARM-007)
-│   └── lifecycle.feature     #   the start-up sequence (REQ-ARM-008)
+│   ├── lifecycle.feature     #   the start-up sequence (REQ-ARM-008)
+│   └── arm_controllers.feature # arm controllers switched at run time (REQ-ARM-013)
 ├── support/         # Fixtures shared across steps (the system under test)
 ├── hooks/           # Before/After scenario hooks
 ├── steps/           # C++ step definitions binding Gherkin to the fixture

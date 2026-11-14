@@ -31,6 +31,7 @@ namespace arm_host
             , private arm::JointMotionObserver
             , private arm::ArmLifecycleObserver
             , private arm::JointConfiguratorObserver
+            , private arm::ArmControllersObserver
         {
         public:
             Events(ArmSession& session, arm::Arm& arm);
@@ -49,6 +50,7 @@ namespace arm_host
             void OnMotorApplied(std::size_t joint) override;
             void OnMotorRead(std::size_t joint, const arm::MotorSettings& motor) override;
             void OnConfigurationFailed(std::size_t joint, arm::ConfigurationFailure failure) override;
+            void OnActiveControllerChanged(std::optional<arm::ArmControllerId> active) override;
 
             ArmSession& session;
         };
@@ -72,6 +74,7 @@ namespace arm_host
         bool Run(const ArmCommand& command);
         bool Simulate(std::size_t joint, const infra::Function<void(simulation::SimulatedJoint&)>& action);
         std::string_view RefusalReason(const ArmCommand& command) const;
+        std::string_view ArmControllerRefusal(arm::ArmControllerId id) const;
         void ReportTrip(std::size_t joint, can::FocFaultCode fault);
         void Emit(ArmEvent event);
         void Publish();
