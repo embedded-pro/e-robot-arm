@@ -5,6 +5,7 @@
 #include <QAction>
 #include <QCloseEvent>
 #include <QCoreApplication>
+#include <QDir>
 #include <QDockWidget>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -142,6 +143,14 @@ namespace simulator
         const auto trace = host.TakeTrace();
 
         presenter.Refresh(snapshot, events);
+        if (pendingMeshes && std::ranges::any_of(events, [](const arm_host::ArmEvent& event)
+                                 {
+                                     return event.kind == arm_host::ArmEventKind::profileLoaded;
+                                 }))
+        {
+            ApplyMeshes(pendingMeshes->first, pendingMeshes->second);
+            pendingMeshes.reset();
+        }
         const auto& status = presenter.Status();
         strip->Update(status, presenter.State(Control::emergencyStop), presenter.State(Control::target), snapshot.target.kind);
         UpdateBanner(status);
@@ -176,6 +185,28 @@ namespace simulator
         logPanel->AppendNewest(events.size());
         sceneState.Update(presenter.Scene());
         simulationMenu->setEnabled(snapshot.targetReady && snapshot.target.kind == arm_host::TargetKind::simulated);
+    }
+
+    void SimulatorWindow::ApplyMeshes(const MeshNames& names, const QString& directory)
+    {
+        meshNames = names;
+        meshDirectory = directory;
+        const auto files = ResolveMeshes(names, directory);
+        QStringList urls;
+        for (std::size_t node = 0; node != files.size(); ++node)
+        {
+            urls << files[node].url.toString();
+            if (!files[node].problem.isEmpty())
+                NoteMesh(static_cast<int>(node), files[node].problem);
+        }
+        sceneState.SetMeshes(urls);
+    }
+
+    void SimulatorWindow::NoteMesh(int node, const QString& problem)
+    {
+        const auto joint = node == 0 ? arm_host::noJoint : static_cast<std::size_t>(node - 1);
+        presenter.Note(LogLevel::warning, joint, (MeshNodeName(static_cast<std::size_t>(node)) + " mesh not loaded: " + problem).toStdString());
+        logPanel->AppendNewest(1);
     }
 
     void SimulatorWindow::UpdateBanner(const StatusStrip& status)
@@ -379,6 +410,7 @@ namespace simulator
                 presenter.SelectJoint(joint);
                 scope->SelectJoint(static_cast<std::size_t>(joint));
             });
+        connect(&sceneState, &ArmSceneState::meshFailed, this, &SimulatorWindow::NoteMesh);
         connect(&sceneState, &ArmSceneState::jointPicked, this, [this](int joint)
             {
                 if (presenter.SelectJoint(joint))
@@ -482,19 +514,30 @@ namespace simulator
         }
 
         presenter.LoadProfile(profile);
+        MeshNames names{};
+        for (std::size_t node = 0; node != names.size(); ++node)
+            names[node].assign(profile.meshes[node].begin(), profile.meshes[node].end());
+        pendingMeshes.emplace(names, QFileInfo{ path }.absolutePath());
         profilePath = path;
         Settings().setValue("profile", path);
     }
 
     void SimulatorWindow::SaveProfile()
     {
-        const auto snapshot = host.Snapshot();
         const auto path = QFileDialog::getSaveFileName(this, "Save Profile", profilePath.isEmpty() ? QString{ "arm-profile.json" } : profilePath, "Arm profiles (*.json)");
-        if (path.isEmpty())
-            return;
+        if (!path.isEmpty())
+            SaveProfileTo(path);
+    }
 
+    void SimulatorWindow::SaveProfileTo(const QString& path)
+    {
+        const auto snapshot = host.Snapshot();
         arm::ArmProfile profile{ {}, snapshot.config };
         profile.name.assign(snapshot.profileName.substr(0, arm::profileNameSize));
+        const QDir target{ QFileInfo{ path }.absolutePath() };
+        for (std::size_t node = 0; node != meshNames.size(); ++node)
+            if (!meshNames[node].empty())
+                profile.meshes[node].assign(target.relativeFilePath(QDir{ meshDirectory }.absoluteFilePath(QString::fromStdString(meshNames[node]))).toStdString().substr(0, arm::meshPathSize));
         const auto problem = arm_host::WriteProfileFile(path.toStdString(), profile);
         if (!problem.empty())
             return shell.ShowAlert("Save Profile", "The profile was not saved.\n\n" + problem);

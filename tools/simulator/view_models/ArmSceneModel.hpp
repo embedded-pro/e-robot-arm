@@ -3,6 +3,7 @@
 
 #include "tools/arm_host/ArmSnapshot.hpp"
 #include "tools/simulator/view_models/ArmSceneGeometry.hpp"
+#include "tools/simulator/view_models/DesktopArm.hpp"
 #include "tools/simulator/view_models/ToolReadout.hpp"
 #include "ui/theme/Theme.hpp"
 #include <array>
@@ -30,8 +31,8 @@ namespace simulator
         ui::theme::StatusLevel Level(std::size_t joint) const;
         const SceneNodes& MeasuredNodes() const;
         const SceneNodes& CommandedNodes() const;
-        const SceneParts& Parts() const;
-        uint32_t PartsRevision() const;
+        const ArmMeshes& Meshes() const;
+        uint32_t MeshesRevision() const;
         float Extent() const;
         const std::string& SingularityWarning() const;
         const ScenePose& ToolNode() const;
@@ -49,8 +50,9 @@ namespace simulator
         std::optional<std::size_t> selected;
         SceneNodes measuredNodes{};
         SceneNodes commandedNodes{};
-        SceneParts parts{};
-        uint32_t partsRevision{ 0 };
+        ArmMeshes meshes{};
+        std::optional<arm::ArmGeometry> builtFor;
+        uint32_t meshesRevision{ 0 };
         float extent{ 0.0f };
         std::string singularityWarning;
         ScenePose toolNode{};

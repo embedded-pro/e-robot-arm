@@ -98,6 +98,11 @@ namespace simulator
         lines.push_back(std::move(line));
     }
 
+    void EventLog::Note(LogLevel level, std::size_t joint, std::string message)
+    {
+        Add({ std::chrono::duration<float>(std::chrono::system_clock::now() - start).count(), level, joint, std::move(message) });
+    }
+
     const std::deque<LogLine>& EventLog::Lines() const
     {
         return lines;

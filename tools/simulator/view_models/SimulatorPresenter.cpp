@@ -190,6 +190,11 @@ namespace simulator
         UpdateControls();
     }
 
+    void SimulatorPresenter::Note(LogLevel level, std::size_t joint, std::string message)
+    {
+        log.Note(level, joint, std::move(message));
+    }
+
     void SimulatorPresenter::EmergencyStop()
     {
         Post(arm_host::EmergencyStop{});

@@ -6,6 +6,7 @@
 #include <QColor>
 #include <QObject>
 #include <QQuaternion>
+#include <QStringList>
 #include <QVariantList>
 #include <QVector3D>
 #include <QtQml/qqmlregistration.h>
@@ -24,12 +25,12 @@ namespace simulator
 
         Q_PROPERTY(QVariantList measuredNodes READ MeasuredNodes NOTIFY changed)
         Q_PROPERTY(QVariantList commandedNodes READ CommandedNodes NOTIFY changed)
-        Q_PROPERTY(QVariantList parts READ Parts NOTIFY partsChanged)
         Q_PROPERTY(double extent READ Extent NOTIFY partsChanged)
         Q_PROPERTY(QString singularityWarning READ SingularityWarning NOTIFY changed)
         Q_PROPERTY(QVector3D toolPosition READ ToolPosition NOTIFY changed)
         Q_PROPERTY(QQuaternion toolRotation READ ToolRotation NOTIFY changed)
         Q_PROPERTY(QVariantList trail READ Trail NOTIFY trailChanged)
+        Q_PROPERTY(QStringList meshes READ Meshes NOTIFY meshesChanged)
         Q_PROPERTY(QColor warningColor READ WarningColor NOTIFY themeChanged)
         Q_PROPERTY(QVariantList levels READ Levels NOTIFY changed)
         Q_PROPERTY(bool ghostVisible READ GhostVisible NOTIFY changed)
@@ -52,12 +53,15 @@ namespace simulator
 
         QVariantList MeasuredNodes() const;
         QVariantList CommandedNodes() const;
-        QVariantList Parts() const;
+        static ArmSceneState* Current();
+        const mesh::Mesh& MeshOf(int node, int finish) const;
         double Extent() const;
         QString SingularityWarning() const;
         QVector3D ToolPosition() const;
         QQuaternion ToolRotation() const;
         QVariantList Trail() const;
+        QStringList Meshes() const;
+        void SetMeshes(const QStringList& urls);
         QColor WarningColor() const;
         QVariantList Levels() const;
         bool GhostVisible() const;
@@ -70,6 +74,7 @@ namespace simulator
         QColor FaultColor() const;
 
         Q_INVOKABLE void Pick(int joint);
+        Q_INVOKABLE void ReportMeshFailure(int node, const QString& reason);
         Q_INVOKABLE void RequestCameraPreset(int preset);
 
     signals:
@@ -77,20 +82,23 @@ namespace simulator
         void themeChanged();
         void partsChanged();
         void trailChanged();
+        void meshesChanged();
+        void meshFailed(int node, const QString& reason);
         void jointPicked(int joint);
         void cameraPresetRequested(int preset);
 
     private:
         QVariantList measuredNodes;
         QVariantList commandedNodes;
-        QVariantList parts;
-        uint32_t partsRevision{ 0 };
+        ArmMeshes generated{};
+        uint32_t meshesRevision{ 0 };
         double extent{ 100.0 };
         QString singularityWarning;
         QVector3D toolPosition;
         QQuaternion toolRotation;
         QVariantList trail;
         uint32_t trailRevision{ 0 };
+        QStringList meshes;
         QColor warning;
         QVariantList levels;
         bool ghostVisible{ false };

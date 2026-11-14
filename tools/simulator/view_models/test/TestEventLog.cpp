@@ -67,3 +67,15 @@ TEST_F(EventLogTest, command_results_start_with_a_capital)
 {
     EXPECT_EQ("Check contracts: accepted", simulator::Describe({ .kind = ArmEventKind::accepted, .commandName = "check contracts" }, start).message);
 }
+
+TEST_F(EventLogTest, a_note_from_the_simulator_is_logged_with_the_time_since_start)
+{
+    simulator::EventLog recent{ std::chrono::system_clock::now() - 2s };
+    recent.Note(simulator::LogLevel::warning, 2, "Link 3 mesh not loaded: cannot open forearm.glb");
+
+    const auto& line = recent.Lines().back();
+    EXPECT_EQ(simulator::LogLevel::warning, line.level);
+    EXPECT_EQ(2u, line.joint);
+    EXPECT_EQ("Link 3 mesh not loaded: cannot open forearm.glb", line.message);
+    EXPECT_NEAR(2.0f, line.seconds, 0.5f);
+}

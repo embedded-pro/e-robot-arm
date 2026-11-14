@@ -247,7 +247,36 @@ namespace arm
                     return ReadGeometry(path, value, profile.config.geometry);
                 if (key == "massProperties")
                     return ReadMass(path, value, profile.config.mass);
+                if (key == "meshes")
+                    return ReadMeshes(path, value, profile.meshes);
                 return Unknown(path);
+            }
+
+            bool ReadMeshes(const Path& path, const Value& value, std::array<infra::BoundedString::WithStorage<meshPathSize>, meshCount>& meshes)
+            {
+                return ReadMembers(path, value, [this, &meshes](const Path& item, infra::JsonString key, const Value& member)
+                    {
+                        for (std::size_t index = 0; index != meshCount; ++index)
+                            if (key == meshNames[index])
+                                return ReadMesh(item, member, meshes[index]);
+                        return Unknown(item);
+                    });
+            }
+
+            bool ReadMesh(const Path& path, const Value& value, infra::BoundedString& mesh)
+            {
+                const auto* text = std::get_if<infra::JsonString>(&value);
+                if (text == nullptr || text->empty() || text->size() > meshPathSize)
+                    return Fail(path, "must be a path of 1 to 96 characters");
+                text->ToString(mesh);
+                if (!EndsWith(mesh, ".gltf") && !EndsWith(mesh, ".glb"))
+                    return Fail(path, "must name a .gltf or .glb file");
+                return true;
+            }
+
+            static bool EndsWith(infra::BoundedConstString text, infra::BoundedConstString suffix)
+            {
+                return text.size() >= suffix.size() && text.substr(text.size() - suffix.size()) == suffix;
             }
 
             bool ReadMass(const Path& path, const Value& value, ArmMass& mass)
@@ -809,7 +838,16 @@ namespace arm
                 }
                 stream << "\n    ],\n    \"payload\": ";
                 Mass(config.mass.payload);
-                stream << "\n  }\n}\n";
+                stream << "\n  },\n  \"meshes\": {";
+                const char* separator = " ";
+                for (std::size_t index = 0; index != meshCount; ++index)
+                    if (!profile.meshes[index].empty())
+                    {
+                        stream << separator << "\"" << meshNames[index] << "\": ";
+                        Text(profile.meshes[index]);
+                        separator = ", ";
+                    }
+                stream << " }\n}\n";
             }
 
             void Mass(const MassProperties& properties)

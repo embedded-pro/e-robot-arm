@@ -18,6 +18,8 @@ qt_add_qml_module(e_robot_arm.tool.simulator.app
     RESOURCES
         assets/studio.hdr
     SOURCES
+        ArmMeshGeometry.cpp
+        ArmMeshGeometry.hpp
         ArmSceneState.cpp
         ArmSceneState.hpp
         TrailGeometry.cpp
@@ -33,6 +35,8 @@ target_sources(e_robot_arm.tool.simulator.app PRIVATE
     EmergencyStopKey.hpp
     JointTable.cpp
     JointTable.hpp
+    MeshFiles.cpp
+    MeshFiles.hpp
     Panels.cpp
     Panels.hpp
     SimulatorWindow.cpp

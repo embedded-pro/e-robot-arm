@@ -167,29 +167,23 @@ TEST_F(ArmSceneModelTest, the_ghost_nodes_follow_the_commanded_joints)
     EXPECT_EQ(scene.MeasuredNodes()[0], scene.CommandedNodes()[0]);
 }
 
-TEST_F(ArmSceneModelTest, the_parts_are_sized_by_the_geometry_and_rebuilt_only_when_it_changes)
+TEST_F(ArmSceneModelTest, the_meshes_follow_the_geometry_and_are_rebuilt_only_when_its_lengths_change)
 {
     auto snapshot = simulator::test::Running();
     scene.Update(snapshot);
-    const auto revision = scene.PartsRevision();
-
-    const auto& upperArm = scene.Parts()[2];
-    ASSERT_EQ(2u, upperArm.size());
-    EXPECT_EQ(1, upperArm[1].joint);
-    EXPECT_NEAR(snapshot.config.geometry.opw.c2, upperArm[1].scale[1], 1.0e-6f);
-    const auto top = Rotate(upperArm[1].rotation, { 0.0f, 50.0f * upperArm[1].scale[1], 0.0f });
-    EXPECT_NEAR(100.0f * snapshot.config.geometry.opw.c2, upperArm[1].centre[2] + top[2], 1.0e-3f);
-    EXPECT_EQ(-1, scene.Parts()[0].front().joint);
+    const auto revision = scene.MeshesRevision();
     EXPECT_NEAR(73.0f, scene.Extent(), 1.0e-3f);
+    EXPECT_EQ(simulator::BuildDesktopArm(snapshot.config.geometry), scene.Meshes());
 
     snapshot.readings[1].position = foc::Radians{ 0.7f };
+    snapshot.config.geometry.base.yaw = 0.3f;
     scene.Update(snapshot);
-    EXPECT_EQ(revision, scene.PartsRevision());
+    EXPECT_EQ(revision, scene.MeshesRevision());
 
     snapshot.config.geometry.opw.c2 = 0.4f;
     scene.Update(snapshot);
-    EXPECT_EQ(revision + 1, scene.PartsRevision());
-    EXPECT_NEAR(0.4f, scene.Parts()[2][1].scale[1], 1.0e-6f);
+    EXPECT_EQ(revision + 1, scene.MeshesRevision());
+    EXPECT_EQ(simulator::BuildDesktopArm(snapshot.config.geometry), scene.Meshes());
 }
 
 TEST_F(ArmSceneModelTest, the_tool_node_sits_at_the_tool_centre_point)

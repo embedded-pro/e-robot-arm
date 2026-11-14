@@ -42,6 +42,7 @@ namespace simulator
 
         void Add(const arm_host::ArmEvent& event);
         void Add(LogLine line);
+        void Note(LogLevel level, std::size_t joint, std::string message);
         const std::deque<LogLine>& Lines() const;
         bool Passes(const LogLine& line, const LogFilter& filter) const;
         std::string Format(const LogLine& line) const;

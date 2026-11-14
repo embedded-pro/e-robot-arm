@@ -13,8 +13,10 @@ target_sources(e_robot_arm.tool.simulator.view_models_test PRIVATE
     SnapshotBuilder.hpp
     TestArmSceneModel.cpp
     TestControlRules.cpp
+    TestDesktopArm.cpp
     TestEventLog.cpp
     TestJointRows.cpp
+    TestMeshKit.cpp
     TestMotorControllerPresenter.cpp
     TestMotorPresenter.cpp
     TestProfileView.cpp

@@ -34,20 +34,6 @@ namespace simulator
             return list;
         }
 
-        QVariantList ToList(const SceneParts& parts)
-        {
-            QVariantList nodes;
-            for (const auto& nodeParts : parts)
-            {
-                QVariantList list;
-                for (const auto& part : nodeParts)
-                    list.append(QVariantMap{ { "joint", part.joint }, { "source", part.shape == PartShape::cylinder ? "#Cylinder" : "#Cube" },
-                        { "material", static_cast<int>(part.material) }, { "position", Vector(part.centre) }, { "rotation", Rotation(part.rotation) },
-                        { "scale", Vector(part.scale) } });
-                nodes.append(QVariant{ list });
-            }
-            return nodes;
-        }
     }
 
     ArmSceneState* ArmSceneState::create(QQmlEngine*, QJSEngine*)
@@ -65,7 +51,6 @@ namespace simulator
         : QObject(parent)
         , measuredNodes(ToList(SceneNodes{}))
         , commandedNodes(ToList(SceneNodes{}))
-        , parts(ToList(SceneParts{}))
     {
         for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
             levels.append(0);
@@ -76,10 +61,10 @@ namespace simulator
     {
         measuredNodes = ToList(model.MeasuredNodes());
         commandedNodes = ToList(model.CommandedNodes());
-        if (model.PartsRevision() != partsRevision)
+        if (model.MeshesRevision() != meshesRevision)
         {
-            partsRevision = model.PartsRevision();
-            parts = ToList(model.Parts());
+            meshesRevision = model.MeshesRevision();
+            generated = model.Meshes();
             extent = model.Extent();
             emit partsChanged();
         }
@@ -110,10 +95,11 @@ namespace simulator
         using ui::backend::qt::ToQt;
         using ui::theme::ColorRole;
 
-        background = ToQt(theme.Get(ColorRole::SceneBackground));
-        const bool dark = background.lightness() < 128;
-        floor = dark ? QColor::fromHslF(0.0f, 0.0f, 0.30f) : ToQt(theme.Get(ColorRole::SceneSurface));
-        grid = dark ? QColor::fromHslF(0.0f, 0.0f, 0.42f) : ToQt(theme.Get(ColorRole::GridMajor));
+        const auto themed = ToQt(theme.Get(ColorRole::SceneBackground));
+        const bool dark = themed.lightness() < 128;
+        background = dark ? QColor::fromHslF(0.6f, 0.12f, 0.30f) : themed;
+        floor = dark ? QColor::fromHslF(0.6f, 0.06f, 0.42f) : ToQt(theme.Get(ColorRole::SceneSurface));
+        grid = dark ? QColor::fromHslF(0.6f, 0.08f, 0.55f) : ToQt(theme.Get(ColorRole::GridMajor));
         accent = ToQt(theme.Get(ColorRole::Accent));
         fault = ToQt(theme.Get(ColorRole::Fault));
         warning = ToQt(theme.Get(ColorRole::Warning));
@@ -130,9 +116,17 @@ namespace simulator
         return commandedNodes;
     }
 
-    QVariantList ArmSceneState::Parts() const
+    ArmSceneState* ArmSceneState::Current()
     {
-        return parts;
+        return instance;
+    }
+
+    const mesh::Mesh& ArmSceneState::MeshOf(int node, int finish) const
+    {
+        static const mesh::Mesh none{};
+        if (node < 0 || node >= static_cast<int>(armNodeCount) || finish < 0 || finish >= static_cast<int>(finishCount))
+            return none;
+        return generated[static_cast<std::size_t>(node)][static_cast<std::size_t>(finish)];
     }
 
     double ArmSceneState::Extent() const
@@ -208,6 +202,24 @@ namespace simulator
     QColor ArmSceneState::FaultColor() const
     {
         return fault;
+    }
+
+    QStringList ArmSceneState::Meshes() const
+    {
+        return meshes;
+    }
+
+    void ArmSceneState::SetMeshes(const QStringList& urls)
+    {
+        if (urls == meshes)
+            return;
+        meshes = urls;
+        emit meshesChanged();
+    }
+
+    void ArmSceneState::ReportMeshFailure(int node, const QString& reason)
+    {
+        emit meshFailed(node, reason);
     }
 
     void ArmSceneState::Pick(int joint)

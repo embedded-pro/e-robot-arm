@@ -5,6 +5,7 @@
 #include "tools/simulator/app/ArmSceneState.hpp"
 #include "tools/simulator/app/EmergencyStopKey.hpp"
 #include "tools/simulator/app/JointTable.hpp"
+#include "tools/simulator/app/MeshFiles.hpp"
 #include "tools/simulator/app/Panels.hpp"
 #include "tools/simulator/app/StatusStripBar.hpp"
 #include "tools/simulator/view_models/MotorControllerPresenter.hpp"
@@ -15,6 +16,7 @@
 #include <QMainWindow>
 #include <QString>
 #include <QTimer>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -40,6 +42,7 @@ namespace simulator
         MotorControllerPresenter& MotorController();
         MotorPresenter& Motor();
         void LoadProfileFrom(const QString& path);
+        void SaveProfileTo(const QString& path);
         void Frame();
 
     protected:
@@ -69,6 +72,8 @@ namespace simulator
         void UseTheme(bool light);
         void ShowAbout();
         void UpdateBanner(const StatusStrip& status);
+        void ApplyMeshes(const MeshNames& names, const QString& directory);
+        void NoteMesh(int node, const QString& problem);
 
         arm_host::ArmHost& host;
         ui::backend::qt::QtAppShell shell;
@@ -88,6 +93,9 @@ namespace simulator
         MotorPresenter motor;
         ProfilePanel* profilePanel;
         QString profilePath;
+        MeshNames meshNames{};
+        QString meshDirectory;
+        std::optional<std::pair<MeshNames, QString>> pendingMeshes;
         EventLogPanel* logPanel;
         EmergencyStopKey emergencyStopKey;
         QMenu* simulationMenu{ nullptr };
