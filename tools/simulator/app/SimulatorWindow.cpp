@@ -111,7 +111,9 @@ namespace simulator
     void SimulatorWindow::EnableAmbientOcclusion()
     {
         auto* root = armView->rootObject();
-        auto* environment = root != nullptr ? root->findChild<QObject*>("environment") : nullptr;
+        auto* studio = root != nullptr ? root->findChild<QObject*>("studio") : nullptr;
+        auto* view = studio != nullptr ? studio->property("view").value<QObject*>() : nullptr;
+        auto* environment = view != nullptr ? view->property("environment").value<QObject*>() : nullptr;
         if (environment != nullptr && environment->metaObject()->indexOfProperty("aoEnabled") >= 0)
             environment->setProperty("aoEnabled", true);
     }

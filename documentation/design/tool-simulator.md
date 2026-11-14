@@ -2,7 +2,7 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.14.0
+version: 0.15.0
 component: "tool-simulator"
 date: 2026-11-14
 ---
@@ -12,7 +12,7 @@ date: 2026-11-14
 | Title     | Simulator Screen Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.14.0                  |
+| Version   | 0.15.0                  |
 | Component | tool-simulator          |
 | Date      | 2026-11-14              |
 
@@ -165,7 +165,8 @@ again.
 
 ### Part E — 3-D view: look
 
-Qt Quick 3D in a `QQuickWidget`, scene in QML, following the `qt-3d-gui` skill:
+Qt Quick 3D in a `QQuickWidget`, scene in QML, following the `qt-3d-gui` skill. Environment, lights, floor and
+camera are ui-cpp's `StudioView` with its defaults and the theme's colours:
 
 - **Environment:** theme background colour; image-based lighting from a small studio HDR probe
   (`probeExposure` 1.4); filmic tone mapping; MSAA High; specular antialiasing; ambient occlusion (strength 55,
