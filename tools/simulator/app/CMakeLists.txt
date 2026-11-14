@@ -16,8 +16,6 @@ qt_add_qml_module(e_robot_arm.tool.simulator.app
         qml/ArmModel.qml
         qml/ArmPart.qml
         qml/ArmScene.qml
-    RESOURCES
-        assets/studio.hdr
     SOURCES
         ArmSceneState.cpp
         ArmSceneState.hpp
