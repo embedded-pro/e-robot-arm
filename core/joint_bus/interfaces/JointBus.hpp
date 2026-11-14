@@ -16,6 +16,7 @@ namespace arm
 
     using JointNodeIds = std::array<uint16_t, jointCount>;
     using JointPositions = std::array<foc::Radians, jointCount>;
+    using JointSpeeds = std::array<foc::RadiansPerSecond, jointCount>;
     using JointTransmissions = std::array<JointTransmission, jointCount>;
 
     struct JointLimit

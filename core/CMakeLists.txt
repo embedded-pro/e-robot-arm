@@ -1,4 +1,5 @@
 add_subdirectory(arm)
+add_subdirectory(arm_controllers)
 add_subdirectory(arm_model)
 add_subdirectory(arm_profile)
 add_subdirectory(control_loop)
