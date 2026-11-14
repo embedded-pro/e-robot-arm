@@ -58,11 +58,6 @@ namespace arm
         return moving;
     }
 
-    std::optional<JointPositions> JointMotionImpl::Setpoint() const
-    {
-        return setpoint;
-    }
-
     bool JointMotionImpl::AnyReadingStale() const
     {
         const auto period = bus.Period();
@@ -81,23 +76,16 @@ namespace arm
         return positions;
     }
 
-    void JointMotionImpl::Step()
+    std::optional<JointPositions> JointMotionImpl::Step()
     {
         if (!moving)
-            return;
+            return std::nullopt;
 
         ++periodsElapsed;
         const auto elapsed = std::chrono::duration<float>(period * periodsElapsed).count();
         const bool arrived = elapsed >= plan.Duration();
+        const auto reference = arrived ? target : plan.Sample(elapsed);
 
-        const auto positions = arrived ? target : plan.Sample(elapsed);
-        if (!bus.SendPositions(positions))
-        {
-            Abort();
-            return;
-        }
-
-        setpoint = positions;
         if (arrived)
         {
             Finish();
@@ -106,6 +94,8 @@ namespace arm
                     observer.OnMoveDone();
                 });
         }
+
+        return reference;
     }
 
     void JointMotionImpl::Finish()

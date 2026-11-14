@@ -1,6 +1,7 @@
 #ifndef CORE_ARM_CONTROLLERS_INTERFACES_ARM_CONTROLLERS_HPP
 #define CORE_ARM_CONTROLLERS_INTERFACES_ARM_CONTROLLERS_HPP
 
+#include "core/arm_controllers/interfaces/ArmController.hpp"
 #include "infra/util/BoundedString.hpp"
 #include "infra/util/Observer.hpp"
 #include <cstddef>
@@ -38,6 +39,7 @@ namespace arm
         virtual std::optional<ArmControllerId> Find(infra::BoundedConstString name) const = 0;
         virtual bool Enabled(ArmControllerId id) const = 0;
         virtual std::optional<ArmControllerId> Active() const = 0;
+        virtual std::optional<JointSetpoints> LastSetpoints() const = 0;
 
         virtual bool Enable(ArmControllerId id) = 0;
         virtual bool Disable(ArmControllerId id) = 0;

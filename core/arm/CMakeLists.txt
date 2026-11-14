@@ -6,6 +6,7 @@ target_include_directories(e_robot_arm.arm PUBLIC
 )
 
 target_link_libraries(e_robot_arm.arm PUBLIC
+    e_robot_arm.arm_controllers.implementations
     e_robot_arm.arm_model
     e_robot_arm.control_loop.implementations
     e_robot_arm.joint_bus.implementations
@@ -19,6 +20,8 @@ target_sources(e_robot_arm.arm PRIVATE
     Arm.cpp
     Arm.hpp
     ArmConfig.hpp
+    ArmControllerEngagement.cpp
+    ArmControllerEngagement.hpp
 )
 
 add_subdirectory(test)

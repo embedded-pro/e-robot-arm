@@ -62,6 +62,22 @@ namespace
             Receive(node, can::focTelemetryStatusResponseId, services::CanPayloadWriter{}.WriteUInt8(static_cast<uint8_t>(state)).WriteUInt8(static_cast<uint8_t>(fault)));
         }
 
+        void EnableArm()
+        {
+            arm.Loop().Start();
+            EXPECT_TRUE(arm.Lifecycle().BringUp());
+            AnswerCompatibleContracts();
+            for (int period = 0; period != 4; ++period)
+            {
+                for (const auto node : nodes)
+                    ReportStatus(node, can::FocMotorState::running, can::FocFaultCode::none);
+                ReportMotionFromEveryJoint();
+                ForwardTime(10ms);
+            }
+            ReportMotionFromEveryJoint();
+            ASSERT_EQ(arm::ArmState::enabled, arm.Lifecycle().State());
+        }
+
         std::size_t SentOf(uint8_t messageType) const
         {
             return static_cast<std::size_t>(std::ranges::count_if(sent, [messageType](const SentFrame& frame)
@@ -98,18 +114,63 @@ TEST_F(ArmTest, the_running_loop_requests_telemetry_from_every_joint_each_period
     EXPECT_EQ(2 * arm::jointCount, SentOf(can::focRequestTelemetryId));
 }
 
+TEST_F(ArmTest, an_enabled_arm_streams_the_active_controllers_setpoints_to_every_joint_each_period)
+{
+    EXPECT_EQ(0u, SentOf(can::SetpointCommandId(can::FocSetpointKind::position)));
+    EnableArm();
+    const auto streamed = SentOf(can::SetpointCommandId(can::FocSetpointKind::position));
+
+    ForwardTime(10ms);
+    EXPECT_EQ(streamed + arm::jointCount, SentOf(can::SetpointCommandId(can::FocSetpointKind::position)));
+    EXPECT_EQ(std::optional<arm::ArmControllerId>{ 0 }, arm.Controllers().Active());
+}
+
 TEST_F(ArmTest, a_move_reaches_every_joint_through_the_supervisor_in_the_setpoint_phase)
 {
-    AnswerCompatibleContracts();
-    arm.Loop().Start();
-    ReportMotionFromEveryJoint();
+    EnableArm();
+    ForwardTime(5ms);
+    const auto streamed = SentOf(can::SetpointCommandId(can::FocSetpointKind::position));
 
     arm::JointPositions target{};
     target[0] = foc::Radians{ 0.5f };
-    EXPECT_TRUE(arm.Motion().MoveTo(target));
+    EXPECT_TRUE(arm.Lifecycle().MoveTo(target));
 
-    ForwardTime(5ms);
-    EXPECT_EQ(arm::jointCount, SentOf(can::SetpointCommandId(can::FocSetpointKind::position)));
+    ForwardTime(10ms);
+    EXPECT_EQ(streamed + arm::jointCount, SentOf(can::SetpointCommandId(can::FocSetpointKind::position)));
+    ASSERT_TRUE(arm.Controllers().LastSetpoints().has_value());
+    EXPECT_GT(arm.Controllers().LastSetpoints()->positions[0].Value(), 0.0f);
+}
+
+TEST_F(ArmTest, disabling_the_active_controller_aborts_a_running_move_and_stops_the_setpoints)
+{
+    EnableArm();
+    arm::JointPositions target{};
+    target[0] = foc::Radians{ 0.5f };
+    EXPECT_TRUE(arm.Lifecycle().MoveTo(target));
+    ForwardTime(10ms);
+
+    EXPECT_TRUE(arm.Controllers().Disable(0));
+    ForwardTime(10ms);
+    const auto streamed = SentOf(can::SetpointCommandId(can::FocSetpointKind::position));
+
+    ForwardTime(30ms);
+    EXPECT_FALSE(arm.Motion().Moving());
+    EXPECT_EQ(streamed, SentOf(can::SetpointCommandId(can::FocSetpointKind::position)));
+}
+
+TEST_F(ArmTest, switches_to_the_smoothed_controller_mid_move)
+{
+    EnableArm();
+    arm::JointPositions target{};
+    target[0] = foc::Radians{ 0.5f };
+    EXPECT_TRUE(arm.Lifecycle().MoveTo(target));
+    ForwardTime(10ms);
+
+    const auto smoothed = arm.Controllers().Find("smoothed");
+    ASSERT_TRUE(smoothed.has_value());
+    EXPECT_TRUE(arm.Controllers().Select(*smoothed));
+    EXPECT_EQ(smoothed, arm.Controllers().Active());
+    EXPECT_FALSE(arm.Controllers().Select(0));
 }
 
 TEST_F(ArmTest, a_faulted_joint_stops_every_joint)

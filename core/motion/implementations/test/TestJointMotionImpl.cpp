@@ -68,16 +68,8 @@ namespace
         void Step(std::size_t periods)
         {
             for (std::size_t period = 0; period != periods; ++period)
-                motion.Step();
-        }
-
-        void RecordSetpoints(bool accepted = true)
-        {
-            EXPECT_CALL(bus, SendPositions(_)).WillRepeatedly(Invoke([this, accepted](const arm::JointPositions& positions)
-                {
-                    sent.push_back(positions);
-                    return accepted;
-                }));
+                if (const auto reference = motion.Step())
+                    sent.push_back(*reference);
         }
 
         StrictMock<arm::JointBusMock> bus;
@@ -89,10 +81,9 @@ namespace
     };
 }
 
-TEST_F(JointMotionImplTest, streams_one_setpoint_set_per_period_and_the_target_last)
+TEST_F(JointMotionImplTest, samples_one_reference_per_period_and_the_target_last)
 {
     const auto target = Target(1.0f);
-    RecordSetpoints();
 
     EXPECT_TRUE(motion.MoveTo(target));
     EXPECT_TRUE(motion.Moving());
@@ -114,7 +105,6 @@ TEST_F(JointMotionImplTest, streams_one_setpoint_set_per_period_and_the_target_l
 
 TEST_F(JointMotionImplTest, starts_from_the_latest_reported_positions)
 {
-    RecordSetpoints();
 
     EXPECT_TRUE(motion.MoveTo(Target(1.0f)));
     Step(1);
@@ -160,7 +150,6 @@ TEST_F(JointMotionImplTest, refuses_a_target_outside_the_joint_limits)
 
 TEST_F(JointMotionImplTest, refuses_a_second_move_while_moving)
 {
-    RecordSetpoints();
     EXPECT_TRUE(motion.MoveTo(Target(1.0f)));
 
     EXPECT_FALSE(motion.MoveTo(Target(-1.0f)));
@@ -170,21 +159,8 @@ TEST_F(JointMotionImplTest, refuses_a_second_move_while_moving)
     EXPECT_EQ(Target(1.0f), sent.back());
 }
 
-TEST_F(JointMotionImplTest, a_refused_setpoint_set_aborts_the_move)
+TEST_F(JointMotionImplTest, abort_stops_sampling_and_reports_it_once)
 {
-    RecordSetpoints(false);
-    EXPECT_TRUE(motion.MoveTo(Target(1.0f)));
-
-    EXPECT_CALL(observer, OnMoveAborted());
-    Step(20);
-
-    EXPECT_EQ(1u, sent.size());
-    EXPECT_FALSE(motion.Moving());
-}
-
-TEST_F(JointMotionImplTest, abort_stops_streaming_and_reports_it_once)
-{
-    RecordSetpoints();
     EXPECT_TRUE(motion.MoveTo(Target(1.0f)));
     Step(3);
 
@@ -197,9 +173,8 @@ TEST_F(JointMotionImplTest, abort_stops_streaming_and_reports_it_once)
     EXPECT_FALSE(motion.Moving());
 }
 
-TEST_F(JointMotionImplTest, a_move_to_where_the_joints_are_sends_the_target_once_and_is_done)
+TEST_F(JointMotionImplTest, a_move_to_where_the_joints_are_samples_the_target_once_and_is_done)
 {
-    RecordSetpoints();
     EXPECT_TRUE(motion.MoveTo(Target(0.0f)));
 
     EXPECT_CALL(observer, OnMoveDone());
@@ -209,46 +184,10 @@ TEST_F(JointMotionImplTest, a_move_to_where_the_joints_are_sends_the_target_once
     EXPECT_EQ(Target(0.0f), sent.front());
 }
 
-TEST_F(JointMotionImplTest, a_step_without_a_move_sends_nothing)
+TEST_F(JointMotionImplTest, a_step_without_a_move_has_no_reference)
 {
     Step(5);
 
+    EXPECT_TRUE(sent.empty());
     EXPECT_FALSE(motion.Moving());
-}
-
-TEST_F(JointMotionImplTest, has_no_setpoint_before_the_first_move)
-{
-    EXPECT_FALSE(motion.Setpoint().has_value());
-}
-
-TEST_F(JointMotionImplTest, reports_the_last_accepted_setpoint_set)
-{
-    RecordSetpoints();
-    EXPECT_TRUE(motion.MoveTo(Target(1.0f)));
-    Step(3);
-
-    ASSERT_TRUE(motion.Setpoint().has_value());
-    for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
-        EXPECT_NEAR(motion.Setpoint()->at(joint).Value(), sent.back()[joint].Value(), tolerance);
-}
-
-TEST_F(JointMotionImplTest, keeps_the_last_setpoint_after_the_move_is_done)
-{
-    RecordSetpoints();
-    EXPECT_CALL(observer, OnMoveDone());
-    EXPECT_TRUE(motion.MoveTo(Target(0.0f)));
-    Step(1);
-
-    ASSERT_TRUE(motion.Setpoint().has_value());
-    EXPECT_NEAR(motion.Setpoint()->at(0).Value(), 0.0f, tolerance);
-}
-
-TEST_F(JointMotionImplTest, a_refused_setpoint_set_is_not_reported)
-{
-    RecordSetpoints(false);
-    EXPECT_CALL(observer, OnMoveAborted());
-    EXPECT_TRUE(motion.MoveTo(Target(1.0f)));
-    Step(1);
-
-    EXPECT_FALSE(motion.Setpoint().has_value());
 }

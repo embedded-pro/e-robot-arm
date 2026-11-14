@@ -2,6 +2,10 @@
 #define CORE_ARM_ARM_HPP
 
 #include "core/arm/ArmConfig.hpp"
+#include "core/arm/ArmControllerEngagement.hpp"
+#include "core/arm_controllers/implementations/ArmControllersImpl.hpp"
+#include "core/arm_controllers/implementations/JointPositionPassThrough.hpp"
+#include "core/arm_controllers/implementations/SmoothedJointPosition.hpp"
 #include "core/control_loop/implementations/ControlLoopImpl.hpp"
 #include "core/joint_bus/implementations/JointBusImpl.hpp"
 #include "core/joint_configurator/implementations/JointConfiguratorImpl.hpp"
@@ -29,14 +33,22 @@ namespace arm
         const JointConfigurator& Configurator() const;
         ArmLifecycle& Lifecycle();
         const ArmLifecycle& Lifecycle() const;
+        ArmControllers& Controllers();
+        const ArmControllers& Controllers() const;
         ControlLoop& Loop();
 
     private:
+        void Step();
+
         JointBusImpl jointBus;
         SafetySupervisorImpl safety;
         JointMotionImpl motion;
         JointConfiguratorImpl configurator;
         ArmLifecycleImpl lifecycle;
+        JointPositionPassThrough passThrough;
+        SmoothedJointPosition smoothed;
+        ArmControllersImpl controllers;
+        ArmControllerEngagement engagement;
         ControlLoopImpl loop;
     };
 }

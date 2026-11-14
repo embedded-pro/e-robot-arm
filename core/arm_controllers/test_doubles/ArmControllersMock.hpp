@@ -15,6 +15,7 @@ namespace arm
         MOCK_METHOD(std::optional<ArmControllerId>, Find, (infra::BoundedConstString name), (const, override));
         MOCK_METHOD(bool, Enabled, (ArmControllerId id), (const, override));
         MOCK_METHOD(std::optional<ArmControllerId>, Active, (), (const, override));
+        MOCK_METHOD(std::optional<JointSetpoints>, LastSetpoints, (), (const, override));
         MOCK_METHOD(bool, Enable, (ArmControllerId id), (override));
         MOCK_METHOD(bool, Disable, (ArmControllerId id), (override));
         MOCK_METHOD(bool, Select, (ArmControllerId id), (override));

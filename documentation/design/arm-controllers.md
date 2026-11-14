@@ -2,7 +2,7 @@
 title: "Arm Controllers Design"
 type: design
 status: draft
-version: 0.1.0
+version: 0.2.0
 component: "arm-controllers"
 date: 2026-11-14
 ---
@@ -12,7 +12,7 @@ date: 2026-11-14
 | Title     | Arm Controllers Design |
 | Type      | design                 |
 | Status    | draft                  |
-| Version   | 0.1.0                  |
+| Version   | 0.2.0                  |
 | Component | arm-controllers        |
 | Date      | 2026-11-14             |
 
@@ -91,9 +91,8 @@ disabling the active controller stops the arm; it is not an emergency stop, and 
 While the arm streams, the active controller runs once per control period, in the control loop's setpoint phase,
 after joint motion has advanced its reference:
 
-1. The reference is the motion's latest sample. Before the first move since streaming started, or after a move,
-   it is the position the motion holds: the target of the last move, or the measured positions when streaming
-   started.
+1. The reference is the motion's sample while a move runs. Otherwise it is the last reference given: the target of
+   the last move, where an aborted move stopped, or the measured positions when streaming started.
 2. The measured joints are each joint's latest reading.
 3. The active controller's set goes to the safety supervisor. A set the supervisor refuses, or a period with no
    active controller, stops the streaming and aborts the running move.
