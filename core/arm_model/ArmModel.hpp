@@ -11,7 +11,6 @@
 
 namespace arm
 {
-    using JointSpeeds = std::array<foc::RadiansPerSecond, jointCount>;
     using JointAccelerations = std::array<foc::RadiansPerSecondSquared, jointCount>;
     using JointTorques = std::array<foc::NewtonMeter, jointCount>;
 

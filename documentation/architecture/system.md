@@ -2,7 +2,7 @@
 title: "System Architecture"
 type: architecture
 status: draft
-version: 0.12.0
+version: 0.12.1
 component: "system"
 date: 2026-11-12
 ---
@@ -12,7 +12,7 @@ date: 2026-11-12
 | Title     | System Architecture |
 | Type      | architecture        |
 | Status    | draft               |
-| Version   | 0.12.0              |
+| Version   | 0.12.1              |
 | Component | system              |
 | Date      | 2026-11-12          |
 
@@ -64,20 +64,20 @@ flowchart LR
 
 ## Component Decomposition
 
-| Sub-component      | Responsibility                                                                                                                                                                     | Status                                                  |
-|--------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------|
-| joint bus          | Six e-foc nodes on one client: node map, contract check, fault fan-out, liveness; joint ↔ motor transmission                                                                       | exists; phase 1                                         |
-| safety             | Guards the joint bus: limits, contract gate, emergency stop on a fault or silence; later speed, torque, collision                                                                  | exists; phase 6                                         |
-| motion             | Motion generators: synchronised moves today; S-curve, waypoints, Cartesian, jog                                                                                                    | exists; phase 4                                         |
-| control loop       | The fixed control period: telemetry requests, then the setpoint step half a period later                                                                                           | exists; phase 1                                         |
-| lifecycle          | Start-up order: contracts, calibration, configuration, homing, enable; trip and re-arm                                                                                             | exists, configuration included; homing later            |
-| arm profile        | The single description of an arm: per joint node, transmission, limits, motor controller, motor; arm geometry and controllers                                                      | exists (JSON, motor controller, motor)                  |
-| joint configurator | Applies and verifies each joint's motor controller (algorithms, gains) and motor model over CAN                                                                                    | exists (motor controller, motor)                        |
-| arm controllers    | Registry and selector: controllers enabled, disabled and switched at run time, bumpless                                                                                            | phase 2, catalogue in 5                                 |
-| arm model          | Kinematics and dynamics of the six joints, the tool frame and the base mount                                                                                                       | exists                                                  |
-| virtual arm        | Six e-foc virtual motors with selectable motor characteristics, coupled to the arm's dynamics                                                                                      | phase 7                                                 |
-| arm host           | The arm on its own thread with its target: simulated joints, `virtual:` bus or real adapter; commands in, snapshot, events and traces out; shared by the console and the simulator | exists (8a)                                             |
-| simulator          | Qt operator station on ui-cpp with a Qt Quick 3D arm view: scopes, configuration forms; runs the same core on any back end                                                         | exists (8a; 8b motor controller, motor, profile); 8b–8d |
+| Sub-component      | Responsibility                                                                                                                                                                     | Status                                                                           |
+|--------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------|
+| joint bus          | Six e-foc nodes on one client: node map, contract check, fault fan-out, liveness; joint ↔ motor transmission                                                                       | exists; phase 1                                                                  |
+| safety             | Guards the joint bus: limits, contract gate, emergency stop on a fault or silence; later speed, torque, collision                                                                  | exists; phase 6                                                                  |
+| motion             | Motion generators: synchronised moves today; S-curve, waypoints, Cartesian, jog                                                                                                    | exists; phase 4                                                                  |
+| control loop       | The fixed control period: telemetry requests, then the setpoint step half a period later                                                                                           | exists; phase 1                                                                  |
+| lifecycle          | Start-up order: contracts, calibration, configuration, homing, enable; trip and re-arm                                                                                             | exists, configuration included; homing later                                     |
+| arm profile        | The single description of an arm: per joint node, transmission, limits, motor controller, motor; arm geometry and controllers                                                      | exists (JSON, motor controller, motor)                                           |
+| joint configurator | Applies and verifies each joint's motor controller (algorithms, gains) and motor model over CAN                                                                                    | exists (motor controller, motor)                                                 |
+| arm controllers    | Registry and selector: controllers enabled, disabled and switched at run time, bumpless                                                                                            | exists (registry, selector, `pass-through`, `smoothed`); wired into the arm next |
+| arm model          | Kinematics and dynamics of the six joints, the tool frame and the base mount                                                                                                       | exists                                                                           |
+| virtual arm        | Six e-foc virtual motors with selectable motor characteristics, coupled to the arm's dynamics                                                                                      | phase 7                                                                          |
+| arm host           | The arm on its own thread with its target: simulated joints, `virtual:` bus or real adapter; commands in, snapshot, events and traces out; shared by the console and the simulator | exists (8a)                                                                      |
+| simulator          | Qt operator station on ui-cpp with a Qt Quick 3D arm view: scopes, configuration forms; runs the same core on any back end                                                         | exists (8a; 8b motor controller, motor, profile); 8b–8d                          |
 
 ```mermaid
 flowchart TD
