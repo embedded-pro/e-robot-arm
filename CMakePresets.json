@@ -38,7 +38,8 @@
       "inherits": "host",
       "cacheVariables": {
         "E_ROBOT_ARM_BUILD_SIMULATOR": true,
-        "UI_BUILD_QT_BACKEND": true
+        "UI_BUILD_QT_BACKEND": true,
+        "UI_BUILD_QUICK3D_BACKEND": true
       }
     },
     {

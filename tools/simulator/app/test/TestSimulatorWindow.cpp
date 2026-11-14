@@ -30,6 +30,7 @@
 #include <string>
 
 Q_IMPORT_QML_PLUGIN(SimulatorPlugin)
+Q_IMPORT_QML_PLUGIN(UiQuick3DPlugin)
 
 namespace
 {

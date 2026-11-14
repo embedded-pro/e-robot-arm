@@ -2,7 +2,7 @@
 title: "Simulator Design"
 type: design
 status: draft
-version: 0.6.0
+version: 0.6.1
 component: "simulator"
 date: 2026-11-12
 ---
@@ -12,7 +12,7 @@ date: 2026-11-12
 | Title     | Simulator Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.6.0            |
+| Version   | 0.6.1            |
 | Component | simulator        |
 | Date      | 2026-11-12       |
 
@@ -190,12 +190,12 @@ The commanded positions are joint motion's last sampled setpoint. Joint motion g
 
 ### Required
 
-| Interface                          | Purpose                     | Contract                                           |
-|------------------------------------|-----------------------------|----------------------------------------------------|
-| `arm::Arm`                         | The arm stack               | Unchanged, plus `JointMotion::Setpoint()`          |
-| can-lite `PlatformCanAdapter`, hub | Virtual and real targets    | `virtual:`, `socketcan:`, `slcan:`                 |
-| ui-cpp (`infra/ui-cpp`)            | Shell, forms, scopes, theme | Tier 1 always built; Qt backend with the simulator |
-| Qt 6 Widgets, Quick, Quick 3D      | Window, 3-D view            | Qt ≥ 6.4; 6.5+ features behind version guards      |
+| Interface                          | Purpose                             | Contract                                                         |
+|------------------------------------|-------------------------------------|------------------------------------------------------------------|
+| `arm::Arm`                         | The arm stack                       | Unchanged, plus `JointMotion::Setpoint()`                        |
+| can-lite `PlatformCanAdapter`, hub | Virtual and real targets            | `virtual:`, `socketcan:`, `slcan:`                               |
+| ui-cpp (`infra/ui-cpp`)            | Shell, forms, scopes, theme, meshes | Tier 1 always built; Qt and Quick 3D backends with the simulator |
+| Qt 6 Widgets, Quick, Quick 3D      | Window, 3-D view                    | Qt ≥ 6.4; 6.5+ features behind version guards                    |
 
 ---
 

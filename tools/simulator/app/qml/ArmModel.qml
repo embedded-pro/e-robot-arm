@@ -4,6 +4,7 @@ import QtQuick
 import QtQuick3D
 import QtQuick3D.AssetUtils
 import Simulator
+import Ui.Quick3D
 
 Node {
     id: arm
@@ -73,10 +74,10 @@ Node {
 
                     joint: link.index - 1
                     kind: part.index
-                    geometry: ArmMeshGeometry {
+                    geometry: ShadedMeshGeometry {
                         id: generated
-                        node: link.index
-                        finish: part.index
+                        catalog: ArmSceneState.catalog
+                        key: link.index + "/" + part.index
                     }
                     visible: !generated.empty
                     scale: Qt.vector3d(100, 100, 100)

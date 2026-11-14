@@ -9,7 +9,8 @@ qt_add_qml_module(e_robot_arm.tool.simulator.app
     PLUGIN_TARGET e_robot_arm.tool.simulator.qml_plugin
     CLASS_NAME SimulatorPlugin
     OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/Simulator
-    DEPENDENCIES QtQuick QtQuick3D
+    DEPENDENCIES QtQuick QtQuick3D Ui.Quick3D
+    IMPORT_PATH ${CMAKE_BINARY_DIR}/qml
     NO_CACHEGEN
     QML_FILES
         qml/ArmModel.qml
@@ -18,12 +19,8 @@ qt_add_qml_module(e_robot_arm.tool.simulator.app
     RESOURCES
         assets/studio.hdr
     SOURCES
-        ArmMeshGeometry.cpp
-        ArmMeshGeometry.hpp
         ArmSceneState.cpp
         ArmSceneState.hpp
-        TrailGeometry.cpp
-        TrailGeometry.hpp
 )
 
 target_include_directories(e_robot_arm.tool.simulator.app PUBLIC
@@ -49,6 +46,7 @@ target_link_libraries(e_robot_arm.tool.simulator.app PUBLIC
     e_robot_arm.tool.simulator.view_models
     e_robot_arm.tool.arm_host.adapters
     ui.backend.qt
+    ui.backend.quick3d
     ui.scope
     Qt6::Gui
     Qt6::Qml
@@ -67,6 +65,7 @@ target_sources(e_robot_arm.tool.simulator PRIVATE
 
 target_link_libraries(e_robot_arm.tool.simulator PRIVATE
     e_robot_arm.tool.simulator.qml_plugin
+    ui.backend.quick3d_plugin
     e_robot_arm.tool.simulator.app
 )
 add_subdirectory(test)

@@ -6,6 +6,7 @@ set_tests_properties(e_robot_arm.tool.simulator_window_test PROPERTIES LABELS di
 target_link_libraries(e_robot_arm.tool.simulator_window_test PUBLIC
     gmock
     e_robot_arm.tool.simulator.qml_plugin
+    ui.backend.quick3d_plugin
     e_robot_arm.tool.simulator.app
 )
 

@@ -9,6 +9,7 @@
 #include <chrono>
 
 Q_IMPORT_QML_PLUGIN(SimulatorPlugin)
+Q_IMPORT_QML_PLUGIN(UiQuick3DPlugin)
 
 int main(int argc, char* argv[])
 {

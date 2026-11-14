@@ -5,6 +5,7 @@ import QtQuick
 import QtQuick3D
 import QtQuick3D.Helpers
 import Simulator
+import Ui.Quick3D
 
 Rectangle {
     id: root
@@ -182,7 +183,7 @@ Rectangle {
             castsShadows: false
             receivesShadows: false
             pickable: false
-            geometry: TrailGeometry {
+            geometry: PolylineGeometry {
                 points: ArmSceneState.trail
             }
             materials: DefaultMaterial {
