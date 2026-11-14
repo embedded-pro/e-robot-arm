@@ -2,6 +2,7 @@
 #define TOOLS_SIMULATOR_APP_ARM_SCENE_STATE_HPP
 
 #include "tools/simulator/view_models/ArmSceneModel.hpp"
+#include "ui/backend/qt/quick3d/MeshCatalog.hpp"
 #include "ui/theme/Theme.hpp"
 #include <QColor>
 #include <QObject>
@@ -26,6 +27,7 @@ namespace simulator
         Q_PROPERTY(QVariantList measuredNodes READ MeasuredNodes NOTIFY changed)
         Q_PROPERTY(QVariantList commandedNodes READ CommandedNodes NOTIFY changed)
         Q_PROPERTY(double extent READ Extent NOTIFY partsChanged)
+        Q_PROPERTY(ui::backend::qt::MeshCatalog* catalog READ Catalog CONSTANT)
         Q_PROPERTY(QString singularityWarning READ SingularityWarning NOTIFY changed)
         Q_PROPERTY(QVector3D toolPosition READ ToolPosition NOTIFY changed)
         Q_PROPERTY(QQuaternion toolRotation READ ToolRotation NOTIFY changed)
@@ -54,7 +56,8 @@ namespace simulator
         QVariantList MeasuredNodes() const;
         QVariantList CommandedNodes() const;
         static ArmSceneState* Current();
-        const mesh::Mesh& MeshOf(int node, int finish) const;
+        ui::backend::qt::MeshCatalog* Catalog();
+        static QString PartKey(std::size_t node, std::size_t finish);
         double Extent() const;
         QString SingularityWarning() const;
         QVector3D ToolPosition() const;
@@ -90,7 +93,7 @@ namespace simulator
     private:
         QVariantList measuredNodes;
         QVariantList commandedNodes;
-        ArmMeshes generated{};
+        ui::backend::qt::MeshCatalog catalog;
         uint32_t meshesRevision{ 0 };
         double extent{ 100.0 };
         QString singularityWarning;

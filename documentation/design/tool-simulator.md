@@ -2,9 +2,9 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.13.0
+version: 0.14.0
 component: "tool-simulator"
-date: 2026-11-12
+date: 2026-11-14
 ---
 
 | Field     | Value                   |
@@ -12,9 +12,9 @@ date: 2026-11-12
 | Title     | Simulator Screen Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.13.0                  |
+| Version   | 0.14.0                  |
 | Component | tool-simulator          |
-| Date      | 2026-11-12              |
+| Date      | 2026-11-14              |
 
 > What the e-robot-arm Simulator shows, what each control does and when, and how it looks (phase 8a,
 > [#28](https://github.com/embedded-pro/e-robot-arm/issues/28)). Components and threads are in
@@ -213,12 +213,14 @@ Qt Quick 3D in a `QQuickWidget`, scene in QML, following the `qt-3d-gui` skill:
   Joint axes follow the model: J1, J4 and J6 along z of their links, J2, J3 and J5 along y. Every pose is
   converted once from the model's frame (Z-up, metres) to the scene's (Y-up, centimetres):
   $(x, y, z) \mapsto 100\,(x, z, -y)$.
-- **Mesh kit:** the simulator builds its own shapes, in metres, from two operations: a *lathe* turns a profile of
-  (radius, height) points about an axis (hubs, housings, gearboxes, flanges, discs) and an *extrusion* sweeps a convex
-  outline along an axis (plates, tubes, motor bodies, bolt heads). Normals are smooth around a lathe and across a
-  rounded corner, hard across a profile step and a straight corner, so machined edges stay crisp. Outlines: rounded
-  rectangle, stadium, regular polygon. Each part is placed by a frame (origin and axis) and merged into one mesh per
-  material per link.
+- **Mesh kit:** the simulator builds its shapes, in metres, with ui-cpp's `ui::stage` primitives: a *lathe*
+  (`MakeLathe`) turns a profile of (radius, height) points about an axis (hubs, housings, gearboxes, flanges, discs)
+  and an *extrusion* (`MakeExtrusion`) sweeps a convex outline along an axis (plates, tubes, motor bodies, bolt heads).
+  Outlines: rounded rectangle, stadium, regular polygon. Each part is placed by a frame (origin and axis) and appended
+  to one mesh per material per link; `Shade` then gives each corner a normal, smooth within 35° (around a lathe and
+  across a rounded corner) and hard beyond it, so machined edges stay crisp. The app hands the shaded meshes to Qt
+  Quick 3D through ui-cpp's `Ui.Quick3D` module: a `MeshCatalog` keyed `node/finish` and one `ShadedMeshGeometry`
+  per part.
 - **Ghost arm:** the same nodes, accent colour, opacity 0.3, blended, no depth write; visible only while a move
   runs or the commanded and measured arms differ by more than 0.5°.
 - **Link meshes** (phase 8c): a link whose profile names a mesh ([arm-profile.md](arm-profile.md) Part A) draws
@@ -226,7 +228,7 @@ Qt Quick 3D in a `QQuickWidget`, scene in QML, following the `qt-3d-gui` skill:
   - **Frame:** the mesh is in its link's frame, as the arm model defines it: Z up, metres, origin at the joint
     (export from CAD with +Z up). The base mesh is in the base frame.
   - **Budget:** at most 50 000 triangles per mesh, counted from the file's index (or position) accessors before
-    loading. A larger mesh is not loaded: decimate it.
+    loading (ui-cpp's `CheckGltf`). A larger mesh is not loaded: decimate it.
   - **Fallback:** a file that is missing, unreadable, over budget or fails to load leaves the link's generated
     parts in place, and the event log names the link and the reason, once per profile load.
   - **Selection and faults** stay visible on a meshed link: its accent hub is drawn over the mesh, translucent,
@@ -237,7 +239,7 @@ Qt Quick 3D in a `QQuickWidget`, scene in QML, following the `qt-3d-gui` skill:
   follows the measured arm; the ghost has none.
 - **Tool trail** (phase 8c): a line through the tool centre point's recent positions, in the accent colour. A
   point is added when the tool has moved 2 mm from the last one, and the trail keeps the newest 500 points, so its
-  memory and drawing cost are bounded. It is a one-pixel line strip: Qt 6.4 has no line width. It is cleared when a profile changes the geometry and while the arm is not
+  memory and drawing cost are bounded. It is a one-pixel line strip (ui-cpp's `PolylineGeometry`): Qt 6.4 has no line width. It is cleared when a profile changes the geometry and while the arm is not
   live (no target, or a joint silent), so it never joins positions of two different arms.
 - **Selection:** clicking a part selects its joint (in the table too, both ways); its housing's emissive rises in
   the accent colour. A faulted joint's housing pulses in the `Fault` colour, and the table says it in text.

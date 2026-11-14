@@ -16,7 +16,6 @@ target_sources(e_robot_arm.tool.simulator.view_models_test PRIVATE
     TestDesktopArm.cpp
     TestEventLog.cpp
     TestJointRows.cpp
-    TestMeshKit.cpp
     TestMotorControllerPresenter.cpp
     TestMotorPresenter.cpp
     TestProfileView.cpp

@@ -8,6 +8,7 @@ target_link_libraries(e_robot_arm.tool.simulator.view_models PUBLIC
     e_robot_arm.tool.arm_host
     ui.model
     ui.shell
+    ui.stage
     ui.theme
 )
 
@@ -26,8 +27,6 @@ target_sources(e_robot_arm.tool.simulator.view_models PRIVATE
     EventLog.hpp
     JointRows.cpp
     JointRows.hpp
-    MeshKit.cpp
-    MeshKit.hpp
     MotorControllerPresenter.cpp
     MotorControllerPresenter.hpp
     MotorPresenter.cpp

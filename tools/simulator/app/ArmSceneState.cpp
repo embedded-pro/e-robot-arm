@@ -64,7 +64,9 @@ namespace simulator
         if (model.MeshesRevision() != meshesRevision)
         {
             meshesRevision = model.MeshesRevision();
-            generated = model.Meshes();
+            for (std::size_t node = 0; node != armNodeCount; ++node)
+                for (std::size_t finish = 0; finish != finishCount; ++finish)
+                    catalog.Set(PartKey(node, finish), model.Meshes()[node][finish]);
             extent = model.Extent();
             emit partsChanged();
         }
@@ -121,12 +123,14 @@ namespace simulator
         return instance;
     }
 
-    const mesh::Mesh& ArmSceneState::MeshOf(int node, int finish) const
+    ui::backend::qt::MeshCatalog* ArmSceneState::Catalog()
     {
-        static const mesh::Mesh none{};
-        if (node < 0 || node >= static_cast<int>(armNodeCount) || finish < 0 || finish >= static_cast<int>(finishCount))
-            return none;
-        return generated[static_cast<std::size_t>(node)][static_cast<std::size_t>(finish)];
+        return &catalog;
+    }
+
+    QString ArmSceneState::PartKey(std::size_t node, std::size_t finish)
+    {
+        return QString{ "%1/%2" }.arg(node).arg(finish);
     }
 
     double ArmSceneState::Extent() const

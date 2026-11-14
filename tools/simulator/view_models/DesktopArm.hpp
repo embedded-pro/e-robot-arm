@@ -2,7 +2,7 @@
 #define TOOLS_SIMULATOR_VIEW_MODELS_DESKTOP_ARM_HPP
 
 #include "core/arm_model/ArmGeometry.hpp"
-#include "tools/simulator/view_models/MeshKit.hpp"
+#include "ui/stage/Shading.hpp"
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -21,7 +21,7 @@ namespace simulator
 
     constexpr std::size_t finishCount{ 6 };
     constexpr std::size_t armNodeCount{ 7 };
-    using NodeMeshes = std::array<mesh::Mesh, finishCount>;
+    using NodeMeshes = std::array<ui::stage::ShadedMesh, finishCount>;
     using ArmMeshes = std::array<NodeMeshes, armNodeCount>;
 
     float PartThickness(const arm::ArmGeometry& geometry);
