@@ -96,7 +96,7 @@ namespace arm_host
         {
             connecting.reset();
             session.emplace(link->Can(), profile, current, sink, link->Simulation());
-            if (announce)
+            if (announce.has_value())
                 Report(ArmEventKind::targetReady, *announce);
         }
         else if (infra::Now() >= connecting->deadline)
