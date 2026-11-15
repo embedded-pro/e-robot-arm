@@ -22,6 +22,7 @@ request as the work it describes. The tracking issue is
 | Console            | `tools/arm_console/`       | [arm-console.md](design/arm-console.md)               |
 | Simulated arm      | `tools/simulated_arm/`     | [simulator.md](design/simulator.md)                   |
 | Arm host           | `tools/arm_host/`          | [simulator.md](design/simulator.md)                   |
+| Virtual arm        | `tools/virtual_arm/`       | [virtual-arm.md](design/virtual-arm.md)               |
 | Simulator          | `tools/simulator/`         | [tool-simulator.md](design/tool-simulator.md)         |
 | Arm scenarios      | `integration_tests/`       | [requirements](requirements/arm/arm.yaml)             |
 
