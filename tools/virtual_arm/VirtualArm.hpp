@@ -62,6 +62,7 @@ namespace virtual_arm
         };
 
         std::optional<std::string> StartMotors(const VirtualArmPlan& plan);
+        std::optional<std::string> StartMotor(const MotorStart& start);
         std::optional<std::string> WaitForHub(Motor& host);
         std::optional<std::string> WaitUntilUp();
         void Run(const std::stop_token& stop);

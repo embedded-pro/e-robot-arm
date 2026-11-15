@@ -97,18 +97,32 @@ namespace virtual_arm
 
     std::optional<std::string> VirtualArm::StartMotors(const VirtualArmPlan& plan)
     {
-        for (const bool hosts : { true, false })
-            for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
-                if (plan[joint].hostsBus == hosts)
-                {
-                    motors[joint].start = plan[joint];
-                    const auto log = std::filesystem::absolute(options.workDirectory / std::format("joint{}.log", joint + 1));
-                    if (!motors[joint].process.Start(options.engine, EngineArguments(plan[joint], options.bus, *listener->Port(), options.hubPort), options.workDirectory, log))
-                        return std::format("cannot start {}", options.engine.string());
-                    if (hosts)
-                        if (auto refusal = WaitForHub(motors[joint]); refusal.has_value())
-                            return refusal;
-                }
+        const auto host = std::ranges::find_if(plan, [](const MotorStart& motor)
+            {
+                return motor.hostsBus;
+            });
+        if (host != plan.end())
+        {
+            if (auto refusal = StartMotor(*host); refusal.has_value())
+                return refusal;
+            if (auto refusal = WaitForHub(motors[host->joint]); refusal.has_value())
+                return refusal;
+        }
+
+        for (const auto& motor : plan)
+            if (!motor.hostsBus)
+                if (auto refusal = StartMotor(motor); refusal.has_value())
+                    return refusal;
+        return std::nullopt;
+    }
+
+    std::optional<std::string> VirtualArm::StartMotor(const MotorStart& start)
+    {
+        auto& motor = motors[start.joint];
+        motor.start = start;
+        const auto log = std::filesystem::absolute(options.workDirectory / std::format("joint{}.log", start.joint + 1));
+        if (!motor.process.Start(options.engine, EngineArguments(start, options.bus, *listener->Port(), options.hubPort), options.workDirectory, log))
+            return std::format("cannot start {}", options.engine.string());
         return std::nullopt;
     }
 
