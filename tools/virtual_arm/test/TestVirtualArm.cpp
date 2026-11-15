@@ -164,7 +164,7 @@ TEST_F(VirtualArmTest, refuses_to_start_while_the_hub_port_is_held_and_no_hub_an
 TEST_F(VirtualArmTest, an_engine_named_relative_to_the_current_directory_starts_from_the_working_directory)
 {
     auto options = Options();
-    options.engine = std::filesystem::relative(FAKE_VIRTUAL_MOTOR);
+    options.engine = std::filesystem::path{ "." } / std::filesystem::relative(FAKE_VIRTUAL_MOTOR);
     ASSERT_TRUE(options.engine.has_parent_path());
     virtual_arm::VirtualArm arm{ config, options };
 
