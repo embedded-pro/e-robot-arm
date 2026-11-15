@@ -86,9 +86,9 @@ int main(int count, char** words)
     }
 
     std::cout << "virtual arm up on virtual:" << arm.Bus() << "; Ctrl-C stops it" << std::endl;
-    while (!StopRequested(signals) && !arm.Problem().has_value())
-    {
-    }
+    bool stopping{ false };
+    while (!stopping)
+        stopping = StopRequested(signals) || arm.Problem().has_value();
 
     const auto problem = arm.Problem();
     if (problem.has_value())
