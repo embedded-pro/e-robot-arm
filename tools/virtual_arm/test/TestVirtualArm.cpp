@@ -22,6 +22,19 @@ namespace
         return std::nullopt;
     }
 
+    uint16_t FreeLoopbackPort()
+    {
+        const auto probe = socket(AF_INET, SOCK_STREAM, 0);
+        sockaddr_in address{};
+        address.sin_family = AF_INET;
+        address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+        bind(probe, static_cast<const sockaddr*>(static_cast<const void*>(&address)), sizeof(address));
+        socklen_t length{ sizeof(address) };
+        getsockname(probe, static_cast<sockaddr*>(static_cast<void*>(&address)), &length);
+        close(probe);
+        return ntohs(address.sin_port);
+    }
+
     template<class Condition>
     bool Eventually(Condition condition)
     {
@@ -54,7 +67,9 @@ namespace
 
         virtual_arm::VirtualArmOptions Options() const
         {
-            return { FAKE_VIRTUAL_MOTOR, "arm", directory, 3s };
+            virtual_arm::VirtualArmOptions options{ FAKE_VIRTUAL_MOTOR, "arm", directory, 3s };
+            options.hubPort = FreeLoopbackPort();
+            return options;
         }
 
         std::filesystem::path directory{ std::filesystem::temp_directory_path() / "e-robot-arm-virtual-arm-test" };
@@ -81,6 +96,7 @@ TEST_F(VirtualArmTest, brings_up_six_motors_and_pushes_each_links_load_on_its_sh
         }));
     EXPECT_GT(std::abs(expected[1]), 0.1f);
 
+    EXPECT_EQ(std::nullopt, arm.Problem());
     arm.Collide(1, foc::NewtonMeter{ 2.0f });
     EXPECT_TRUE(Eventually([&]()
         {
@@ -93,6 +109,7 @@ TEST_F(VirtualArmTest, brings_up_six_motors_and_pushes_each_links_load_on_its_sh
         {
             return std::filesystem::exists(directory / "joint5.mem.paused");
         }));
+    EXPECT_EQ(std::nullopt, arm.Problem());
     arm.Silence(4, false);
     EXPECT_TRUE(Eventually([this]()
         {
