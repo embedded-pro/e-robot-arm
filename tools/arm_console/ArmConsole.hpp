@@ -36,6 +36,8 @@ namespace arm_console
     private:
         std::optional<arm_host::ArmCommand> Parse(std::string_view command, std::istringstream& arguments) const;
         ExecuteResult Profile(std::string_view command, std::istringstream& arguments);
+        void ArmControllers();
+        ExecuteResult ArmController(std::istringstream& arguments);
         void Kinematics(std::string_view command, std::istringstream& arguments);
         void PrintPose(const arm::Placement& pose, const arm::Singularities& singularities);
         std::optional<arm_host::ArmCommand> Mode(std::istringstream& arguments) const;

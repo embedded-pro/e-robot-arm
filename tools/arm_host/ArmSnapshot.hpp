@@ -11,9 +11,17 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace arm_host
 {
+    struct ArmControllerStatus
+    {
+        std::string name;
+        bool enabled{ false };
+        bool active{ false };
+    };
+
     struct ArmSnapshot
     {
         uint64_t sequence{ 0 };
@@ -33,6 +41,7 @@ namespace arm_host
         float manipulability{ 0.0f };
         std::string profileName{};
         arm::ArmConfig config{};
+        std::vector<ArmControllerStatus> armControllers{};
     };
 
     struct TraceSample

@@ -1,5 +1,6 @@
 #include "tools/arm_console/ArmConsole.hpp"
 #include "tools/arm_host/ProfileFile.hpp"
+#include <algorithm>
 #include <array>
 #include <filesystem>
 #include <format>
@@ -44,6 +45,15 @@ namespace arm_console
 
         if (command == "load" || command == "save")
             return Profile(command, arguments);
+
+        if (command == "controllers")
+        {
+            ArmControllers();
+            return { Outcome::done };
+        }
+
+        if (command == "controller")
+            return ArmController(arguments);
 
         if (command == "pose" || command == "fk" || command == "ik" || command == "gravity")
         {
@@ -118,6 +128,39 @@ namespace arm_console
         }
 
         return { Outcome::posted, arm.LoadProfile(std::get<arm::ArmProfile>(read)) };
+    }
+
+    void ArmConsole::ArmControllers()
+    {
+        for (const auto& controller : arm.Snapshot().armControllers)
+            output << (controller.active ? "* " : "  ") << controller.name << (controller.enabled ? "" : " (disabled)") << "\n";
+    }
+
+    ExecuteResult ArmConsole::ArmController(std::istringstream& arguments)
+    {
+        std::string action;
+        std::string name;
+        std::string rest;
+        if (!(arguments >> action >> name) || (arguments >> rest) || (action != "enable" && action != "disable" && action != "select"))
+        {
+            Usage();
+            return { Outcome::done };
+        }
+
+        const auto controllers = arm.Snapshot().armControllers;
+        const auto found = std::ranges::find(controllers, name, &arm_host::ArmControllerStatus::name);
+        if (found == controllers.end())
+        {
+            output << "no arm controller " << name << "\n";
+            return { Outcome::done };
+        }
+
+        const auto id = static_cast<arm::ArmControllerId>(found - controllers.begin());
+        if (action == "enable")
+            return { Outcome::posted, arm.Post(arm_host::EnableArmController{ id }) };
+        if (action == "disable")
+            return { Outcome::posted, arm.Post(arm_host::DisableArmController{ id }) };
+        return { Outcome::posted, arm.Post(arm_host::SelectArmController{ id }) };
     }
 
     void ArmConsole::Kinematics(std::string_view command, std::istringstream& arguments)
@@ -235,7 +278,7 @@ namespace arm_console
 
     void ArmConsole::Usage()
     {
-        output << "usage: bringup | enable | disable | move q1 q2 q3 q4 q5 q6 | rearm | contracts | mode torque|speed|position | start | stop | estop | clear | abort | load <file> | save <file> | pose | gravity | fk q1..q6 | ik x y z roll pitch yaw | status | quit\n";
+        output << "usage: bringup | enable | disable | move q1 q2 q3 q4 q5 q6 | rearm | contracts | mode torque|speed|position | start | stop | estop | clear | abort | load <file> | save <file> | controllers | controller enable|disable|select <name> | pose | gravity | fk q1..q6 | ik x y z roll pitch yaw | status | quit\n";
     }
 
     void ArmConsole::Print(const arm_host::ArmEvent& event)
@@ -297,6 +340,9 @@ namespace arm_console
                 break;
             case profileLoaded:
                 output << "profile loaded: " << arm.Snapshot().profileName << "\n";
+                break;
+            case armControllerChanged:
+                output << "arm controller: " << event.armController << "\n";
                 break;
         }
     }

@@ -280,3 +280,38 @@ TEST_F(ArmSessionConfiguringTest, names_the_joint_whose_motor_controller_reads_b
     EXPECT_EQ(1u, event->joint);
     EXPECT_EQ("motor controller reads back different", event->reason);
 }
+
+TEST_F(ArmSessionTest, lists_the_arm_controllers_and_reports_each_change_of_the_active_one)
+{
+    Execute(1, arm_host::CheckContracts{});
+    ASSERT_EQ(2u, sink.snapshot.armControllers.size());
+    EXPECT_EQ("pass-through", sink.snapshot.armControllers[0].name);
+    EXPECT_TRUE(sink.snapshot.armControllers[0].active);
+    EXPECT_TRUE(sink.snapshot.armControllers[1].enabled);
+
+    Execute(2, arm_host::SelectArmController{ 1 });
+    EXPECT_EQ("smoothed", sink.Find(ArmEventKind::armControllerChanged)->armController);
+    EXPECT_TRUE(sink.snapshot.armControllers[1].active);
+
+    Execute(3, arm_host::DisableArmController{ 1 });
+    const auto lastChange = std::ranges::find(sink.events.rbegin(), sink.events.rend(), ArmEventKind::armControllerChanged, &arm_host::ArmEvent::kind);
+    ASSERT_NE(sink.events.rend(), lastChange);
+    EXPECT_EQ("none", lastChange->armController);
+    EXPECT_FALSE(sink.snapshot.armControllers[1].active);
+
+    Execute(4, arm_host::SelectArmController{ 1 });
+    EXPECT_EQ("the arm controller is disabled", sink.Last()->reason);
+    Execute(5, arm_host::SelectArmController{ 9 });
+    EXPECT_EQ("no such arm controller", sink.Last()->reason);
+}
+
+TEST_F(ArmSessionTest, refuses_a_switch_that_would_step_the_setpoints_of_a_running_move)
+{
+    BringUp();
+    Execute(4, arm_host::SelectArmController{ 1 });
+    Execute(5, arm_host::MoveTo{ Target(1.0f) });
+
+    Execute(6, arm_host::SelectArmController{ 0 });
+    EXPECT_EQ(6u, sink.Last()->command);
+    EXPECT_EQ("a move runs and the arm controller cannot take over without a step", sink.Last()->reason);
+}

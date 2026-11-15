@@ -2,7 +2,7 @@
 title: "Arm Composition and Console Design"
 type: design
 status: draft
-version: 0.4.0
+version: 0.5.0
 component: "arm"
 date: 2026-11-12
 ---
@@ -12,7 +12,7 @@ date: 2026-11-12
 | Title     | Arm Composition and Console Design |
 | Type      | design                             |
 | Status    | draft                              |
-| Version   | 0.4.0                              |
+| Version   | 0.5.0                              |
 | Component | arm                                |
 | Date      | 2026-11-12                         |
 
@@ -59,26 +59,28 @@ The console is a host program. It opens the CAN adapter named on its command lin
 interface or a serial slcan adapter) at the given bit rate, builds the FOC motor client and the arm, starts the
 control loop and reads one command per line from standard input:
 
-| Command                        | Effect                                                                                                                    |
-|--------------------------------|---------------------------------------------------------------------------------------------------------------------------|
-| `bringup`                      | Bring the arm up: check the contracts, then wait for calibration ([arm-lifecycle.md](arm-lifecycle.md))                   |
-| `enable`, `disable`            | Select the configured control mode and start the joints, or stop them                                                     |
-| `contracts`                    | Query the contract version of all six joints                                                                              |
-| `mode torque\|speed\|position` | Select a control mode on all six joints                                                                                   |
-| `start`, `stop`                | Start or stop all six joints                                                                                              |
-| `estop`                        | Emergency stop of all six joints                                                                                          |
-| `clear`                        | Clear the faults of all six joints                                                                                        |
-| `rearm`                        | Re-arm the arm after a trip                                                                                               |
-| `move q1 q2 q3 q4 q5 q6`       | Move the six joints to the positions, in radians; only while enabled                                                      |
-| `abort`                        | Abort the running move                                                                                                    |
-| `load <file>`                  | Load an arm profile file: the arm is rebuilt from it; refused while the arm is enabled ([arm-profile.md](arm-profile.md)) |
-| `save <file>`                  | Write the profile in effect to a file                                                                                     |
-| `pose`                         | Print the tool pose of the measured joints and the singularity the arm is near ([arm-model.md](arm-model.md))             |
-| `gravity`                      | Print the gravity torque each joint holds at the measured joints, N·m ([arm-model.md](arm-model.md) Part F)               |
-| `fk q1 q2 q3 q4 q5 q6`         | Print the tool pose of the given joint positions, in radians; moves nothing                                               |
-| `ik x y z roll pitch yaw`      | Print the joint positions of the given tool pose (m, rad), or why there are none; moves nothing                           |
-| `status`                       | Print each joint's position, speed, state and fault, the arm's lifecycle state, the trip, the move and the overrun count  |
-| `quit`                         | Stop the control loop and leave                                                                                           |
+| Command                                     | Effect                                                                                                                    |
+|---------------------------------------------|---------------------------------------------------------------------------------------------------------------------------|
+| `bringup`                                   | Bring the arm up: check the contracts, then wait for calibration ([arm-lifecycle.md](arm-lifecycle.md))                   |
+| `enable`, `disable`                         | Select the configured control mode and start the joints, or stop them                                                     |
+| `contracts`                                 | Query the contract version of all six joints                                                                              |
+| `mode torque\|speed\|position`              | Select a control mode on all six joints                                                                                   |
+| `start`, `stop`                             | Start or stop all six joints                                                                                              |
+| `estop`                                     | Emergency stop of all six joints                                                                                          |
+| `clear`                                     | Clear the faults of all six joints                                                                                        |
+| `rearm`                                     | Re-arm the arm after a trip                                                                                               |
+| `move q1 q2 q3 q4 q5 q6`                    | Move the six joints to the positions, in radians; only while enabled                                                      |
+| `abort`                                     | Abort the running move                                                                                                    |
+| `load <file>`                               | Load an arm profile file: the arm is rebuilt from it; refused while the arm is enabled ([arm-profile.md](arm-profile.md)) |
+| `save <file>`                               | Write the profile in effect to a file                                                                                     |
+| `controllers`                               | List the arm controllers, the active one starred and the disabled ones marked ([arm-controllers.md](arm-controllers.md))  |
+| `controller enable\|disable\|select <name>` | Enable, disable or select an arm controller by name; a refused switch says why                                            |
+| `pose`                                      | Print the tool pose of the measured joints and the singularity the arm is near ([arm-model.md](arm-model.md))             |
+| `gravity`                                   | Print the gravity torque each joint holds at the measured joints, N·m ([arm-model.md](arm-model.md) Part F)               |
+| `fk q1 q2 q3 q4 q5 q6`                      | Print the tool pose of the given joint positions, in radians; moves nothing                                               |
+| `ik x y z roll pitch yaw`                   | Print the joint positions of the given tool pose (m, rad), or why there are none; moves nothing                           |
+| `status`                                    | Print each joint's position, speed, state and fault, the arm's lifecycle state, the trip, the move and the overrun count  |
+| `quit`                                      | Stop the control loop and leave                                                                                           |
 
 `bringup`, `enable`, `disable`, `rearm` and `move` go through the arm's lifecycle; `contracts`, `mode`, `start`,
 `stop`, `clear` and `estop` reach the joints directly, for debugging, and the lifecycle follows where they leave the

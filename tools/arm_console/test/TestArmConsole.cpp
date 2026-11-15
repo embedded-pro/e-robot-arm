@@ -131,6 +131,26 @@ TEST_F(ArmConsoleTest, events_print_as_one_line_each_with_joints_numbered_from_o
     EXPECT_EQ("target failed: moving\n", Printed({ .kind = ArmEventKind::targetFailed, .reason = "moving" }));
 }
 
+TEST_F(ArmConsoleTest, controllers_lists_the_arm_controllers_and_controller_posts_by_name)
+{
+    arm_host::ArmSnapshot snapshot;
+    snapshot.armControllers = { { "pass-through", true, true }, { "smoothed", false, false } };
+    EXPECT_CALL(arm, Snapshot()).WillRepeatedly(Return(snapshot));
+
+    EXPECT_EQ("* pass-through\n  smoothed (disabled)\n", Run("controllers"));
+
+    EXPECT_CALL(arm, Post(VariantWith<arm_host::EnableArmController>(Field(&arm_host::EnableArmController::id, 1)))).WillOnce(Return(4));
+    EXPECT_CALL(arm, Post(VariantWith<arm_host::SelectArmController>(Field(&arm_host::SelectArmController::id, 1)))).WillOnce(Return(5));
+    EXPECT_CALL(arm, Post(VariantWith<arm_host::DisableArmController>(Field(&arm_host::DisableArmController::id, 0)))).WillOnce(Return(6));
+    EXPECT_EQ(4u, console.Execute("controller enable smoothed").command);
+    EXPECT_EQ(5u, console.Execute("controller select smoothed").command);
+    EXPECT_EQ(6u, console.Execute("controller disable pass-through").command);
+
+    EXPECT_EQ("no arm controller lqr\n", Run("controller select lqr"));
+    EXPECT_THAT(Run("controller toggle smoothed"), StartsWith("usage:"));
+    EXPECT_EQ("arm controller: smoothed\n", Printed({ .kind = ArmEventKind::armControllerChanged, .armController = "smoothed" }));
+}
+
 TEST_F(ArmConsoleTest, quit_ends_the_console)
 {
     EXPECT_EQ(arm_console::Outcome::quit, console.Execute("quit").outcome);

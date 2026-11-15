@@ -69,6 +69,8 @@ namespace simulator
                     return { LogLevel::fault, Joint(event.joint) + " controller failed: " + Text(event.reason) };
                 case profileLoaded:
                     return { LogLevel::info, "Profile loaded: the arm was rebuilt" };
+                case armControllerChanged:
+                    return { event.armController == "none" ? LogLevel::warning : LogLevel::info, "Arm controller: " + Text(event.armController) };
             }
             return { LogLevel::info, "Unknown event" };
         }

@@ -1,6 +1,7 @@
 #ifndef TOOLS_ARM_HOST_ARM_COMMAND_HPP
 #define TOOLS_ARM_HOST_ARM_COMMAND_HPP
 
+#include "core/arm_controllers/interfaces/ArmControllers.hpp"
 #include "core/joint_bus/interfaces/JointBus.hpp"
 #include "core/joint_configurator/interfaces/ControllerSettings.hpp"
 #include "core/joint_configurator/interfaces/MotorSettings.hpp"
@@ -84,8 +85,23 @@ namespace arm_host
         std::size_t joint;
     };
 
+    struct EnableArmController
+    {
+        arm::ArmControllerId id;
+    };
+
+    struct DisableArmController
+    {
+        arm::ArmControllerId id;
+    };
+
+    struct SelectArmController
+    {
+        arm::ArmControllerId id;
+    };
+
     using ArmCommand = std::variant<CheckContracts, SelectMode, StartJoints, StopJoints, ClearFaults, EmergencyStop, Rearm, MoveTo, AbortMove, InjectFault, SilenceJoint,
-        BringUp, Enable, Disable, ApplyController, ReadController, ApplyMotor, ReadMotor>;
+        BringUp, Enable, Disable, ApplyController, ReadController, ApplyMotor, ReadMotor, EnableArmController, DisableArmController, SelectArmController>;
 
     std::string_view CommandName(const ArmCommand& command);
     std::string_view StateName(arm::ArmState state);
