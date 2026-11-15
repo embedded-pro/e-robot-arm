@@ -2,7 +2,7 @@
 title: "Simulator Design"
 type: design
 status: draft
-version: 0.6.3
+version: 0.6.4
 component: "simulator"
 date: 2026-11-12
 ---
@@ -12,7 +12,7 @@ date: 2026-11-12
 | Title     | Simulator Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.6.3            |
+| Version   | 0.6.4            |
 | Component | simulator        |
 | Date      | 2026-11-12       |
 
@@ -102,6 +102,8 @@ A `SimulatedJoint` is an e-foc node on the in-process bus (a `FocMotorCategorySe
 - **Follows its setpoint through a first-order lag** with time constant τ. The position advances when telemetry is
   requested, from the time since the last update: `θ ← θ* + (θ − θ*)·e^(−Δt/τ)`, and its speed reads
   `(θ* − θ)/τ`. τ = 0 follows exactly, which is what the scenarios use. The simulator uses τ = 50 ms.
+- **Treats a quick stop (contract 3.2) as a stop:** it holds where it is and reports *ready*; it never reports
+  *stopping*.
 - **Takes injected failures:** `Fault(code)` reports a fault in its next telemetry, `Silence()` stops answering.
   The simulator offers both per joint, on the simulated target only.
 

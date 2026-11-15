@@ -124,6 +124,11 @@ namespace simulation
         onDone(services::CanAckStatus::success);
     }
 
+    void SimulatedJoint::Node::OnQuickStop(const infra::Function<void(services::CanAckStatus)>& onDone)
+    {
+        OnStop(onDone);
+    }
+
     void SimulatedJoint::Node::OnClearFault(const infra::Function<void(services::CanAckStatus)>& onDone)
     {
         if (state == can::FocMotorState::fault)

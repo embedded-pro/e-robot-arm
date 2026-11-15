@@ -10,7 +10,7 @@ namespace arm_console
 {
     namespace
     {
-        constexpr std::array<const char*, 6> stateNames{ "idle", "running", "fault", "calibrating", "partialCalibration", "ready" };
+        constexpr std::array<const char*, 7> stateNames{ "idle", "running", "fault", "calibrating", "partialCalibration", "ready", "stopping" };
         constexpr std::array<const char*, 14> faultNames{ "none", "overCurrent", "overVoltage", "underVoltage", "overTemperature", "sensorFault", "stall",
             "phaseMissing", "hardwareFault", "calibrationFailed", "overSpeed", "followingError", "commandTimeout", "positionLimit" };
 

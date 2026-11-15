@@ -2,7 +2,7 @@
 title: "Virtual Arm Design"
 type: design
 status: draft
-version: 0.2.0
+version: 0.3.0
 component: "virtual-arm"
 date: 2026-11-15
 ---
@@ -12,7 +12,7 @@ date: 2026-11-15
 | Title     | Virtual Arm Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.2.0              |
+| Version   | 0.3.0              |
 | Component | virtual-arm        |
 | Date      | 2026-11-15         |
 
@@ -87,10 +87,14 @@ Each motor is started with:
 A node id outside 1 to 256 cannot be reached this way and the virtual arm refuses the profile. The working
 directory is one per virtual arm run, so two runs never share memory files.
 
-**Start.** The virtual arm is up once all six motors have connected to the plant port and introduced themselves
-(Hello, protocol version 2), within 10 s; otherwise it stops the ones it started and reports which joint did not
-come up. **Stop.** It ends every motor it started, which leaves the bus silent as a powered-off arm; a motor that
-ends without being asked is reported with the last lines of its debug log. Each motor runs in a process group of its
+**Start.** The virtual hub's loopback port must be free or held by a running hub first: a hub that closed less than a
+minute ago leaves it held by closed connections, and the virtual arm waits up to 70 s for it before it refuses to
+start. It is up once all six motors have connected to the plant port, introduced themselves (Hello, protocol version
+2) and sent their first status, which a motor does once it has joined the bus, within 10 s; otherwise it stops the
+ones it started and reports which joint did not come up. Each motor's output goes to `joint<n>.log` in the working
+directory. **Stop.** It ends every motor it started, the first motor last so that the hub closes after its members,
+which leaves the bus silent as a powered-off arm; a motor that ends without being asked is reported with the last
+lines of its debug log. Each motor runs in a process group of its
 own, so Ctrl-C reaches only the virtual arm, which then stops the motors; a motor whose virtual arm dies is ended
 with it, since an e-foc virtual motor otherwise outlives its plant port.
 
@@ -255,13 +259,14 @@ stateDiagram-v2
 
 ## Constraints & Limitations
 
-| Constraint | Value / Description                                                            |
-|------------|--------------------------------------------------------------------------------|
-| Coupling   | Gravity, payload and speed-dependent terms; not the links' inertia (Part C)    |
-| Motors     | e-foc's plant presets only until e-foc reads text plant descriptions           |
-| Time       | Real time: virtual motors run on the wall clock                                |
-| Platform   | Linux first, as CI; Windows when e-foc's Windows archive is wired the same way |
-| Network    | Loopback only                                                                  |
+| Constraint | Value / Description                                                                                                                                                                                                                                                                    |
+|------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Coupling   | Gravity, payload and speed-dependent terms; not the links' inertia (Part C)                                                                                                                                                                                                            |
+| Motors     | e-foc's plant presets only until e-foc reads text plant descriptions                                                                                                                                                                                                                   |
+| Time       | Real time: virtual motors run on the wall clock                                                                                                                                                                                                                                        |
+| Platform   | Linux first, as CI; Windows when e-foc's Windows archive is wired the same way                                                                                                                                                                                                         |
+| Network    | Loopback only                                                                                                                                                                                                                                                                          |
+| Bus load   | One telemetry request and two answers per joint per period: 1800 frames/s at 100 Hz. can-lite's hub must deliver every frame whose transmission time has passed at once; one per pass of its host's event loop (about 500 frames/s in an e-foc virtual motor) leaves the joints silent |
 
 ---
 

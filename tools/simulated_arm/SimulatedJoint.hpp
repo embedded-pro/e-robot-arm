@@ -48,6 +48,7 @@ namespace simulation
 
             void OnStart(const infra::Function<void(services::CanAckStatus)>& onDone) override;
             void OnStop(const infra::Function<void(services::CanAckStatus)>& onDone) override;
+            void OnQuickStop(const infra::Function<void(services::CanAckStatus)>& onDone) override;
             void OnClearFault(const infra::Function<void(services::CanAckStatus)>& onDone) override;
             void OnEmergencyStop(const infra::Function<void(services::CanAckStatus)>& onDone) override;
             void OnSelectControlMode(can::FocMotorMode newMode, const infra::Function<void(can::FocMotorMode)>& onActivated) override;

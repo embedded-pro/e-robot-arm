@@ -25,6 +25,7 @@ namespace virtual_arm
         std::string bus{ defaultBus };
         std::filesystem::path workDirectory{ "virtual-arm" };
         std::chrono::milliseconds upTimeout{ 10000 };
+        std::chrono::milliseconds hubPortTimeout{ 70000 };
     };
 
     class VirtualArm

@@ -26,6 +26,7 @@ if (UNIX)
         VirtualArm.cpp
         VirtualArm.hpp
     )
+    target_link_libraries(e_robot_arm.tool.virtual_arm PRIVATE can_lite.drivers.loopback)
 
     add_executable(e_robot_arm.tool.virtual_arm.main)
     set_target_properties(e_robot_arm.tool.virtual_arm.main PROPERTIES OUTPUT_NAME e-robot-arm-virtual-arm)
