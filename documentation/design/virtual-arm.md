@@ -2,7 +2,7 @@
 title: "Virtual Arm Design"
 type: design
 status: draft
-version: 0.3.0
+version: 0.4.0
 component: "virtual-arm"
 date: 2026-11-15
 ---
@@ -12,7 +12,7 @@ date: 2026-11-15
 | Title     | Virtual Arm Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.3.0              |
+| Version   | 0.4.0              |
 | Component | virtual-arm        |
 | Date      | 2026-11-15         |
 
@@ -90,7 +90,9 @@ directory is one per virtual arm run, so two runs never share memory files.
 
 **Start.** The hub port must be free or held by a running hub first: a hub that closed less than a
 minute ago leaves it held by closed connections, and the virtual arm waits up to 70 s for it before it refuses to
-start. It is up once all six motors have connected to the plant port, introduced themselves (Hello, protocol version
+start. The motor that hosts the bus starts first, and the others only once its hub listens: an e-foc virtual motor joins
+the bus when it starts and does not try again, so one started before the hub would stay off the bus. It is up once all
+six motors have connected to the plant port, introduced themselves (Hello, protocol version
 2) and sent their first status, which a motor does once it has joined the bus, within 10 s; otherwise it stops the
 ones it started and reports which joint did not come up. Each motor's output goes to `joint<n>.log` in the working
 directory. **Stop.** It ends every motor it started, the first motor last so that the hub closes after its members,

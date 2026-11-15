@@ -69,15 +69,10 @@ namespace virtual_arm
         if (!listener->Port().has_value())
             return std::string{ "cannot listen on a loopback port for the plant ports" };
 
-        for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+        if (auto refusal = StartMotors(std::get<VirtualArmPlan>(plan)); refusal.has_value())
         {
-            motors[joint].start = std::get<VirtualArmPlan>(plan)[joint];
-            const auto log = std::filesystem::absolute(options.workDirectory / std::format("joint{}.log", joint + 1));
-            if (!motors[joint].process.Start(options.engine, EngineArguments(motors[joint].start, options.bus, *listener->Port(), options.hubPort), options.workDirectory, log))
-            {
-                Stop();
-                return std::format("cannot start {}", options.engine.string());
-            }
+            Stop();
+            return refusal;
         }
 
         worker = std::jthread{ [this](const std::stop_token& stop)
@@ -98,6 +93,55 @@ namespace virtual_arm
                     *failure += std::format(" joint {}", motor.start.joint + 1);
         }
         return failure;
+    }
+
+    std::optional<std::string> VirtualArm::StartMotors(const VirtualArmPlan& plan)
+    {
+        const auto host = std::ranges::find_if(plan, [](const MotorStart& motor)
+            {
+                return motor.hostsBus;
+            });
+        if (host != plan.end())
+        {
+            if (auto refusal = StartMotor(*host); refusal.has_value())
+                return refusal;
+            if (auto refusal = WaitForHub(motors[host->joint]); refusal.has_value())
+                return refusal;
+        }
+
+        for (const auto& motor : plan)
+            if (!motor.hostsBus)
+                if (auto refusal = StartMotor(motor); refusal.has_value())
+                    return refusal;
+        return std::nullopt;
+    }
+
+    std::optional<std::string> VirtualArm::StartMotor(const MotorStart& start)
+    {
+        auto& motor = motors[start.joint];
+        motor.start = start;
+        const auto log = std::filesystem::absolute(options.workDirectory / std::format("joint{}.log", start.joint + 1));
+        if (!motor.process.Start(options.engine, EngineArguments(start, options.bus, *listener->Port(), options.hubPort), options.workDirectory, log))
+            return std::format("cannot start {}", options.engine.string());
+        return std::nullopt;
+    }
+
+    std::optional<std::string> VirtualArm::WaitForHub(Motor& host)
+    {
+        const auto deadline = std::chrono::steady_clock::now() + options.upTimeout;
+        while (true)
+        {
+            const auto probe = services::loopback::Connect(options.hubPort);
+            services::loopback::Close(probe);
+            if (probe != services::loopback::invalidSocket)
+                return std::nullopt;
+            if (const auto exitCode = host.process.Ended(); exitCode.has_value())
+                return std::format("joint {}'s motor ended before it came up, exit code {}", host.start.joint + 1, *exitCode);
+            if (std::chrono::steady_clock::now() >= deadline)
+                return std::format("joint {}'s motor did not open the virtual CAN hub within {} s", host.start.joint + 1,
+                    std::chrono::duration<double>(options.upTimeout).count());
+            std::this_thread::sleep_for(std::chrono::milliseconds{ 20 });
+        }
     }
 
     std::optional<std::string> VirtualArm::WaitUntilUp()
