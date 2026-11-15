@@ -44,6 +44,22 @@ position setpoints exactly. A scenario can make a joint fault or go silent. Time
 (`infra::ClockFixture`), so the scenarios are deterministic and run in milliseconds. Each scenario is tagged with
 the requirement it verifies (`documentation/requirements/arm/arm.yaml`).
 
+## The virtual arm scenarios
+
+`virtual/` holds the `@virtual` scenarios: the arm on six e-foc virtual motors, each geared 50:1 and loaded by the
+arm's links ([virtual-arm.md](../documentation/design/virtual-arm.md) Part G). They run in real time against the
+e-foc firmware, so they have their own binary, `e_robot_arm.integration_tests.virtual`, that ctest does not run, and a
+CI job of their own that first builds e-foc's `e-foc-virtual-motor` at the revision pinned in `ci.yml`. Run them with an
+engine you built:
+
+```bash
+cmake --build --preset host-Debug --target e_robot_arm.integration_tests.virtual
+E_FOC_VIRTUAL_MOTOR=<e-foc>/build/host/tools/virtual_motor/engine/Release/e-foc-virtual-motor \
+  build/host/integration_tests/virtual/Debug/e_robot_arm.integration_tests.virtual -- integration_tests/virtual/features
+```
+
+The tracking scenario prints a `[METRIC]` line; its limit is pinned from those lines with a margin.
+
 ## Add a scenario
 
 1. Add a `Scenario:` to a `.feature` file (or add a new feature).
