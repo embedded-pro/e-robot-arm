@@ -25,7 +25,7 @@ namespace virtual_arm
 
     bool MotorProcess::Start(const std::filesystem::path& program, const std::vector<std::string>& arguments, const std::filesystem::path& workDirectory)
     {
-        std::vector<std::string> command{ program.string() };
+        std::vector command{ program.string() };
         command.insert(command.end(), arguments.begin(), arguments.end());
         std::vector<char*> argv;
         for (auto& argument : command)
@@ -35,6 +35,9 @@ namespace virtual_arm
         pid = fork();
         if (pid == 0)
         {
+            sigset_t none;
+            sigemptyset(&none);
+            sigprocmask(SIG_SETMASK, &none, nullptr);
             setpgid(0, 0);
             prctl(PR_SET_PDEATHSIG, SIGTERM);
             if (chdir(workDirectory.c_str()) == 0)

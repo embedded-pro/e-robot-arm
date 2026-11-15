@@ -59,6 +59,23 @@ namespace virtual_arm
                 Run(stop);
             } };
 
+        auto failure = WaitUntilUp();
+        if (!failure.has_value())
+            return std::nullopt;
+
+        Stop();
+        if (failure->empty())
+        {
+            failure = std::format("not every motor came up within {} s:", std::chrono::duration<double>(options.upTimeout).count());
+            for (const auto& motor : motors)
+                if (!motor.connection.Introduction().has_value())
+                    *failure += std::format(" joint {}", motor.start.joint + 1);
+        }
+        return failure;
+    }
+
+    std::optional<std::string> VirtualArm::WaitUntilUp()
+    {
         std::unique_lock lock{ mutex };
         changed.wait_for(lock, options.upTimeout, [this]()
             {
@@ -66,18 +83,7 @@ namespace virtual_arm
             });
         if (up)
             return std::nullopt;
-
-        auto failure = problem.value_or(std::string{});
-        lock.unlock();
-        if (failure.empty())
-        {
-            failure = std::format("not every motor came up within {} s:", std::chrono::duration<double>(options.upTimeout).count());
-            for (const auto& motor : motors)
-                if (!motor.connection.Introduction().has_value())
-                    failure += std::format(" joint {}", motor.start.joint + 1);
-        }
-        Stop();
-        return failure;
+        return problem.value_or(std::string{});
     }
 
     void VirtualArm::Stop()

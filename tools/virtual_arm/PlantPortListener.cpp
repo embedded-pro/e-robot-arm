@@ -13,6 +13,12 @@ namespace virtual_arm
 {
     namespace
     {
+        template<class Address>
+        sockaddr* AsSocketAddress(Address& address)
+        {
+            return static_cast<sockaddr*>(static_cast<void*>(&address));
+        }
+
         int NonBlocking(int descriptor)
         {
             if (descriptor >= 0)
@@ -27,7 +33,7 @@ namespace virtual_arm
             address.sin_family = AF_INET;
             address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
             address.sin_port = 0;
-            if (descriptor < 0 || bind(descriptor, reinterpret_cast<const sockaddr*>(&address), sizeof(address)) != 0 || listen(descriptor, 8) != 0)
+            if (descriptor < 0 || bind(descriptor, AsSocketAddress(address), sizeof(address)) != 0 || listen(descriptor, 8) != 0)
             {
                 if (descriptor >= 0)
                     close(descriptor);
@@ -118,7 +124,7 @@ namespace virtual_arm
     {
         sockaddr_in address{};
         socklen_t length{ sizeof(address) };
-        if (listener.Open() && getsockname(listener.Descriptor(), reinterpret_cast<sockaddr*>(&address), &length) == 0)
+        if (listener.Open() && getsockname(listener.Descriptor(), AsSocketAddress(address), &length) == 0)
             port = ntohs(address.sin_port);
     }
 

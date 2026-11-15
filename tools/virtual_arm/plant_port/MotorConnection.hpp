@@ -3,7 +3,6 @@
 
 #include "tools/virtual_arm/plant_port/PlantPortCodec.hpp"
 #include <cstddef>
-#include <deque>
 #include <optional>
 #include <span>
 #include <string>
@@ -24,7 +23,7 @@ namespace virtual_arm::plant_port
         std::optional<float> RotorSpeed() const;
         const std::optional<Status>& LastStatus() const;
         const std::optional<Refused>& LastRefusal() const;
-        const std::deque<std::string>& RecentLog() const;
+        const std::vector<std::string>& RecentLog() const;
 
         void Stream(bool on);
         void Pause();
@@ -48,7 +47,7 @@ namespace virtual_arm::plant_port
         std::optional<float> speed;
         std::optional<Status> status;
         std::optional<Refused> refusal;
-        std::deque<std::string> log;
+        std::vector<std::string> log;
         std::vector<uint8_t> outgoing;
     };
 }

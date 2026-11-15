@@ -51,7 +51,7 @@ namespace virtual_arm::plant_port
         return refusal;
     }
 
-    const std::deque<std::string>& MotorConnection::RecentLog() const
+    const std::vector<std::string>& MotorConnection::RecentLog() const
     {
         return log;
     }
@@ -110,7 +110,7 @@ namespace virtual_arm::plant_port
                 {
                     log.push_back(std::move(*line));
                     if (log.size() > keptLogLines)
-                        log.pop_front();
+                        log.erase(log.begin());
                     return;
                 }
                 break;

@@ -1,68 +1,84 @@
 #include "tools/arm_host/ProfileFile.hpp"
 #include "tools/virtual_arm/VirtualArm.hpp"
-#include <atomic>
 #include <csignal>
+#include <ctime>
 #include <iostream>
+#include <span>
 #include <string_view>
-#include <thread>
 
 namespace
 {
-    std::atomic<bool> interrupted{ false };
+    constexpr std::string_view usage{ "usage: e-robot-arm-virtual-arm --profile <file> [--bus <name>] [--engine <e-foc-virtual-motor>] [--work-dir <dir>]" };
 
-    void Interrupt(int)
+    struct Arguments
     {
-        interrupted = true;
+        std::filesystem::path profile;
+        virtual_arm::VirtualArmOptions options;
+    };
+
+    std::optional<Arguments> Parse(std::span<char*> words)
+    {
+        if (words.size() % 2 != 0)
+            return std::nullopt;
+
+        Arguments arguments;
+        for (std::size_t index = 0; index != words.size(); index += 2)
+        {
+            const std::string_view name{ words[index] };
+            const std::string value{ words[index + 1] };
+            if (name == "--profile")
+                arguments.profile = value;
+            else if (name == "--bus")
+                arguments.options.bus = value;
+            else if (name == "--engine")
+                arguments.options.engine = value;
+            else if (name == "--work-dir")
+                arguments.options.workDirectory = value;
+            else
+                return std::nullopt;
+        }
+
+        if (arguments.profile.empty())
+            return std::nullopt;
+        return arguments;
     }
 
-    constexpr std::string_view usage{ "usage: e-robot-arm-virtual-arm --profile <file> [--bus <name>] [--engine <e-foc-virtual-motor>] [--work-dir <dir>]" };
+    sigset_t StopSignals()
+    {
+        sigset_t signals;
+        sigemptyset(&signals);
+        sigaddset(&signals, SIGINT);
+        sigaddset(&signals, SIGTERM);
+        return signals;
+    }
+
+    bool StopRequested(const sigset_t& signals)
+    {
+        const timespec wait{ 0, 50'000'000 };
+        return sigtimedwait(&signals, nullptr, &wait) > 0;
+    }
 }
 
-int main(int count, char** arguments)
+int main(int count, char** words)
 {
-    std::filesystem::path profilePath;
-    virtual_arm::VirtualArmOptions options;
-    for (int index = 1; index < count; ++index)
-    {
-        const std::string_view name{ arguments[index] };
-        if (index + 1 == count)
-        {
-            std::cerr << usage << "\n";
-            return 2;
-        }
-
-        const std::string value{ arguments[++index] };
-        if (name == "--profile")
-            profilePath = value;
-        else if (name == "--bus")
-            options.bus = value;
-        else if (name == "--engine")
-            options.engine = value;
-        else if (name == "--work-dir")
-            options.workDirectory = value;
-        else
-        {
-            std::cerr << usage << "\n";
-            return 2;
-        }
-    }
-
-    if (profilePath.empty())
+    const auto arguments = Parse(std::span{ words, static_cast<std::size_t>(count) }.subspan(1));
+    if (!arguments.has_value())
     {
         std::cerr << usage << "\n";
         return 2;
     }
 
-    const auto profile = arm_host::ReadProfileFile(profilePath);
+    const auto profile = arm_host::ReadProfileFile(arguments->profile);
     if (const auto* problem = std::get_if<std::string>(&profile))
     {
         std::cerr << "profile refused: " << *problem << "\n";
         return 1;
     }
 
-    std::signal(SIGINT, Interrupt);
-    std::signal(SIGTERM, Interrupt);
-    virtual_arm::VirtualArm arm{ std::get<arm::ArmProfile>(profile).config, options };
+    const auto signals = StopSignals();
+    sigprocmask(SIG_BLOCK, &signals, nullptr);
+
+    virtual_arm::VirtualArm arm{ std::get<arm::ArmProfile>(profile).config, arguments->options };
     if (const auto problem = arm.Start())
     {
         std::cerr << "virtual arm not up: " << *problem << "\n";
@@ -70,11 +86,13 @@ int main(int count, char** arguments)
     }
 
     std::cout << "virtual arm up on virtual:" << arm.Bus() << "; Ctrl-C stops it" << std::endl;
-    while (!interrupted && !arm.Problem().has_value())
-        std::this_thread::sleep_for(std::chrono::milliseconds{ 50 });
+    while (!StopRequested(signals) && !arm.Problem().has_value())
+    {
+    }
 
-    if (const auto problem = arm.Problem())
+    const auto problem = arm.Problem();
+    if (problem.has_value())
         std::cerr << "virtual arm stopped: " << *problem << "\n";
     arm.Stop();
-    return arm.Problem().has_value() ? 1 : 0;
+    return problem.has_value() ? 1 : 0;
 }
