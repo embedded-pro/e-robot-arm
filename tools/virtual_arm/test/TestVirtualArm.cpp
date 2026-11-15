@@ -1,8 +1,13 @@
 #include "tools/virtual_arm/VirtualArm.hpp"
 #include "gmock/gmock.h"
+#include <arpa/inet.h>
 #include <cstdlib>
+#include <format>
 #include <fstream>
+#include <netinet/in.h>
+#include <sys/socket.h>
 #include <thread>
+#include <unistd.h>
 
 namespace
 {
@@ -118,6 +123,25 @@ TEST_F(VirtualArmTest, reports_a_motor_that_ends_unasked)
             return arm.Problem().has_value();
         }));
     EXPECT_THAT(arm.Problem().value_or(""), testing::MatchesRegex("joint [1-6]'s motor ended unasked, exit code 3"));
+}
+
+TEST_F(VirtualArmTest, refuses_to_start_while_the_hub_port_is_held_and_no_hub_answers_on_it)
+{
+    const auto holder = socket(AF_INET, SOCK_STREAM, 0);
+    sockaddr_in address{};
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    ASSERT_EQ(0, bind(holder, static_cast<const sockaddr*>(static_cast<const void*>(&address)), sizeof(address)));
+    socklen_t length{ sizeof(address) };
+    getsockname(holder, static_cast<sockaddr*>(static_cast<void*>(&address)), &length);
+
+    auto options = Options();
+    options.hubPort = ntohs(address.sin_port);
+    options.hubPortTimeout = 300ms;
+    virtual_arm::VirtualArm arm{ config, options };
+
+    EXPECT_EQ(std::format("the virtual CAN hub port {} is still held by a closed connection", options.hubPort), arm.Start().value_or(""));
+    close(holder);
 }
 
 TEST_F(VirtualArmTest, a_missing_engine_does_not_come_up)

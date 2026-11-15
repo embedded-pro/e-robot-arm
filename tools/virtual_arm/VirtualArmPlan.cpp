@@ -32,10 +32,10 @@ namespace virtual_arm
         return plan;
     }
 
-    std::vector<std::string> EngineArguments(const MotorStart& motor, std::string_view bus, uint16_t plantPort)
+    std::vector<std::string> EngineArguments(const MotorStart& motor, std::string_view bus, uint16_t plantPort, uint16_t hubPort)
     {
         std::vector<std::string> arguments{ "--bus", std::string{ bus }, "--node", std::to_string(motor.boardId), "--plant", motor.plant, "--memory",
-            motor.memoryFile, "--calibrated", "--seed", std::to_string(motor.seed), "--plant-port", std::to_string(plantPort) };
+            motor.memoryFile, "--calibrated", "--seed", std::to_string(motor.seed), "--plant-port", std::to_string(plantPort), "--hub-port", std::to_string(hubPort) };
         if (motor.hostsBus)
             arguments.emplace_back("--host-bus");
         return arguments;

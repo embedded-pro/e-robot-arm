@@ -29,9 +29,9 @@ TEST_F(VirtualArmPlanTest, starts_each_joint_at_its_board_id_with_its_plant_and_
     EXPECT_FALSE(plan[1].hostsBus);
 
     EXPECT_EQ((std::vector<std::string>{ "--bus", "arm", "--node", "0", "--plant", "teknic", "--memory", "joint1.mem", "--calibrated", "--seed", "1",
-                  "--plant-port", "40123", "--host-bus" }),
-        virtual_arm::EngineArguments(plan[0], "arm", 40123));
-    EXPECT_EQ("--plant-port", virtual_arm::EngineArguments(plan[1], "arm", 40123).end()[-2]);
+                  "--plant-port", "40123", "--hub-port", "29537", "--host-bus" }),
+        virtual_arm::EngineArguments(plan[0], "arm", 40123, 29537));
+    EXPECT_EQ("--hub-port", virtual_arm::EngineArguments(plan[1], "arm", 40123, 29537).end()[-2]);
 }
 
 TEST_F(VirtualArmPlanTest, refuses_a_node_a_virtual_motor_cannot_answer_on_and_a_custom_motor)

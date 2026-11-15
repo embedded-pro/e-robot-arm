@@ -82,12 +82,13 @@ Each motor is started with:
 | Start from   | Calibrated, so every joint reaches *Ready* without an identification run                         |
 | Seed         | The joint number, so a run replays exactly                                                       |
 | Host the bus | The first motor only                                                                             |
+| Hub port     | The virtual hub's loopback port, 29536 unless the virtual arm is given another                   |
 | Plant port   | The virtual arm's listener                                                                       |
 
 A node id outside 1 to 256 cannot be reached this way and the virtual arm refuses the profile. The working
 directory is one per virtual arm run, so two runs never share memory files.
 
-**Start.** The virtual hub's loopback port must be free or held by a running hub first: a hub that closed less than a
+**Start.** The hub port must be free or held by a running hub first: a hub that closed less than a
 minute ago leaves it held by closed connections, and the virtual arm waits up to 70 s for it before it refuses to
 start. It is up once all six motors have connected to the plant port, introduced themselves (Hello, protocol version
 2) and sent their first status, which a motor does once it has joined the bus, within 10 s; otherwise it stops the

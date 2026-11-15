@@ -30,7 +30,7 @@ namespace virtual_arm
 
     std::optional<std::string> PlantOf(const std::optional<arm::JointMotor>& motor);
     std::variant<VirtualArmPlan, std::string> PlanVirtualArm(const arm::ArmConfig& config);
-    std::vector<std::string> EngineArguments(const MotorStart& motor, std::string_view bus, uint16_t plantPort);
+    std::vector<std::string> EngineArguments(const MotorStart& motor, std::string_view bus, uint16_t plantPort, uint16_t hubPort);
 }
 
 #endif

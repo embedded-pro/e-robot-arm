@@ -42,7 +42,7 @@ namespace virtual_arm
             sigprocmask(SIG_SETMASK, &none, nullptr);
             setpgid(0, 0);
             prctl(PR_SET_PDEATHSIG, SIGTERM);
-            if (const auto log = open(logFile.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644); log >= 0)
+            if (const auto log = open(logFile.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0600); log >= 0)
             {
                 dup2(log, STDOUT_FILENO);
                 dup2(log, STDERR_FILENO);

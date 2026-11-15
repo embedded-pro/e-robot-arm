@@ -18,21 +18,19 @@ namespace virtual_arm
             return lines;
         }
 
-        bool HubPortUsable()
+        bool HubPortUsable(uint16_t port)
         {
-            for (const auto socket : { services::loopback::Listen(services::loopback::virtualCanHubPort), services::loopback::Connect(services::loopback::virtualCanHubPort) })
-                if (socket != services::loopback::invalidSocket)
-                {
-                    services::loopback::Close(socket);
-                    return true;
-                }
-            return false;
+            auto socket = services::loopback::Listen(port);
+            if (socket == services::loopback::invalidSocket)
+                socket = services::loopback::Connect(port);
+            services::loopback::Close(socket);
+            return socket != services::loopback::invalidSocket;
         }
 
-        bool WaitForHubPort(std::chrono::milliseconds timeout)
+        bool WaitForHubPort(uint16_t port, std::chrono::milliseconds timeout)
         {
             const auto deadline = std::chrono::steady_clock::now() + timeout;
-            while (!HubPortUsable())
+            while (!HubPortUsable(port))
             {
                 if (std::chrono::steady_clock::now() >= deadline)
                     return false;
@@ -64,8 +62,8 @@ namespace virtual_arm
         if (error)
             return std::format("cannot create {}: {}", options.workDirectory.string(), error.message());
 
-        if (!WaitForHubPort(options.hubPortTimeout))
-            return std::format("the virtual CAN hub port {} is still held by a closed connection", services::loopback::virtualCanHubPort);
+        if (!WaitForHubPort(options.hubPort, options.hubPortTimeout))
+            return std::format("the virtual CAN hub port {} is still held by a closed connection", options.hubPort);
 
         listener.emplace();
         if (!listener->Port().has_value())
@@ -75,7 +73,7 @@ namespace virtual_arm
         {
             motors[joint].start = std::get<VirtualArmPlan>(plan)[joint];
             const auto log = std::filesystem::absolute(options.workDirectory / std::format("joint{}.log", joint + 1));
-            if (!motors[joint].process.Start(options.engine, EngineArguments(motors[joint].start, options.bus, *listener->Port()), options.workDirectory, log))
+            if (!motors[joint].process.Start(options.engine, EngineArguments(motors[joint].start, options.bus, *listener->Port(), options.hubPort), options.workDirectory, log))
             {
                 Stop();
                 return std::format("cannot start {}", options.engine.string());

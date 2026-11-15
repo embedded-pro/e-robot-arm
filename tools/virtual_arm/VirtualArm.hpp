@@ -26,6 +26,7 @@ namespace virtual_arm
         std::filesystem::path workDirectory{ "virtual-arm" };
         std::chrono::milliseconds upTimeout{ 10000 };
         std::chrono::milliseconds hubPortTimeout{ 70000 };
+        uint16_t hubPort{ 29536 };
     };
 
     class VirtualArm
