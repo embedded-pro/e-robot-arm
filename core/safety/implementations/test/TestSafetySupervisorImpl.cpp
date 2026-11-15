@@ -89,6 +89,7 @@ TEST_F(SafetySupervisorImplTest, refuses_motion_until_every_contract_is_compatib
 
     EXPECT_FALSE(supervisor.SelectMode(can::FocMotorMode::position));
     EXPECT_FALSE(supervisor.Start());
+    EXPECT_FALSE(supervisor.Align());
     EXPECT_FALSE(supervisor.SendPositions(withinLimits));
 }
 
@@ -97,9 +98,11 @@ TEST_F(SafetySupervisorImplTest, passes_motion_commands_on_once_contracts_are_co
     CompatibleContracts();
     EXPECT_CALL(bus, SelectMode(can::FocMotorMode::position)).WillOnce(Return(true));
     EXPECT_CALL(bus, Start()).WillOnce(Return(true));
+    EXPECT_CALL(bus, Align()).WillOnce(Return(true));
 
     EXPECT_TRUE(supervisor.SelectMode(can::FocMotorMode::position));
     EXPECT_TRUE(supervisor.Start());
+    EXPECT_TRUE(supervisor.Align());
 }
 
 TEST_F(SafetySupervisorImplTest, always_passes_stopping_clearing_and_queries_on)
@@ -158,6 +161,7 @@ TEST_F(SafetySupervisorImplTest, refuses_motion_while_tripped)
 
     EXPECT_FALSE(supervisor.SelectMode(can::FocMotorMode::position));
     EXPECT_FALSE(supervisor.Start());
+    EXPECT_FALSE(supervisor.Align());
     EXPECT_FALSE(supervisor.SendPositions(withinLimits));
 }
 

@@ -27,6 +27,7 @@ namespace arm
         bool Start() override;
         bool Stop() override;
         bool ClearFault() override;
+        bool Align() override;
         bool EmergencyStop() override;
         bool SendPositions(const JointPositions& positions) override;
         bool RequestTelemetry() override;
@@ -55,10 +56,12 @@ namespace arm
             JointCommand command;
             can::FocMotorMode mode;
             std::array<bool, jointCount> accepted{};
+            std::array<bool, jointCount> confirmed{};
         };
 
         bool Deliver(JointCommand command, can::FocMotorMode mode);
         void SendHeld();
+        void CompleteHeldOnceDone();
         bool Send(const HeldCommand& command, uint16_t node);
         void Release();
         void Fail(CommandFailure failure);

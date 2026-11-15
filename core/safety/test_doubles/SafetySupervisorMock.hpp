@@ -16,6 +16,7 @@ namespace arm
         MOCK_METHOD(bool, Start, (), (override));
         MOCK_METHOD(bool, Stop, (), (override));
         MOCK_METHOD(bool, ClearFault, (), (override));
+        MOCK_METHOD(bool, Align, (), (override));
         MOCK_METHOD(bool, EmergencyStop, (), (override));
         MOCK_METHOD(bool, SendPositions, (const JointPositions& positions), (override));
         MOCK_METHOD(bool, RequestTelemetry, (), (override));

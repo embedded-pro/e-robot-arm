@@ -51,6 +51,11 @@ namespace arm
         return bus.ClearFault();
     }
 
+    bool SafetySupervisorImpl::Align()
+    {
+        return MayCommandMotion() && bus.Align();
+    }
+
     bool SafetySupervisorImpl::EmergencyStop()
     {
         return bus.EmergencyStop();

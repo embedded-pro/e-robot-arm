@@ -57,7 +57,8 @@ namespace arm
         selectMode,
         start,
         stop,
-        clearFault
+        clearFault,
+        align
     };
 
     enum class CommandFailure : uint8_t
@@ -106,6 +107,7 @@ namespace arm
         virtual bool Start() = 0;
         virtual bool Stop() = 0;
         virtual bool ClearFault() = 0;
+        virtual bool Align() = 0;
         virtual bool EmergencyStop() = 0;
         virtual bool SendPositions(const JointPositions& positions) = 0;
         virtual bool RequestTelemetry() = 0;

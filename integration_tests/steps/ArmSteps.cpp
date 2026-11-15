@@ -86,6 +86,7 @@ THEN(R"(the arm shall start every joint in position mode)")
 {
     auto& fixture = context.Get<ArmFixture>();
     EXPECT_TRUE(fixture.arm.Safety().SelectMode(can::FocMotorMode::position));
+    fixture.ForwardTime(20ms);
     EXPECT_TRUE(fixture.arm.Safety().Start());
     fixture.ForwardTime(20ms);
     EXPECT_TRUE(fixture.events.failedCommands.empty());

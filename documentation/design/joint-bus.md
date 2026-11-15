@@ -2,7 +2,7 @@
 title: "Joint Bus Design"
 type: design
 status: draft
-version: 0.8.0
+version: 0.9.0
 component: "joint_bus"
 date: 2026-11-12
 ---
@@ -12,7 +12,7 @@ date: 2026-11-12
 | Title     | Joint Bus Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.8.0            |
+| Version   | 0.9.0            |
 | Component | joint_bus        |
 | Date      | 2026-11-12       |
 
@@ -25,8 +25,8 @@ date: 2026-11-12
 **Is responsible for:**
 
 - Mapping the six joints, in kinematic order from the base, to the CAN node of each e-foc motor node.
-- Sending one command to every joint at once: select a control mode, start, stop, clear a fault, emergency
-  stop.
+- Sending one command to every joint at once: select a control mode, start, stop, clear a fault, align,
+  emergency stop.
 - Sending one position setpoint per joint each control period.
 - Checking that every node speaks a compatible FOC motor contract and reporting the outcome once.
 - Keeping the latest position, speed, state and fault reported by each joint.
@@ -58,7 +58,7 @@ Every command goes to all six joints, in joint order. An emergency stop is sent 
 the bus attempts every joint after a refused one, so it reaches every node it can, and it reports success only
 when all six frames were accepted.
 
-The other commands (check contracts, select a control mode, start, stop, clear a fault) are delivered: the bus
+The other commands (check contracts, select a control mode, start, stop, clear a fault, align) are delivered: the bus
 holds one command and remembers which joints have accepted its frame. A joint whose frame is refused because
 can-lite's transmit queue is full is retried every millisecond until it is accepted. The command is reported
 delivered once all six joints have accepted it, or failed when one of these comes first:
@@ -68,6 +68,10 @@ delivered once all six joints have accepted it, or failed when one of these come
 | The command timeout passes  | failed: not delivered in time |
 | A newer command is issued   | failed: replaced              |
 | An emergency stop is issued | failed: emergency stop        |
+
+A control mode counts as delivered only once every joint has also answered that the mode is active. An e-foc node
+switches its control mode in the background and refuses a start until the switch is done, so a start sent on the
+mode's heels would be lost. An answer naming another mode does not count.
 
 A command accepted by all six joints at once is reported delivered before the call returns. A command to an
 arm with a joint whose contract is known to be incompatible is refused before any frame is sent; the contract
@@ -156,22 +160,23 @@ paces them one at a time.
 
 ## Data Model
 
-| Entity        | Field     | Type / Unit                | Range                         | Notes                                                                                  |
-|---------------|-----------|----------------------------|-------------------------------|----------------------------------------------------------------------------------------|
-| Node map      | node      | CAN node id                | 1 … 4095, distinct            | One per joint, base joint first                                                        |
-| Joint reading | position  | radians                    | finite                        | From motion telemetry, in joint space                                                  |
-| Joint reading | speed     | radians/second             | finite                        | From motion telemetry, in joint space                                                  |
-| Joint reading | state     | FOC motor state            | idle … ready                  | From status telemetry; idle at start                                                   |
-| Joint reading | fault     | FOC fault code             | none … other                  | From status telemetry; none at start                                                   |
-| Joint reading | silent    | flag                       | —                             | Set when the joint is reported silent, cleared when its motion telemetry arrives again |
-| Joint reading | period    | request number             | 0 …                           | The telemetry request its motion telemetry answered; 0 before the first answer         |
-| Liveness      | missed    | count                      | 1 … 255                       | Requests in a row a joint may miss                                                     |
-| Transmission  | ratio     | motor turns per joint turn | > 0, finite                   | One per joint; 1 sends joint angles unchanged                                          |
-| Transmission  | direction | sign                       | +1 or −1                      | −1 when the motor turns opposite to the joint                                          |
-| Transmission  | offset    | radians                    | finite                        | Joint angle at the motor's zero                                                        |
-| Held command  | command   | kind                       | check contracts … clear fault | At most one; select mode keeps its mode                                                |
-| Held command  | accepted  | flag per joint             | —                             | Set when the joint's frame is accepted for transmission                                |
-| Held command  | timeout   | duration                   | > 0                           | Configured; the arm uses a number of control periods                                   |
+| Entity        | Field     | Type / Unit                | Range                   | Notes                                                                                  |
+|---------------|-----------|----------------------------|-------------------------|----------------------------------------------------------------------------------------|
+| Node map      | node      | CAN node id                | 1 … 4095, distinct      | One per joint, base joint first                                                        |
+| Joint reading | position  | radians                    | finite                  | From motion telemetry, in joint space                                                  |
+| Joint reading | speed     | radians/second             | finite                  | From motion telemetry, in joint space                                                  |
+| Joint reading | state     | FOC motor state            | idle … ready            | From status telemetry; idle at start                                                   |
+| Joint reading | fault     | FOC fault code             | none … other            | From status telemetry; none at start                                                   |
+| Joint reading | silent    | flag                       | —                       | Set when the joint is reported silent, cleared when its motion telemetry arrives again |
+| Joint reading | period    | request number             | 0 …                     | The telemetry request its motion telemetry answered; 0 before the first answer         |
+| Liveness      | missed    | count                      | 1 … 255                 | Requests in a row a joint may miss                                                     |
+| Transmission  | ratio     | motor turns per joint turn | > 0, finite             | One per joint; 1 sends joint angles unchanged                                          |
+| Transmission  | direction | sign                       | +1 or −1                | −1 when the motor turns opposite to the joint                                          |
+| Transmission  | offset    | radians                    | finite                  | Joint angle at the motor's zero                                                        |
+| Held command  | command   | kind                       | check contracts … align | At most one; select mode keeps its mode                                                |
+| Held command  | accepted  | flag per joint             | —                       | Set when the joint's frame is accepted for transmission                                |
+| Held command  | confirmed | flag per joint             | —                       | Select mode only: set when the joint answers that the requested mode is active         |
+| Held command  | timeout   | duration                   | > 0                     | Configured; the arm uses a number of control periods                                   |
 
 ---
 

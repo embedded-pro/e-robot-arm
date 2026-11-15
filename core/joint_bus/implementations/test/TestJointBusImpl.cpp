@@ -62,6 +62,11 @@ namespace
             AnswerContract(node, can::focContractVersionMajor + 1, 0);
         }
 
+        void ConfirmMode(uint16_t node, can::FocMotorMode mode)
+        {
+            Receive(node, can::focSelectControlModeResponseId, services::CanPayloadWriter{}.WriteUInt8(static_cast<uint8_t>(mode)));
+        }
+
         void ReportStatus(uint16_t node, can::FocMotorState state, can::FocFaultCode fault)
         {
             Receive(node, can::focTelemetryStatusResponseId, services::CanPayloadWriter{}.WriteUInt8(static_cast<uint8_t>(state)).WriteUInt8(static_cast<uint8_t>(fault)));
@@ -127,7 +132,6 @@ namespace
 
 TEST_F(JointBusImplTest, selects_the_control_mode_of_every_joint_in_joint_order)
 {
-    EXPECT_CALL(observer, OnCommandDelivered(arm::JointCommand::selectMode));
     EXPECT_TRUE(bus.SelectMode(can::FocMotorMode::position));
 
     ExpectOneFramePerJoint(can::focSelectControlModeId);
@@ -139,7 +143,31 @@ TEST_F(JointBusImplTest, selects_the_control_mode_of_every_joint_in_joint_order)
     }
 }
 
-TEST_F(JointBusImplTest, start_stop_and_clear_fault_reach_every_joint)
+TEST_F(JointBusImplTest, a_control_mode_is_delivered_once_every_joint_confirms_it_is_active)
+{
+    EXPECT_TRUE(bus.SelectMode(can::FocMotorMode::position));
+
+    for (std::size_t joint = 0; joint + 1 != arm::jointCount; ++joint)
+        ConfirmMode(nodes[joint], can::FocMotorMode::position);
+    ConfirmMode(nodes.back(), can::FocMotorMode::speed);
+
+    EXPECT_CALL(observer, OnCommandDelivered(arm::JointCommand::selectMode));
+    ConfirmMode(nodes.back(), can::FocMotorMode::position);
+    EXPECT_EQ(arm::jointCount, sent.size());
+}
+
+TEST_F(JointBusImplTest, a_control_mode_a_joint_does_not_confirm_in_time_fails)
+{
+    EXPECT_TRUE(bus.SelectMode(can::FocMotorMode::position));
+    for (std::size_t joint = 0; joint + 1 != arm::jointCount; ++joint)
+        ConfirmMode(nodes[joint], can::FocMotorMode::position);
+
+    EXPECT_CALL(observer, OnCommandFailed(arm::JointCommand::selectMode, arm::CommandFailure::timedOut));
+    ForwardTime(commandTimeout);
+    EXPECT_EQ(arm::jointCount, sent.size());
+}
+
+TEST_F(JointBusImplTest, start_stop_clear_fault_and_align_reach_every_joint)
 {
     struct Case
     {
@@ -148,9 +176,10 @@ TEST_F(JointBusImplTest, start_stop_and_clear_fault_reach_every_joint)
         arm::JointCommand command;
     };
 
-    const std::array<Case, 3> cases{ { { &arm::JointBus::Start, can::focStartId, arm::JointCommand::start },
+    const std::array<Case, 4> cases{ { { &arm::JointBus::Start, can::focStartId, arm::JointCommand::start },
         { &arm::JointBus::Stop, can::focStopId, arm::JointCommand::stop },
-        { &arm::JointBus::ClearFault, can::focClearFaultId, arm::JointCommand::clearFault } } };
+        { &arm::JointBus::ClearFault, can::focClearFaultId, arm::JointCommand::clearFault },
+        { &arm::JointBus::Align, can::focAlignId, arm::JointCommand::align } } };
 
     for (const auto& [send, messageType, command] : cases)
     {

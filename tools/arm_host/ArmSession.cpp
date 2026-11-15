@@ -6,13 +6,14 @@ namespace arm_host
     {
         bool NeedsMotionPermission(const ArmCommand& command)
         {
-            return std::holds_alternative<SelectMode>(command) || std::holds_alternative<StartJoints>(command) || std::holds_alternative<MoveTo>(command);
+            return std::holds_alternative<SelectMode>(command) || std::holds_alternative<StartJoints>(command) || std::holds_alternative<AlignJoints>(command) ||
+                   std::holds_alternative<MoveTo>(command);
         }
 
         bool DeliveredByTheJoints(const ArmCommand& command)
         {
             return std::holds_alternative<CheckContracts>(command) || std::holds_alternative<SelectMode>(command) || std::holds_alternative<StartJoints>(command) ||
-                   std::holds_alternative<StopJoints>(command) || std::holds_alternative<ClearFaults>(command);
+                   std::holds_alternative<StopJoints>(command) || std::holds_alternative<ClearFaults>(command) || std::holds_alternative<AlignJoints>(command);
         }
 
         std::optional<arm::ArmControllerId> ArmControllerOf(const ArmCommand& command)
@@ -43,6 +44,8 @@ namespace arm_host
                 return arm::JointCommand::stop;
             if (std::holds_alternative<ClearFaults>(command))
                 return arm::JointCommand::clearFault;
+            if (std::holds_alternative<AlignJoints>(command))
+                return arm::JointCommand::align;
             return std::nullopt;
         }
 
@@ -171,6 +174,11 @@ namespace arm_host
         bool operator()(const ClearFaults&) const
         {
             return session.arm.Safety().ClearFault();
+        }
+
+        bool operator()(const AlignJoints&) const
+        {
+            return session.arm.Safety().Align();
         }
 
         bool operator()(const EmergencyStop&) const

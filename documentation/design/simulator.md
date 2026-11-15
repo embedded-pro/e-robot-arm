@@ -2,7 +2,7 @@
 title: "Simulator Design"
 type: design
 status: draft
-version: 0.6.3
+version: 0.6.4
 component: "simulator"
 date: 2026-11-12
 ---
@@ -12,7 +12,7 @@ date: 2026-11-12
 | Title     | Simulator Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.6.3            |
+| Version   | 0.6.4            |
 | Component | simulator        |
 | Date      | 2026-11-12       |
 
@@ -102,6 +102,9 @@ A `SimulatedJoint` is an e-foc node on the in-process bus (a `FocMotorCategorySe
 - **Follows its setpoint through a first-order lag** with time constant τ. The position advances when telemetry is
   requested, from the time since the last update: `θ ← θ* + (θ − θ*)·e^(−Δt/τ)`, and its speed reads
   `(θ* − θ)/τ`. τ = 0 follows exactly, which is what the scenarios use. The simulator uses τ = 50 ms.
+- **Is always aligned:** it acknowledges an align and stays ready.
+- **Treats a quick stop (contract 3.2) as a stop:** it holds where it is and reports *ready*; it never reports
+  *stopping*.
 - **Takes injected failures:** `Fault(code)` reports a fault in its next telemetry, `Silence()` stops answering.
   The simulator offers both per joint, on the simulated target only.
 
@@ -109,14 +112,14 @@ A `SimulatedJoint` is an e-foc node on the in-process bus (a `FocMotorCategorySe
 
 `ArmHost` owns the arm thread and, on it, the target and the arm. Its operator-facing surface:
 
-| Operation              | Effect                                                                                                                                                                                                                                                                                                                                                                  |
-|------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `Post(command)`        | One of: bring up, enable, disable, check contracts, select position mode, start, stop, clear faults, emergency stop, re-arm, move, abort, inject fault, silence joint. Its result arrives as an event. Bring up, enable, disable, re-arm and move go through the arm's lifecycle ([arm-lifecycle.md](arm-lifecycle.md)), so a move is refused unless the arm is enabled |
-| `SwitchTarget(target)` | Part C; its result arrives as an event                                                                                                                                                                                                                                                                                                                                  |
-| `LoadProfile(profile)` | Rebuilds the arm from the profile on the current target, as a target switch does; refused while the arm is enabling, enabled, moving or disabling, or while a target switch runs. Answered `profileLoaded` or `refused` with the reason ([arm-profile.md](arm-profile.md))                                                                                              |
-| `Snapshot()`           | A copy of the latest snapshot                                                                                                                                                                                                                                                                                                                                           |
-| `TakeEvents()`         | Every event since the last call, in order                                                                                                                                                                                                                                                                                                                               |
-| `TakeTrace()`          | Every trace sample since the last call, in order                                                                                                                                                                                                                                                                                                                        |
+| Operation              | Effect                                                                                                                                                                                                                                                                                                                                                                         |
+|------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `Post(command)`        | One of: bring up, enable, disable, check contracts, select position mode, start, stop, clear faults, align, emergency stop, re-arm, move, abort, inject fault, silence joint. Its result arrives as an event. Bring up, enable, disable, re-arm and move go through the arm's lifecycle ([arm-lifecycle.md](arm-lifecycle.md)), so a move is refused unless the arm is enabled |
+| `SwitchTarget(target)` | Part C; its result arrives as an event                                                                                                                                                                                                                                                                                                                                         |
+| `LoadProfile(profile)` | Rebuilds the arm from the profile on the current target, as a target switch does; refused while the arm is enabling, enabled, moving or disabling, or while a target switch runs. Answered `profileLoaded` or `refused` with the reason ([arm-profile.md](arm-profile.md))                                                                                                     |
+| `Snapshot()`           | A copy of the latest snapshot                                                                                                                                                                                                                                                                                                                                                  |
+| `TakeEvents()`         | Every event since the last call, in order                                                                                                                                                                                                                                                                                                                                      |
+| `TakeTrace()`          | Every trace sample since the last call, in order                                                                                                                                                                                                                                                                                                                               |
 
 It is built in layers, each tested on its own:
 
@@ -129,7 +132,7 @@ It is built in layers, each tested on its own:
 | `ArmMailbox`      | any       | The snapshot under a mutex and the two bounded queues; numbers the snapshots                        |
 
 Every command answers with exactly one event, `accepted` or `refused` with a reason, carrying the id `Post`
-returned. Check contracts, select mode, start, stop and clear faults are delivered by the joint bus
+returned. Check contracts, select mode, start, stop, clear faults and align are delivered by the joint bus
 ([joint-bus.md](joint-bus.md) Part B): the session answers `accepted` once all six joints have the command, and
 `refused` when the joint bus reports it failed, with the reason "replaced by a newer command", "emergency stop" or
 "not delivered to every joint in time". The other commands are answered as soon as they run.

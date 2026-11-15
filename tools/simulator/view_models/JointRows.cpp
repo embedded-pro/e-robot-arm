@@ -26,7 +26,7 @@ namespace simulator
 
     std::string_view StateName(can::FocMotorState state)
     {
-        static constexpr std::array<std::string_view, 6> names{ "Idle", "Running", "Fault", "Calibrating", "Partly calibrated", "Ready" };
+        static constexpr std::array<std::string_view, 7> names{ "Idle", "Running", "Fault", "Calibrating", "Partly calibrated", "Ready", "Stopping" };
         const auto index = static_cast<std::size_t>(state);
         return index < names.size() ? names[index] : "Unknown";
     }
@@ -52,6 +52,7 @@ namespace simulator
                 return ui::theme::StatusLevel::Fault;
             case can::FocMotorState::calibrating:
             case can::FocMotorState::partialCalibration:
+            case can::FocMotorState::stopping:
                 return ui::theme::StatusLevel::Warning;
             default:
                 return ui::theme::StatusLevel::Neutral;

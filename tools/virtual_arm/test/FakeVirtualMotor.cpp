@@ -62,6 +62,16 @@ namespace
         return EncodeFrame(MessageType::hello, payload);
     }
 
+    std::vector<uint8_t> StatusFrame()
+    {
+        std::vector<uint8_t> payload;
+        Put(payload, 2000, 8);
+        Put(payload, std::bit_cast<uint32_t>(1.0f), 4);
+        Put(payload, 0, 4);
+        payload.insert(payload.end(), { 0, 0b001, 0 });
+        return EncodeFrame(MessageType::status, payload);
+    }
+
     std::vector<uint8_t> WindowFrame(uint32_t sequence, float angle)
     {
         std::vector<uint8_t> payload;
@@ -100,6 +110,8 @@ int main(int count, char** arguments)
 
     const auto hello = HelloFrame(options, version != nullptr ? static_cast<uint16_t>(std::atoi(version)) : protocolVersion);
     send(descriptor, hello.data(), hello.size(), MSG_NOSIGNAL);
+    const auto status = StatusFrame();
+    send(descriptor, status.data(), status.size(), MSG_NOSIGNAL);
 
     const auto start = std::chrono::steady_clock::now();
     const float angle{ 0.1f * static_cast<float>(options.node + 1) };

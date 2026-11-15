@@ -1,4 +1,5 @@
 #include "tools/virtual_arm/VirtualArm.hpp"
+#include "can-lite/drivers/implementation/LoopbackSocket.hpp"
 #include <algorithm>
 #include <format>
 #include <poll.h>
@@ -15,6 +16,27 @@ namespace virtual_arm
             for (const auto& line : connection.RecentLog())
                 lines += "\n  " + line;
             return lines;
+        }
+
+        bool HubPortUsable(uint16_t port)
+        {
+            auto socket = services::loopback::Listen(port);
+            if (socket == services::loopback::invalidSocket)
+                socket = services::loopback::Connect(port);
+            services::loopback::Close(socket);
+            return socket != services::loopback::invalidSocket;
+        }
+
+        bool WaitForHubPort(uint16_t port, std::chrono::milliseconds timeout)
+        {
+            const auto deadline = std::chrono::steady_clock::now() + timeout;
+            while (!HubPortUsable(port))
+            {
+                if (std::chrono::steady_clock::now() >= deadline)
+                    return false;
+                std::this_thread::sleep_for(std::chrono::milliseconds{ 250 });
+            }
+            return true;
         }
     }
 
@@ -40,6 +62,9 @@ namespace virtual_arm
         if (error)
             return std::format("cannot create {}: {}", options.workDirectory.string(), error.message());
 
+        if (!WaitForHubPort(options.hubPort, options.hubPortTimeout))
+            return std::format("the virtual CAN hub port {} is still held by a closed connection", options.hubPort);
+
         listener.emplace();
         if (!listener->Port().has_value())
             return std::string{ "cannot listen on a loopback port for the plant ports" };
@@ -47,7 +72,8 @@ namespace virtual_arm
         for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
         {
             motors[joint].start = std::get<VirtualArmPlan>(plan)[joint];
-            if (!motors[joint].process.Start(options.engine, EngineArguments(motors[joint].start, options.bus, *listener->Port()), options.workDirectory))
+            const auto log = std::filesystem::absolute(options.workDirectory / std::format("joint{}.log", joint + 1));
+            if (!motors[joint].process.Start(options.engine, EngineArguments(motors[joint].start, options.bus, *listener->Port(), options.hubPort), options.workDirectory, log))
             {
                 Stop();
                 return std::format("cannot start {}", options.engine.string());
@@ -94,10 +120,10 @@ namespace virtual_arm
             worker.join();
         }
 
-        for (auto& motor : motors)
+        for (auto motor = motors.rbegin(); motor != motors.rend(); ++motor)
         {
-            motor.socket.reset();
-            motor.process.Stop();
+            motor->socket.reset();
+            motor->process.Stop();
         }
         arrivals.clear();
         listener.reset();
@@ -169,8 +195,10 @@ namespace virtual_arm
             if (motor.socket.has_value())
                 descriptors.push_back({ motor.socket->Descriptor(), POLLIN, 0 });
 
-        const auto wait = std::chrono::duration_cast<std::chrono::milliseconds>(nextCoupling - std::chrono::steady_clock::now());
-        poll(descriptors.data(), descriptors.size(), static_cast<int>(std::clamp<std::int64_t>(wait.count(), 0, 1)));
+        const auto wait = std::clamp(std::chrono::duration_cast<std::chrono::nanoseconds>(nextCoupling - std::chrono::steady_clock::now()),
+            std::chrono::nanoseconds::zero(), std::chrono::nanoseconds{ couplingPeriod });
+        const timespec timeout{ 0, static_cast<long>(wait.count()) };
+        ppoll(descriptors.data(), descriptors.size(), &timeout, nullptr);
 
         while (auto socket = listener->Accept())
             arrivals.push_back({ std::move(*socket), {} });
@@ -298,7 +326,7 @@ namespace virtual_arm
     {
         return std::ranges::all_of(motors, [](const Motor& motor)
             {
-                return motor.socket.has_value() && motor.connection.Introduction().has_value();
+                return motor.socket.has_value() && motor.connection.Introduction().has_value() && motor.connection.LastStatus().has_value();
             });
     }
 }

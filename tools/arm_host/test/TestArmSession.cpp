@@ -89,6 +89,21 @@ TEST_F(ArmSessionTest, refuses_motion_before_the_contracts_are_checked_and_says_
     EXPECT_EQ("contracts not compatible", sink.Find(ArmEventKind::refused)->reason);
 }
 
+TEST_F(ArmSessionTest, aligns_the_joints_once_the_contracts_are_compatible)
+{
+    Execute(4, arm_host::AlignJoints{});
+    ASSERT_NE(nullptr, sink.Find(ArmEventKind::refused));
+    EXPECT_EQ("contracts not compatible", sink.Find(ArmEventKind::refused)->reason);
+
+    Execute(5, arm_host::CheckContracts{});
+    Execute(6, arm_host::AlignJoints{});
+
+    EXPECT_TRUE(std::ranges::any_of(sink.events, [](const arm_host::ArmEvent& event)
+        {
+            return event.command == 6 && event.kind == ArmEventKind::accepted && event.commandName == "align";
+        }));
+}
+
 TEST_F(ArmSessionTest, a_move_shows_the_commanded_positions_and_the_joints_follow_with_a_lag)
 {
     BringUp();

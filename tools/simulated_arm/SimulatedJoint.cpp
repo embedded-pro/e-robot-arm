@@ -124,6 +124,11 @@ namespace simulation
         onDone(services::CanAckStatus::success);
     }
 
+    void SimulatedJoint::Node::OnQuickStop(const infra::Function<void(services::CanAckStatus)>& onDone)
+    {
+        OnStop(onDone);
+    }
+
     void SimulatedJoint::Node::OnClearFault(const infra::Function<void(services::CanAckStatus)>& onDone)
     {
         if (state == can::FocMotorState::fault)
@@ -162,7 +167,7 @@ namespace simulation
 
     void SimulatedJoint::Node::OnAlign(const infra::Function<void(services::CanAckStatus)>& onDone)
     {
-        onDone(services::CanAckStatus::notImplemented);
+        onDone(services::CanAckStatus::success);
     }
 
     void SimulatedJoint::Node::OnIdentifyElectrical(const infra::Function<void()>& onDone)

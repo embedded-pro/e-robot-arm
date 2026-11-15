@@ -17,7 +17,8 @@ namespace virtual_arm
         MotorProcess& operator=(const MotorProcess& other) = delete;
         ~MotorProcess();
 
-        bool Start(const std::filesystem::path& program, const std::vector<std::string>& arguments, const std::filesystem::path& workDirectory);
+        bool Start(const std::filesystem::path& program, const std::vector<std::string>& arguments, const std::filesystem::path& workDirectory,
+            const std::filesystem::path& logFile);
         void Stop();
         bool Running() const;
         std::optional<int> Ended();

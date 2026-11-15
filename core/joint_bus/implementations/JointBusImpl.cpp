@@ -81,6 +81,11 @@ namespace arm
         return Deliver(JointCommand::clearFault, can::FocMotorMode::torque);
     }
 
+    bool JointBusImpl::Align()
+    {
+        return Deliver(JointCommand::align, can::FocMotorMode::torque);
+    }
+
     bool JointBusImpl::EmergencyStop()
     {
         Fail(CommandFailure::emergencyStop);
@@ -150,8 +155,15 @@ namespace arm
         return period;
     }
 
-    void JointBusImpl::OnSelectControlModeResponse(uint16_t, can::FocMotorMode)
-    {}
+    void JointBusImpl::OnSelectControlModeResponse(uint16_t sourceNodeId, can::FocMotorMode mode)
+    {
+        const auto joint = JointOf(sourceNodeId);
+        if (!joint.has_value() || !held.has_value() || held->command != JointCommand::selectMode || held->mode != mode)
+            return;
+
+        held->confirmed[*joint] = true;
+        CompleteHeldOnceDone();
+    }
 
     void JointBusImpl::OnCategoryError(uint16_t, uint8_t, can::FocMotorCategoryError)
     {}
@@ -264,7 +276,14 @@ namespace arm
             if (!held->accepted[joint])
                 held->accepted[joint] = Send(*held, nodes[joint]);
 
+        CompleteHeldOnceDone();
+    }
+
+    void JointBusImpl::CompleteHeldOnceDone()
+    {
         if (std::ranges::find(held->accepted, false) != held->accepted.end())
+            return;
+        if (held->command == JointCommand::selectMode && std::ranges::find(held->confirmed, false) != held->confirmed.end())
             return;
 
         const auto command = held->command;
@@ -289,6 +308,8 @@ namespace arm
                 return client.SendStop(node);
             case JointCommand::clearFault:
                 return client.SendClearFault(node);
+            case JointCommand::align:
+                return client.SendAlign(node);
         }
 
         return false;

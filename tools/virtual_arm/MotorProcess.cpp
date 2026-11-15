@@ -1,6 +1,7 @@
 #include "tools/virtual_arm/MotorProcess.hpp"
 #include <chrono>
 #include <csignal>
+#include <fcntl.h>
 #include <sys/prctl.h>
 #include <sys/wait.h>
 #include <thread>
@@ -23,7 +24,8 @@ namespace virtual_arm
         Stop();
     }
 
-    bool MotorProcess::Start(const std::filesystem::path& program, const std::vector<std::string>& arguments, const std::filesystem::path& workDirectory)
+    bool MotorProcess::Start(const std::filesystem::path& program, const std::vector<std::string>& arguments, const std::filesystem::path& workDirectory,
+        const std::filesystem::path& logFile)
     {
         std::vector command{ program.string() };
         command.insert(command.end(), arguments.begin(), arguments.end());
@@ -40,6 +42,12 @@ namespace virtual_arm
             sigprocmask(SIG_SETMASK, &none, nullptr);
             setpgid(0, 0);
             prctl(PR_SET_PDEATHSIG, SIGTERM);
+            if (const auto log = open(logFile.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0600); log >= 0)
+            {
+                dup2(log, STDOUT_FILENO);
+                dup2(log, STDERR_FILENO);
+                close(log);
+            }
             if (chdir(workDirectory.c_str()) == 0)
                 execvp(argv[0], argv.data());
             _exit(execFailed);
