@@ -174,7 +174,8 @@ A scenario or the console asks the virtual arm for them; the arm only sees their
 | Scenarios           | The `@virtual` fixture starts it before a scenario and stops it after (Part G)                  |
 | By hand or a script | `e-robot-arm-virtual-arm --profile <file> [--bus <name>]`, ended with Ctrl-C                    |
 
-It finds `e-foc-virtual-motor` on the path, or where `--engine <path>` says.
+It finds `e-foc-virtual-motor` on the path, or where `--engine <path>` says; a relative path is taken from the
+directory it was started in, not from the motors' working directory.
 
 ### Part F — The e-foc virtual motor, built from e-foc
 

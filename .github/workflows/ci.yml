@@ -218,8 +218,10 @@ jobs:
           cmake --preset host
           cmake --build --preset host-Debug --target e_robot_arm.integration_tests.virtual
       - name: Run the virtual arm scenarios
+        shell: bash
         run: |
-          E_FOC_VIRTUAL_MOTOR="$(find e-foc/build/host -name e-foc-virtual-motor -type f -executable -print -quit)"
+          set -o pipefail
+          E_FOC_VIRTUAL_MOTOR="$(realpath "$(find e-foc/build/host -name e-foc-virtual-motor -type f -executable -print -quit)")"
           export E_FOC_VIRTUAL_MOTOR
           scenarios="$(find build/host -name e_robot_arm.integration_tests.virtual -type f -executable -print -quit)"
           "$scenarios" --format summary pretty junit:virtual-arm-report.xml -- integration_tests/virtual/features | tee virtual-arm.log
