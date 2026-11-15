@@ -167,7 +167,7 @@ namespace simulation
 
     void SimulatedJoint::Node::OnAlign(const infra::Function<void(services::CanAckStatus)>& onDone)
     {
-        onDone(services::CanAckStatus::notImplemented);
+        onDone(services::CanAckStatus::success);
     }
 
     void SimulatedJoint::Node::OnIdentifyElectrical(const infra::Function<void()>& onDone)

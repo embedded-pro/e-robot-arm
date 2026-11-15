@@ -20,6 +20,7 @@ namespace arm
         bool Start() override;
         bool Stop() override;
         bool ClearFault() override;
+        bool Align() override;
         bool EmergencyStop() override;
         bool SendPositions(const JointPositions& positions) override;
         bool RequestTelemetry() override;

@@ -2,7 +2,7 @@
 title: "Arm Lifecycle Design"
 type: design
 status: draft
-version: 0.3.0
+version: 0.4.0
 component: "lifecycle"
 date: 2026-11-13
 ---
@@ -12,7 +12,7 @@ date: 2026-11-13
 | Title     | Arm Lifecycle Design |
 | Type      | design               |
 | Status    | draft                |
-| Version   | 0.3.0                |
+| Version   | 0.4.0                |
 | Component | lifecycle            |
 | Date      | 2026-11-13           |
 
@@ -62,7 +62,9 @@ date: 2026-11-13
 
 A joint counts as calibrated when it reports ready or running, and as running when it reports running. Idle,
 calibrating and partial calibration all keep the arm waiting, with no time limit: the operator calibrates the node
-and the arm moves on when the node reports ready.
+and the arm moves on when the node reports ready. A node that kept its calibration but lost its rotor alignment (an
+e-foc node after a reset, or a virtual motor started calibrated) reports idle until it is aligned; the tools' align
+command aligns every joint, and it moves each motor.
 
 ### Part B — Commands
 
@@ -110,7 +112,7 @@ power-cycled gets its settings back before the arm can be enabled. A configurato
 has left Configuring is ignored.
 
 Because the lifecycle follows the readings, the single-step commands of the tools (check contracts, select mode,
-start, stop) still work for debugging, and the lifecycle shows where they leave the arm.
+start, stop, align) still work for debugging, and the lifecycle shows where they leave the arm.
 
 ---
 

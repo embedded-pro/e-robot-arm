@@ -50,9 +50,10 @@ TEST_F(ArmConsoleTest, each_arm_command_is_posted_and_its_id_returned)
     EXPECT_CALL(arm, Post(Holds(arm_host::ClearFaults{}))).WillOnce(Return(5));
     EXPECT_CALL(arm, Post(Holds(arm_host::Rearm{}))).WillOnce(Return(6));
     EXPECT_CALL(arm, Post(Holds(arm_host::AbortMove{}))).WillOnce(Return(7));
+    EXPECT_CALL(arm, Post(Holds(arm_host::AlignJoints{}))).WillOnce(Return(8));
 
     uint32_t expectedId = 1;
-    for (const auto* line : { "contracts", "start", "stop", "estop", "clear", "rearm", "abort" })
+    for (const auto* line : { "contracts", "start", "stop", "estop", "clear", "rearm", "abort", "align" })
     {
         const auto result = console.Execute(line);
         EXPECT_EQ(arm_console::Outcome::posted, result.outcome);

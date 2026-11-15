@@ -2,7 +2,7 @@
 title: "Arm Composition and Console Design"
 type: design
 status: draft
-version: 0.6.0
+version: 0.7.0
 component: "arm"
 date: 2026-11-12
 ---
@@ -12,7 +12,7 @@ date: 2026-11-12
 | Title     | Arm Composition and Console Design |
 | Type      | design                             |
 | Status    | draft                              |
-| Version   | 0.6.0                              |
+| Version   | 0.7.0                              |
 | Component | arm                                |
 | Date      | 2026-11-12                         |
 
@@ -68,6 +68,7 @@ control loop and reads one command per line from standard input:
 | `start`, `stop`                             | Start or stop all six joints                                                                                              |
 | `estop`                                     | Emergency stop of all six joints                                                                                          |
 | `clear`                                     | Clear the faults of all six joints                                                                                        |
+| `align`                                     | Align all six joints' rotors; it moves the motors. A joint that kept its calibration reports ready once aligned           |
 | `rearm`                                     | Re-arm the arm after a trip                                                                                               |
 | `move q1 q2 q3 q4 q5 q6`                    | Move the six joints to the positions, in radians; only while enabled                                                      |
 | `abort`                                     | Abort the running move                                                                                                    |
@@ -83,7 +84,7 @@ control loop and reads one command per line from standard input:
 | `quit`                                      | Stop the control loop and leave                                                                                           |
 
 `bringup`, `enable`, `disable`, `rearm` and `move` go through the arm's lifecycle; `contracts`, `mode`, `start`,
-`stop`, `clear` and `estop` reach the joints directly, for debugging, and the lifecycle follows where they leave the
+`stop`, `clear`, `align` and `estop` reach the joints directly, for debugging, and the lifecycle follows where they leave the
 arm. Every command prints whether it was accepted. Events print as they happen: each lifecycle state (`arm: ready`, or
 `arm: misconfigured (joint 5 reads back different)` naming the joint),
 the contract outcome, a joint that faulted or went silent, a move done or aborted. An unknown command or a malformed one prints a usage line and

@@ -2,7 +2,7 @@
 title: "Safety Supervisor Design"
 type: design
 status: draft
-version: 0.1.0
+version: 0.2.0
 component: "safety"
 date: 2026-11-12
 ---
@@ -12,7 +12,7 @@ date: 2026-11-12
 | Title     | Safety Supervisor Design |
 | Type      | design                   |
 | Status    | draft                    |
-| Version   | 0.1.0                    |
+| Version   | 0.2.0                    |
 | Component | safety                   |
 | Date      | 2026-11-12               |
 
@@ -54,7 +54,7 @@ included; otherwise none of it is sent.
 
 ### Part C — Contract gate
 
-Selecting a control mode, starting the joints and sending setpoints are refused unless the contract check of
+Selecting a control mode, starting or aligning the joints and sending setpoints are refused unless the contract check of
 all six nodes is compatible. Stopping, emergency stop, clearing faults, the contract check and telemetry requests
 are always passed on.
 
@@ -64,7 +64,7 @@ A joint that faults or goes silent trips the supervisor:
 
 - an emergency stop is sent to all six joints at once;
 - the event that caused it is passed on to the observer, naming the joint;
-- while tripped, selecting a mode, starting and sending setpoints are refused.
+- while tripped, selecting a mode, starting, aligning and sending setpoints are refused.
 
 A second fault or silence while tripped is passed on but sends no second emergency stop.
 

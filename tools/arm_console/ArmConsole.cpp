@@ -83,6 +83,8 @@ namespace arm_console
             return arm_host::EmergencyStop{};
         if (command == "clear")
             return arm_host::ClearFaults{};
+        if (command == "align")
+            return arm_host::AlignJoints{};
         if (command == "rearm")
             return arm_host::Rearm{};
         if (command == "abort")
@@ -278,7 +280,7 @@ namespace arm_console
 
     void ArmConsole::Usage()
     {
-        output << "usage: bringup | enable | disable | move q1 q2 q3 q4 q5 q6 | rearm | contracts | mode torque|speed|position | start | stop | estop | clear | abort | load <file> | save <file> | controllers | controller enable|disable|select <name> | pose | gravity | fk q1..q6 | ik x y z roll pitch yaw | status | quit\n";
+        output << "usage: bringup | enable | disable | move q1 q2 q3 q4 q5 q6 | rearm | contracts | mode torque|speed|position | start | stop | estop | clear | align | abort | load <file> | save <file> | controllers | controller enable|disable|select <name> | pose | gravity | fk q1..q6 | ik x y z roll pitch yaw | status | quit\n";
     }
 
     void ArmConsole::Print(const arm_host::ArmEvent& event)

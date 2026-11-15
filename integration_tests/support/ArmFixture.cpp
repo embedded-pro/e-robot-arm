@@ -107,6 +107,7 @@ namespace integration
         EXPECT_TRUE(arm.Safety().QueryContracts());
         ForwardTime(20ms);
         EXPECT_TRUE(arm.Safety().SelectMode(can::FocMotorMode::position));
+        ForwardTime(20ms);
         EXPECT_TRUE(arm.Safety().Start());
         ForwardTime(20ms);
         EXPECT_TRUE(events.failedCommands.empty());
