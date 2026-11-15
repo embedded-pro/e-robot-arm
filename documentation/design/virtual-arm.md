@@ -2,7 +2,7 @@
 title: "Virtual Arm Design"
 type: design
 status: draft
-version: 0.1.0
+version: 0.2.0
 component: "virtual-arm"
 date: 2026-11-15
 ---
@@ -12,7 +12,7 @@ date: 2026-11-15
 | Title     | Virtual Arm Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.1.0              |
+| Version   | 0.2.0              |
 | Component | virtual-arm        |
 | Date      | 2026-11-15         |
 
@@ -90,7 +90,9 @@ directory is one per virtual arm run, so two runs never share memory files.
 **Start.** The virtual arm is up once all six motors have connected to the plant port and introduced themselves
 (Hello, protocol version 2), within 10 s; otherwise it stops the ones it started and reports which joint did not
 come up. **Stop.** It ends every motor it started, which leaves the bus silent as a powered-off arm; a motor that
-ends without being asked is reported with the last lines of its debug log.
+ends without being asked is reported with the last lines of its debug log. Each motor runs in a process group of its
+own, so Ctrl-C reaches only the virtual arm, which then stops the motors; a motor whose virtual arm dies is ended
+with it, since an e-foc virtual motor otherwise outlives its plant port.
 
 ### Part B — Motor per joint
 
