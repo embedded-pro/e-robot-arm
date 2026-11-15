@@ -2,7 +2,7 @@
 title: "System Architecture"
 type: architecture
 status: draft
-version: 0.12.3
+version: 0.13.0
 component: "system"
 date: 2026-11-12
 ---
@@ -12,7 +12,7 @@ date: 2026-11-12
 | Title     | System Architecture |
 | Type      | architecture        |
 | Status    | draft               |
-| Version   | 0.12.3              |
+| Version   | 0.13.0              |
 | Component | system              |
 | Date      | 2026-11-12          |
 
@@ -75,7 +75,7 @@ flowchart LR
 | joint configurator | Applies and verifies each joint's motor controller (algorithms, gains) and motor model over CAN                                                                                    | exists (motor controller, motor)                                                 |
 | arm controllers    | Registry and selector: controllers enabled, disabled and switched at run time, bumpless                                                                                            | exists (registry, selector, `pass-through`, `smoothed`, console); catalogue in 5 |
 | arm model          | Kinematics and dynamics of the six joints, the tool frame and the base mount                                                                                                       | exists                                                                           |
-| virtual arm        | Six e-foc virtual motors with selectable motor characteristics, coupled to the arm's dynamics                                                                                      | phase 7                                                                          |
+| virtual arm        | Six e-foc virtual motors with selectable motor characteristics, coupled to the arm's dynamics                                                                                      | designed ([virtual-arm.md](../design/virtual-arm.md)); phase 7                   |
 | arm host           | The arm on its own thread with its target: simulated joints, `virtual:` bus or real adapter; commands in, snapshot, events and traces out; shared by the console and the simulator | exists (8a)                                                                      |
 | simulator          | Qt operator station on ui-cpp with a Qt Quick 3D arm view: scopes, configuration forms; runs the same core on any back end                                                         | exists (8a; 8b motor controller, motor, profile); 8b–8d                          |
 
@@ -177,13 +177,13 @@ sequenceDiagram
 
 ## Open Questions & Decisions
 
-| # | Question / Decision                          | Status  | Options Considered                                                     | Rationale                                                                                                         |
-|---|----------------------------------------------|---------|------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------|
-| 1 | Where the controller runs                    | decided | MCU board, Linux single-board computer, PC                             | PC first; the core stays portable for a later MCU target                                                          |
-| 2 | Dependencies as submodules or FetchContent   | decided | Submodules, FetchContent                                               | Final projects pin their dependencies as submodules under `infra/`                                                |
-| 3 | Combined position, speed and torque setpoint | open    | Per-kind setpoints, one combined command                               | Needs a minor e-foc-protocol contract version; phase 5 (#21)                                                      |
-| 4 | Coupling the virtual motors to arm dynamics  | open    | Plant-port external torque, own plant                                  | Decides how realistic the simulated arm is; phase 7 (#23)                                                         |
-| 5 | How a command reaches all joints or none     | open    | Pending command in the joint bus, command phase, deeper queue          | Phase 1 (#17)                                                                                                     |
-| 6 | Everything that varies is profile data       | decided | Compile-time choices, run-time profile                                 | The simulator and the platform must switch controllers and motors at run time; phase 2 (#18)                      |
-| 7 | Simulator widgets                            | decided | Own Qt widgets, ui-cpp                                                 | Reuse ui-cpp's shell, model, scope, charts and theme; phase 8 (#24)                                               |
-| 8 | Simulator 3-D rendering                      | decided | ui-cpp `ui::stage` (flat shading, no shadows), Qt Quick 3D, own OpenGL | Qt Quick 3D: PBR materials, image-based lighting, soft shadows, SSAO; `ui::stage` stays for tests; phase 8a (#28) |
+| # | Question / Decision                          | Status  | Options Considered                                                     | Rationale                                                                                                                                                                               |
+|---|----------------------------------------------|---------|------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 1 | Where the controller runs                    | decided | MCU board, Linux single-board computer, PC                             | PC first; the core stays portable for a later MCU target                                                                                                                                |
+| 2 | Dependencies as submodules or FetchContent   | decided | Submodules, FetchContent                                               | Final projects pin their dependencies as submodules under `infra/`                                                                                                                      |
+| 3 | Combined position, speed and torque setpoint | open    | Per-kind setpoints, one combined command                               | Needs a minor e-foc-protocol contract version; phase 5 (#21)                                                                                                                            |
+| 4 | Coupling the virtual motors to arm dynamics  | decided | Plant-port external torque, own plant                                  | Plant-port external torque from the arm model's inverse dynamics at zero acceleration; link inertia waits for custom plants ([virtual-arm.md](../design/virtual-arm.md)); phase 7 (#23) |
+| 5 | How a command reaches all joints or none     | open    | Pending command in the joint bus, command phase, deeper queue          | Phase 1 (#17)                                                                                                                                                                           |
+| 6 | Everything that varies is profile data       | decided | Compile-time choices, run-time profile                                 | The simulator and the platform must switch controllers and motors at run time; phase 2 (#18)                                                                                            |
+| 7 | Simulator widgets                            | decided | Own Qt widgets, ui-cpp                                                 | Reuse ui-cpp's shell, model, scope, charts and theme; phase 8 (#24)                                                                                                                     |
+| 8 | Simulator 3-D rendering                      | decided | ui-cpp `ui::stage` (flat shading, no shadows), Qt Quick 3D, own OpenGL | Qt Quick 3D: PBR materials, image-based lighting, soft shadows, SSAO; `ui::stage` stays for tests; phase 8a (#28)                                                                       |
