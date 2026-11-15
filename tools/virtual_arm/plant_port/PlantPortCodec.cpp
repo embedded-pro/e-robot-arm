@@ -186,7 +186,7 @@ namespace virtual_arm::plant_port
 
     std::vector<uint8_t> EncodeFrame(MessageType type, std::span<const uint8_t> payload)
     {
-        std::vector<uint8_t> bytes{ static_cast<uint8_t>(type) };
+        std::vector bytes{ static_cast<uint8_t>(type) };
         PutU16(bytes, static_cast<uint16_t>(payload.size()));
         bytes.insert(bytes.end(), payload.begin(), payload.end());
         return bytes;
@@ -194,7 +194,7 @@ namespace virtual_arm::plant_port
 
     std::vector<uint8_t> EncodeConstantExternalTorque(float newtonMeter)
     {
-        std::vector<uint8_t> payload{ static_cast<uint8_t>(TorqueForm::constant) };
+        std::vector payload{ static_cast<uint8_t>(TorqueForm::constant) };
         PutF32(payload, newtonMeter);
         for (int unused = 0; unused != 3; ++unused)
             PutF32(payload, 0.0f);
