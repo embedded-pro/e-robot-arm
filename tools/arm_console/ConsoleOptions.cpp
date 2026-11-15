@@ -50,6 +50,10 @@ namespace arm_console
             }
             else if (name == "--profile")
                 options.profile = value;
+            else if (name == "--virtual-arm")
+                options.virtualArm = value;
+            else if (name == "--engine")
+                options.engine = value;
             else if (name == "--nodes")
             {
                 const auto nodes = Nodes(value);
@@ -71,11 +75,15 @@ namespace arm_console
             if (index + 1 == arguments.size() || !Apply(options, arguments[index], arguments[index + 1]))
                 return std::nullopt;
 
+        if (options.virtualArm.empty())
+            return options.engine.empty() ? std::optional{ options } : std::nullopt;
+        if (!options.profile.empty() || !options.bus.starts_with("virtual:"))
+            return std::nullopt;
         return options;
     }
 
     std::string OptionsUsage()
     {
-        return "usage: e-robot-arm-console [--bus virtual:<name>|<socketcan interface>|<serial port>] [--bitrate <bits/s>] [--nodes n1,n2,n3,n4,n5,n6] [--profile <file>]";
+        return "usage: e-robot-arm-console [--bus virtual:<name>|<socketcan interface>|<serial port>] [--bitrate <bits/s>] [--nodes n1,n2,n3,n4,n5,n6] [--profile <file>] [--virtual-arm <profile> [--engine <e-foc-virtual-motor>]]";
     }
 }

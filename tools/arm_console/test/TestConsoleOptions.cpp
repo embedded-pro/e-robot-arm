@@ -49,6 +49,21 @@ TEST_F(ConsoleOptionsTest, refuses_unknown_options_missing_values_and_a_node_lis
     EXPECT_FALSE(Parse({ "--nodes", "1,2,3,4,5,4096" }).has_value());
 }
 
+TEST_F(ConsoleOptionsTest, a_virtual_arm_takes_its_profile_and_a_virtual_bus_and_may_name_its_engine)
+{
+    const auto options = Parse({ "--virtual-arm", "desk.json", "--bus", "virtual:bench", "--engine", "/opt/e-foc/e-foc-virtual-motor" });
+
+    ASSERT_TRUE(options.has_value());
+    EXPECT_EQ("desk.json", options->virtualArm);
+    EXPECT_EQ("virtual:bench", options->bus);
+    EXPECT_EQ("/opt/e-foc/e-foc-virtual-motor", options->engine);
+    EXPECT_TRUE(Parse({ "--virtual-arm", "desk.json" }).has_value());
+
+    EXPECT_FALSE(Parse({ "--virtual-arm", "desk.json", "--bus", "can0" }).has_value());
+    EXPECT_FALSE(Parse({ "--virtual-arm", "desk.json", "--profile", "other.json" }).has_value());
+    EXPECT_FALSE(Parse({ "--engine", "/opt/e-foc/e-foc-virtual-motor" }).has_value());
+}
+
 TEST_F(ConsoleOptionsTest, the_usage_names_every_option)
 {
     const auto usage = arm_console::OptionsUsage();
@@ -56,4 +71,6 @@ TEST_F(ConsoleOptionsTest, the_usage_names_every_option)
     EXPECT_THAT(usage, testing::HasSubstr("--bus"));
     EXPECT_THAT(usage, testing::HasSubstr("--bitrate"));
     EXPECT_THAT(usage, testing::HasSubstr("--nodes"));
+    EXPECT_THAT(usage, testing::HasSubstr("--virtual-arm"));
+    EXPECT_THAT(usage, testing::HasSubstr("--engine"));
 }

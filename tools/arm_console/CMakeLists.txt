@@ -27,6 +27,11 @@ if (TARGET can_lite.drivers.platform)
     target_sources(e_robot_arm.tool.arm_console PRIVATE
         main/Main.cpp
     )
+
+    if (UNIX)
+        target_link_libraries(e_robot_arm.tool.arm_console PRIVATE e_robot_arm.tool.virtual_arm)
+        target_compile_definitions(e_robot_arm.tool.arm_console PRIVATE E_ROBOT_ARM_VIRTUAL_ARM)
+    endif()
 endif()
 
 add_subdirectory(test)
