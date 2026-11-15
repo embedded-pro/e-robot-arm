@@ -8,11 +8,14 @@ namespace arm_host
         , sink(sink)
         , poll(pollInterval, [this]()
               {
-                  if (link)
-                      link->Poll();
+                  if (!link)
+                      return;
+                  link->Poll();
+                  ProceedConnecting();
               })
     {
-        Report(Open(initial) ? ArmEventKind::targetReady : ArmEventKind::targetFailed, 0);
+        if (!Open(initial, 0))
+            Report(ArmEventKind::targetFailed, 0);
     }
 
     void ArmRuntime::Execute(uint32_t id, const ArmCommand& command)
@@ -21,6 +24,8 @@ namespace arm_host
             session->Execute(id, command);
         else if (switching)
             sink.OnEvent({ .kind = ArmEventKind::refused, .time = infra::Now(), .command = id, .commandName = CommandName(command), .reason = "switching target" });
+        else if (connecting)
+            sink.OnEvent({ .kind = ArmEventKind::refused, .time = infra::Now(), .command = id, .commandName = CommandName(command), .reason = "connecting" });
         else if (!session)
             sink.OnEvent({ .kind = ArmEventKind::refused, .time = infra::Now(), .command = id, .commandName = CommandName(command), .reason = "no target" });
         else
@@ -61,12 +66,12 @@ namespace arm_host
 
         profile = newProfile;
         Close();
-        if (!Open(current))
+        if (!Open(current, std::nullopt))
             return Report(ArmEventKind::targetFailed, id, "the adapter could not be opened");
         sink.OnEvent({ .kind = ArmEventKind::profileLoaded, .time = infra::Now(), .command = id, .commandName = "load profile" });
     }
 
-    bool ArmRuntime::Open(const ArmTarget& target)
+    bool ArmRuntime::Open(const ArmTarget& target, std::optional<uint32_t> announce)
     {
         current = target;
         link = opener(target, profile.config.nodes);
@@ -76,12 +81,36 @@ namespace arm_host
             return false;
         }
 
-        session.emplace(link->Can(), profile, target, sink, link->Simulation());
+        connecting = Connecting{ announce, infra::Now() + connectTimeout };
+        ProceedConnecting();
         return true;
+    }
+
+    void ArmRuntime::ProceedConnecting()
+    {
+        if (!connecting)
+            return;
+
+        const auto announce = connecting->announce;
+        if (link->Connected())
+        {
+            connecting.reset();
+            session.emplace(link->Can(), profile, current, sink, link->Simulation());
+            if (announce)
+                Report(ArmEventKind::targetReady, *announce);
+        }
+        else if (infra::Now() >= connecting->deadline)
+        {
+            connecting.reset();
+            link.reset();
+            sink.OnSnapshot({ .target = current });
+            Report(ArmEventKind::targetFailed, announce.value_or(0), "the adapter did not connect");
+        }
     }
 
     void ArmRuntime::Close()
     {
+        connecting.reset();
         session.reset();
         link.reset();
     }
@@ -91,12 +120,11 @@ namespace arm_host
         Close();
         switching = false;
 
-        if (Open(switchTarget))
-            return Report(ArmEventKind::targetReady, switchId);
+        if (Open(switchTarget, switchId))
+            return;
 
         Report(ArmEventKind::targetFailed, switchId, "the adapter could not be opened");
-        if (Open(previousTarget))
-            Report(ArmEventKind::targetReady, 0);
+        Open(previousTarget, 0);
     }
 
     void ArmRuntime::Report(ArmEventKind kind, uint32_t id, std::string_view reason)

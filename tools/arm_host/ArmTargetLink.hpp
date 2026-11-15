@@ -19,6 +19,7 @@ namespace arm_host
         virtual ~ArmTargetLink() = default;
 
         virtual hal::Can& Can() = 0;
+        virtual bool Connected() = 0;
         virtual void Poll() = 0;
         virtual simulation::SimulatedArm* Simulation() = 0;
     };
@@ -32,6 +33,7 @@ namespace arm_host
         SimulatedTargetLink(const arm::JointNodeIds& nodes, infra::Duration timeConstant);
 
         hal::Can& Can() override;
+        bool Connected() override;
         void Poll() override;
         simulation::SimulatedArm* Simulation() override;
 

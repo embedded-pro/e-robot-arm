@@ -11,6 +11,11 @@ namespace arm_host
         return arm.ArmSide();
     }
 
+    bool SimulatedTargetLink::Connected()
+    {
+        return true;
+    }
+
     void SimulatedTargetLink::Poll()
     {}
 

@@ -2,7 +2,7 @@
 title: "Simulator Design"
 type: design
 status: draft
-version: 0.6.4
+version: 0.7.0
 component: "simulator"
 date: 2026-11-12
 ---
@@ -12,7 +12,7 @@ date: 2026-11-12
 | Title     | Simulator Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.6.4            |
+| Version   | 0.7.0            |
 | Component | simulator        |
 | Date      | 2026-11-12       |
 
@@ -93,6 +93,9 @@ A target switch builds everything anew; nothing carries over:
 4. The new arm starts stopped, untripped and with its contracts unchecked.
 
 A target is opened for the node ids of the profile in effect, so simulated joints answer on the profile's nodes.
+A target is ready once its adapter has connected: an slcan or `virtual:` adapter finishes its handshake after it is
+opened, and a frame sent before then is lost. Until then the arm is not built and every command is refused with
+"connecting"; an adapter that has not connected within 2 s fails the target.
 
 ### Part D — Simulated joints
 

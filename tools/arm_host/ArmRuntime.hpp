@@ -13,6 +13,7 @@ namespace arm_host
     public:
         static constexpr infra::Duration stopGrace{ std::chrono::milliseconds{ 100 } };
         static constexpr infra::Duration pollInterval{ std::chrono::milliseconds{ 1 } };
+        static constexpr infra::Duration connectTimeout{ std::chrono::seconds{ 2 } };
 
         ArmRuntime(const arm::ArmProfile& profile, const TargetOpener& opener, ArmSessionSink& sink, const ArmTarget& initial);
         ArmRuntime(const ArmRuntime& other) = delete;
@@ -23,7 +24,14 @@ namespace arm_host
         void LoadProfile(uint32_t id, const arm::ArmProfile& profile);
 
     private:
-        bool Open(const ArmTarget& target);
+        struct Connecting
+        {
+            std::optional<uint32_t> announce;
+            infra::TimePoint deadline;
+        };
+
+        bool Open(const ArmTarget& target, std::optional<uint32_t> announce);
+        void ProceedConnecting();
         void Close();
         void FinishSwitch();
         void Report(ArmEventKind kind, uint32_t id, std::string_view reason = {});
@@ -34,6 +42,7 @@ namespace arm_host
         ArmTarget current;
         std::unique_ptr<ArmTargetLink> link;
         std::optional<ArmSession> session;
+        std::optional<Connecting> connecting;
         bool switching{ false };
         uint32_t switchId{ 0 };
         ArmTarget switchTarget;
