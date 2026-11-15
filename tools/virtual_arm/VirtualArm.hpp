@@ -61,6 +61,8 @@ namespace virtual_arm
             plant_port::MotorConnection connection;
         };
 
+        std::optional<std::string> StartMotors(const VirtualArmPlan& plan);
+        std::optional<std::string> WaitForHub(Motor& host);
         std::optional<std::string> WaitUntilUp();
         void Run(const std::stop_token& stop);
         void Poll();

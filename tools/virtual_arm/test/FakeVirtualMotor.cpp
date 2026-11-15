@@ -9,6 +9,7 @@
 #include <poll.h>
 #include <string>
 #include <sys/socket.h>
+#include <thread>
 #include <unistd.h>
 #include <vector>
 
@@ -22,11 +23,15 @@ namespace
         uint16_t plantPort{ 0 };
         std::string memory{ "motor.mem" };
         std::string plant{ "teknic" };
+        uint16_t hubPort{ 0 };
+        bool hostBus{ false };
     };
 
     Options Parse(int count, char** arguments)
     {
         Options options;
+        for (int index = 1; index < count; ++index)
+            options.hostBus = options.hostBus || std::string{ arguments[index] } == "--host-bus";
         for (int index = 1; index + 1 < count; ++index)
         {
             const std::string name{ arguments[index] };
@@ -39,6 +44,8 @@ namespace
                 options.memory = value;
             else if (name == "--plant")
                 options.plant = value;
+            else if (name == "--hub-port")
+                options.hubPort = static_cast<uint16_t>(std::stoi(value));
         }
         return options;
     }
@@ -88,6 +95,35 @@ namespace
         std::ofstream{ file, std::ios::trunc } << text;
     }
 
+    sockaddr_in Loopback(uint16_t port)
+    {
+        sockaddr_in address{};
+        address.sin_family = AF_INET;
+        address.sin_port = htons(port);
+        address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+        return address;
+    }
+
+    int HostHub(uint16_t port)
+    {
+        const auto descriptor = socket(AF_INET, SOCK_STREAM, 0);
+        int enabled{ 1 };
+        setsockopt(descriptor, SOL_SOCKET, SO_REUSEADDR, &enabled, sizeof(enabled));
+        const auto address = Loopback(port);
+        bind(descriptor, static_cast<const sockaddr*>(static_cast<const void*>(&address)), sizeof(address));
+        listen(descriptor, 8);
+        return descriptor;
+    }
+
+    bool HubListening(uint16_t port)
+    {
+        const auto descriptor = socket(AF_INET, SOCK_STREAM, 0);
+        const auto address = Loopback(port);
+        const bool listening = connect(descriptor, static_cast<const sockaddr*>(static_cast<const void*>(&address)), sizeof(address)) == 0;
+        close(descriptor);
+        return listening;
+    }
+
     int Connect(uint16_t port)
     {
         const auto descriptor = socket(AF_INET, SOCK_STREAM, 0);
@@ -110,6 +146,13 @@ int main(int count, char** arguments)
 
     const auto hello = HelloFrame(options, version != nullptr ? static_cast<uint16_t>(std::atoi(version)) : protocolVersion);
     send(descriptor, hello.data(), hello.size(), MSG_NOSIGNAL);
+    if (options.hostBus)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds{ 200 });
+        HostHub(options.hubPort);
+    }
+    else if (!HubListening(options.hubPort))
+        return 4;
     const auto status = StatusFrame();
     send(descriptor, status.data(), status.size(), MSG_NOSIGNAL);
 
