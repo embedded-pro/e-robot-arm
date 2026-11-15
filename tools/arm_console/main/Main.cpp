@@ -4,12 +4,16 @@
 #include "tools/arm_host/ArmHost.hpp"
 #include "tools/arm_host/DefaultArmConfig.hpp"
 #include "tools/arm_host/ProfileFile.hpp"
+#ifdef E_ROBOT_ARM_VIRTUAL_ARM
+#include "tools/virtual_arm/VirtualArm.hpp"
+#endif
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <cstdlib>
 #include <iostream>
 #include <mutex>
+#include <optional>
 #include <set>
 #include <string>
 #include <thread>
@@ -88,9 +92,10 @@ int main(int argc, const char* const argv[])
     }
 
     auto profile = arm_host::DefaultArmProfile(options->nodes);
-    if (!options->profile.empty())
+    const auto& profilePath = options->virtualArm.empty() ? options->profile : options->virtualArm;
+    if (!profilePath.empty())
     {
-        auto read = arm_host::ReadProfileFile(options->profile);
+        auto read = arm_host::ReadProfileFile(profilePath);
         if (const auto* problem = std::get_if<std::string>(&read))
         {
             std::cerr << "profile refused: " << *problem << "\n";
@@ -98,6 +103,30 @@ int main(int argc, const char* const argv[])
         }
         profile = std::get<arm::ArmProfile>(read);
     }
+
+#ifdef E_ROBOT_ARM_VIRTUAL_ARM
+    std::optional<virtual_arm::VirtualArm> virtualArm;
+    if (!options->virtualArm.empty())
+    {
+        virtual_arm::VirtualArmOptions virtualArmOptions;
+        virtualArmOptions.bus = options->bus.substr(std::string_view{ "virtual:" }.size());
+        if (!options->engine.empty())
+            virtualArmOptions.engine = options->engine;
+        virtualArm.emplace(profile.config, virtualArmOptions);
+        if (const auto problem = virtualArm->Start())
+        {
+            std::cerr << "virtual arm not up: " << *problem << "\n";
+            return EXIT_FAILURE;
+        }
+        std::cout << "virtual arm up on " << options->bus << "\n";
+    }
+#else
+    if (!options->virtualArm.empty())
+    {
+        std::cerr << "--virtual-arm needs a Linux host\n";
+        return EXIT_FAILURE;
+    }
+#endif
 
     arm_host::ArmHost host{ profile, arm_host::HostTargetOpener(arm_host::simulatedTimeConstant, options->bitrate), TargetFor(options->bus) };
     arm_console::ArmConsole console{ host, std::cout };

@@ -2,7 +2,7 @@
 title: "Arm Composition and Console Design"
 type: design
 status: draft
-version: 0.5.0
+version: 0.6.0
 component: "arm"
 date: 2026-11-12
 ---
@@ -12,7 +12,7 @@ date: 2026-11-12
 | Title     | Arm Composition and Console Design |
 | Type      | design                             |
 | Status    | draft                              |
-| Version   | 0.5.0                              |
+| Version   | 0.6.0                              |
 | Component | arm                                |
 | Date      | 2026-11-12                         |
 
@@ -99,6 +99,12 @@ For a `virtual:` bus the host runs can-lite's virtual CAN hub, or joins the one 
 (an e-foc virtual motor, for instance) hosts it. The hub and the CAN adapter are polled every millisecond on the
 host's event loop.
 
+`--virtual-arm <profile>` runs the arm on six e-foc virtual motors ([virtual-arm.md](virtual-arm.md)): the console
+starts the virtual arm from that profile on the `virtual:` bus of `--bus` (`virtual:arm` by default), waits until all
+six motors are up, then loads the same profile and joins the bus. `--engine <path>` names `e-foc-virtual-motor` when it
+is not on the path. A virtual arm that does not come up prints why, naming the joint, and the console does not start;
+quitting stops the motors. It takes no `--profile` and no bus but a `virtual:` one, and it needs a Linux host.
+
 ---
 
 ## Interfaces
@@ -131,6 +137,7 @@ host's event loop.
 | Configuration | control period     | duration        | 10 ms         | 100 Hz                            |
 | Console       | bus                | adapter name    | `virtual:arm` | `--bus`                           |
 | Console       | bit rate           | bits/second     | 1 000 000     | `--bitrate`                       |
+| Console       | virtual arm        | profile file    | none          | `--virtual-arm`, `--engine`       |
 
 ---
 
