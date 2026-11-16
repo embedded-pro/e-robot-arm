@@ -1,3 +1,4 @@
+#include "can-lite/drivers/implementation/LoopbackSocket.hpp"
 #include "tools/virtual_arm/VirtualArm.hpp"
 #include "gmock/gmock.h"
 #include <arpa/inet.h>
@@ -20,6 +21,14 @@ namespace
         if (stream >> value)
             return value;
         return std::nullopt;
+    }
+
+    std::string Text(const std::filesystem::path& file)
+    {
+        std::ifstream stream{ file };
+        std::string text;
+        std::getline(stream, text);
+        return text;
     }
 
     uint16_t FreeLoopbackPort()
@@ -72,8 +81,31 @@ namespace
             return options;
         }
 
+        virtual_arm::VirtualArmOptions JoiningOptions()
+        {
+            auto options = Options();
+            options.hostBus = false;
+            hub = services::loopback::Listen(options.hubPort);
+            return options;
+        }
+
+        bool EventuallyIn(const virtual_arm::VirtualArm& arm, std::size_t joint, virtual_arm::MotorPhase phase)
+        {
+            return Eventually([&arm, joint, phase]()
+                {
+                    return arm.Motors()[joint].phase == phase;
+                });
+        }
+
+        void TearDown() override
+        {
+            services::loopback::Close(hub);
+        }
+
         std::filesystem::path directory{ std::filesystem::temp_directory_path() / "e-robot-arm-virtual-arm-test" };
         arm::ArmConfig config{ { 1, 2, 3, 4, 5, 6 }, 3, {}, {}, 10ms };
+        intptr_t hub{ services::loopback::invalidSocket };
+        const arm::JointMotor anaheim{ 1, arm::motorPresets[1].settings };
     };
 }
 
@@ -140,6 +172,8 @@ TEST_F(VirtualArmTest, reports_a_motor_that_ends_unasked)
             return arm.Problem().has_value();
         }));
     EXPECT_THAT(arm.Problem().value_or(""), testing::MatchesRegex("joint [1-6]'s motor ended unasked, exit code 3"));
+    EXPECT_TRUE(EventuallyIn(arm, 5, virtual_arm::MotorPhase::ended));
+    EXPECT_EQ(3, arm.Motors()[5].exitCode);
 }
 
 TEST_F(VirtualArmTest, refuses_to_start_while_the_hub_port_is_held_and_no_hub_answers_on_it)
@@ -178,4 +212,84 @@ TEST_F(VirtualArmTest, a_missing_engine_does_not_come_up)
     virtual_arm::VirtualArm arm{ config, options };
 
     EXPECT_THAT(arm.Start().value_or(""), testing::StartsWith("joint "));
+}
+
+TEST_F(VirtualArmTest, reports_each_motor_up_with_its_plant_and_stopped_once_stopped)
+{
+    config.motors[3] = anaheim;
+    virtual_arm::VirtualArm arm{ config, Options() };
+    EXPECT_EQ(virtual_arm::MotorPhase::stopped, arm.Motors()[0].phase);
+    ASSERT_EQ(std::nullopt, arm.Start());
+
+    for (const auto& motor : arm.Motors())
+        EXPECT_EQ(virtual_arm::MotorPhase::up, motor.phase);
+    EXPECT_EQ("teknic", arm.Motors()[0].plant);
+    EXPECT_EQ("anaheim", arm.Motors()[3].plant);
+
+    arm.Stop();
+    for (const auto& motor : arm.Motors())
+        EXPECT_EQ(virtual_arm::MotorPhase::stopped, motor.phase);
+}
+
+TEST_F(VirtualArmTest, joins_a_listening_hub_with_no_motor_hosting_the_bus)
+{
+    virtual_arm::VirtualArm arm{ config, JoiningOptions() };
+    ASSERT_EQ(std::nullopt, arm.Start());
+
+    for (std::size_t joint = 1; joint <= arm::jointCount; ++joint)
+        EXPECT_FALSE(std::filesystem::exists(directory / std::format("joint{}.mem.host", joint)));
+}
+
+TEST_F(VirtualArmTest, refuses_to_join_a_hub_that_does_not_listen)
+{
+    auto options = Options();
+    options.hostBus = false;
+    virtual_arm::VirtualArm arm{ config, options };
+
+    EXPECT_EQ(std::format("no virtual CAN hub listens on port {}", options.hubPort), arm.Start().value_or(""));
+}
+
+TEST_F(VirtualArmTest, restarts_a_joint_with_another_motor_on_a_fresh_memory)
+{
+    virtual_arm::VirtualArm arm{ config, JoiningOptions() };
+    ASSERT_EQ(std::nullopt, arm.Start());
+    std::ofstream{ directory / "joint3.mem" } << "calibration";
+
+    EXPECT_EQ(std::nullopt, arm.Restart(2, anaheim));
+
+    EXPECT_TRUE(Eventually([&arm, this]()
+        {
+            return arm.Motors()[2].phase == virtual_arm::MotorPhase::up && Text(directory / "joint3.mem.plant") == "anaheim";
+        }));
+    EXPECT_EQ("anaheim", arm.Motors()[2].plant);
+    EXPECT_FALSE(std::filesystem::exists(directory / "joint3.mem"));
+    EXPECT_EQ(std::nullopt, arm.Problem());
+}
+
+TEST_F(VirtualArmTest, powers_a_joint_off_and_restarts_it_on_its_own_memory)
+{
+    virtual_arm::VirtualArm arm{ config, JoiningOptions() };
+    ASSERT_EQ(std::nullopt, arm.Start());
+    std::ofstream{ directory / "joint4.mem" } << "calibration";
+
+    EXPECT_EQ(std::nullopt, arm.PowerOff(3));
+    EXPECT_TRUE(EventuallyIn(arm, 3, virtual_arm::MotorPhase::stopped));
+
+    EXPECT_EQ(std::nullopt, arm.Restart(3, std::nullopt));
+    EXPECT_TRUE(EventuallyIn(arm, 3, virtual_arm::MotorPhase::up));
+    EXPECT_EQ("calibration", Text(directory / "joint4.mem"));
+    EXPECT_EQ(std::nullopt, arm.Problem());
+}
+
+TEST_F(VirtualArmTest, refuses_to_restart_a_joint_and_names_the_reason)
+{
+    virtual_arm::VirtualArm arm{ config, Options() };
+    EXPECT_EQ("the virtual arm is not up", arm.Restart(1, std::nullopt).value_or(""));
+    ASSERT_EQ(std::nullopt, arm.Start());
+
+    EXPECT_EQ("joint 1's motor hosts the virtual CAN bus: restart the whole virtual arm", arm.Restart(0, std::nullopt).value_or(""));
+    EXPECT_EQ("joint 1's motor hosts the virtual CAN bus: restart the whole virtual arm", arm.PowerOff(0).value_or(""));
+    EXPECT_EQ("joint 2 has a custom motor: a virtual motor takes e-foc's plant presets only",
+        arm.Restart(1, arm::JointMotor{ std::nullopt, arm::motorPresets[0].settings }).value_or(""));
+    EXPECT_EQ("no joint 7", arm.Restart(6, std::nullopt).value_or(""));
 }

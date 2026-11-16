@@ -144,6 +144,10 @@ int main(int count, char** arguments)
     if (descriptor < 0)
         return 2;
 
+    Record(options.memory + ".plant", options.plant);
+    if (options.hostBus)
+        Record(options.memory + ".host", "host");
+
     const auto hello = HelloFrame(options, version != nullptr ? static_cast<uint16_t>(std::atoi(version)) : protocolVersion);
     send(descriptor, hello.data(), hello.size(), MSG_NOSIGNAL);
     if (options.hostBus)

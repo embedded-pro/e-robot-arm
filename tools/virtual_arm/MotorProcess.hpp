@@ -20,6 +20,7 @@ namespace virtual_arm
         bool Start(const std::filesystem::path& program, const std::vector<std::string>& arguments, const std::filesystem::path& workDirectory,
             const std::filesystem::path& logFile);
         void Stop();
+        bool Started() const;
         bool Running() const;
         std::optional<int> Ended();
 

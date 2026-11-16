@@ -2,9 +2,9 @@
 title: "Virtual Arm Design"
 type: design
 status: draft
-version: 0.6.0
+version: 0.7.0
 component: "virtual-arm"
-date: 2026-11-15
+date: 2026-11-16
 ---
 
 | Field     | Value              |
@@ -12,9 +12,9 @@ date: 2026-11-15
 | Title     | Virtual Arm Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.6.0              |
+| Version   | 0.7.0              |
 | Component | virtual-arm        |
-| Date      | 2026-11-15         |
+| Date      | 2026-11-16         |
 
 > The arm run against six real e-foc firmware instances instead of ideal simulated joints: e-foc's headless
 > virtual motor, one process per joint, on one virtual CAN bus, each loaded by what its link and the links beyond
@@ -88,6 +88,11 @@ Each motor is started with:
 A node id outside 1 to 256 cannot be reached this way and the virtual arm refuses the profile. The working
 directory is one per virtual arm run, so two runs never share memory files.
 
+**The bus's hub.** By default the motor of joint 1 hosts the virtual CAN hub. A virtual arm can instead join a hub
+that is already listening, as the simulator's does: the simulator's own `virtual:` adapter hosts it
+([simulator.md](simulator.md) Part C). Then no motor hosts the bus, all six start at once, the virtual arm refuses to
+start unless a hub answers on the hub port, and any joint can be restarted on its own (Part B).
+
 **Start.** The hub port must be free or held by a running hub first: a hub that closed less than a
 minute ago leaves it held by closed connections, and the virtual arm waits up to 70 s for it before it refuses to
 start. The motor that hosts the bus starts first, and the others only once its hub listens: an e-foc virtual motor joins
@@ -97,9 +102,18 @@ six motors have connected to the plant port, introduced themselves (Hello, proto
 ones it started and reports which joint did not come up. Each motor's output goes to `joint<n>.log` in the working
 directory. **Stop.** It ends every motor it started, the first motor last so that the hub closes after its members,
 which leaves the bus silent as a powered-off arm; a motor that ends without being asked is reported with the last
-lines of its debug log. Each motor runs in a process group of its
+lines of its debug log; the others keep running, so the arm sees that joint silent. Each motor runs in a process group of its
 own, so Ctrl-C reaches only the virtual arm, which then stops the motors; a motor whose virtual arm dies is ended
 with it, since an e-foc virtual motor otherwise outlives its plant port.
+
+**Motor states.** The virtual arm reports, for each joint, its motor's plant and its process's state:
+
+| State    | Means                                                                               |
+|----------|-------------------------------------------------------------------------------------|
+| Stopped  | Not started, stopped by the virtual arm, or powered off (Part D)                    |
+| Starting | The process runs and has not yet introduced itself and sent its first status        |
+| Up       | Introduced, streaming its plant and coupled to the arm                              |
+| Ended    | The process ended without being asked, with its exit code; `joint<n>.log` tells why |
 
 ### Part B — Motor per joint
 
@@ -113,8 +127,16 @@ joint ([arm-profile.md](arm-profile.md)) chooses it:
 | Custom values                           | Refused: e-foc reads custom plants only in its own binary form |
 
 Changing a joint's motor in the profile and restarting that joint is enough: the virtual arm stops the motor, and
-starts it again with the new plant and a fresh calibrated memory. Custom values wait for e-foc to read a plant
-description as text (open question 1).
+starts it again with the new plant and a fresh calibrated memory. Restarting it with the same plant keeps its memory
+file, as a power cycle does. While a joint restarts the coupling holds every motor's last torque, since it needs all
+six joints' states. A restart is refused, with the reason, when:
+
+- the virtual arm is not up;
+- the joint's motor hosts the bus: its hub would close under the other five, so the whole virtual arm restarts
+  instead;
+- the new motor has custom values.
+
+Custom values wait for e-foc to read a plant description as text (open question 1).
 
 ### Part C — Coupling to the arm's dynamics
 
@@ -157,11 +179,11 @@ scenarios measure.
 
 ### Part D — Faults on demand
 
-| Fault             | How                                                                                          | What the arm sees                                      |
-|-------------------|----------------------------------------------------------------------------------------------|--------------------------------------------------------|
-| Silent joint      | Pause the motor through its plant port; resume to bring it back                              | The node stops answering (`virtual-motor.md` Part C)   |
-| Collision torque  | An extra external torque on a joint, added to the coupling, as a step held until cleared     | Following error, then the node's own fault if it lasts |
-| Joint powered off | End the motor's process; restarting it brings the joint back calibrated from its memory file | The node goes silent and comes back unpowered          |
+| Fault             | How                                                                                                                                                                 | What the arm sees                                      |
+|-------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------|
+| Silent joint      | Pause the motor through its plant port; resume to bring it back                                                                                                     | The node stops answering (`virtual-motor.md` Part C)   |
+| Collision torque  | An extra external torque on a joint, added to the coupling, as a step held until cleared                                                                            | Following error, then the node's own fault if it lasts |
+| Joint powered off | End the motor's process; restarting it with the same motor brings the joint back calibrated from its memory file (Part B); refused for the motor that hosts the bus | The node goes silent and comes back unpowered          |
 
 A scenario or the console asks the virtual arm for them; the arm only sees their effect on the bus.
 
@@ -229,6 +251,8 @@ drive one (open question 3).
 | Virtual arm tool | Six virtual motors from a profile, on one bus     | Up within 10 s or stopped and reported; Part A |
 | Coupling         | Arm-dynamics torque on every motor's shaft        | Every millisecond while up; Part C             |
 | Faults           | Silent joint, collision torque, joint powered off | Part D; each reversible                        |
+| Motor states     | Each joint's plant and process state              | Part A; safe to read from any thread           |
+| Restart a joint  | Same plant: power cycle; another: fresh memory    | Part B; refused with the reason                |
 
 ### Required
 
@@ -264,10 +288,10 @@ stateDiagram-v2
     Starting --> Stopped : a motor did not come up within 10 s / stop the others, report it
     Up --> Up : coupling every millisecond
     Up --> Up : fault injected or cleared
-    Up --> Restarting : a joint's motor changed
-    Restarting --> Up : that motor said Hello again
+    Up --> Restarting : restart a joint
+    Restarting --> Up : that motor said Hello and sent its status
+    Up --> Up : a motor ended unasked or was powered off / report it, the others keep running
     Up --> Stopped : stop / end every motor
-    Up --> Stopped : a motor ended unasked / report it, end the others
     Stopped --> [*]
 ```
 

@@ -76,6 +76,11 @@ namespace virtual_arm
         pid = -1;
     }
 
+    bool MotorProcess::Started() const
+    {
+        return pid > 0;
+    }
+
     bool MotorProcess::Running() const
     {
         return pid > 0 && !exitCode.has_value();

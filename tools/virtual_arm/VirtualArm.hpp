@@ -27,7 +27,25 @@ namespace virtual_arm
         std::chrono::milliseconds upTimeout{ 10000 };
         std::chrono::milliseconds hubPortTimeout{ 70000 };
         uint16_t hubPort{ 29536 };
+        bool hostBus{ true };
     };
+
+    enum class MotorPhase : uint8_t
+    {
+        stopped,
+        starting,
+        up,
+        ended
+    };
+
+    struct MotorReport
+    {
+        MotorPhase phase{ MotorPhase::stopped };
+        std::string plant;
+        std::optional<int> exitCode;
+    };
+
+    using MotorReports = std::array<MotorReport, arm::jointCount>;
 
     class VirtualArm
     {
@@ -42,9 +60,12 @@ namespace virtual_arm
         bool Up() const;
         const std::string& Bus() const;
         std::optional<std::string> Problem() const;
+        MotorReports Motors() const;
 
         void Silence(std::size_t joint, bool silent);
         void Collide(std::size_t joint, foc::NewtonMeter torque);
+        std::optional<std::string> Restart(std::size_t joint, const std::optional<arm::JointMotor>& motor);
+        std::optional<std::string> PowerOff(std::size_t joint);
 
     private:
         struct Motor
@@ -65,6 +86,9 @@ namespace virtual_arm
         std::optional<std::string> StartMotor(const MotorStart& start);
         std::optional<std::string> WaitForHub(Motor& host);
         std::optional<std::string> WaitUntilUp();
+        std::optional<std::string> RefusalToCycle(std::size_t joint) const;
+        void RestartMotor(std::size_t joint, const std::string& plant);
+        void PowerOffMotor(std::size_t joint);
         void Run(const std::stop_token& stop);
         void Poll();
         void Receive();
@@ -72,6 +96,7 @@ namespace virtual_arm
         void Watch();
         void Couple();
         void Send();
+        void Publish();
         void Report(std::string problem);
         void Post(std::function<void()> request);
         void RunRequests();
@@ -89,6 +114,7 @@ namespace virtual_arm
         mutable std::mutex mutex;
         std::condition_variable changed;
         bool up{ false };
+        MotorReports reports{};
         std::optional<std::string> problem;
         std::vector<std::function<void()>> requests;
         std::jthread worker;
