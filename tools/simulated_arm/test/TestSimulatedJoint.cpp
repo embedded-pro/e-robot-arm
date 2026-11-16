@@ -30,3 +30,18 @@ TEST_F(SimulatedJointTest, a_quick_stop_holds_a_running_joint_and_reports_it_rea
 
     EXPECT_EQ(can::FocMotorState::ready, arm.Joint(0).State());
 }
+
+TEST_F(SimulatedJointTest, a_silenced_joint_ignores_the_bus_until_it_is_resumed)
+{
+    arm.Joint(1).Silence();
+    EXPECT_TRUE(arm.Joint(1).Silent());
+    client.CategoryClient().SendEmergencyStop(2);
+    ForwardTime(10ms);
+    EXPECT_EQ(0u, arm.Joint(1).EmergencyStops());
+
+    arm.Joint(1).Resume();
+    EXPECT_FALSE(arm.Joint(1).Silent());
+    client.CategoryClient().SendEmergencyStop(2);
+    ForwardTime(10ms);
+    EXPECT_EQ(1u, arm.Joint(1).EmergencyStops());
+}

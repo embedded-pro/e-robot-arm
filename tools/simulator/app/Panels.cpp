@@ -46,6 +46,33 @@ namespace simulator
             hint->setText(value);
     }
 
+    DisturbancesPanel::DisturbancesPanel(QWidget* parent)
+        : FormPanel{ parent }
+        , mark{ new QLabel{ "Simulation only", this } }
+        , active{ new QLabel{ this } }
+    {
+        mark->setAccessibleName("Simulation only: these disturbances reach simulated joints and virtual motors alone");
+        mark->setAlignment(Qt::AlignRight);
+        active->setWordWrap(true);
+        active->setAccessibleName("Disturbances applied");
+        auto* panelLayout = static_cast<QVBoxLayout*>(layout());
+        panelLayout->insertWidget(0, mark);
+        panelLayout->insertWidget(2, active);
+        ApplyTheme();
+    }
+
+    void DisturbancesPanel::SetActive(const std::string& text)
+    {
+        const auto value = QString::fromStdString(text);
+        if (active->text() != value)
+            active->setText(value);
+    }
+
+    void DisturbancesPanel::ApplyTheme()
+    {
+        ui::backend::qt::StyleStatusLabel(*mark, ui::theme::StatusLevel::Warning);
+    }
+
     ConfigurationPanel::ConfigurationPanel(QWidget* parent)
         : FormPanel{ parent }
         , state{ new QLabel{ this } }

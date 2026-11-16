@@ -90,6 +90,19 @@ TEST_F(VirtualArmTargetLinkTest, starts_six_motors_on_its_own_hub_and_restarts_o
             return link->Status().motors[4].plant == "anaheim" && link->Status().motors[4].phase == MotorPhase::up;
         }));
 
+    link->Silence(1, true);
+    link->Collide(3, foc::NewtonMeter{ 12.5f });
+    link->Silence(9, true);
+    EXPECT_TRUE(link->Status().silenced[1]);
+    EXPECT_EQ(foc::NewtonMeter{ 12.5f }, link->Status().torques[3]);
+
+    EXPECT_EQ(std::nullopt, link->PowerOff(1));
+    EXPECT_FALSE(link->Status().silenced[1]);
+    EXPECT_TRUE(Eventually(*link, [&link]()
+        {
+            return link->Status().motors[1].phase == MotorPhase::stopped;
+        }));
+
     changed.nodes[0] = 40;
     EXPECT_FALSE(link->Adopt(changed));
 }

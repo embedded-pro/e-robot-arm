@@ -2,7 +2,7 @@
 title: "Simulator Design"
 type: design
 status: draft
-version: 0.8.0
+version: 0.9.0
 component: "simulator"
 date: 2026-11-16
 ---
@@ -12,7 +12,7 @@ date: 2026-11-16
 | Title     | Simulator Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.8.0            |
+| Version   | 0.9.0            |
 | Component | simulator        |
 | Date      | 2026-11-16       |
 
@@ -127,8 +127,8 @@ A `SimulatedJoint` is an e-foc node on the in-process bus (a `FocMotorCategorySe
 - **Is always aligned:** it acknowledges an align and stays ready.
 - **Treats a quick stop (contract 3.2) as a stop:** it holds where it is and reports *ready*; it never reports
   *stopping*.
-- **Takes injected failures:** `Fault(code)` reports a fault in its next telemetry, `Silence()` stops answering.
-  The simulator offers both per joint, on the simulated target only.
+- **Takes injected failures:** `Fault(code)` reports a fault in its next telemetry, `Silence()` stops answering and
+  `Resume()` answers again. The simulator offers them per joint (Part E, *Disturbances*).
 
 ### Part E — Arm host
 
@@ -158,6 +158,18 @@ returned. Check contracts, select mode, start, stop, clear faults and align are 
 ([joint-bus.md](joint-bus.md) Part B): the session answers `accepted` once all six joints have the command, and
 `refused` when the joint bus reports it failed, with the reason "replaced by a newer command", "emergency stop" or
 "not delivered to every joint in time". The other commands are answered as soon as they run.
+
+**Disturbances** are commands as well, each answered `accepted` or `refused`. What a target offers:
+
+| Disturbance      | Simulated joints                   | Virtual arm ([virtual-arm.md](virtual-arm.md) Part D) | Virtual bus, real arm       |
+|------------------|------------------------------------|-------------------------------------------------------|-----------------------------|
+| Inject fault     | Over-current in the next telemetry | Refused: "not on the virtual arm"                     | Refused: "not a simulation" |
+| Silence, resume  | The joint stops or answers again   | The plant port pauses or resumes                      | Refused: "not a simulation" |
+| Collision torque | Refused: "not on simulated joints" | Joint-side torque held until set back to 0            | Refused: "not a simulation" |
+| Power off motor  | Refused: "not on simulated joints" | The motor's process ends; restart brings it back      | Refused: "not a simulation" |
+
+None depends on the arm's state. The snapshot carries what the target offers and what is applied: each joint
+silent or not and its collision torque.
 
 **Restart motor**, posted like the others (virtual arm only), power-cycles one joint's virtual motor with the profile's motor. It is refused
 on any other target ("not a virtual arm"), while the arm is enabling, enabled, moving or disabling ("disable the arm
@@ -246,6 +258,7 @@ empty until the arm has been enabled); nothing else in `core/` changes for the s
 | Snapshot        | profile               | name and arm configuration          | —                     | The profile in effect                                   |
 | Snapshot        | tool pose             | m, rad; singularity flags           | —                     | From the measured joints ([arm-model.md](arm-model.md)) |
 | Snapshot        | virtual motors        | 6 × (plant, process state), folder  | —                     | Virtual arm only                                        |
+| Snapshot        | disturbances          | offered kinds; 6 × (silent, N·m)    | ±200 N·m              | Simulated joints and virtual arm only                   |
 | Event queue     | capacity              | events                              | 512                   | Oldest dropped when full; drops counted                 |
 | Trace queue     | capacity              | samples                             | 1024 (10 s at 100 Hz) | Oldest dropped when full; drops counted                 |
 | Simulated joint | τ                     | s                                   | ≥ 0                   | 0 follows exactly; simulator 0.05                       |

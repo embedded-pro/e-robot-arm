@@ -24,6 +24,8 @@ namespace simulation
             void ReceiveData(const infra::Function<void(Id id, const Message& data)>& receivedAction) override;
 
             void Mute();
+            void Unmute();
+            bool Muted() const;
 
         private:
             friend class VirtualCanBus;

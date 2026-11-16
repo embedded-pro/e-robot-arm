@@ -8,6 +8,7 @@
 #include "tools/simulator/app/MeshFiles.hpp"
 #include "tools/simulator/app/Panels.hpp"
 #include "tools/simulator/app/StatusStripBar.hpp"
+#include "tools/simulator/view_models/DisturbancePresenter.hpp"
 #include "tools/simulator/view_models/MotorControllerPresenter.hpp"
 #include "tools/simulator/view_models/MotorPresenter.hpp"
 #include "tools/simulator/view_models/SimulatorPresenter.hpp"
@@ -73,6 +74,7 @@ namespace simulator
         void ShowAbout();
         void UpdateBanner(const StatusStrip& status);
         void UpdateVirtualMotors(const arm_host::ArmSnapshot& snapshot);
+        void UpdateDisturbances(const arm_host::ArmSnapshot& snapshot);
         void ChooseVirtualArm();
         void ApplyMeshes(const MeshNames& names, const QString& directory);
         void NoteMesh(int node, const QString& problem);
@@ -95,6 +97,11 @@ namespace simulator
         MotorPresenter motor;
         ProfilePanel* profilePanel;
         VirtualMotorsPanel* virtualMotorsPanel;
+        DisturbancesPanel* disturbancesPanel;
+        DisturbancePresenter disturbances;
+        QDockWidget* disturbancesDock{ nullptr };
+        std::optional<bool> disturbancesShown;
+        QMenu* faultMenu{ nullptr };
         QDockWidget* virtualMotorsDock{ nullptr };
         std::optional<bool> virtualMotorsShown;
         QString profilePath;

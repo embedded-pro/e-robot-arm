@@ -186,7 +186,7 @@ TEST_F(SimulatorPresenterTest, confirming_the_rearm_posts_it)
     presenter.ConfirmRearm();
 }
 
-TEST_F(SimulatorPresenterTest, injects_failures_only_on_simulated_joints)
+TEST_F(SimulatorPresenterTest, injects_failures_only_where_the_target_offers_them)
 {
     auto real = simulator::test::Running();
     real.target = { arm_host::TargetKind::real, "socketcan:can0" };
@@ -196,12 +196,21 @@ TEST_F(SimulatorPresenterTest, injects_failures_only_on_simulated_joints)
     EXPECT_TRUE(presenter.Status().realArm);
     EXPECT_EQ("REAL ARM — socketcan:can0", presenter.Status().target);
 
-    presenter.Refresh(simulator::test::Running(), {});
+    auto simulated = simulator::test::Running();
+    simulated.disturbances = arm_host::Disturbances{ .injectFault = true };
+    presenter.Refresh(simulated, {});
     EXPECT_CALL(arm, Post(Holds(arm_host::InjectFault{}))).WillOnce(Return(1));
     EXPECT_CALL(arm, Post(Holds(arm_host::SilenceJoint{}))).WillOnce(Return(2));
     EXPECT_TRUE(presenter.InjectFault(1));
     EXPECT_TRUE(presenter.SilenceJoint(1));
     EXPECT_FALSE(presenter.InjectFault(6));
+
+    simulated.disturbances->injectFault = false;
+    presenter.Refresh(simulated, {});
+    EXPECT_FALSE(presenter.InjectFault(1));
+    EXPECT_CALL(arm, Post(Holds(arm_host::PowerOffMotor{}))).WillOnce(Return(3));
+    presenter.Disturb(arm_host::PowerOffMotor{ 1 });
+    EXPECT_EQ("Power off motor requested…", shell.Statuses().back());
 }
 
 TEST_F(SimulatorPresenterTest, a_picked_joint_becomes_the_selection)

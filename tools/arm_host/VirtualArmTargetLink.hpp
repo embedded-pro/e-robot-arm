@@ -37,6 +37,9 @@ namespace arm_host
 
         VirtualMotorsStatus Status() const override;
         std::optional<std::string> Restart(std::size_t joint) override;
+        void Silence(std::size_t joint, bool silent) override;
+        void Collide(std::size_t joint, foc::NewtonMeter torque) override;
+        std::optional<std::string> PowerOff(std::size_t joint) override;
 
     private:
         void StartMotors();
@@ -45,6 +48,8 @@ namespace arm_host
 
         arm::ArmConfig config;
         std::filesystem::path folder;
+        std::array<bool, arm::jointCount> silenced{};
+        arm::JointTorques torques{};
         services::VirtualCanHub hub;
         services::PlatformCanAdapter platformAdapter;
         bool joined{ false };

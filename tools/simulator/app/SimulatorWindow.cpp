@@ -71,6 +71,11 @@ namespace simulator
         , motor{ host, motorPanel->Form() }
         , profilePanel{ new ProfilePanel{ this } }
         , virtualMotorsPanel{ new VirtualMotorsPanel{ this } }
+        , disturbancesPanel{ new DisturbancesPanel{ this } }
+        , disturbances{ disturbancesPanel->Form(), [this](const arm_host::ArmCommand& command)
+            {
+                presenter.Disturb(command);
+            } }
         , logPanel{ new EventLogPanel{ presenter.Log(), this } }
         , emergencyStopKey{ *QCoreApplication::instance(), [this]()
             {
@@ -168,6 +173,7 @@ namespace simulator
         {
             motorController.SelectJoint(*selected);
             motor.SelectJoint(*selected);
+            disturbances.SelectJoint(*selected);
         }
         motorController.Refresh(snapshot, events);
         motorControllerPanel->SetState(motorController.StateText(), motorController.StateLevel());
@@ -177,6 +183,7 @@ namespace simulator
         motorPanel->SetHint(motor.Hint());
         profilePanel->Update(DescribeProfile(snapshot), profilePath);
         UpdateVirtualMotors(snapshot);
+        UpdateDisturbances(snapshot);
 
         scope->Add(trace);
         if (std::ranges::any_of(events, [](const arm_host::ArmEvent& event)
@@ -188,7 +195,8 @@ namespace simulator
 
         logPanel->AppendNewest(events.size());
         sceneState.Update(presenter.Scene());
-        simulationMenu->setEnabled(snapshot.targetReady && snapshot.target.kind == arm_host::TargetKind::simulated);
+        simulationMenu->setEnabled(snapshot.targetReady && snapshot.disturbances.has_value());
+        faultMenu->setEnabled(snapshot.disturbances.has_value() && snapshot.disturbances->injectFault);
     }
 
     void SimulatorWindow::ApplyMeshes(const MeshNames& names, const QString& directory)
@@ -225,6 +233,19 @@ namespace simulator
         virtualMotorsDock->setVisible(view.visible);
         if (view.visible)
             virtualMotorsDock->raise();
+    }
+
+    void SimulatorWindow::UpdateDisturbances(const arm_host::ArmSnapshot& snapshot)
+    {
+        disturbances.Refresh(snapshot);
+        disturbancesPanel->SetActive(disturbances.Active());
+        disturbancesPanel->SetHint(disturbances.Hint());
+        if (disturbancesShown == disturbances.Visible())
+            return;
+
+        disturbancesShown = disturbances.Visible();
+        disturbancesDock->toggleViewAction()->setEnabled(*disturbancesShown);
+        disturbancesDock->setVisible(*disturbancesShown);
     }
 
     void SimulatorWindow::UpdateBanner(const StatusStrip& status)
@@ -270,6 +291,8 @@ namespace simulator
         tabifyDockWidget(armDock, profileDock);
         virtualMotorsDock = Dock("Virtual Motors", "virtualMotorsDock", virtualMotorsPanel, Qt::RightDockWidgetArea);
         tabifyDockWidget(profileDock, virtualMotorsDock);
+        disturbancesDock = Dock("Disturbances", "disturbancesDock", disturbancesPanel, Qt::RightDockWidgetArea);
+        tabifyDockWidget(virtualMotorsDock, disturbancesDock);
         armDock->raise();
         Dock("Scope", "scopeDock", scope, Qt::BottomDockWidgetArea);
         Dock("Event Log", "logDock", logPanel, Qt::BottomDockWidgetArea);
@@ -377,6 +400,7 @@ namespace simulator
     {
         simulationMenu = menuBar()->addMenu("&Simulation");
         auto* fault = simulationMenu->addMenu("Inject &Fault");
+        faultMenu = fault;
         auto* silence = simulationMenu->addMenu("&Silence Joint");
         for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
         {
@@ -615,6 +639,7 @@ namespace simulator
         motorPanel->ApplyTheme();
         tool->ApplyTheme();
         virtualMotorsPanel->ApplyTheme();
+        disturbancesPanel->ApplyTheme();
         ui::backend::qt::StyleStatusLabel(*banner, ui::theme::StatusLevel::Warning);
         Settings().setValue("lightTheme", light);
     }

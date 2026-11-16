@@ -23,6 +23,8 @@ namespace simulation
 
         void Fault(can::FocFaultCode code);
         void Silence();
+        void Resume();
+        bool Silent() const;
 
         can::FocMotorState State() const;
         can::FocMotorMode Mode() const;

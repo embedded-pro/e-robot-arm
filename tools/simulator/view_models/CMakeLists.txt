@@ -22,6 +22,8 @@ target_sources(e_robot_arm.tool.simulator.view_models PRIVATE
     ControlRules.cpp
     DesktopArm.cpp
     DesktopArm.hpp
+    DisturbancePresenter.cpp
+    DisturbancePresenter.hpp
     ControlRules.hpp
     EventLog.cpp
     EventLog.hpp

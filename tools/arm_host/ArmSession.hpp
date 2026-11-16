@@ -75,8 +75,13 @@ namespace arm_host
         void Delivered(arm::JointCommand command);
         void Failed(arm::JointCommand command, arm::CommandFailure failure);
         bool Run(const ArmCommand& command);
-        bool Simulate(std::size_t joint, const infra::Function<void(simulation::SimulatedJoint&)>& action);
+        bool Refuse(std::string_view reason);
+        bool InjectFaultInto(const InjectFault& inject);
+        bool SetSilent(std::size_t joint, bool silent);
+        bool Collide(const CollideJoint& collide);
+        bool PowerOff(std::size_t joint);
         bool RestartVirtualMotor(std::size_t joint);
+        void PublishDisturbances(ArmSnapshot& snapshot) const;
         std::string_view RefusalReason(const ArmCommand& command) const;
         std::string_view ArmControllerRefusal(arm::ArmControllerId id) const;
         void ReportTrip(std::size_t joint, can::FocFaultCode fault);
@@ -91,7 +96,7 @@ namespace arm_host
         ArmSessionSink& sink;
         simulation::SimulatedArm* simulation;
         VirtualMotors* virtualMotors;
-        std::string motorRefusal;
+        std::string refusal;
         Events events{ *this, arm };
         infra::TimerRepeating publishTimer;
         std::optional<Pending> issuing;
