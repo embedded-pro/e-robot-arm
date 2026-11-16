@@ -5,10 +5,12 @@ emil_add_test(e_robot_arm.tool.simulated_arm_test)
 target_link_libraries(e_robot_arm.tool.simulated_arm_test PUBLIC
     gmock_main
     e_robot_arm.tool.simulated_arm
+    e_foc_protocol.client
     infra.timer_test_helper
 )
 
 target_sources(e_robot_arm.tool.simulated_arm_test PRIVATE
+    TestArmPlant.cpp
     TestFirstOrderLag.cpp
     TestSimulatedJoint.cpp
 )

@@ -33,6 +33,8 @@ namespace arm_host
         virtual bool Adopt(const arm::ArmConfig& config);
     };
 
+    simulation::PlantConfig PlantFor(const arm::ArmConfig& config);
+
     using TargetOpener = std::function<std::unique_ptr<ArmTargetLink>(const ArmTarget& target, const arm::ArmConfig& config)>;
 
     class SimulatedTargetLink
@@ -40,6 +42,7 @@ namespace arm_host
     {
     public:
         SimulatedTargetLink(const arm::JointNodeIds& nodes, infra::Duration timeConstant);
+        SimulatedTargetLink(const arm::ArmConfig& config, infra::Duration timeConstant);
 
         hal::Can& Can() override;
         bool Connected() override;

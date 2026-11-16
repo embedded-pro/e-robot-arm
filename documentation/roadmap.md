@@ -95,12 +95,13 @@ The simulator and the platform choose at run time, from the arm profile, never a
 controllers on the host (the PC now, a microcontroller later), built from robotics-toolbox and numerical-toolbox.
 The move there, in phase 8d ([#31](https://github.com/embedded-pro/e-robot-arm/issues/31)):
 
-1. Torque setpoints and `gravity-pd` (robotics-toolbox `PdGravityCompensation`), beside the position path.
-2. The position path removed: torque is the only enable mode; `pass-through` and `smoothed` go.
-3. Simulated joints driven by the arm's forward dynamics (robotics-toolbox); the supervisor trips on a measured
-   position outside the limits and on a tracking error held too long, replacing the drive's following-error
-   supervision.
-4. Computed torque and a per-joint PID with gravity feed-forward; collision detection with robotics-toolbox's
+1. Done: torque setpoints and `gravity-pd` (robotics-toolbox `PdGravityCompensation`), beside the position path.
+2. Done: simulated joints driven by the arm model's dynamics in torque mode, so the in-process target answers torque.
+3. e-foc's virtual motor reads a plant description, so the virtual arm adds each link's inertia to its motor.
+4. The position path removed: torque is the only enable mode; `pass-through` and `smoothed` go.
+5. The supervisor trips on a measured position outside the limits and on a tracking error held too long, replacing
+   the drive's following-error supervision.
+6. Computed torque and a per-joint PID with gravity feed-forward; collision detection with robotics-toolbox's
    momentum observer (phase 6).
 - **Motor characteristics per joint**: a preset or custom resistance, inductance, pole pairs, flux, inertia,
   friction and limits. Real nodes get these as motor-model parameters; virtual motors get them as their plant

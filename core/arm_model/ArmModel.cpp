@@ -82,7 +82,7 @@ namespace arm
                 ChainFrame{ side, math::Vector3<float>{} }, ChainFrame{ up, math::Vector3<float>{} } };
         }
 
-        std::array<dynamics::JointLink<float>, jointCount> Links(const ArmGeometry& geometry, const ArmMass& mass)
+        std::array<dynamics::JointLink<float>, jointCount> BuildLinks(const ArmGeometry& geometry, const ArmMass& mass)
         {
             const auto& p = geometry.opw;
             const auto chain = Chain(p);
@@ -133,7 +133,9 @@ namespace arm
         , baseInverse(base.Inverse())
         , forearm(math::Sqrt(geometry.opw.a2 * geometry.opw.a2 + geometry.opw.c3 * geometry.opw.c3))
         , forearmAngle(math::Atan2(geometry.opw.a2, geometry.opw.c3))
-        , dynamics(Links(geometry, mass), GravityInBase(base))
+        , links(BuildLinks(geometry, mass))
+        , gravity(GravityInBase(base))
+        , dynamics(links, gravity)
     {}
 
     ArmModel::Pose ArmModel::ToolPose(const JointPositions& joints) const
@@ -278,6 +280,40 @@ namespace arm
     const dynamics::EulerLagrangeDynamics<float, jointCount>& ArmModel::Dynamics() const
     {
         return dynamics;
+    }
+
+    const ArmModel::DynamicLinks& ArmModel::Links() const
+    {
+        return links;
+    }
+
+    const math::Vector3<float>& ArmModel::Gravity() const
+    {
+        return gravity;
+    }
+
+    ArmModel::JointVector ArmModel::ModelTorques(const JointTorques& torques) const
+    {
+        JointVector vector{};
+        for (std::size_t joint = 0; joint != jointCount; ++joint)
+            vector.at(joint, 0) = static_cast<float>(geometry.opw.signs[joint]) * torques[joint].Value();
+        return vector;
+    }
+
+    JointPositions ArmModel::ToJointPositions(const JointVector& angles) const
+    {
+        JointPositions joints{};
+        for (std::size_t joint = 0; joint != jointCount; ++joint)
+            joints[joint] = foc::Radians{ static_cast<float>(geometry.opw.signs[joint]) * (angles.at(joint, 0) + geometry.opw.offsets[joint]) };
+        return joints;
+    }
+
+    JointSpeeds ArmModel::ToJointSpeeds(const JointVector& speeds) const
+    {
+        JointSpeeds joints{};
+        for (std::size_t joint = 0; joint != jointCount; ++joint)
+            joints[joint] = foc::RadiansPerSecond{ static_cast<float>(geometry.opw.signs[joint]) * speeds.at(joint, 0) };
+        return joints;
     }
 
     ArmModel::JointVector ArmModel::ModelSpeeds(const JointSpeeds& speeds) const

@@ -20,6 +20,8 @@ namespace simulation
 
     void SimulatedJoint::Fault(can::FocFaultCode code)
     {
+        node.CatchUp();
+        node.torque = foc::NewtonMeter{ 0.0f };
         node.state = can::FocMotorState::fault;
         node.fault = code;
         node.Hold();
@@ -86,6 +88,29 @@ namespace simulation
         node.ignored = parameter;
     }
 
+    void SimulatedJoint::AttachPlant(JointPlant& plant, std::size_t index)
+    {
+        node.plant = &plant;
+        node.index = index;
+    }
+
+    std::optional<foc::NewtonMeter> SimulatedJoint::DrivingTorque() const
+    {
+        if (!node.Driven())
+            return std::nullopt;
+        return node.torque;
+    }
+
+    void SimulatedJoint::Settle()
+    {
+        node.Advance();
+    }
+
+    foc::RadiansPerSecond SimulatedJoint::Speed() const
+    {
+        return node.speed;
+    }
+
     SimulatedJoint::Node::Node(can::FocMotorCategoryServer& server, infra::Duration timeConstant)
         : can::FocMotorCategoryServerObserver(server)
         , server(server)
@@ -98,13 +123,44 @@ namespace simulation
             parameters[static_cast<std::size_t>(arm::motorParameters[parameter])] = arm::motorPresets[0].settings.values[parameter];
     }
 
+    bool SimulatedJoint::Node::Driven() const
+    {
+        return plant != nullptr && state == can::FocMotorState::running && mode == can::FocMotorMode::torque;
+    }
+
     void SimulatedJoint::Node::Advance()
     {
         const auto now = infra::Now();
+        if (Driven())
+        {
+            plant->Advance();
+            position = plant->MotorPosition(index);
+            speed = plant->MotorSpeed(index);
+            target = position;
+            lastUpdate = now;
+            return;
+        }
+
         const auto followed = FollowWithLag(position, target, now - lastUpdate, timeConstant);
         position = followed.position;
         speed = followed.speed;
         lastUpdate = now;
+    }
+
+    void SimulatedJoint::Node::CatchUp()
+    {
+        if (plant != nullptr)
+            plant->Advance();
+        Advance();
+    }
+
+    void SimulatedJoint::Node::Halt()
+    {
+        CatchUp();
+        torque = foc::NewtonMeter{ 0.0f };
+        if (state == can::FocMotorState::running)
+            state = can::FocMotorState::ready;
+        Hold();
     }
 
     void SimulatedJoint::Node::Hold()
@@ -122,15 +178,14 @@ namespace simulation
             return;
         }
 
+        CatchUp();
         state = can::FocMotorState::running;
         onDone(services::CanAckStatus::success);
     }
 
     void SimulatedJoint::Node::OnStop(const infra::Function<void(services::CanAckStatus)>& onDone)
     {
-        if (state == can::FocMotorState::running)
-            state = can::FocMotorState::ready;
-        Hold();
+        Halt();
         onDone(services::CanAckStatus::success);
     }
 
@@ -152,14 +207,13 @@ namespace simulation
     void SimulatedJoint::Node::OnEmergencyStop(const infra::Function<void(services::CanAckStatus)>& onDone)
     {
         ++emergencyStops;
-        if (state == can::FocMotorState::running)
-            state = can::FocMotorState::ready;
-        Hold();
+        Halt();
         onDone(services::CanAckStatus::success);
     }
 
     void SimulatedJoint::Node::OnSelectControlMode(can::FocMotorMode newMode, const infra::Function<void(can::FocMotorMode)>& onActivated)
     {
+        CatchUp();
         mode = newMode;
         onActivated(mode);
     }
@@ -171,6 +225,11 @@ namespace simulation
             Advance();
             target = foc::Radians{ setpoint.value };
             Advance();
+        }
+        else if (state == can::FocMotorState::running && mode == can::FocMotorMode::torque && setpoint.kind == can::FocSetpointKind::torqueNewtonMeter)
+        {
+            CatchUp();
+            torque = foc::NewtonMeter{ setpoint.value };
         }
         onDone();
     }

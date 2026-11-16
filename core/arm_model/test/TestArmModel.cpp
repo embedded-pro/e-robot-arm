@@ -356,3 +356,27 @@ TEST_F(ArmModelTest, each_call_costs_well_under_a_fifth_of_the_control_period)
     for (const auto cost : { pose, jacobian, near, inverse, gravity, dynamics, inertia })
         EXPECT_LT(cost, 2000.0);
 }
+
+TEST_F(ArmModelTest, converts_joint_space_to_the_model_and_back)
+{
+    const arm::JointPositions joints{ foc::Radians{ 0.1f }, foc::Radians{ -0.4f }, foc::Radians{ 0.7f }, foc::Radians{ -0.2f }, foc::Radians{ 0.3f },
+        foc::Radians{ 1.1f } };
+    arm::JointSpeeds speeds{};
+    arm::JointTorques torques{};
+    for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+    {
+        speeds[joint] = foc::RadiansPerSecond{ 0.5f - 0.2f * static_cast<float>(joint) };
+        torques[joint] = foc::NewtonMeter{ 1.0f + static_cast<float>(joint) };
+    }
+
+    const auto positionsBack = model.ToJointPositions(model.ModelVector(joints));
+    const auto speedsBack = model.ToJointSpeeds(model.ModelSpeeds(speeds));
+    const auto torquesBack = model.ToJointTorques(model.ModelTorques(torques));
+    for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+    {
+        EXPECT_NEAR(joints[joint].Value(), positionsBack[joint].Value(), 1.0e-5f);
+        EXPECT_NEAR(speeds[joint].Value(), speedsBack[joint].Value(), 1.0e-6f);
+        EXPECT_NEAR(torques[joint].Value(), torquesBack[joint].Value(), 1.0e-6f);
+    }
+    EXPECT_NEAR(-arm::ArmModel::standardGravity, model.Gravity()[2], 1.0e-5f);
+}
