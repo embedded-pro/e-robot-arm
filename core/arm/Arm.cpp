@@ -6,7 +6,7 @@ namespace arm
         : jointBus(client, config.nodes, config.transmissions, config.missedRequestsBeforeSilent, config.controlPeriod * config.commandTimeoutPeriods)
         , safety(jointBus, config.positionLimits)
         , motion(safety, config.positionLimits, config.motionLimits, config.controlPeriod)
-        , configurator(safety, lifecycle)
+        , configurator(safety, lifecycle, SilenceWindow(config))
         , lifecycle(safety, motion, configurator, config.enableMode, config.controllers, config.motors)
         , smoothed(config.controlPeriod, config.smoothingTimeConstant)
         , model(config.geometry, config.mass, config.positionLimits)

@@ -479,7 +479,8 @@ namespace arm_host
 
     void ArmSession::Events::OnConfigurationFailed(std::size_t joint, arm::ConfigurationFailure)
     {
-        session.Emit({ .kind = ArmEventKind::controllerFailed, .reason = "no answer within 100 ms", .joint = joint });
+        const auto window = std::chrono::duration_cast<std::chrono::milliseconds>(arm::SilenceWindow(session.profile.config)).count();
+        session.Emit({ .kind = ArmEventKind::controllerFailed, .reason = "no answer within " + std::to_string(window) + " ms", .joint = joint });
     }
 
     void ArmSession::Events::OnActiveControllerChanged(std::optional<arm::ArmControllerId> active)

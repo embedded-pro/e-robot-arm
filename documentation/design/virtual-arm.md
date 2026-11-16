@@ -2,7 +2,7 @@
 title: "Virtual Arm Design"
 type: design
 status: draft
-version: 0.7.0
+version: 0.8.0
 component: "virtual-arm"
 date: 2026-11-16
 ---
@@ -12,7 +12,7 @@ date: 2026-11-16
 | Title     | Virtual Arm Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.7.0              |
+| Version   | 0.8.0              |
 | Component | virtual-arm        |
 | Date      | 2026-11-16         |
 
@@ -229,8 +229,11 @@ and Stream to it) from `virtual-motor.md` Part F, and refuses a motor that does 
 
 `@virtual` scenarios run the arm on the virtual arm in real time, so they have a binary of their own,
 `e_robot_arm.integration_tests.virtual` (`integration_tests/virtual/`), that ctest does not run. Each scenario starts
-the virtual arm from `integration_tests/virtual/virtual-arm.json`, the reference arm geared 50:1 and allowed ten missed
-telemetry periods, since a desktop or CI host can stall for more than three. Its motors are the Teknic preset with the
+the virtual arm from `integration_tests/virtual/virtual-arm.json`, the reference arm geared 50:1 that allows fifty missed
+telemetry periods and waits fifty periods for an acknowledgement (500 ms each). Six motors paced on the wall clock share
+the host's cores: a CI runner has descheduled one for a hundred milliseconds, and its pacer drops the time it missed, so
+the arm saw ten requests go unanswered and called a live motor silent, or gave up on an acknowledgement after three
+periods. A node on its own microcontroller does not stall, so a real arm keeps short windows. Its motors are the Teknic preset with the
 drive's following-error supervision on: a window of 3 rad on the motor's side for 0.1 s. It then brings the arm up through the
 arm host on `virtual:arm` as the console does: contract check, align, bring-up and enable. The motors start
 calibrated but not aligned.

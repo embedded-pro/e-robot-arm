@@ -57,7 +57,7 @@ namespace
         StrictMock<arm::JointBusMock> bus;
         StrictMock<arm::ArmLifecycleMock> lifecycle;
         arm::ArmState state{ arm::ArmState::ready };
-        arm::JointConfiguratorImpl configurator{ bus, lifecycle };
+        arm::JointConfiguratorImpl configurator{ bus, lifecycle, 250ms };
         StrictMock<arm::JointConfiguratorObserverMock> observer{ configurator };
         arm::ControllerSettings settings{};
     };
@@ -148,14 +148,14 @@ TEST_F(JointConfiguratorImplTest, a_request_the_queue_refuses_is_sent_again_a_mi
     ForwardTime(10ms);
 }
 
-TEST_F(JointConfiguratorImplTest, a_request_left_unanswered_fails_the_operation_after_100_ms)
+TEST_F(JointConfiguratorImplTest, a_request_left_unanswered_fails_the_operation_after_the_answer_timeout)
 {
     EXPECT_CALL(bus, SelectAlgorithm(joint, can::FocControlLoop::current, _)).WillOnce(Return(true));
     EXPECT_CALL(bus, SelectAlgorithm(joint, can::FocControlLoop::speed, _)).WillOnce(Return(true));
     EXPECT_TRUE(configurator.Apply(joint, settings));
     AnswerAlgorithms(joint, {});
 
-    ForwardTime(99ms);
+    ForwardTime(249ms);
     EXPECT_CALL(observer, OnConfigurationFailed(joint, arm::ConfigurationFailure::timedOut));
     ForwardTime(1ms);
 
