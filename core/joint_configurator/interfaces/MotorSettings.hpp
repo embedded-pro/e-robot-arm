@@ -25,16 +25,19 @@ namespace arm
         continuousCurrent,
         peakCurrent,
         peakCurrentTime,
-        overspeedLimit
+        overspeedLimit,
+        followingErrorWindow,
+        followingErrorTime
     };
 
-    inline constexpr std::size_t motorParameterCount{ 11 };
+    inline constexpr std::size_t motorParameterCount{ 13 };
+    inline constexpr std::size_t requiredMotorParameterCount{ 11 };
     inline constexpr std::size_t motorModelCount{ 7 };
 
     inline constexpr std::array<can::FocParameter, motorParameterCount> motorParameters{ can::FocParameter::resistance, can::FocParameter::inductance,
         can::FocParameter::polePairs, can::FocParameter::fluxLinkage, can::FocParameter::inertia, can::FocParameter::viscousFriction,
         can::FocParameter::frictionCoulomb, can::FocParameter::continuousCurrent, can::FocParameter::peakCurrent, can::FocParameter::peakCurrentTime,
-        can::FocParameter::overspeedLimit };
+        can::FocParameter::overspeedLimit, can::FocParameter::followingErrorWindow, can::FocParameter::followingErrorTime };
 
     struct MotorUnit
     {
@@ -56,6 +59,8 @@ namespace arm
         { "peakCurrentA", "Peak current", "A", 1.0f },
         { "peakCurrentTimeS", "Peak-current time", "s", 1.0f },
         { "overspeedLimitRadPerS", "Overspeed limit", "rad/s", 1.0f },
+        { "followingErrorWindowRad", "Following-error window", "rad", 1.0f },
+        { "followingErrorTimeS", "Following-error time", "s", 1.0f },
     } };
 
     struct MotorSettings
@@ -81,8 +86,8 @@ namespace arm
     };
 
     inline constexpr std::array<MotorPreset, 2> motorPresets{ {
-        { "teknic-m2310p-ln-04k", "Teknic M-2310P-LN-04K", { { 0.36f, 0.2f, 4.0f, 0.0064f, 7.06e-6f, 1.5e-5f, 0.0037f, 7.1f, 20.0f, 1.0f, 754.0f } } },
-        { "anaheim-bly172s-24v-4000", "Anaheim BLY172S-24V-4000", { { 0.405f, 0.64f, 4.0f, 0.00544f, 4.8e-6f, 1.0e-5f, 0.0037f, 3.9f, 10.0f, 1.0f, 503.0f } } },
+        { "teknic-m2310p-ln-04k", "Teknic M-2310P-LN-04K", { { 0.36f, 0.2f, 4.0f, 0.0064f, 7.06e-6f, 1.5e-5f, 0.0037f, 7.1f, 20.0f, 1.0f, 754.0f, 0.0f, 0.1f } } },
+        { "anaheim-bly172s-24v-4000", "Anaheim BLY172S-24V-4000", { { 0.405f, 0.64f, 4.0f, 0.00544f, 4.8e-6f, 1.0e-5f, 0.0037f, 3.9f, 10.0f, 1.0f, 503.0f, 0.0f, 0.1f } } },
     } };
 
     struct JointMotor

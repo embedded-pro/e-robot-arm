@@ -2,7 +2,7 @@
 title: "Joint Configurator Design"
 type: design
 status: draft
-version: 0.3.0
+version: 0.4.0
 component: "joint_configurator"
 date: 2026-11-13
 ---
@@ -12,7 +12,7 @@ date: 2026-11-13
 | Title     | Joint Configurator Design |
 | Type      | design                    |
 | Status    | draft                     |
-| Version   | 0.3.0                     |
+| Version   | 0.4.0                     |
 | Component | joint_configurator        |
 | Date      | 2026-11-13                |
 
@@ -110,6 +110,12 @@ queries, one at a time as in Part B:
 | Peak current           | A             | A                   | Drive limit |
 | Peak-current time      | s             | s                   | Drive limit |
 | Overspeed limit        | rad/s         | rad/s               | Drive limit |
+| Following-error window | rad           | rad                 | Drive limit |
+| Following-error time   | s             | s                   | Drive limit |
+
+The following-error window is the drive's position supervision: a joint whose motor shaft lags its position setpoint
+by more than the window for longer than the time faults with a following error, and the arm trips on it. It is on
+the motor's side of the gear, at most 3.2 rad, and 0 switches it off, which is e-foc's default.
 
 Small motors have inertias of a few 10⁻⁶ kg·m², so the profile and the screens use units that keep the numbers
 readable and within the profile's nine decimals; the configurator converts to the contract's units on the wire.
@@ -117,14 +123,15 @@ Every value applied replaces what the node held, an identification of its own in
 
 **Presets** are e-foc's reference motors (e-foc `documentation/theory/foc-plant-models.md`, "Reference motors"):
 
-| Preset                   | R Ω   | L mH | Pole pairs | Flux mWb | Inertia g·cm² | Viscous µN·m·s/rad | Coulomb mN·m | Continuous A | Peak A | Peak s | Overspeed rad/s |
-|--------------------------|-------|------|------------|----------|---------------|--------------------|--------------|--------------|--------|--------|-----------------|
-| Teknic M-2310P-LN-04K    | 0.36  | 0.2  | 4          | 6.4      | 70.6          | 15                 | 3.7          | 7.1          | 20     | 1      | 754             |
-| Anaheim BLY172S-24V-4000 | 0.405 | 0.64 | 4          | 5.44     | 48            | 10                 | 3.7          | 3.9          | 10     | 1      | 503             |
+| Preset                   | R Ω   | L mH | Pole pairs | Flux mWb | Inertia g·cm² | Viscous µN·m·s/rad | Coulomb mN·m | Continuous A | Peak A | Peak s | Overspeed rad/s | Following-error window rad | Following-error time s |
+|--------------------------|-------|------|------------|----------|---------------|--------------------|--------------|--------------|--------|--------|-----------------|----------------------------|------------------------|
+| Teknic M-2310P-LN-04K    | 0.36  | 0.2  | 4          | 6.4      | 70.6          | 15                 | 3.7          | 7.1          | 20     | 1      | 754             | 0                          | 0.1                    |
+| Anaheim BLY172S-24V-4000 | 0.405 | 0.64 | 4          | 5.44     | 48            | 10                 | 3.7          | 3.9          | 10     | 1      | 503             | 0                          | 0.1                    |
 
 The model parameters and the peak currents are e-foc's. The continuous current is the rated torque over the torque
 constant 1.5·p·ψ (0.274 N·m and 0.127 N·m); the overspeed limit is 1.2 times the rated speed (6000 rpm and 4000 rpm);
-the peak-current time, and the Anaheim's Coulomb friction (taken as the Teknic bench value), are assumed.
+the peak-current time, and the Anaheim's Coulomb friction (taken as the Teknic bench value), are assumed. The
+following-error supervision is e-foc's default, off: a window depends on the gear and the load, so a profile sets it.
 
 ---
 

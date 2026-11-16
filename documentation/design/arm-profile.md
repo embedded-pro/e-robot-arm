@@ -2,7 +2,7 @@
 title: "Arm Profile Design"
 type: design
 status: draft
-version: 0.5.0
+version: 0.6.0
 component: "arm_profile"
 date: 2026-11-13
 ---
@@ -12,7 +12,7 @@ date: 2026-11-13
 | Title     | Arm Profile Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.5.0              |
+| Version   | 0.6.0              |
 | Component | arm_profile        |
 | Date      | 2026-11-13         |
 
@@ -48,7 +48,7 @@ A profile holds what `ArmConfig` holds:
 | Item                     | JSON key                     | Unit, range                   | Default when absent |
 |--------------------------|------------------------------|-------------------------------|---------------------|
 | Format marker            | `format`                     | `"e-robot-arm profile"`       | required            |
-| Format version           | `version`                    | `1`                           | required            |
+| Format version           | `version`                    | `2` (`1` is read too)         | required            |
 | Name                     | `name`                       | text, at most 48 characters   | required            |
 | Control period           | `controlPeriodMs`            | ms, 1 to 1000                 | required            |
 | Missed telemetry allowed | `missedRequestsBeforeSilent` | periods, 1 to 255             | required            |
@@ -113,21 +113,23 @@ The three algorithms are required once `motorController` is present; a gain left
 default, and each gain must lie in the e-foc contract's range. A joint without `motorController` keeps whatever its
 node holds: the lifecycle does not configure it.
 
-A joint's motor holds the eleven parameters of [joint-configurator.md](joint-configurator.md) Part D, in its
+A joint's motor holds the thirteen parameters of [joint-configurator.md](joint-configurator.md) Part D, in its
 display units:
 
-| Item             | JSON key                        | Item               | JSON key                 |
-|------------------|---------------------------------|--------------------|--------------------------|
-| Preset           | `preset`                        | Coulomb friction   | `coulombFrictionMilliNm` |
-| Resistance       | `resistanceOhm`                 | Continuous current | `continuousCurrentA`     |
-| Inductance       | `inductanceMilliHenry`          | Peak current       | `peakCurrentA`           |
-| Pole pairs       | `polePairs`                     | Peak-current time  | `peakCurrentTimeS`       |
-| Flux linkage     | `fluxLinkageMilliWeber`         | Overspeed limit    | `overspeedLimitRadPerS`  |
-| Rotor inertia    | `inertiaGramCm2`                |                    |                          |
-| Viscous friction | `viscousFrictionMicroNmSPerRad` |                    |                          |
+| Item             | JSON key                        | Item                   | JSON key                  |
+|------------------|---------------------------------|------------------------|---------------------------|
+| Preset           | `preset`                        | Coulomb friction       | `coulombFrictionMilliNm`  |
+| Resistance       | `resistanceOhm`                 | Continuous current     | `continuousCurrentA`      |
+| Inductance       | `inductanceMilliHenry`          | Peak current           | `peakCurrentA`            |
+| Pole pairs       | `polePairs`                     | Peak-current time      | `peakCurrentTimeS`        |
+| Flux linkage     | `fluxLinkageMilliWeber`         | Overspeed limit        | `overspeedLimitRadPerS`   |
+| Rotor inertia    | `inertiaGramCm2`                | Following-error window | `followingErrorWindowRad` |
+| Viscous friction | `viscousFrictionMicroNmSPerRad` | Following-error time   | `followingErrorTimeS`     |
 
 `preset` names a preset (`teknic-m2310p-ln-04k`, `anaheim-bly172s-24v-4000`) whose values fill every parameter the
-motor leaves out; without a preset all eleven are required. Each value must lie in the e-foc contract's range, and
+motor leaves out; without a preset the eleven others are required. The two following-error items are optional with or
+without a preset: left out, they keep e-foc's default, supervision off (a window of 0 and a time of 0.1 s). They came
+with format version 2; a version 1 file reads as before. Each value must lie in the e-foc contract's range, and
 pole pairs must be a whole number. A joint without `motor` keeps whatever its node holds.
 
 ### Part B — Reading
@@ -150,7 +152,7 @@ significant digits than a float below 0.1.
 ```json
 {
   "format": "e-robot-arm profile",
-  "version": 1,
+  "version": 2,
   "name": "generic six-joint",
   "controlPeriodMs": 10,
   "missedRequestsBeforeSilent": 3,

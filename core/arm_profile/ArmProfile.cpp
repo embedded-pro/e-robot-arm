@@ -462,7 +462,7 @@ namespace arm
             bool ReadVersion(const Path& path, const Value& value, bool& seen)
             {
                 int32_t version{ 0 };
-                if (!ReadInteger(path, value, profileVersion, profileVersion, "is not a version this reader knows", version))
+                if (!ReadInteger(path, value, 1, profileVersion, "is not a version this reader knows", version))
                     return false;
                 seen = true;
                 return true;
@@ -590,9 +590,9 @@ namespace arm
                 {
                     if (seen[parameter])
                         continue;
-                    if (!motor.preset.has_value())
+                    if (!motor.preset.has_value() && parameter < requiredMotorParameterCount)
                         return Missing(path, infra::BoundedConstString{ motorUnits[parameter].key.data(), motorUnits[parameter].key.size() });
-                    motor.settings.values[parameter] = motorPresets[*motor.preset].settings.values[parameter];
+                    motor.settings.values[parameter] = motorPresets[motor.preset.value_or(0)].settings.values[parameter];
                 }
 
                 result = motor;

@@ -102,3 +102,24 @@ THEN(R"(within {int} ms the arm shall trip with joint {int} silent)", (std::int3
         },
         1s));
 }
+
+WHEN(R"(a collision pushes joint {int} with {float} N·m)", (std::int32_t joint, float torque))
+{
+    context.Get<VirtualArmFixture>().virtualArm->Collide(static_cast<std::size_t>(joint - 1), foc::NewtonMeter{ torque });
+}
+
+THEN(R"(within {int} ms the arm shall trip with joint {int} faulted on a following error)", (std::int32_t milliseconds, std::int32_t joint))
+{
+    auto& fixture = context.Get<VirtualArmFixture>();
+    const auto faultedJoint = static_cast<std::size_t>(joint - 1);
+    EXPECT_TRUE(fixture.WaitForEvent([faultedJoint](const arm_host::ArmEvent& event)
+        {
+            return event.kind == arm_host::ArmEventKind::jointFault && event.joint == faultedJoint && event.fault == can::FocFaultCode::followingError;
+        },
+        std::chrono::milliseconds{ milliseconds }));
+    EXPECT_TRUE(fixture.WaitFor([](const arm_host::ArmSnapshot& snapshot)
+        {
+            return snapshot.tripped && snapshot.state == arm::ArmState::tripped;
+        },
+        1s));
+}

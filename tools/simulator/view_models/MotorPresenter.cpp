@@ -24,7 +24,7 @@ namespace simulator
         constexpr std::array<OptionSpec, arm::jointCount> jointOptions{ { { "J1" }, { "J2" }, { "J3" }, { "J4" }, { "J5" }, { "J6" } } };
         constexpr std::array<OptionSpec, arm::motorPresets.size() + 1> presetOptions{ { { arm::motorPresets[0].name }, { arm::motorPresets[1].name }, { "Custom" } } };
         constexpr std::array<std::string_view, arm::motorParameterCount> suffixes{ " Ω", " mH", "", " mWb", " g·cm²", " µN·m·s/rad", " mN·m", " A", " A", " s",
-            " rad/s" };
+            " rad/s", " rad", " s" };
 
         ui::model::FieldSpec ParameterField(std::size_t index)
         {
