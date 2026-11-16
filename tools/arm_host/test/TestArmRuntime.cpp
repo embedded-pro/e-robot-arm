@@ -338,11 +338,11 @@ TEST_F(ArmRuntimeTest, a_profile_loaded_on_a_target_that_does_not_open_reports_t
 TEST_F(ArmRuntimeTest, a_link_that_fails_while_connecting_fails_the_target_with_its_reason)
 {
     runtime.emplace(arm_host::test::Profile(), Opener(), sink, virtualArmTarget);
-    virtualArm->failure = "joint 3 has a custom motor";
+    virtualArm->failure = "joint 3 has node 300: a virtual motor answers on nodes 1 to 256";
     ForwardTime(2ms);
 
     ASSERT_NE(nullptr, sink.Find(ArmEventKind::targetFailed));
-    EXPECT_EQ("joint 3 has a custom motor", sink.Find(ArmEventKind::targetFailed)->reason);
+    EXPECT_EQ("joint 3 has node 300: a virtual motor answers on nodes 1 to 256", sink.Find(ArmEventKind::targetFailed)->reason);
     EXPECT_FALSE(sink.snapshot.targetReady);
 }
 

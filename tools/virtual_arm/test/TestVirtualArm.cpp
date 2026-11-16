@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <format>
 #include <fstream>
+#include <iterator>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <thread>
@@ -29,6 +30,12 @@ namespace
         std::string text;
         std::getline(stream, text);
         return text;
+    }
+
+    std::string Content(const std::filesystem::path& file)
+    {
+        std::ifstream stream{ file };
+        return { std::istreambuf_iterator<char>{ stream }, std::istreambuf_iterator<char>{} };
     }
 
     uint16_t FreeLoopbackPort()
@@ -259,10 +266,25 @@ TEST_F(VirtualArmTest, restarts_a_joint_with_another_motor_on_a_fresh_memory)
 
     EXPECT_TRUE(Eventually([&arm, this]()
         {
-            return arm.Motors()[2].phase == virtual_arm::MotorPhase::up && Text(directory / "joint3.mem.plant") == "anaheim";
+            return arm.Motors()[2].phase == virtual_arm::MotorPhase::up && arm.Motors()[2].plant == "anaheim";
         }));
-    EXPECT_EQ("anaheim", arm.Motors()[2].plant);
+    EXPECT_EQ("joint3.plant", Text(directory / "joint3.mem.plant"));
+    EXPECT_EQ(virtual_arm::PlantOf(anaheim, virtual_arm::LinkInertias(config)[2]).description, Content(directory / "joint3.plant"));
     EXPECT_FALSE(std::filesystem::exists(directory / "joint3.mem"));
+    EXPECT_EQ(std::nullopt, arm.Problem());
+}
+
+TEST_F(VirtualArmTest, restarts_a_joint_with_a_custom_motor)
+{
+    virtual_arm::VirtualArm arm{ config, JoiningOptions() };
+    ASSERT_EQ(std::nullopt, arm.Start());
+
+    EXPECT_EQ(std::nullopt, arm.Restart(1, arm::JointMotor{ std::nullopt, arm::motorPresets[0].settings }));
+
+    EXPECT_TRUE(Eventually([&arm]()
+        {
+            return arm.Motors()[1].phase == virtual_arm::MotorPhase::up && arm.Motors()[1].plant == "custom";
+        }));
     EXPECT_EQ(std::nullopt, arm.Problem());
 }
 
@@ -289,8 +311,6 @@ TEST_F(VirtualArmTest, refuses_to_restart_a_joint_and_names_the_reason)
 
     EXPECT_EQ("joint 1's motor hosts the virtual CAN bus: restart the whole virtual arm", arm.Restart(0, std::nullopt).value_or(""));
     EXPECT_EQ("joint 1's motor hosts the virtual CAN bus: restart the whole virtual arm", arm.PowerOff(0).value_or(""));
-    EXPECT_EQ("joint 2 has a custom motor: a virtual motor takes e-foc's plant presets only",
-        arm.Restart(1, arm::JointMotor{ std::nullopt, arm::motorPresets[0].settings }).value_or(""));
     EXPECT_EQ("no joint 7", arm.Restart(6, std::nullopt).value_or(""));
 }
 
@@ -321,10 +341,6 @@ TEST_F(VirtualArmTest, refuses_a_profile_it_cannot_adopt_and_names_the_reason)
     auto renumbered = config;
     renumbered.nodes[2] = 9;
     EXPECT_EQ("the profile's node ids changed: restart the whole virtual arm", arm.Adopt(renumbered).value_or(""));
-
-    auto custom = config;
-    custom.motors[3] = arm::JointMotor{ std::nullopt, arm::motorPresets[0].settings };
-    EXPECT_EQ("joint 4 has a custom motor: a virtual motor takes e-foc's plant presets only", arm.Adopt(custom).value_or(""));
 
     auto hostChanged = config;
     hostChanged.motors[0] = anaheim;

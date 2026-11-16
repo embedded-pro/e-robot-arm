@@ -97,7 +97,8 @@ The move there, in phase 8d ([#31](https://github.com/embedded-pro/e-robot-arm/i
 
 1. Done: torque setpoints and `gravity-pd` (robotics-toolbox `PdGravityCompensation`), beside the position path.
 2. Done: simulated joints driven by the arm model's dynamics in torque mode, so the in-process target answers torque.
-3. e-foc's virtual motor reads a plant description, so the virtual arm adds each link's inertia to its motor.
+3. Done: e-foc's virtual motor reads a text plant description; the virtual arm gives each motor its links' inertia
+   and runs custom motors.
 4. The position path removed: torque is the only enable mode; `pass-through` and `smoothed` go.
 5. The supervisor trips on a measured position outside the limits and on a tracking error held too long, replacing
    the drive's following-error supervision.

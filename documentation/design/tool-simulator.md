@@ -402,7 +402,7 @@ The arm model's view of the measured arm ([arm-model.md](arm-model.md) Parts B a
 `E_FOC_VIRTUAL_MOTOR` environment variable, else `e-foc-virtual-motor` on the path. The target starts six virtual
 motors from the profile in effect, one per joint, each with the joint's motor ([simulator.md](simulator.md) Part C).
 Starting takes seconds: the status strip's connection reads **Starting virtual motors: `n` of 6 up** (`Neutral`)
-until the target is ready, and a failure names its reason ("joint 3 has a custom motor: …", "the virtual CAN hub
+until the target is ready, and a failure names its reason ("joint 3 has node 300: …", "the virtual CAN hub
 port 29536 is in use …") in the status bar and the log. The window title and the target selector read **Virtual
 arm**. Closing the window or switching target stops every motor.
 
