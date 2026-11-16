@@ -44,7 +44,10 @@ namespace virtual_arm
         : config(config)
         , options(std::move(options))
         , coupling(config)
-    {}
+    {
+        if (this->options.engine.has_parent_path())
+            this->options.engine = std::filesystem::absolute(this->options.engine);
+    }
 
     VirtualArm::~VirtualArm()
     {

@@ -19,6 +19,7 @@ namespace arm_host
         ~AdapterTargetLink() override;
 
         hal::Can& Can() override;
+        bool Connected() override;
         void Poll() override;
         simulation::SimulatedArm* Simulation() override;
 

@@ -2,7 +2,7 @@
 title: "Virtual Arm Design"
 type: design
 status: draft
-version: 0.4.0
+version: 0.5.0
 component: "virtual-arm"
 date: 2026-11-15
 ---
@@ -12,7 +12,7 @@ date: 2026-11-15
 | Title     | Virtual Arm Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.4.0              |
+| Version   | 0.5.0              |
 | Component | virtual-arm        |
 | Date      | 2026-11-15         |
 
@@ -171,21 +171,27 @@ A scenario or the console asks the virtual arm for them; the arm only sees their
 |---------------------|-------------------------------------------------------------------------------------------------|
 | Console             | `--virtual-arm <profile>` starts the virtual arm, then the console's own arm on `virtual:<bus>` |
 | Simulator           | A *Virtual e-foc motors* target beside *Simulated joints* (phase 8d)                            |
-| Scenarios           | A `@virtual` fixture starts it before a scenario and stops it after                             |
+| Scenarios           | The `@virtual` fixture starts it before a scenario and stops it after (Part G)                  |
 | By hand or a script | `e-robot-arm-virtual-arm --profile <file> [--bus <name>]`, ended with Ctrl-C                    |
 
-It finds `e-foc-virtual-motor` on the path, or where `--engine <path>` says.
+It finds `e-foc-virtual-motor` on the path, or where `--engine <path>` says; a relative path is taken from the
+directory it was started in, not from the motors' working directory.
 
-### Part F — The e-foc virtual motor, built or downloaded
+### Part F — The e-foc virtual motor, built from e-foc
 
-e-robot-arm does not build e-foc. The virtual motor comes from e-foc's release: its Linux tools archive carries
-`e-foc-virtual-motor`, and CI downloads it at a pinned release and checks its protocol version on Hello. A
-developer installs the same release, or builds e-foc and points `--engine` at it.
+e-robot-arm does not vendor e-foc. CI checks out e-foc at a pinned revision (`E_FOC_REVISION` in `ci.yml`), builds
+only `e_foc.tool.virtual_motor` in Release in the same dev container, cached by ccache, and hands the binary to the
+scenarios. The revision is a commit until an e-foc release carries what the arm needs (contract 4.0 and can-lite's
+virtual hub fixes); then it is that release's tag. A developer builds e-foc the same way and names the binary with
+`--engine` or `E_FOC_VIRTUAL_MOTOR`.
 
-| Option                                | For                                         | Against                                                          |
-|---------------------------------------|---------------------------------------------|------------------------------------------------------------------|
-| Download e-foc's release (chosen)     | Seconds in CI; the binary e-foc's users run | Follows e-foc's releases, not its `main`                         |
-| Build from an `infra/e-foc` submodule | Any e-foc revision                          | e-foc and its submodules, minutes of build per run, one more pin |
+| Option                                    | For                                                   | Against                                                                    |
+|-------------------------------------------|-------------------------------------------------------|----------------------------------------------------------------------------|
+| Build e-foc at a pinned revision (chosen) | Any e-foc revision; the dev container's own C library | Minutes of build per run, less with ccache                                 |
+| Download e-foc's release                  | Seconds in CI; the binary e-foc's users run           | Built against a newer C library than the dev container's; follows releases |
+
+The Release build turns warnings-as-errors off: GCC 13 at `-O3` reports a false `stringop-overflow` in
+embedded-infra-lib's upgrade staging writer, which the engine links but never runs.
 
 The plant port is a small framed protocol on a loopback socket. The virtual arm implements the part it uses
 (Hello, Status, Changes, Refused, Log line and Window from the motor; Pause, Resume, External torque, Clear all
@@ -193,17 +199,22 @@ and Stream to it) from `virtual-motor.md` Part F, and refuses a motor that does 
 
 ### Part G — Scenarios
 
-`@virtual` scenarios run the arm's features against the virtual arm, reusing the steps of the simulated-joint
-scenarios where the wording holds, and add:
+`@virtual` scenarios run the arm on the virtual arm in real time, so they have a binary of their own,
+`e_robot_arm.integration_tests.virtual` (`integration_tests/virtual/`), that ctest does not run. Each scenario starts
+the virtual arm from `integration_tests/virtual/virtual-arm.json`, the reference arm geared 50:1 and allowed ten missed
+telemetry periods, since a desktop or CI host can stall for more than three. It then brings the arm up through the
+arm host on `virtual:arm` as the console does: contract check, align, bring-up and enable. The motors start
+calibrated but not aligned.
 
-- tracking error under gravity: the largest difference between commanded and measured position during a move
-  that lifts the shoulder, reported as a `[METRIC]` line and held to a limit pinned from it;
-- a collision: a collision torque on a moving joint stops the arm;
-- a silent joint: a paused motor trips the arm as a silent simulated joint does.
+| Scenario               | Checks                                                                                                                                       |
+|------------------------|----------------------------------------------------------------------------------------------------------------------------------------------|
+| Tracking under gravity | The largest difference between commanded and measured position while the shoulder lifts, as a `[METRIC]` line held to a limit pinned from it |
+| Silent joint           | A paused motor trips the arm as a silent joint (REQ-ARM-005)                                                                                 |
 
-They run in real time, so a CI job of their own runs them: it downloads the e-foc release, builds the host
-targets, and reports the metrics. Tracking error with gravity compensation waits for phase 5's controller, and a
-start-up through calibration waits for the lifecycle to drive one (open question 3).
+CI runs them in a job of its own after building the engine (Part F). A collision that stops the arm needs the
+drive's following-error supervision, set per joint by the profile; it comes with that setting. Tracking error with
+gravity compensation waits for phase 5's controller, and a start-up through calibration waits for the lifecycle to
+drive one (open question 3).
 
 ---
 

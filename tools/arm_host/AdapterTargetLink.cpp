@@ -29,6 +29,11 @@ namespace arm_host
         return platformAdapter.Adapter();
     }
 
+    bool AdapterTargetLink::Connected()
+    {
+        return platformAdapter.Adapter().IsConnected();
+    }
+
     void AdapterTargetLink::Poll()
     {
         hub.Poll();

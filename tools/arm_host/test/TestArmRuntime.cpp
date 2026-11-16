@@ -10,6 +10,24 @@ namespace
     using arm_host::ArmTarget;
     using arm_host::TargetKind;
 
+    class LateLink
+        : public arm_host::SimulatedTargetLink
+    {
+    public:
+        LateLink(const arm::JointNodeIds& nodes, const bool& connected)
+            : arm_host::SimulatedTargetLink(nodes, std::chrono::milliseconds{ 20 })
+            , connected(connected)
+        {}
+
+        bool Connected() override
+        {
+            return connected;
+        }
+
+    private:
+        const bool& connected;
+    };
+
     class ArmRuntimeTest
         : public testing::Test
         , public infra::ClockFixture
@@ -23,6 +41,8 @@ namespace
                 openedNodes.push_back(nodes);
                 if (target.kind == TargetKind::real)
                     return nullptr;
+                if (target.kind == TargetKind::virtualBus)
+                    return std::make_unique<LateLink>(nodes, adapterConnected);
                 return std::make_unique<arm_host::SimulatedTargetLink>(nodes, 20ms);
             };
         }
@@ -46,6 +66,7 @@ namespace
         const ArmTarget simulated{ TargetKind::simulated, "" };
         const ArmTarget virtualBus{ TargetKind::virtualBus, "virtual:arm" };
         const ArmTarget realArm{ TargetKind::real, "socketcan:can0" };
+        bool adapterConnected{ true };
         std::vector<ArmTarget> opened;
         std::vector<arm::JointNodeIds> openedNodes;
         arm_host::test::RecordingSink sink;
@@ -60,6 +81,41 @@ TEST_F(ArmRuntimeTest, opens_its_initial_target_and_reports_it_ready)
     ASSERT_NE(nullptr, sink.Find(ArmEventKind::targetReady));
     EXPECT_TRUE(sink.snapshot.targetReady);
     EXPECT_EQ(simulated, sink.snapshot.target);
+}
+
+TEST_F(ArmRuntimeTest, a_target_is_ready_only_once_its_adapter_has_connected_and_refuses_commands_until_then)
+{
+    adapterConnected = false;
+    runtime.emplace(arm_host::test::Profile(), Opener(), sink, virtualBus);
+    Execute(5, arm_host::CheckContracts{});
+
+    EXPECT_EQ(nullptr, sink.Find(ArmEventKind::targetReady));
+    EXPECT_FALSE(sink.snapshot.targetReady);
+    ASSERT_EQ(ArmEventKind::refused, sink.Last()->kind);
+    EXPECT_EQ("connecting", sink.Last()->reason);
+
+    adapterConnected = true;
+    ForwardTime(10ms);
+
+    EXPECT_NE(nullptr, sink.Find(ArmEventKind::targetReady));
+    EXPECT_TRUE(sink.snapshot.targetReady);
+    Execute(6, arm_host::CheckContracts{});
+    EXPECT_EQ(ArmEventKind::contractsResolved, sink.Find(ArmEventKind::contractsResolved)->kind);
+}
+
+TEST_F(ArmRuntimeTest, an_adapter_that_does_not_connect_within_two_seconds_fails_the_target)
+{
+    adapterConnected = false;
+    runtime.emplace(arm_host::test::Profile(), Opener(), sink, virtualBus);
+    ForwardTime(1990ms);
+    EXPECT_EQ(nullptr, sink.Find(ArmEventKind::targetFailed));
+
+    ForwardTime(20ms);
+
+    ASSERT_NE(nullptr, sink.Find(ArmEventKind::targetFailed));
+    EXPECT_EQ("the adapter did not connect", sink.Find(ArmEventKind::targetFailed)->reason);
+    Execute(7, arm_host::StartJoints{});
+    EXPECT_EQ("no target", sink.Last()->reason);
 }
 
 TEST_F(ArmRuntimeTest, without_a_target_refuses_every_command)
