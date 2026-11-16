@@ -1,5 +1,6 @@
 #include "tools/arm_host/ArmSession.hpp"
 #include <cmath>
+#include <format>
 
 namespace arm_host
 {
@@ -480,7 +481,7 @@ namespace arm_host
     void ArmSession::Events::OnConfigurationFailed(std::size_t joint, arm::ConfigurationFailure)
     {
         const auto window = std::chrono::duration_cast<std::chrono::milliseconds>(arm::SilenceWindow(session.profile.config)).count();
-        session.Emit({ .kind = ArmEventKind::controllerFailed, .reason = "no answer within " + std::to_string(window) + " ms", .joint = joint });
+        session.Emit({ .kind = ArmEventKind::controllerFailed, .reason = std::format("no answer within {} ms", window), .joint = joint });
     }
 
     void ArmSession::Events::OnActiveControllerChanged(std::optional<arm::ArmControllerId> active)
