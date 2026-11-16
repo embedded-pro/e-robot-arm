@@ -69,6 +69,8 @@ namespace simulator
                     return "Virtual bus " + target.bus;
                 case arm_host::TargetKind::real:
                     return "REAL ARM — " + target.bus;
+                case arm_host::TargetKind::virtualArm:
+                    return "Virtual arm";
             }
             return "Unknown target";
         }
@@ -227,6 +229,15 @@ namespace simulator
             return false;
 
         Post(arm_host::SilenceJoint{ joint });
+        return true;
+    }
+
+    bool SimulatorPresenter::RestartMotor(std::size_t joint)
+    {
+        if (joint >= arm::jointCount || !ViewVirtualMotors(snapshot).rows[joint].restartEnabled)
+            return false;
+
+        Post(arm_host::RestartMotor{ joint });
         return true;
     }
 
@@ -399,6 +410,11 @@ namespace simulator
         {
             status.connection = "No data from the arm";
             status.connectionLevel = ui::theme::StatusLevel::Warning;
+        }
+        else if (!snapshot.targetReady && snapshot.virtualMotors.has_value())
+        {
+            status.connection = StartingVirtualMotors(snapshot);
+            status.connectionLevel = ui::theme::StatusLevel::Neutral;
         }
         else
         {

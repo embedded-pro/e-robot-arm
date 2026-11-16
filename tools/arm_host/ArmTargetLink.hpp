@@ -1,12 +1,16 @@
 #ifndef TOOLS_ARM_HOST_ARM_TARGET_LINK_HPP
 #define TOOLS_ARM_HOST_ARM_TARGET_LINK_HPP
 
+#include "core/arm/ArmConfig.hpp"
 #include "core/joint_bus/interfaces/JointBus.hpp"
 #include "hal/interfaces/Can.hpp"
 #include "tools/arm_host/ArmTarget.hpp"
+#include "tools/arm_host/VirtualMotors.hpp"
 #include "tools/simulated_arm/SimulatedArm.hpp"
 #include <functional>
 #include <memory>
+#include <optional>
+#include <string>
 
 namespace arm_host
 {
@@ -22,9 +26,14 @@ namespace arm_host
         virtual bool Connected() = 0;
         virtual void Poll() = 0;
         virtual simulation::SimulatedArm* Simulation() = 0;
+
+        virtual infra::Duration ConnectTimeout() const;
+        virtual std::optional<std::string> Failure();
+        virtual VirtualMotors* Motors();
+        virtual bool Adopt(const arm::ArmConfig& config);
     };
 
-    using TargetOpener = std::function<std::unique_ptr<ArmTargetLink>(const ArmTarget& target, const arm::JointNodeIds& nodes)>;
+    using TargetOpener = std::function<std::unique_ptr<ArmTargetLink>(const ArmTarget& target, const arm::ArmConfig& config)>;
 
     class SimulatedTargetLink
         : public ArmTargetLink

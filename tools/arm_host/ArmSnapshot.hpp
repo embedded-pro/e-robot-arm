@@ -7,6 +7,7 @@
 #include "infra/timer/Timer.hpp"
 #include "tools/arm_host/ArmEvent.hpp"
 #include "tools/arm_host/ArmTarget.hpp"
+#include "tools/arm_host/VirtualMotors.hpp"
 #include <array>
 #include <cstdint>
 #include <optional>
@@ -42,6 +43,7 @@ namespace arm_host
         std::string profileName{};
         arm::ArmConfig config{};
         std::vector<ArmControllerStatus> armControllers{};
+        std::optional<VirtualMotorsStatus> virtualMotors{};
     };
 
     struct TraceSample

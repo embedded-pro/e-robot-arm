@@ -2,9 +2,9 @@
 title: "Simulator Design"
 type: design
 status: draft
-version: 0.7.0
+version: 0.8.0
 component: "simulator"
-date: 2026-11-12
+date: 2026-11-16
 ---
 
 | Field     | Value            |
@@ -12,9 +12,9 @@ date: 2026-11-12
 | Title     | Simulator Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.7.0            |
+| Version   | 0.8.0            |
 | Component | simulator        |
-| Date      | 2026-11-12       |
+| Date      | 2026-11-16       |
 
 > The e-robot-arm Simulator's components, threads, targets and data flow (phase 8a,
 > [#28](https://github.com/embedded-pro/e-robot-arm/issues/28)). The screen itself — layout, controls, flows,
@@ -81,6 +81,7 @@ They meet in `ArmHost` only:
 |------------------|------------------------------------------------------|------------------------------------------------|-----------------------------------------|
 | Simulated joints | In-process `VirtualCanBus`                           | Six `SimulatedJoint`s on the arm thread        | Default; no hardware, no other process  |
 | Virtual bus      | can-lite `virtual:<bus>`, hosting or joining the hub | Whatever joins: e-foc virtual motors (phase 7) | Virtual motors in other processes       |
+| Virtual arm      | can-lite `virtual:arm`, hosting the hub              | Six e-foc virtual motors the simulator starts  | Motor dynamics without hardware (8d)    |
 | Real arm         | can-lite `socketcan:<if>` or `slcan:<port>`          | The real e-foc nodes                           | Hardware; distinct banner, confirmation |
 
 A target switch builds everything anew; nothing carries over:
@@ -96,6 +97,23 @@ A target is opened for the node ids of the profile in effect, so simulated joint
 A target is ready once its adapter has connected: an slcan or `virtual:` adapter finishes its handshake after it is
 opened, and a frame sent before then is lost. Until then the arm is not built and every command is refused with
 "connecting"; an adapter that has not connected within 2 s fails the target.
+
+**Virtual arm.** The target starts a virtual arm ([virtual-arm.md](virtual-arm.md)) from the profile in effect and
+owns it:
+
+1. It hosts the virtual CAN hub on its port. If the port is taken, another virtual arm or bus is running, and the
+   target fails with that reason rather than join a bus whose nodes it does not own.
+2. It joins the bus as `virtual:arm` and starts the six motors, told to join the hub rather than host it, on a
+   thread of their own, since starting takes seconds. The arm thread keeps polling the hub meanwhile, and a target
+   switch during the start waits for it to end, polling the hub, at most 10 s.
+3. It is ready once its adapter has connected and every motor is up, within 20 s. A motor that does not come up
+   fails the target with the virtual arm's reason.
+4. Closing the target stops every motor. Each run gets its own working directory under the system's temporary
+   directory, which holds the motors' memory and log files.
+
+The engine is the `e-foc-virtual-motor` binary the operator names. Loading a profile on this target restarts only
+the joints whose motor changed and keeps the others running; a profile with other node ids rebuilds the target. Each
+joint's motor process state is in the snapshot (Part F), and one joint can be restarted (Part E).
 
 ### Part D — Simulated joints
 
@@ -115,14 +133,14 @@ A `SimulatedJoint` is an e-foc node on the in-process bus (a `FocMotorCategorySe
 
 `ArmHost` owns the arm thread and, on it, the target and the arm. Its operator-facing surface:
 
-| Operation              | Effect                                                                                                                                                                                                                                                                                                                                                                         |
-|------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `Post(command)`        | One of: bring up, enable, disable, check contracts, select position mode, start, stop, clear faults, align, emergency stop, re-arm, move, abort, inject fault, silence joint. Its result arrives as an event. Bring up, enable, disable, re-arm and move go through the arm's lifecycle ([arm-lifecycle.md](arm-lifecycle.md)), so a move is refused unless the arm is enabled |
-| `SwitchTarget(target)` | Part C; its result arrives as an event                                                                                                                                                                                                                                                                                                                                         |
-| `LoadProfile(profile)` | Rebuilds the arm from the profile on the current target, as a target switch does; refused while the arm is enabling, enabled, moving or disabling, or while a target switch runs. Answered `profileLoaded` or `refused` with the reason ([arm-profile.md](arm-profile.md))                                                                                                     |
-| `Snapshot()`           | A copy of the latest snapshot                                                                                                                                                                                                                                                                                                                                                  |
-| `TakeEvents()`         | Every event since the last call, in order                                                                                                                                                                                                                                                                                                                                      |
-| `TakeTrace()`          | Every trace sample since the last call, in order                                                                                                                                                                                                                                                                                                                               |
+| Operation              | Effect                                                                                                                                                                                                                                                                                                                                                                                        |
+|------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `Post(command)`        | One of: bring up, enable, disable, check contracts, select position mode, start, stop, clear faults, align, emergency stop, re-arm, move, abort, inject fault, silence joint, restart motor. Its result arrives as an event. Bring up, enable, disable, re-arm and move go through the arm's lifecycle ([arm-lifecycle.md](arm-lifecycle.md)), so a move is refused unless the arm is enabled |
+| `SwitchTarget(target)` | Part C; its result arrives as an event                                                                                                                                                                                                                                                                                                                                                        |
+| `LoadProfile(profile)` | Rebuilds the arm from the profile on the current target, as a target switch does; refused while the arm is enabling, enabled, moving or disabling, or while a target switch runs. Answered `profileLoaded` or `refused` with the reason ([arm-profile.md](arm-profile.md))                                                                                                                    |
+| `Snapshot()`           | A copy of the latest snapshot                                                                                                                                                                                                                                                                                                                                                                 |
+| `TakeEvents()`         | Every event since the last call, in order                                                                                                                                                                                                                                                                                                                                                     |
+| `TakeTrace()`          | Every trace sample since the last call, in order                                                                                                                                                                                                                                                                                                                                              |
 
 It is built in layers, each tested on its own:
 
@@ -140,6 +158,11 @@ returned. Check contracts, select mode, start, stop, clear faults and align are 
 `refused` when the joint bus reports it failed, with the reason "replaced by a newer command", "emergency stop" or
 "not delivered to every joint in time". The other commands are answered as soon as they run.
 
+**Restart motor** (virtual arm only) power-cycles one joint's virtual motor with the profile's motor. It is refused
+on any other target ("not a virtual arm"), while the arm is enabling, enabled, moving or disabling ("disable the arm
+first"), and with the virtual arm's own reason ([virtual-arm.md](virtual-arm.md) Part B). It is answered `accepted`
+once the restart has begun; the motor's state in the snapshot follows it from *Starting* to *Up*.
+
 The console runs on `ArmHost` too ([arm-console.md](arm-console.md)): it posts each typed command and waits for its
 answer.
 
@@ -147,7 +170,9 @@ answer.
 
 The snapshot is what the screen shows; events are what the log shows; traces are what the scopes plot.
 
-- **Snapshot** — published once per control period, with a sequence number so the GUI can tell a stale copy.
+- **Snapshot** — published once per control period, with a sequence number so the GUI can tell a stale copy. On
+  the virtual arm it carries each motor's plant and process state (stopped, starting, up, or ended with its exit
+  code) and the working directory, also while the target connects.
 - **Events** — command accepted or refused (with its id, its name and the reason), contracts resolved, joint fault,
   joint silent, tripped (with the joint and the fault that caused it, once per trip), move done, move aborted, target
   ready, target failed, lifecycle state changed; each with the arm-thread time. The snapshot carries the lifecycle
@@ -219,6 +244,7 @@ empty until the arm has been enabled); nothing else in `core/` changes for the s
 | Snapshot        | tripped, moving, loop | bool                                | —                     |                                                         |
 | Snapshot        | profile               | name and arm configuration          | —                     | The profile in effect                                   |
 | Snapshot        | tool pose             | m, rad; singularity flags           | —                     | From the measured joints ([arm-model.md](arm-model.md)) |
+| Snapshot        | virtual motors        | 6 × (plant, process state), folder  | —                     | Virtual arm only                                        |
 | Event queue     | capacity              | events                              | 512                   | Oldest dropped when full; drops counted                 |
 | Trace queue     | capacity              | samples                             | 1024 (10 s at 100 Hz) | Oldest dropped when full; drops counted                 |
 | Simulated joint | τ                     | s                                   | ≥ 0                   | 0 follows exactly; simulator 0.05                       |
@@ -276,6 +302,7 @@ flowchart LR
         AR[arm::Arm] --> C[FocMotorCategoryClient]
         C --> T[Target: in-process bus, virtual: or real adapter]
         T --> SJ[Simulated joints]
+        T --> VA[Virtual arm: six e-foc virtual motors]
     end
     VM -- Post, SwitchTarget --> H[ArmHost]
     H -- snapshot, events, traces --> VM

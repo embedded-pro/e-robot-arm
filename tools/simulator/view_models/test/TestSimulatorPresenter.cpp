@@ -370,3 +370,27 @@ TEST_F(SimulatorPresenterTest, a_loaded_profile_is_requested_and_its_limits_reac
     EXPECT_NEAR(0.5, presenter.MoveForm().Spec().fields[0].number.maximum, 1.0e-6);
     EXPECT_NEAR(-0.5, presenter.MoveForm().Spec().fields[5].number.minimum, 1.0e-6);
 }
+
+TEST_F(SimulatorPresenterTest, shows_the_virtual_arm_starting_and_restarts_a_motor_only_when_allowed)
+{
+    auto snapshot = simulator::test::Compatible();
+    snapshot.target = { arm_host::TargetKind::virtualArm, "virtual:arm", "e-foc-virtual-motor" };
+    snapshot.targetReady = false;
+    snapshot.virtualMotors = arm_host::VirtualMotorsStatus{};
+    snapshot.virtualMotors->motors[0].phase = virtual_arm::MotorPhase::up;
+    presenter.Refresh(snapshot, {});
+
+    EXPECT_EQ("Virtual arm", presenter.Status().target);
+    EXPECT_FALSE(presenter.Status().realArm);
+    EXPECT_EQ("Starting virtual motors: 1 of 6 up", presenter.Status().connection);
+    EXPECT_FALSE(presenter.RestartMotor(0));
+
+    snapshot.targetReady = true;
+    snapshot.sequence = 2;
+    presenter.Refresh(snapshot, {});
+    EXPECT_EQ("Connected", presenter.Status().connection);
+    EXPECT_CALL(arm, Post(Holds(arm_host::RestartMotor{}))).WillOnce(Return(4));
+    EXPECT_TRUE(presenter.RestartMotor(0));
+    EXPECT_EQ("Restart motor requested…", shell.Statuses().back());
+    EXPECT_FALSE(presenter.RestartMotor(6));
+}

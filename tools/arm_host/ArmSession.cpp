@@ -65,7 +65,8 @@ namespace arm_host
         }
     }
 
-    ArmSession::ArmSession(hal::Can& can, const arm::ArmProfile& profile, const ArmTarget& target, ArmSessionSink& sink, simulation::SimulatedArm* simulation)
+    ArmSession::ArmSession(hal::Can& can, const arm::ArmProfile& profile, const ArmTarget& target, ArmSessionSink& sink, simulation::SimulatedArm* simulation,
+        VirtualMotors* virtualMotors)
         : profile(profile)
         , client(can)
         , arm(client.CategoryClient(), profile.config)
@@ -73,6 +74,7 @@ namespace arm_host
         , target(target)
         , sink(sink)
         , simulation(simulation)
+        , virtualMotors(virtualMotors)
         , publishTimer(profile.config.controlPeriod, [this]()
               {
                   Publish();
@@ -94,7 +96,7 @@ namespace arm_host
         else if (Run(command))
             Emit({ .kind = ArmEventKind::accepted, .command = id, .commandName = CommandName(command) });
         else
-            Emit({ .kind = ArmEventKind::refused, .command = id, .commandName = CommandName(command), .reason = RefusalReason(command) });
+            Emit({ .kind = ArmEventKind::refused, .command = id, .commandName = CommandName(command), .reason = std::string{ RefusalReason(command) } });
     }
 
     void ArmSession::Deliver(uint32_t id, const ArmCommand& command)
@@ -105,7 +107,7 @@ namespace arm_host
         issuing.reset();
 
         if (!sent)
-            Emit({ .kind = ArmEventKind::refused, .command = id, .commandName = CommandName(command), .reason = RefusalReason(command) });
+            Emit({ .kind = ArmEventKind::refused, .command = id, .commandName = CommandName(command), .reason = std::string{ RefusalReason(command) } });
         else if (!deliveredAtOnce)
             held.emplace(id, command);
     }
@@ -125,7 +127,7 @@ namespace arm_host
         if (!held.has_value() || JointCommandOf(held->command) != command)
             return;
 
-        Emit({ .kind = ArmEventKind::refused, .command = held->id, .commandName = CommandName(held->command), .reason = FailureReason(failure) });
+        Emit({ .kind = ArmEventKind::refused, .command = held->id, .commandName = CommandName(held->command), .reason = std::string{ FailureReason(failure) } });
         held.reset();
     }
 
@@ -221,6 +223,11 @@ namespace arm_host
                 });
         }
 
+        bool operator()(const RestartMotor& restart) const
+        {
+            return session.RestartVirtualMotor(restart.joint);
+        }
+
         bool operator()(const BringUp&) const
         {
             return session.arm.Lifecycle().BringUp();
@@ -288,8 +295,21 @@ namespace arm_host
         return true;
     }
 
+    bool ArmSession::RestartVirtualMotor(std::size_t joint)
+    {
+        if (virtualMotors == nullptr)
+            motorRefusal = "not a virtual arm";
+        else if (Running())
+            motorRefusal = "disable the arm first";
+        else
+            motorRefusal = virtualMotors->Restart(joint).value_or("");
+        return motorRefusal.empty();
+    }
+
     std::string_view ArmSession::RefusalReason(const ArmCommand& command) const
     {
+        if (std::holds_alternative<RestartMotor>(command))
+            return motorRefusal;
         if (std::holds_alternative<InjectFault>(command) || std::holds_alternative<SilenceJoint>(command))
             return simulation == nullptr ? "not a simulated target" : "no such joint";
         if (const auto id = ArmControllerOf(command); id.has_value())
@@ -365,7 +385,7 @@ namespace arm_host
         const auto misconfiguration = session.arm.Lifecycle().MisconfiguredJoint();
         if (state == arm::ArmState::misconfigured && misconfiguration.has_value())
             session.Emit({ .kind = ArmEventKind::stateChanged,
-                .reason = MisconfigurationText(*misconfiguration),
+                .reason = std::string{ MisconfigurationText(*misconfiguration) },
                 .joint = misconfiguration->joint,
                 .state = state });
         else
@@ -466,6 +486,8 @@ namespace arm_host
             snapshot.armControllers.emplace_back(std::string{ name.data(), name.size() }, controllers.Enabled(id), controllers.Active() == id);
         }
         sample.commanded = snapshot.commanded.value_or(sample.measured);
+        if (virtualMotors != nullptr)
+            snapshot.virtualMotors = virtualMotors->Status();
 
         sink.OnSnapshot(snapshot);
         sink.OnTrace(sample);

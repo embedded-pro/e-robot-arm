@@ -17,6 +17,22 @@ namespace simulator
             label->setContentsMargins(8, 0, 8, 0);
             return label;
         }
+
+        int ChoiceOf(arm_host::TargetKind kind)
+        {
+            switch (kind)
+            {
+                case arm_host::TargetKind::simulated:
+                    return StatusStripBar::simulatedJoints;
+                case arm_host::TargetKind::virtualArm:
+                    return StatusStripBar::virtualArm;
+                case arm_host::TargetKind::virtualBus:
+                    return StatusStripBar::virtualBus;
+                case arm_host::TargetKind::real:
+                    return StatusStripBar::realArm;
+            }
+            return StatusStripBar::simulatedJoints;
+        }
     }
 
     StatusStripBar::StatusStripBar(QWidget* parent)
@@ -34,7 +50,7 @@ namespace simulator
         setFloatable(false);
         toggleViewAction()->setEnabled(false);
 
-        targets->addItems({ "Simulated joints", "Virtual bus…", "Real arm…" });
+        targets->addItems({ "Simulated joints", "Virtual arm…", "Virtual bus…", "Real arm…" });
         targets->setAccessibleName("Target");
         targets->setToolTip("Choose what the arm stack talks to");
 
@@ -71,7 +87,7 @@ namespace simulator
         using ui::backend::qt::ToQt;
 
         const QSignalBlocker blocker{ targets };
-        targets->setCurrentIndex(static_cast<int>(kind));
+        targets->setCurrentIndex(ChoiceOf(kind));
         targets->setEnabled(target.enabled);
         targets->setToolTip(target.enabled ? "Choose what the arm stack talks to" : ToQt(target.reason));
 

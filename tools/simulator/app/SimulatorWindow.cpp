@@ -70,6 +70,7 @@ namespace simulator
         , motorPanel{ new ConfigurationPanel{ this } }
         , motor{ host, motorPanel->Form() }
         , profilePanel{ new ProfilePanel{ this } }
+        , virtualMotorsPanel{ new VirtualMotorsPanel{ this } }
         , logPanel{ new EventLogPanel{ presenter.Log(), this } }
         , emergencyStopKey{ *QCoreApplication::instance(), [this]()
             {
@@ -175,6 +176,7 @@ namespace simulator
         motorPanel->SetState(motor.StateText(), motor.StateLevel());
         motorPanel->SetHint(motor.Hint());
         profilePanel->Update(DescribeProfile(snapshot), profilePath);
+        UpdateVirtualMotors(snapshot);
 
         scope->Add(trace);
         if (std::ranges::any_of(events, [](const arm_host::ArmEvent& event)
@@ -209,6 +211,20 @@ namespace simulator
         const auto joint = node == 0 ? arm_host::noJoint : static_cast<std::size_t>(node - 1);
         presenter.Note(LogLevel::warning, joint, (MeshNodeName(static_cast<std::size_t>(node)) + " mesh not loaded: " + problem).toStdString());
         logPanel->AppendNewest(1);
+    }
+
+    void SimulatorWindow::UpdateVirtualMotors(const arm_host::ArmSnapshot& snapshot)
+    {
+        const auto view = ViewVirtualMotors(snapshot);
+        virtualMotorsPanel->Update(view);
+        if (virtualMotorsShown == view.visible)
+            return;
+
+        virtualMotorsShown = view.visible;
+        virtualMotorsDock->toggleViewAction()->setEnabled(view.visible);
+        virtualMotorsDock->setVisible(view.visible);
+        if (view.visible)
+            virtualMotorsDock->raise();
     }
 
     void SimulatorWindow::UpdateBanner(const StatusStrip& status)
@@ -250,7 +266,10 @@ namespace simulator
         connect(ConfigurationDock("Motor", "motorDock", motorPanel, armDock), &QDockWidget::visibilityChanged, this, showing(motor));
         motorController.SetShown(false);
         motor.SetShown(false);
-        tabifyDockWidget(armDock, Dock("Profile", "profileDock", profilePanel, Qt::RightDockWidgetArea));
+        auto* profileDock = Dock("Profile", "profileDock", profilePanel, Qt::RightDockWidgetArea);
+        tabifyDockWidget(armDock, profileDock);
+        virtualMotorsDock = Dock("Virtual Motors", "virtualMotorsDock", virtualMotorsPanel, Qt::RightDockWidgetArea);
+        tabifyDockWidget(profileDock, virtualMotorsDock);
         armDock->raise();
         Dock("Scope", "scopeDock", scope, Qt::BottomDockWidgetArea);
         Dock("Event Log", "logDock", logPanel, Qt::BottomDockWidgetArea);
@@ -407,6 +426,10 @@ namespace simulator
                 presenter.EmergencyStop();
             });
         connect(strip, &StatusStripBar::targetChosen, this, &SimulatorWindow::ChooseTarget);
+        connect(virtualMotorsPanel, &VirtualMotorsPanel::restartRequested, this, [this](int joint)
+            {
+                presenter.RestartMotor(static_cast<std::size_t>(joint));
+            });
         connect(joints, &JointTable::jointSelected, this, [this](int joint)
             {
                 presenter.SelectJoint(joint);
@@ -438,6 +461,8 @@ namespace simulator
 
         if (choice == StatusStripBar::simulatedJoints)
             presenter.SwitchTarget({ arm_host::TargetKind::simulated, "" });
+        else if (choice == StatusStripBar::virtualArm)
+            ChooseVirtualArm();
         else if (choice == StatusStripBar::virtualBus)
         {
             const auto bus = QInputDialog::getText(this, "Virtual Bus", "Virtual CAN bus:", QLineEdit::Normal, settings.value("virtualBus", "virtual:arm").toString(), &accepted);
@@ -465,6 +490,20 @@ namespace simulator
                 presenter.SwitchTarget({ arm_host::TargetKind::real, adapter.toStdString() });
             }
         }
+    }
+
+    void SimulatorWindow::ChooseVirtualArm()
+    {
+        auto settings = Settings();
+        const auto fromEnvironment = qEnvironmentVariable("E_FOC_VIRTUAL_MOTOR", "e-foc-virtual-motor");
+        bool accepted = false;
+        const auto engine = QInputDialog::getText(this, "Virtual Arm", "e-foc virtual motor binary:", QLineEdit::Normal,
+            settings.value("virtualMotorEngine", fromEnvironment).toString(), &accepted);
+        if (!accepted || engine.isEmpty())
+            return;
+
+        settings.setValue("virtualMotorEngine", engine);
+        presenter.SwitchTarget({ arm_host::TargetKind::virtualArm, "virtual:arm", engine.toStdString() });
     }
 
     void SimulatorWindow::ConfirmRearm(std::string_view prompt)
@@ -575,6 +614,7 @@ namespace simulator
         motorControllerPanel->ApplyTheme();
         motorPanel->ApplyTheme();
         tool->ApplyTheme();
+        virtualMotorsPanel->ApplyTheme();
         ui::backend::qt::StyleStatusLabel(*banner, ui::theme::StatusLevel::Warning);
         Settings().setValue("lightTheme", light);
     }

@@ -5,11 +5,13 @@
 #include "tools/simulator/view_models/EventLog.hpp"
 #include "tools/simulator/view_models/ProfileView.hpp"
 #include "tools/simulator/view_models/ToolReadout.hpp"
+#include "tools/simulator/view_models/VirtualMotorRows.hpp"
 #include "ui/backend/qt/QtFormView.hpp"
 #include "ui/backend/qt/QtPaintedWidget.hpp"
 #include "ui/scope/ScopeCore.hpp"
 #include "ui/theme/Theme.hpp"
 #include <QWidget>
+#include <array>
 #include <span>
 
 class QComboBox;
@@ -88,6 +90,32 @@ namespace simulator
         QTableWidget* table;
         ProfileView shown;
         QString shownPath;
+    };
+
+    class VirtualMotorsPanel
+        : public QWidget
+    {
+        Q_OBJECT
+
+    public:
+        explicit VirtualMotorsPanel(QWidget* parent);
+
+        void Update(const VirtualMotorsView& view);
+        void ApplyTheme();
+
+    signals:
+        void restartRequested(int joint);
+
+    private:
+        void Render();
+
+        QLabel* mark;
+        QTableWidget* table;
+        std::array<QLabel*, arm::jointCount> processes{};
+        std::array<QPushButton*, arm::jointCount> restarts{};
+        QLabel* folder;
+        QLabel* hint;
+        VirtualMotorsView shown;
     };
 
     class ScopePanel

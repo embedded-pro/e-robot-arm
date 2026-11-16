@@ -4,7 +4,7 @@
 # everything here targets the host.
 add_subdirectory(arm_console)
 add_subdirectory(simulated_arm)
-add_subdirectory(arm_host)
 add_subdirectory(virtual_arm)
+add_subdirectory(arm_host)
 
 add_subdirectory(simulator)

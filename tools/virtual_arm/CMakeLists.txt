@@ -12,6 +12,7 @@ target_link_libraries(e_robot_arm.tool.virtual_arm PUBLIC
 target_sources(e_robot_arm.tool.virtual_arm PRIVATE
     ArmCoupling.cpp
     ArmCoupling.hpp
+    MotorReport.hpp
     VirtualArmPlan.cpp
     VirtualArmPlan.hpp
 )

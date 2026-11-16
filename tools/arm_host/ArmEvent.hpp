@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <string>
 #include <string_view>
 
 namespace arm_host
@@ -43,7 +44,7 @@ namespace arm_host
         infra::TimePoint time{};
         uint32_t command{ 0 };
         std::string_view commandName{};
-        std::string_view reason{};
+        std::string reason{};
         std::size_t joint{ noJoint };
         can::FocFaultCode fault{ can::FocFaultCode::none };
         can::ContractCompatibility contracts{ can::ContractCompatibility::unknown };

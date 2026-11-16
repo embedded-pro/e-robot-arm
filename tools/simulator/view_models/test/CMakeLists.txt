@@ -21,4 +21,5 @@ target_sources(e_robot_arm.tool.simulator.view_models_test PRIVATE
     TestProfileView.cpp
     TestSimulatorPresenter.cpp
     TestToolReadout.cpp
+    TestVirtualMotorRows.cpp
 )

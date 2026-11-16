@@ -72,6 +72,8 @@ namespace simulator
         void UseTheme(bool light);
         void ShowAbout();
         void UpdateBanner(const StatusStrip& status);
+        void UpdateVirtualMotors(const arm_host::ArmSnapshot& snapshot);
+        void ChooseVirtualArm();
         void ApplyMeshes(const MeshNames& names, const QString& directory);
         void NoteMesh(int node, const QString& problem);
 
@@ -92,6 +94,9 @@ namespace simulator
         ConfigurationPanel* motorPanel;
         MotorPresenter motor;
         ProfilePanel* profilePanel;
+        VirtualMotorsPanel* virtualMotorsPanel;
+        QDockWidget* virtualMotorsDock{ nullptr };
+        std::optional<bool> virtualMotorsShown;
         QString profilePath;
         MeshNames meshNames{};
         QString meshDirectory;

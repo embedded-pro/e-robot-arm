@@ -8,6 +8,7 @@ target_link_libraries(e_robot_arm.tool.arm_host PUBLIC
     e_robot_arm.arm
     e_robot_arm.arm_profile
     e_robot_arm.tool.simulated_arm
+    e_robot_arm.tool.virtual_arm
     e_foc_protocol.client
     hal.generic
     infra.event
@@ -35,6 +36,7 @@ target_sources(e_robot_arm.tool.arm_host PRIVATE
     DefaultArmConfig.hpp
     ProfileFile.cpp
     ProfileFile.hpp
+    VirtualMotors.hpp
 )
 
 if (TARGET can_lite.drivers.platform)
@@ -50,6 +52,21 @@ if (TARGET can_lite.drivers.platform)
         AdapterTargetLink.cpp
         AdapterTargetLink.hpp
     )
+
+    # The virtual arm starts its motors as processes with POSIX calls: Linux first (virtual-arm.md).
+    if (UNIX)
+        add_library(e_robot_arm.tool.arm_host.virtual_arm STATIC)
+
+        target_link_libraries(e_robot_arm.tool.arm_host.virtual_arm PUBLIC
+            e_robot_arm.tool.arm_host.adapters
+            e_robot_arm.tool.virtual_arm
+        )
+
+        target_sources(e_robot_arm.tool.arm_host.virtual_arm PRIVATE
+            VirtualArmTargetLink.cpp
+            VirtualArmTargetLink.hpp
+        )
+    endif()
 endif()
 
 add_library(e_robot_arm.tool.arm_host.test_doubles INTERFACE)

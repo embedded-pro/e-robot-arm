@@ -293,3 +293,40 @@ TEST_F(VirtualArmTest, refuses_to_restart_a_joint_and_names_the_reason)
         arm.Restart(1, arm::JointMotor{ std::nullopt, arm::motorPresets[0].settings }).value_or(""));
     EXPECT_EQ("no joint 7", arm.Restart(6, std::nullopt).value_or(""));
 }
+
+TEST_F(VirtualArmTest, adopts_a_profile_restarting_only_the_joints_whose_motor_changed)
+{
+    virtual_arm::VirtualArm arm{ config, JoiningOptions() };
+    ASSERT_EQ(std::nullopt, arm.Start());
+    std::ofstream{ directory / "joint1.mem" } << "calibration";
+
+    auto changed = config;
+    changed.motors[4] = anaheim;
+    EXPECT_EQ(std::nullopt, arm.Adopt(changed));
+
+    EXPECT_TRUE(Eventually([&arm]()
+        {
+            return arm.Motors()[4].phase == virtual_arm::MotorPhase::up && arm.Motors()[4].plant == "anaheim";
+        }));
+    EXPECT_EQ("calibration", Text(directory / "joint1.mem"));
+    EXPECT_EQ("teknic", arm.Motors()[0].plant);
+}
+
+TEST_F(VirtualArmTest, refuses_a_profile_it_cannot_adopt_and_names_the_reason)
+{
+    virtual_arm::VirtualArm arm{ config, Options() };
+    EXPECT_EQ("the virtual arm is not up", arm.Adopt(config).value_or(""));
+    ASSERT_EQ(std::nullopt, arm.Start());
+
+    auto renumbered = config;
+    renumbered.nodes[2] = 9;
+    EXPECT_EQ("the profile's node ids changed: restart the whole virtual arm", arm.Adopt(renumbered).value_or(""));
+
+    auto custom = config;
+    custom.motors[3] = arm::JointMotor{ std::nullopt, arm::motorPresets[0].settings };
+    EXPECT_EQ("joint 4 has a custom motor: a virtual motor takes e-foc's plant presets only", arm.Adopt(custom).value_or(""));
+
+    auto hostChanged = config;
+    hostChanged.motors[0] = anaheim;
+    EXPECT_EQ("joint 1's motor hosts the virtual CAN bus: restart the whole virtual arm", arm.Adopt(hostChanged).value_or(""));
+}

@@ -1,5 +1,8 @@
 #include "tools/arm_host/AdapterTargetLink.hpp"
 #include "tools/arm_host/DefaultArmConfig.hpp"
+#ifdef E_ROBOT_ARM_VIRTUAL_ARM
+#include "tools/arm_host/VirtualArmTargetLink.hpp"
+#endif
 #include "tools/simulator/app/SimulatorWindow.hpp"
 #include "ui/backend/qt/QtTheme.hpp"
 #include <QApplication>
@@ -30,7 +33,12 @@ int main(int argc, char* argv[])
 
     const auto profile = arm_host::DefaultArmProfile(arm_host::defaultNodes);
     const auto start = std::chrono::system_clock::now();
-    arm_host::ArmHost host{ profile, arm_host::HostTargetOpener(arm_host::simulatedTimeConstant, 1000000), {} };
+    constexpr uint32_t bitrate{ 1000000 };
+    auto opener = arm_host::HostTargetOpener(arm_host::simulatedTimeConstant, bitrate);
+#ifdef E_ROBOT_ARM_VIRTUAL_ARM
+    opener = arm_host::VirtualArmTargetOpener(std::move(opener), bitrate);
+#endif
+    arm_host::ArmHost host{ profile, opener, {} };
     simulator::SimulatorWindow window{ host, profile.config.positionLimits, start };
     window.show();
 

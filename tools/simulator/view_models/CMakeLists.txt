@@ -37,6 +37,8 @@ target_sources(e_robot_arm.tool.simulator.view_models PRIVATE
     SimulatorPresenter.hpp
     ToolReadout.cpp
     ToolReadout.hpp
+    VirtualMotorRows.cpp
+    VirtualMotorRows.hpp
 )
 
 add_subdirectory(test)
