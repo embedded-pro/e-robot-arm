@@ -39,7 +39,7 @@ namespace arm_host
         std::optional<std::string> Restart(std::size_t joint) override;
 
     private:
-        void StartMotors(const std::stop_token& stop);
+        void StartMotors();
         void Collect();
         bool Started();
 
@@ -52,7 +52,8 @@ namespace arm_host
         std::optional<std::string> failure;
         virtual_arm::VirtualArm virtualArm;
         std::mutex mutex;
-        std::condition_variable_any started;
+        std::condition_variable closing;
+        bool closed{ false };
         std::optional<std::optional<std::string>> startResult;
         std::jthread starter;
     };

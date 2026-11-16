@@ -415,7 +415,7 @@ otherwise:
 │ J2     anaheim   Starting…                              [Restart]  │
 │ J3     teknic    Ended: exit code 3 (see joint3.log)    [Restart]  │
 │ …                                                                  │
-│ Logs and memory: /tmp/e-robot-arm-virtual-arm-4711                 │
+│ Logs and memory: /run/user/1000/e-robot-arm/virtual-arm-4711-1      │
 │ Restart: disable the arm first                                     │
 └────────────────────────────────────────────────────────────────────┘
 ```

@@ -1,4 +1,5 @@
 #include "tools/arm_host/VirtualArmTargetLink.hpp"
+#include <cstdlib>
 #include <format>
 #include <thread>
 #include <unistd.h>
@@ -7,6 +8,25 @@ namespace arm_host
 {
     namespace
     {
+        std::filesystem::path UserFolder()
+        {
+            for (const auto* variable : { "XDG_RUNTIME_DIR", "XDG_CACHE_HOME" })
+                if (const auto* value = std::getenv(variable); value != nullptr && *value != '\0')
+                    return value;
+            if (const auto* home = std::getenv("HOME"); home != nullptr && *home != '\0')
+                return std::filesystem::path{ home } / ".cache";
+            return std::filesystem::current_path();
+        }
+
+        std::filesystem::path PrivateFolder()
+        {
+            const auto folder = UserFolder() / "e-robot-arm";
+            std::error_code ignored;
+            std::filesystem::create_directories(folder, ignored);
+            std::filesystem::permissions(folder, std::filesystem::perms::owner_all, std::filesystem::perm_options::replace, ignored);
+            return folder;
+        }
+
         virtual_arm::VirtualArmOptions OptionsFor(const ArmTarget& target, const std::filesystem::path& folder)
         {
             virtual_arm::VirtualArmOptions options;
@@ -36,9 +56,9 @@ namespace arm_host
             return;
         }
 
-        starter = std::jthread{ [this](const std::stop_token& stop)
+        starter = std::jthread{ [this]()
             {
-                StartMotors(stop);
+                StartMotors();
             } };
     }
 
@@ -50,19 +70,24 @@ namespace arm_host
             std::this_thread::sleep_for(std::chrono::milliseconds{ 1 });
         }
         virtualArm.Stop();
+        {
+            std::scoped_lock lock{ mutex };
+            closed = true;
+        }
+        closing.notify_all();
         starter = std::jthread{};
         if (joined)
             platformAdapter.Adapter().Disconnect();
     }
 
-    void VirtualArmTargetLink::StartMotors(const std::stop_token& stop)
+    void VirtualArmTargetLink::StartMotors()
     {
         auto result = virtualArm.Start();
         std::unique_lock lock{ mutex };
         startResult = std::move(result);
-        started.wait(lock, stop, []()
+        closing.wait(lock, [this]()
             {
-                return false;
+                return closed;
             });
     }
 
@@ -150,7 +175,7 @@ namespace arm_host
             if (target.kind != TargetKind::virtualArm)
                 return other(target, config);
 
-            const auto folder = std::filesystem::temp_directory_path() / std::format("e-robot-arm-virtual-arm-{}-{}", getpid(), ++*runs);
+            const auto folder = PrivateFolder() / std::format("virtual-arm-{}-{}", getpid(), ++*runs);
             return std::make_unique<VirtualArmTargetLink>(target, config, bitrate, folder);
         };
     }

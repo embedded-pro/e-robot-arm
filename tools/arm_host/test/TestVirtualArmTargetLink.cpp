@@ -5,6 +5,7 @@
 #include "gmock/gmock.h"
 #include <chrono>
 #include <thread>
+#include <vector>
 
 namespace
 {
@@ -115,4 +116,27 @@ TEST_F(VirtualArmTargetLinkTest, refuses_to_share_a_hub_port_that_another_bus_ho
     EXPECT_FALSE(link->Connected());
 
     services::loopback::Close(holder);
+}
+
+TEST_F(VirtualArmTargetLinkTest, the_opener_puts_each_run_in_a_folder_only_the_user_can_open_and_leaves_other_targets_to_the_next_opener)
+{
+    setenv("XDG_RUNTIME_DIR", folder.c_str(), 1);
+    std::vector<arm_host::TargetKind> delegated;
+    const auto opener = arm_host::VirtualArmTargetOpener(
+        [&delegated](const arm_host::ArmTarget& target, const arm::ArmConfig&) -> std::unique_ptr<arm_host::ArmTargetLink>
+        {
+            delegated.push_back(target.kind);
+            return nullptr;
+        },
+        1000000);
+
+    EXPECT_EQ(nullptr, opener({ arm_host::TargetKind::simulated, "" }, config));
+    EXPECT_EQ(std::vector{ arm_host::TargetKind::simulated }, delegated);
+
+    const auto link = opener({ arm_host::TargetKind::virtualArm, "virtual:arm", "/nonexistent/e-foc-virtual-motor" }, config);
+    ASSERT_NE(nullptr, link);
+    const auto status = link->Motors()->Status();
+    EXPECT_EQ(folder / "e-robot-arm", std::filesystem::path{ status.folder }.parent_path());
+    EXPECT_EQ(std::filesystem::perms::owner_all, std::filesystem::status(folder / "e-robot-arm").permissions());
+    unsetenv("XDG_RUNTIME_DIR");
 }

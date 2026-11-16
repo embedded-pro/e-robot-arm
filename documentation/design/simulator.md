@@ -108,8 +108,9 @@ owns it:
    switch during the start waits for it to end, polling the hub, at most 10 s.
 3. It is ready once its adapter has connected and every motor is up, within 20 s. A motor that does not come up
    fails the target with the virtual arm's reason.
-4. Closing the target stops every motor. Each run gets its own working directory under the system's temporary
-   directory, which holds the motors' memory and log files.
+4. Closing the target stops every motor. Each run gets its own working directory, which holds the motors' memory
+   and log files, in an `e-robot-arm` folder only the user can open: under `$XDG_RUNTIME_DIR`, else
+   `$XDG_CACHE_HOME`, else `~/.cache`, never in a directory every user can write to.
 
 The engine is the `e-foc-virtual-motor` binary the operator names. Loading a profile on this target restarts only
 the joints whose motor changed and keeps the others running; a profile with other node ids rebuilds the target. Each
