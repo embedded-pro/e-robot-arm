@@ -37,8 +37,6 @@ namespace arm
     private:
         using Law = controllers::PdGravityCompensation<float, jointCount>;
 
-        static Law::GainMatrix Diagonal(const JointPdGains& gains, float PdGain::*gain);
-
         const ArmModel& model;
         Law law;
     };

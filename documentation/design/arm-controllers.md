@@ -67,7 +67,7 @@ Two controllers come first:
 |----------------|-------------------------------------------------------------------------------------------------------|----------|
 | `pass-through` | The reference, unchanged: today's behaviour                                                           | no       |
 | `smoothed`     | Each joint's reference through a first-order low-pass of time constant τ, reset to measured           | yes      |
-| `gravity-pd`   | Joint torques: a PD law on the position error plus the gravity torque, τ = Kp·(q* − q) − Kd·q̇ + G(q) | yes      |
+| `gravity-pd`   | Joint torques: a PD law on the position error plus the gravity torque, τ = Kp·(q* − q) − Kd·q′ + G(q) | yes      |
 
 `smoothed` filters each joint with an exponential moving average whose weight per period T is T / (τ + T)
 (numerical-toolbox `ExponentialMovingAverage`). It trades tracking lag for gentler setpoints; τ is 50 ms in the

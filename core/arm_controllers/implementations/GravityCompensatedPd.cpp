@@ -2,9 +2,30 @@
 
 namespace arm
 {
+    namespace
+    {
+        using GainMatrix = controllers::PdGravityCompensation<float, jointCount>::GainMatrix;
+
+        GainMatrix Stiffness(const JointPdGains& gains)
+        {
+            GainMatrix matrix{};
+            for (std::size_t joint = 0; joint != jointCount; ++joint)
+                matrix.at(joint, joint) = gains[joint].kp;
+            return matrix;
+        }
+
+        GainMatrix Damping(const JointPdGains& gains)
+        {
+            GainMatrix matrix{};
+            for (std::size_t joint = 0; joint != jointCount; ++joint)
+                matrix.at(joint, joint) = gains[joint].kd;
+            return matrix;
+        }
+    }
+
     GravityCompensatedPd::GravityCompensatedPd(const ArmModel& model, const JointPdGains& gains)
         : model(model)
-        , law(model.Dynamics(), Diagonal(gains, &PdGain::kp), Diagonal(gains, &PdGain::kd))
+        , law(model.Dynamics(), Stiffness(gains), Damping(gains))
     {}
 
     bool GravityCompensatedPd::BumplessTransfer() const
@@ -24,13 +45,5 @@ namespace arm
     {
         const auto torques = law.ComputeTorque(model.ModelVector(measured.positions), model.ModelSpeeds(measured.speeds), model.ModelVector(reference));
         return JointSetpoints{ reference, model.ToJointTorques(torques) };
-    }
-
-    GravityCompensatedPd::Law::GainMatrix GravityCompensatedPd::Diagonal(const JointPdGains& gains, float PdGain::*gain)
-    {
-        Law::GainMatrix matrix{};
-        for (std::size_t joint = 0; joint != jointCount; ++joint)
-            matrix.at(joint, joint) = gains[joint].*gain;
-        return matrix;
     }
 }
