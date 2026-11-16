@@ -2,7 +2,7 @@
 title: "Simulator Design"
 type: design
 status: draft
-version: 0.9.0
+version: 0.10.0
 component: "simulator"
 date: 2026-11-16
 ---
@@ -12,7 +12,7 @@ date: 2026-11-16
 | Title     | Simulator Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.9.0            |
+| Version   | 0.10.0           |
 | Component | simulator        |
 | Date      | 2026-11-16       |
 
@@ -121,9 +121,23 @@ joint's motor process state is in the snapshot (Part F), and one joint can be re
 A `SimulatedJoint` is an e-foc node on the in-process bus (a `FocMotorCategoryServer`), moved from
 `integration_tests/support/`. It accepts every command the arm sends, answers telemetry, and:
 
-- **Follows its setpoint through a first-order lag** with time constant τ. The position advances when telemetry is
-  requested, from the time since the last update: `θ ← θ* + (θ − θ*)·e^(−Δt/τ)`, and its speed reads
-  `(θ* − θ)/τ`. τ = 0 follows exactly, which is what the scenarios use. The simulator uses τ = 50 ms.
+- **In position mode, follows its setpoint through a first-order lag** with time constant τ. The position advances
+  when telemetry is requested, from the time since the last update: `θ ← θ* + (θ − θ*)·e^(−Δt/τ)`, and its speed
+  reads `(θ* − θ)/τ`. τ = 0 follows exactly, which is what the scenarios use. The simulator uses τ = 50 ms.
+- **In torque mode, moves with the arm's dynamics.** The simulated arm built from an arm configuration integrates the
+  six joints together from the arm model's mass matrix, Coriolis and gravity terms (robotics-toolbox's chain
+  dynamics over the configuration's geometry and masses): M(q)·q̈ = τ − C(q, q̇)·q̇ − G(q), solved for the driven
+  joints with numerical-toolbox's Cholesky decomposition and stepped by semi-implicit Euler every 1 ms. Each joint's
+  motor adds its rotor's inertia, times the ratio squared, to the joint's diagonal of M, and its viscous friction,
+  times the ratio squared, as a damping torque; both come from the joint's motor in the profile, Teknic's when it
+  names none. Each joint running in torque mode contributes its last torque setpoint, converted to the joint
+  through its transmission (efficiency 1). Every other joint is held as on a brake:
+  its acceleration is zero in the solve, so the driven joints feel its constraint, and it keeps its lag-driven or
+  held position.
+  The integration catches up with the time whenever a joint is asked for telemetry or changes state, never by more
+  than 100 ms at once, and only while a joint is driven: a stalled host never spends a burst of steps catching up. Positions and speeds are
+  reported in motor space through the same transmissions, so the arm reads them as from a real node. A simulated
+  arm built from node ids alone has no dynamics: a torque setpoint is accepted and moves nothing.
 - **Is always aligned:** it acknowledges an align and stays ready.
 - **Treats a quick stop (contract 3.2) as a stop:** it holds where it is and reports *ready*; it never reports
   *stopping*.

@@ -20,10 +20,11 @@ namespace arm
         }
     }
 
-    JointConfiguratorImpl::JointConfiguratorImpl(JointBus& bus, const ArmLifecycle& lifecycle)
+    JointConfiguratorImpl::JointConfiguratorImpl(JointBus& bus, const ArmLifecycle& lifecycle, infra::Duration answerTimeout)
         : JointBusObserver(bus)
         , bus(bus)
         , lifecycle(lifecycle)
+        , answerTimeout(answerTimeout)
     {}
 
     bool JointConfiguratorImpl::Apply(std::size_t newJoint, const ControllerSettings& newSettings)

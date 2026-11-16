@@ -1,5 +1,6 @@
 #include "infra/timer/test_helper/ClockFixture.hpp"
 #include "tools/arm_host/ArmSession.hpp"
+#include "tools/arm_host/ArmTargetLink.hpp"
 #include "tools/arm_host/test/ArmHostTestSupport.hpp"
 #include "gmock/gmock.h"
 #include <algorithm>
@@ -354,4 +355,52 @@ TEST_F(ArmSessionTest, offers_faults_and_silence_on_simulated_joints_and_reports
     EXPECT_EQ("not on simulated joints", sink.Last()->reason);
     Execute(10, arm_host::ResumeJoint{ 6 });
     EXPECT_EQ("no such joint", sink.Last()->reason);
+}
+
+namespace
+{
+    arm::ArmConfig TorqueConfig()
+    {
+        auto config = arm_host::test::Config();
+        config.enableMode = can::FocMotorMode::torque;
+        for (auto& transmission : config.transmissions)
+            transmission.ratio = 50.0f;
+        return config;
+    }
+
+    class TorqueArmSessionTest
+        : public testing::Test
+        , public infra::ClockFixture
+    {
+    public:
+        void Execute(uint32_t id, const arm_host::ArmCommand& command)
+        {
+            session.Execute(id, command);
+            ForwardTime(30ms);
+        }
+
+        arm::ArmConfig config{ TorqueConfig() };
+        arm_host::ArmTarget target{ arm_host::TargetKind::simulated, "" };
+        simulation::SimulatedArm simulatedArm{ arm_host::test::nodes, 50ms, arm_host::PlantFor(config) };
+        arm_host::test::RecordingSink sink;
+        arm_host::ArmSession session{ simulatedArm.ArmSide(), arm_host::test::Profile(config), target, sink, &simulatedArm };
+    };
+}
+
+TEST_F(TorqueArmSessionTest, the_gravity_compensated_pd_moves_the_simulated_arm_onto_its_target)
+{
+    Execute(1, arm_host::BringUp{});
+    Execute(2, arm_host::Enable{});
+    ASSERT_EQ(arm::ArmState::enabled, sink.snapshot.state);
+    EXPECT_EQ(can::FocMotorMode::torque, simulatedArm.Joint(1).Mode());
+
+    const arm::JointPositions goal{ foc::Radians{ 0.3f }, foc::Radians{ -0.5f }, foc::Radians{ 0.4f }, foc::Radians{ 0.2f }, foc::Radians{ 0.3f },
+        foc::Radians{ 0.1f } };
+    Execute(3, arm_host::MoveTo{ goal });
+    ForwardTime(6s);
+
+    ASSERT_NE(nullptr, sink.Find(ArmEventKind::moveDone));
+    EXPECT_FALSE(sink.snapshot.tripped);
+    for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+        EXPECT_NEAR(goal[joint].Value(), sink.snapshot.readings[joint].position.Value(), 0.02f) << "joint " << joint;
 }

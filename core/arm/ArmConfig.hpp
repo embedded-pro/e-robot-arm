@@ -32,6 +32,11 @@ namespace arm
         ArmMass mass{ ReferenceMass() };
         JointPdGains gravityGains{ ReferenceGravityGains() };
     };
+
+    inline infra::Duration SilenceWindow(const ArmConfig& config)
+    {
+        return config.controlPeriod * config.missedRequestsBeforeSilent;
+    }
 }
 
 #endif

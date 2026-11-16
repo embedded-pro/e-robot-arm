@@ -6,6 +6,7 @@
 #include "core/joint_configurator/interfaces/MotorSettings.hpp"
 #include "e-foc-protocol/server/FocMotorCategoryServer.hpp"
 #include "infra/timer/Timer.hpp"
+#include "tools/simulated_arm/JointPlant.hpp"
 #include "tools/simulated_arm/VirtualCanBus.hpp"
 #include <array>
 #include <cstdint>
@@ -35,6 +36,11 @@ namespace simulation
         arm::MotorSettings Motor() const;
         void IgnoreParameter(can::FocParameter parameter);
 
+        void AttachPlant(JointPlant& plant, std::size_t index);
+        std::optional<foc::NewtonMeter> DrivingTorque() const;
+        void Settle();
+        foc::RadiansPerSecond Speed() const;
+
     private:
         class Node
             : private can::FocMotorCategoryServerObserver
@@ -44,6 +50,9 @@ namespace simulation
 
             void Advance();
             void Hold();
+            void Halt();
+            void CatchUp();
+            bool Driven() const;
 
         private:
             friend class SimulatedJoint;
@@ -76,6 +85,9 @@ namespace simulation
             foc::Radians position{ 0.0f };
             foc::RadiansPerSecond speed{ 0.0f };
             foc::Radians target{ 0.0f };
+            foc::NewtonMeter torque{ 0.0f };
+            JointPlant* plant{ nullptr };
+            std::size_t index{ 0 };
             uint32_t emergencyStops{ 0 };
             can::FocAlgorithms algorithms{};
             std::array<float, 256> parameters{};

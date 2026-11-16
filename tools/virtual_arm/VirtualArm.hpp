@@ -72,7 +72,7 @@ namespace virtual_arm
         std::optional<std::string> WaitForHub(Motor& host);
         std::optional<std::string> WaitUntilUp();
         std::optional<std::string> RefusalToCycle(std::size_t joint) const;
-        void RestartMotor(std::size_t joint, std::string_view plant);
+        void RestartMotor(std::size_t joint, const JointPlant& plant);
         void PowerOffMotor(std::size_t joint);
         void Run(const std::stop_token& stop);
         void Poll();
@@ -88,6 +88,7 @@ namespace virtual_arm
         bool AllIntroduced() const;
 
         arm::ArmConfig config;
+        std::array<JointPlant, arm::jointCount> plants{};
         VirtualArmOptions options;
         std::optional<ArmCoupling> coupling;
         std::optional<PlantPortListener> listener;

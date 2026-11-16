@@ -65,9 +65,16 @@ namespace arm
 
         using JointVector = math::Vector<float, 6>;
 
+        using DynamicLinks = std::array<dynamics::JointLink<float>, jointCount>;
+
         const dynamics::EulerLagrangeDynamics<float, jointCount>& Dynamics() const;
+        const DynamicLinks& Links() const;
+        const math::Vector3<float>& Gravity() const;
         JointVector ModelVector(const JointPositions& joints) const;
         JointVector ModelSpeeds(const JointSpeeds& speeds) const;
+        JointVector ModelTorques(const JointTorques& torques) const;
+        JointPositions ToJointPositions(const JointVector& angles) const;
+        JointSpeeds ToJointSpeeds(const JointVector& speeds) const;
         JointTorques ToJointTorques(const JointVector& torques) const;
 
     private:
@@ -89,6 +96,8 @@ namespace arm
         Pose baseInverse;
         float forearm;
         float forearmAngle;
+        DynamicLinks links;
+        math::Vector3<float> gravity;
         dynamics::ChainDynamicsModel<float, jointCount> dynamics;
     };
 }

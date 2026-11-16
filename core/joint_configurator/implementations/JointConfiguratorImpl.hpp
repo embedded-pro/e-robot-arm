@@ -15,9 +15,8 @@ namespace arm
     {
     public:
         static constexpr infra::Duration retryInterval{ std::chrono::milliseconds{ 1 } };
-        static constexpr infra::Duration answerTimeout{ std::chrono::milliseconds{ 100 } };
 
-        JointConfiguratorImpl(JointBus& bus, const ArmLifecycle& lifecycle);
+        JointConfiguratorImpl(JointBus& bus, const ArmLifecycle& lifecycle, infra::Duration answerTimeout);
 
         bool Apply(std::size_t joint, const ControllerSettings& settings) override;
         bool Read(std::size_t joint) override;
@@ -59,6 +58,7 @@ namespace arm
 
         JointBus& bus;
         const ArmLifecycle& lifecycle;
+        infra::Duration answerTimeout;
         std::optional<Operation> operation;
         std::size_t joint{ 0 };
         std::size_t step{ 0 };

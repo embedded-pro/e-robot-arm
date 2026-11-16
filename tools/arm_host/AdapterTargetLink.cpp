@@ -50,7 +50,7 @@ namespace arm_host
         return [simulatedTimeConstant, bitrate](const ArmTarget& target, const arm::ArmConfig& config) -> std::unique_ptr<ArmTargetLink>
         {
             if (target.kind == TargetKind::simulated)
-                return std::make_unique<SimulatedTargetLink>(config.nodes, simulatedTimeConstant);
+                return std::make_unique<SimulatedTargetLink>(config, simulatedTimeConstant);
             if (target.kind == TargetKind::virtualArm)
                 return nullptr;
             return AdapterTargetLink::Open(target, bitrate);

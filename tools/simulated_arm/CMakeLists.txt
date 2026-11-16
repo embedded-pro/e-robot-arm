@@ -5,6 +5,7 @@ target_include_directories(e_robot_arm.tool.simulated_arm PUBLIC
 )
 
 target_link_libraries(e_robot_arm.tool.simulated_arm PUBLIC
+    e_robot_arm.arm_model
     e_robot_arm.joint_bus.interfaces
     e_robot_arm.joint_configurator.interfaces
     e_foc_protocol.server
@@ -14,8 +15,11 @@ target_link_libraries(e_robot_arm.tool.simulated_arm PUBLIC
 )
 
 target_sources(e_robot_arm.tool.simulated_arm PRIVATE
+    ArmPlant.cpp
+    ArmPlant.hpp
     FirstOrderLag.cpp
     FirstOrderLag.hpp
+    JointPlant.hpp
     SimulatedArm.cpp
     SimulatedArm.hpp
     SimulatedJoint.cpp

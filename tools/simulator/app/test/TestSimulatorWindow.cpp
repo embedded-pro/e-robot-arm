@@ -110,7 +110,9 @@ namespace
             ASSERT_TRUE(Eventually([this]()
                 {
                     return window.Presenter().State(simulator::Control::move).enabled;
-                }));
+                }))
+                << window.Presenter().MoveHint() << "\n"
+                << LogText(window.Presenter());
             host.Post(arm_host::MoveTo{ target });
             ASSERT_TRUE(Eventually([this]()
                 {

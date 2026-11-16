@@ -2,6 +2,7 @@
 #include "can-lite/drivers/implementation/LoopbackSocket.hpp"
 #include <algorithm>
 #include <format>
+#include <fstream>
 #include <poll.h>
 
 namespace virtual_arm
@@ -77,7 +78,10 @@ namespace virtual_arm
             return *refusal;
         auto plan = std::get<VirtualArmPlan>(planned);
         for (auto& motor : plan)
+        {
             motor.hostsBus = motor.hostsBus && options.hostBus;
+            plants[motor.joint] = motor.plant;
+        }
 
         std::error_code error;
         std::filesystem::create_directories(options.workDirectory, error);
@@ -144,6 +148,12 @@ namespace virtual_arm
     {
         auto& motor = motors[start.joint];
         motor.start = start;
+        std::ofstream description{ options.workDirectory / start.plantFile };
+        description << start.plant.description;
+        description.close();
+        if (!description)
+            return std::format("cannot write {}", (options.workDirectory / start.plantFile).string());
+
         const auto log = std::filesystem::absolute(options.workDirectory / std::format("joint{}.log", start.joint + 1));
         if (!motor.process.Start(options.engine, EngineArguments(start, options.bus, *listener->Port(), options.hubPort), options.workDirectory, log))
             return std::format("cannot start {}", options.engine.string());
@@ -249,11 +259,9 @@ namespace virtual_arm
         if (auto refusal = RefusalToCycle(joint); refusal.has_value())
             return refusal;
 
-        auto plant = PlantOf(motor);
-        if (!plant.has_value())
-            return std::format("joint {} has a custom motor: a virtual motor takes e-foc's plant presets only", joint + 1);
-
-        Post([this, joint, plant = std::move(*plant)]()
+        auto plant = PlantOf(motor, LinkInertias(config)[joint]);
+        plants[joint] = plant;
+        Post([this, joint, plant = std::move(plant)]()
             {
                 RestartMotor(joint, plant);
             });
@@ -279,21 +287,22 @@ namespace virtual_arm
         if (newConfig.nodes != config.nodes)
             return std::string{ "the profile's node ids changed: restart the whole virtual arm" };
 
-        const auto running = Motors();
-        std::array<std::optional<std::string>, arm::jointCount> changed{};
+        const auto inertias = LinkInertias(newConfig);
+        std::array<std::optional<JointPlant>, arm::jointCount> changed{};
         for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
         {
-            auto plant = PlantOf(newConfig.motors[joint]);
-            if (!plant.has_value())
-                return std::format("joint {} has a custom motor: a virtual motor takes e-foc's plant presets only", joint + 1);
-            if (*plant == running[joint].plant)
+            auto plant = PlantOf(newConfig.motors[joint], inertias[joint]);
+            if (plant == plants[joint])
                 continue;
             if (motors[joint].start.hostsBus)
                 return std::format("joint {}'s motor hosts the virtual CAN bus: restart the whole virtual arm", joint + 1);
-            changed[joint] = std::move(*plant);
+            changed[joint] = std::move(plant);
         }
 
         config = newConfig;
+        for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+            if (changed[joint].has_value())
+                plants[joint] = *changed[joint];
         Post([this, newConfig, changed]()
             {
                 coupling.emplace(newConfig);
@@ -315,7 +324,7 @@ namespace virtual_arm
         return std::nullopt;
     }
 
-    void VirtualArm::RestartMotor(std::size_t joint, std::string_view plant)
+    void VirtualArm::RestartMotor(std::size_t joint, const JointPlant& plant)
     {
         PowerOffMotor(joint);
 
@@ -472,8 +481,8 @@ namespace virtual_arm
             const bool joined = motor.socket.has_value() && motor.connection.Introduction().has_value() && motor.connection.LastStatus().has_value();
             report.phase = PhaseOf(motor.process, joined);
             report.exitCode = report.phase == MotorPhase::ended ? motor.process.Ended() : std::nullopt;
-            if (report.plant != motor.start.plant)
-                report.plant = motor.start.plant;
+            if (report.plant != motor.start.plant.name)
+                report.plant = motor.start.plant.name;
         }
 
         if (!up && AllIntroduced())

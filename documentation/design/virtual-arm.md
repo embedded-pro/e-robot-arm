@@ -2,7 +2,7 @@
 title: "Virtual Arm Design"
 type: design
 status: draft
-version: 0.7.0
+version: 0.9.0
 component: "virtual-arm"
 date: 2026-11-16
 ---
@@ -12,7 +12,7 @@ date: 2026-11-16
 | Title     | Virtual Arm Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.7.0              |
+| Version   | 0.9.0              |
 | Component | virtual-arm        |
 | Date      | 2026-11-16         |
 
@@ -119,14 +119,19 @@ keeps the thread that started it waiting until the target closes.
 
 ### Part B — Motor per joint
 
-A virtual motor's motor is its plant, fixed when it starts (`virtual-motor.md` Part E). The profile's motor per
-joint ([arm-profile.md](arm-profile.md)) chooses it:
+A virtual motor's motor is its plant, fixed when it starts (`virtual-motor.md` Part E). The virtual arm writes each
+joint's plant as an e-foc text plant description (`virtual-motor.md` Part A), `jointN.plant` in its folder, and
+starts the motor with it. The profile's motor per joint ([arm-profile.md](arm-profile.md)) chooses the description:
 
-| Profile motor                           | Plant                                                          |
-|-----------------------------------------|----------------------------------------------------------------|
-| None                                    | `teknic`, e-foc's nominal motor                                |
-| A reference motor (`teknic`, `anaheim`) | The e-foc plant preset of the same name                        |
-| Custom values                           | Refused: e-foc reads custom plants only in its own binary form |
+| Profile motor                           | Plant                                                                   | Shown as |
+|-----------------------------------------|-------------------------------------------------------------------------|----------|
+| None                                    | `teknic`, e-foc's nominal motor                                         | `teknic` |
+| A reference motor (`teknic`, `anaheim`) | The e-foc preset of the same name, with every value the profile changed | its name |
+| Custom values                           | The `teknic` preset with every value that differs from it               | `custom` |
+
+The values a description carries are the motor model's: resistance, inductance, flux linkage, pole pairs, rotor
+inertia, viscous and Coulomb friction, and the peak current as the most the motor supports. Every description also
+carries the joint's links as load inertia (Part C).
 
 Changing a joint's motor in the profile and restarting that joint is enough: the virtual arm stops the motor, and
 starts it again with the new plant and a fresh calibrated memory. Restarting it with the same plant keeps its memory
@@ -135,14 +140,12 @@ six joints' states. A restart is refused, with the reason, when:
 
 - the virtual arm is not up;
 - the joint's motor hosts the bus: its hub would close under the other five, so the whole virtual arm restarts
-  instead;
-- the new motor has custom values.
+  instead.
 
 A new profile with the same node ids is adopted while the virtual arm runs: the coupling takes the new geometry,
-mass and transmissions, and only the joints whose motor changed restart, under the same refusals. A profile with
-other node ids needs the whole virtual arm restarted.
-
-Custom values wait for e-foc to read a plant description as text (open question 1).
+mass and transmissions, and only the joints whose plant description changed restart, under the same refusals; a
+new mass or geometry changes the load inertia and so restarts the joints it reaches. A profile with other node ids
+needs the whole virtual arm restarted.
 
 ### Part C — Coupling to the arm's dynamics
 
@@ -174,14 +177,16 @@ sequenceDiagram
     end
 ```
 
+**The links' inertia.** Each motor's plant carries, as load inertia, its joint's diagonal entry of the arm's mass
+matrix at the home position, reflected through the gear: M(0)ᵢᵢ / ratio². A motor so accelerates the links it
+drives as well as its own rotor. Feeding the inertia through measured accelerations instead would close an
+algebraic loop one window late.
+
 **What the coupling captures, and what it leaves out.** Gravity, the full load of the links and the payload on
-every joint, and the centrifugal and Coriolis torques between joints, all from the measured state of all six.
-It leaves out the links' inertia: a motor accelerates only its own rotor, so a joint driven hard accelerates
-faster than the real arm would and the coupling between one joint's acceleration and another's torque is absent.
-Feeding the inertia through measured accelerations would close an algebraic loop one window late; the faithful
-way is to add each link's reflected inertia to its motor's plant, which needs custom plants (open question 2).
-The torque reaches a motor at most 1 ms plus one window late; at the arm's speeds that lag is below what the
-scenarios measure.
+every joint, and the centrifugal and Coriolis torques between joints, all from the measured state of all six; the
+links' inertia through the plants, as above. It leaves out how that inertia changes as the arm moves away from
+home, and the off-diagonal terms: one joint's acceleration puts no torque on another. The torque reaches a motor at
+most 1 ms plus one window late; at the arm's speeds that lag is below what the scenarios measure.
 
 ### Part D — Faults on demand
 
@@ -229,8 +234,11 @@ and Stream to it) from `virtual-motor.md` Part F, and refuses a motor that does 
 
 `@virtual` scenarios run the arm on the virtual arm in real time, so they have a binary of their own,
 `e_robot_arm.integration_tests.virtual` (`integration_tests/virtual/`), that ctest does not run. Each scenario starts
-the virtual arm from `integration_tests/virtual/virtual-arm.json`, the reference arm geared 50:1 and allowed ten missed
-telemetry periods, since a desktop or CI host can stall for more than three. Its motors are the Teknic preset with the
+the virtual arm from `integration_tests/virtual/virtual-arm.json`, the reference arm geared 50:1 that allows fifty missed
+telemetry periods and waits fifty periods for an acknowledgement (500 ms each). Six motors paced on the wall clock share
+the host's cores: a CI runner has descheduled one for a hundred milliseconds, and its pacer drops the time it missed, so
+the arm saw ten requests go unanswered and called a live motor silent, or gave up on an acknowledgement after three
+periods. A node on its own microcontroller does not stall, so a real arm keeps short windows. Its motors are the Teknic preset with the
 drive's following-error supervision on: a window of 3 rad on the motor's side for 0.1 s. It then brings the arm up through the
 arm host on `virtual:arm` as the console does: contract check, align, bring-up and enable. The motors start
 calibrated but not aligned.
@@ -278,7 +286,7 @@ drive one (open question 3).
 | Virtual arm | bus         | name        | letters, digits, `-`, `_` | `arm` by default                                   |
 | Virtual arm | plant port  | TCP port    | loopback                  | Chosen by the system unless given                  |
 | Joint       | node        | integer     | 1–256                     | From the profile; the motor's board ID is node − 1 |
-| Joint       | plant       | preset name | `teknic`, `anaheim`       | From the profile's motor (Part B)                  |
+| Joint       | plant       | text file   | `jointN.plant`            | From the profile's motor and mass (Parts B, C)     |
 | Coupling    | period      | duration    | 1 ms                      | Torques computed from the latest windows           |
 | Coupling    | joint state | rad, rad/s  | unwrapped                 | From each motor's true rotor angle and speed       |
 | Collision   | torque      | N·m         | finite                    | Joint-side; added to the coupling until cleared    |
@@ -307,8 +315,8 @@ stateDiagram-v2
 
 | Constraint | Value / Description                                                                                                                                                                                                                                                                    |
 |------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Coupling   | Gravity, payload and speed-dependent terms; not the links' inertia (Part C)                                                                                                                                                                                                            |
-| Motors     | e-foc's plant presets only until e-foc reads text plant descriptions                                                                                                                                                                                                                   |
+| Coupling   | Gravity, payload and speed-dependent terms; the links' inertia as each motor's load at the home position (Part C)                                                                                                                                                                      |
+| Motors     | The motor model's values; e-foc's other plant values (encoder, noise, supply limits) are the preset's                                                                                                                                                                                  |
 | Time       | Real time: virtual motors run on the wall clock                                                                                                                                                                                                                                        |
 | Platform   | Linux first, as CI; Windows when e-foc's Windows archive is wired the same way                                                                                                                                                                                                         |
 | Network    | Loopback only                                                                                                                                                                                                                                                                          |
@@ -320,7 +328,7 @@ stateDiagram-v2
 
 | # | Question                         | Options                                                                     | Status |
 |---|----------------------------------|-----------------------------------------------------------------------------|--------|
-| 1 | Custom motors on a virtual joint | e-foc reads a text plant description; e-robot-arm writes e-foc's binary one | open   |
-| 2 | The links' inertia               | Reflected inertia added to each plant (needs 1); measured accelerations     | open   |
+| 1 | Custom motors on a virtual joint | Decided: e-foc reads a text plant description                               | closed |
+| 2 | The links' inertia               | Decided: reflected inertia at home added to each plant                      | closed |
 | 3 | A start-up through calibration   | The lifecycle drives calibration; start factory-fresh and calibrate by hand | open   |
 | 4 | Where the plant-port codec lives | In e-robot-arm (chosen for now); a library e-foc publishes                  | open   |
