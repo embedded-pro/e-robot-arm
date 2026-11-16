@@ -2,7 +2,7 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.17.0
+version: 0.18.0
 component: "tool-simulator"
 date: 2026-11-16
 ---
@@ -12,7 +12,7 @@ date: 2026-11-16
 | Title     | Simulator Screen Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.17.0                  |
+| Version   | 0.18.0                  |
 | Component | tool-simulator          |
 | Date      | 2026-11-16              |
 
@@ -151,7 +151,8 @@ the joint, the log records it, and the scope triggers. Clear Faults, then Re-arm
 source. Re-arm returns the arm to Waiting for calibration, then (configuring the joints again) Ready; Enable starts it
 again.
 
-**Inject a failure** (simulated target only). **Simulation → Inject Fault → Joint N** or **Silence Joint N**.
+**Inject a failure** (simulated joints and virtual arm only). The Disturbances dock (Part M), or **Simulation →
+Inject Fault → Joint N** and **Silence Joint N**.
 
 **Change a virtual joint's motor.** Edit the joint's motor in the profile file and open it (Part I): on the virtual
 arm only the joints whose motor changed restart, and the Virtual Motors dock shows them go from Starting to Up
@@ -428,6 +429,41 @@ otherwise:
   the virtual arm, the arm is not enabling, enabled, moving or disabling, and that motor is not starting. The
   reasons shown are "Disable the arm first" and "Starting". The arm sees the joint go silent and come back; Bring Up
   again afterwards.
+
+### Part M — Disturbances dock (phase 8d)
+
+A **Disturbances** dock, tabbed with the Profile dock, injects failures into a simulation. It is shown on the
+simulated joints and the virtual arm and hidden on a virtual bus and on the real arm, where the arm host refuses every
+disturbance ("not a simulation"), so no disturbance control ever sits on a screen that drives hardware.
+
+```text
+┌ Disturbances ───────────────────────────────── Simulation only ┐
+│ Joint            [J2 ▾]                                        │
+│ Collision torque [  30.00] N·m                                 │
+│ [Inject Fault] [Silence] [Resume] [Apply Torque] [Clear Torque] │
+│ [Power Off]                                                    │
+│ Active: J2 silent · J3 30.00 N·m                               │
+│ Inject Fault: not on the virtual arm                           │
+└────────────────────────────────────────────────────────────────┘
+```
+
+| Action       | Simulated joints                         | Virtual arm                                                 | Enabled when (otherwise the reason)                |
+|--------------|------------------------------------------|-------------------------------------------------------------|----------------------------------------------------|
+| Inject Fault | Over-current fault in the next telemetry | — "not on the virtual arm"                                  | Offered on the target                              |
+| Silence      | The joint stops answering                | The motor's plant port pauses; the node stops answering     | Offered, the joint not silent ("J N is silent")    |
+| Resume       | The joint answers again                  | The plant port resumes                                      | The joint silent ("J N is answering")              |
+| Apply Torque | — "not on simulated joints"              | Joint-side torque added to the coupling, held until cleared | Offered, the value finite and within ±200 N·m      |
+| Clear Torque | —                                        | Torque back to 0                                            | A torque applied on the joint ("No torque on J N") |
+| Power Off    | —                                        | The motor's process ends; Restart (Part L) brings it back   | Offered, the motor up ("J N's motor is not up")    |
+
+- **Simulation only** sits in the title row in the `Warning` colour, as in the Virtual Motors dock.
+- **Active** lists what the target reports as applied, from the snapshot, never from the last click: silent joints
+  and torques per joint, "Active: —" when nothing is. A disturbance shows "requested…" in the status bar until the
+  answer arrives, like every command.
+- The torque field has keyboard tracking off; changing it never applies a torque, only **Apply Torque** does.
+- A disturbance is allowed whatever the arm's state: tripping the arm is what it is for.
+- **Simulation → Inject Fault** and **Silence Joint** stay as keyboard paths; they are enabled on the targets that
+  offer them.
 
 ---
 

@@ -216,7 +216,7 @@ namespace simulator
 
     bool SimulatorPresenter::InjectFault(std::size_t joint)
     {
-        if (snapshot.target.kind != arm_host::TargetKind::simulated || joint >= arm::jointCount)
+        if (!snapshot.disturbances.has_value() || !snapshot.disturbances->injectFault || joint >= arm::jointCount)
             return false;
 
         Post(arm_host::InjectFault{ joint, can::FocFaultCode::overCurrent });
@@ -225,7 +225,7 @@ namespace simulator
 
     bool SimulatorPresenter::SilenceJoint(std::size_t joint)
     {
-        if (snapshot.target.kind != arm_host::TargetKind::simulated || joint >= arm::jointCount)
+        if (!snapshot.disturbances.has_value() || joint >= arm::jointCount)
             return false;
 
         Post(arm_host::SilenceJoint{ joint });
@@ -239,6 +239,11 @@ namespace simulator
 
         Post(arm_host::RestartMotor{ joint });
         return true;
+    }
+
+    void SimulatorPresenter::Disturb(const arm_host::ArmCommand& command)
+    {
+        Post(command);
     }
 
     bool SimulatorPresenter::SelectJoint(int joint)

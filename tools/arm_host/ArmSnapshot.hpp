@@ -23,6 +23,15 @@ namespace arm_host
         bool active{ false };
     };
 
+    struct Disturbances
+    {
+        bool injectFault{ false };
+        bool collision{ false };
+        bool powerOff{ false };
+        std::array<bool, arm::jointCount> silent{};
+        arm::JointTorques torque{};
+    };
+
     struct ArmSnapshot
     {
         uint64_t sequence{ 0 };
@@ -44,6 +53,7 @@ namespace arm_host
         arm::ArmConfig config{};
         std::vector<ArmControllerStatus> armControllers{};
         std::optional<VirtualMotorsStatus> virtualMotors{};
+        std::optional<Disturbances> disturbances{};
     };
 
     struct TraceSample

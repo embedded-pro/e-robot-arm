@@ -1,4 +1,5 @@
 #include "tools/arm_host/ArmSession.hpp"
+#include <cmath>
 
 namespace arm_host
 {
@@ -25,6 +26,15 @@ namespace arm_host
             if (const auto* select = std::get_if<SelectArmController>(&command))
                 return select->id;
             return std::nullopt;
+        }
+
+        constexpr float maximumCollisionTorque{ 200.0f };
+
+        bool TargetCommand(const ArmCommand& command)
+        {
+            return std::holds_alternative<InjectFault>(command) || std::holds_alternative<SilenceJoint>(command) ||
+                   std::holds_alternative<ResumeJoint>(command) || std::holds_alternative<CollideJoint>(command) ||
+                   std::holds_alternative<PowerOffMotor>(command) || std::holds_alternative<RestartMotor>(command);
         }
 
         bool LifecycleCommand(const ArmCommand& command)
@@ -209,18 +219,27 @@ namespace arm_host
 
         bool operator()(const InjectFault& inject) const
         {
-            return session.Simulate(inject.joint, [&inject](simulation::SimulatedJoint& joint)
-                {
-                    joint.Fault(inject.fault);
-                });
+            return session.InjectFaultInto(inject);
         }
 
         bool operator()(const SilenceJoint& silence) const
         {
-            return session.Simulate(silence.joint, [](simulation::SimulatedJoint& joint)
-                {
-                    joint.Silence();
-                });
+            return session.SetSilent(silence.joint, true);
+        }
+
+        bool operator()(const ResumeJoint& resume) const
+        {
+            return session.SetSilent(resume.joint, false);
+        }
+
+        bool operator()(const CollideJoint& collide) const
+        {
+            return session.Collide(collide);
+        }
+
+        bool operator()(const PowerOffMotor& powerOff) const
+        {
+            return session.PowerOff(powerOff.joint);
         }
 
         bool operator()(const RestartMotor& restart) const
@@ -286,32 +305,76 @@ namespace arm_host
         return std::visit(Runner{ *this }, command);
     }
 
-    bool ArmSession::Simulate(std::size_t joint, const infra::Function<void(simulation::SimulatedJoint&)>& action)
+    bool ArmSession::Refuse(std::string_view reason)
     {
-        if (simulation == nullptr || joint >= arm::jointCount)
-            return false;
+        refusal = reason;
+        return false;
+    }
 
-        action(simulation->Joint(joint));
+    bool ArmSession::InjectFaultInto(const InjectFault& inject)
+    {
+        if (simulation == nullptr)
+            return Refuse(virtualMotors != nullptr ? "not on the virtual arm" : "not a simulation");
+        if (inject.joint >= arm::jointCount)
+            return Refuse("no such joint");
+
+        simulation->Joint(inject.joint).Fault(inject.fault);
         return true;
+    }
+
+    bool ArmSession::SetSilent(std::size_t joint, bool silent)
+    {
+        if (simulation == nullptr && virtualMotors == nullptr)
+            return Refuse("not a simulation");
+        if (joint >= arm::jointCount)
+            return Refuse("no such joint");
+
+        if (virtualMotors != nullptr)
+            virtualMotors->Silence(joint, silent);
+        else if (silent)
+            simulation->Joint(joint).Silence();
+        else
+            simulation->Joint(joint).Resume();
+        return true;
+    }
+
+    bool ArmSession::Collide(const CollideJoint& collide)
+    {
+        if (virtualMotors == nullptr)
+            return Refuse(simulation != nullptr ? "not on simulated joints" : "not a simulation");
+        if (collide.joint >= arm::jointCount)
+            return Refuse("no such joint");
+        if (!(std::abs(collide.torque.Value()) <= maximumCollisionTorque))
+            return Refuse("torque outside ±200 N·m");
+
+        virtualMotors->Collide(collide.joint, collide.torque);
+        return true;
+    }
+
+    bool ArmSession::PowerOff(std::size_t joint)
+    {
+        if (virtualMotors == nullptr)
+            return Refuse(simulation != nullptr ? "not on simulated joints" : "not a simulation");
+
+        refusal = virtualMotors->PowerOff(joint).value_or("");
+        return refusal.empty();
     }
 
     bool ArmSession::RestartVirtualMotor(std::size_t joint)
     {
         if (virtualMotors == nullptr)
-            motorRefusal = "not a virtual arm";
-        else if (Running())
-            motorRefusal = "disable the arm first";
-        else
-            motorRefusal = virtualMotors->Restart(joint).value_or("");
-        return motorRefusal.empty();
+            return Refuse("not a virtual arm");
+        if (Running())
+            return Refuse("disable the arm first");
+
+        refusal = virtualMotors->Restart(joint).value_or("");
+        return refusal.empty();
     }
 
     std::string_view ArmSession::RefusalReason(const ArmCommand& command) const
     {
-        if (std::holds_alternative<RestartMotor>(command))
-            return motorRefusal;
-        if (std::holds_alternative<InjectFault>(command) || std::holds_alternative<SilenceJoint>(command))
-            return simulation == nullptr ? "not a simulated target" : "no such joint";
+        if (TargetCommand(command))
+            return refusal;
         if (const auto id = ArmControllerOf(command); id.has_value())
             return ArmControllerRefusal(*id);
         if (std::holds_alternative<Rearm>(command))
@@ -448,6 +511,23 @@ namespace arm_host
         sink.OnEvent(event);
     }
 
+    void ArmSession::PublishDisturbances(ArmSnapshot& snapshot) const
+    {
+        if (simulation != nullptr)
+        {
+            Disturbances disturbances{ .injectFault = true };
+            for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+                disturbances.silent[joint] = simulation->Joint(joint).Silent();
+            snapshot.disturbances = disturbances;
+        }
+        else if (virtualMotors != nullptr)
+        {
+            snapshot.virtualMotors = virtualMotors->Status();
+            snapshot.disturbances =
+                Disturbances{ .collision = true, .powerOff = true, .silent = snapshot.virtualMotors->silenced, .torque = snapshot.virtualMotors->torques };
+        }
+    }
+
     void ArmSession::Publish()
     {
         const auto& safety = arm.Safety();
@@ -486,8 +566,7 @@ namespace arm_host
             snapshot.armControllers.emplace_back(std::string{ name.data(), name.size() }, controllers.Enabled(id), controllers.Active() == id);
         }
         sample.commanded = snapshot.commanded.value_or(sample.measured);
-        if (virtualMotors != nullptr)
-            snapshot.virtualMotors = virtualMotors->Status();
+        PublishDisturbances(snapshot);
 
         sink.OnSnapshot(snapshot);
         sink.OnTrace(sample);

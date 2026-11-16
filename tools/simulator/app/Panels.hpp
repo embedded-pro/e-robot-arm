@@ -54,6 +54,22 @@ namespace simulator
         ui::theme::StatusLevel level{ ui::theme::StatusLevel::Neutral };
     };
 
+    class DisturbancesPanel
+        : public FormPanel
+    {
+        Q_OBJECT
+
+    public:
+        explicit DisturbancesPanel(QWidget* parent);
+
+        void SetActive(const std::string& text);
+        void ApplyTheme();
+
+    private:
+        QLabel* mark;
+        QLabel* active;
+    };
+
     class ToolPanel
         : public QWidget
     {

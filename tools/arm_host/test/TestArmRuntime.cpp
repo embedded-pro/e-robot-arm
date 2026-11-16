@@ -24,6 +24,11 @@ namespace
             return connected;
         }
 
+        simulation::SimulatedArm* Simulation() override
+        {
+            return nullptr;
+        }
+
     private:
         const bool& connected;
     };
@@ -40,6 +45,11 @@ namespace
         bool Connected() override
         {
             return up;
+        }
+
+        simulation::SimulatedArm* Simulation() override
+        {
+            return nullptr;
         }
 
         infra::Duration ConnectTimeout() const override
@@ -74,6 +84,24 @@ namespace
             return restartRefusal;
         }
 
+        void Silence(std::size_t joint, bool silent) override
+        {
+            silenced.emplace_back(joint, silent);
+            status.silenced[joint] = silent;
+        }
+
+        void Collide(std::size_t joint, foc::NewtonMeter torque) override
+        {
+            collided.emplace_back(joint, torque.Value());
+            status.torques[joint] = torque;
+        }
+
+        std::optional<std::string> PowerOff(std::size_t joint) override
+        {
+            poweredOff.push_back(joint);
+            return restartRefusal;
+        }
+
         bool up{ false };
         bool adopts{ true };
         std::optional<std::string> failure;
@@ -81,6 +109,9 @@ namespace
         arm_host::VirtualMotorsStatus status{ {}, "/tmp/virtual-arm" };
         std::vector<arm::JointNodeIds> adopted;
         std::vector<std::size_t> restarted;
+        std::vector<std::pair<std::size_t, bool>> silenced;
+        std::vector<std::pair<std::size_t, float>> collided;
+        std::vector<std::size_t> poweredOff;
     };
 
     class ArmRuntimeTest
@@ -384,4 +415,50 @@ TEST_F(ArmRuntimeTest, a_motor_restart_is_refused_on_any_other_target)
     EXPECT_EQ(ArmEventKind::refused, sink.Last()->kind);
     EXPECT_EQ("not a virtual arm", sink.Last()->reason);
     EXPECT_FALSE(sink.snapshot.virtualMotors.has_value());
+}
+
+TEST_F(ArmRuntimeTest, disturbs_the_virtual_arm_and_reports_what_is_applied)
+{
+    runtime.emplace(arm_host::test::Profile(), Opener(), sink, virtualArmTarget);
+    virtualArm->up = true;
+    ForwardTime(2ms);
+
+    Execute(5, arm_host::SilenceJoint{ 2 });
+    Execute(6, arm_host::CollideJoint{ 1, foc::NewtonMeter{ 30.0f } });
+    Execute(7, arm_host::PowerOffMotor{ 4 });
+    EXPECT_EQ(ArmEventKind::accepted, sink.Last()->kind);
+    EXPECT_EQ("power off motor", sink.Last()->commandName);
+
+    EXPECT_EQ((std::vector<std::pair<std::size_t, bool>>{ { 2, true } }), virtualArm->silenced);
+    EXPECT_EQ((std::vector<std::pair<std::size_t, float>>{ { 1, 30.0f } }), virtualArm->collided);
+    EXPECT_EQ(std::vector<std::size_t>{ 4 }, virtualArm->poweredOff);
+    ASSERT_TRUE(sink.snapshot.disturbances.has_value());
+    EXPECT_FALSE(sink.snapshot.disturbances->injectFault);
+    EXPECT_TRUE(sink.snapshot.disturbances->collision);
+    EXPECT_TRUE(sink.snapshot.disturbances->powerOff);
+    EXPECT_TRUE(sink.snapshot.disturbances->silent[2]);
+    EXPECT_FLOAT_EQ(30.0f, sink.snapshot.disturbances->torque[1].Value());
+
+    Execute(8, arm_host::InjectFault{ 0, can::FocFaultCode::overCurrent });
+    EXPECT_EQ("not on the virtual arm", sink.Last()->reason);
+    Execute(9, arm_host::CollideJoint{ 1, foc::NewtonMeter{ 250.0f } });
+    EXPECT_EQ("torque outside ±200 N·m", sink.Last()->reason);
+    virtualArm->restartRefusal = "the virtual arm is not up";
+    Execute(10, arm_host::PowerOffMotor{ 4 });
+    EXPECT_EQ("the virtual arm is not up", sink.Last()->reason);
+}
+
+TEST_F(ArmRuntimeTest, offers_no_disturbance_on_a_bus_that_is_not_a_simulation)
+{
+    runtime.emplace(arm_host::test::Profile(), Opener(), sink, virtualBus);
+    ForwardTime(2ms);
+
+    EXPECT_FALSE(sink.snapshot.disturbances.has_value());
+    for (const arm_host::ArmCommand& command : { arm_host::ArmCommand{ arm_host::InjectFault{ 0, can::FocFaultCode::overCurrent } },
+             arm_host::ArmCommand{ arm_host::SilenceJoint{ 0 } }, arm_host::ArmCommand{ arm_host::ResumeJoint{ 0 } },
+             arm_host::ArmCommand{ arm_host::CollideJoint{ 0, foc::NewtonMeter{ 1.0f } } }, arm_host::ArmCommand{ arm_host::PowerOffMotor{ 0 } } })
+    {
+        Execute(5, command);
+        EXPECT_EQ("not a simulation", sink.Last()->reason);
+    }
 }

@@ -330,3 +330,25 @@ TEST_F(ArmSessionTest, refuses_a_switch_that_would_step_the_setpoints_of_a_runni
     EXPECT_EQ(6u, sink.Last()->command);
     EXPECT_EQ("a move runs and the arm controller cannot take over without a step", sink.Last()->reason);
 }
+
+TEST_F(ArmSessionTest, offers_faults_and_silence_on_simulated_joints_and_reports_who_is_silent)
+{
+    Execute(6, arm_host::SilenceJoint{ 3 });
+    ASSERT_TRUE(sink.snapshot.disturbances.has_value());
+    EXPECT_TRUE(sink.snapshot.disturbances->injectFault);
+    EXPECT_FALSE(sink.snapshot.disturbances->collision);
+    EXPECT_FALSE(sink.snapshot.disturbances->powerOff);
+    EXPECT_TRUE(sink.snapshot.disturbances->silent[3]);
+
+    Execute(7, arm_host::ResumeJoint{ 3 });
+    EXPECT_EQ(ArmEventKind::accepted, sink.Last()->kind);
+    EXPECT_EQ("resume joint", sink.Last()->commandName);
+    EXPECT_FALSE(sink.snapshot.disturbances->silent[3]);
+
+    Execute(8, arm_host::CollideJoint{ 1, foc::NewtonMeter{ 5.0f } });
+    EXPECT_EQ("not on simulated joints", sink.Last()->reason);
+    Execute(9, arm_host::PowerOffMotor{ 1 });
+    EXPECT_EQ("not on simulated joints", sink.Last()->reason);
+    Execute(10, arm_host::ResumeJoint{ 6 });
+    EXPECT_EQ("no such joint", sink.Last()->reason);
+}

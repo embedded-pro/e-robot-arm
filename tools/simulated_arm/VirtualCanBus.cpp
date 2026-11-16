@@ -25,6 +25,16 @@ namespace simulation
         receive = receivedAction;
     }
 
+    void VirtualCanBus::Port::Unmute()
+    {
+        muted = false;
+    }
+
+    bool VirtualCanBus::Port::Muted() const
+    {
+        return muted;
+    }
+
     void VirtualCanBus::Port::Mute()
     {
         muted = true;

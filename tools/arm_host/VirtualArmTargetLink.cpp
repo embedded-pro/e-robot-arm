@@ -146,12 +146,41 @@ namespace arm_host
 
     VirtualMotorsStatus VirtualArmTargetLink::Status() const
     {
-        return { virtualArm.Motors(), folder.string() };
+        return { virtualArm.Motors(), folder.string(), silenced, torques };
     }
 
     std::optional<std::string> VirtualArmTargetLink::Restart(std::size_t joint)
     {
-        return virtualArm.Restart(joint, joint < arm::jointCount ? config.motors[joint] : std::nullopt);
+        auto refusal = virtualArm.Restart(joint, joint < arm::jointCount ? config.motors[joint] : std::nullopt);
+        if (!refusal.has_value())
+            silenced[joint] = false;
+        return refusal;
+    }
+
+    void VirtualArmTargetLink::Silence(std::size_t joint, bool silent)
+    {
+        if (joint >= arm::jointCount)
+            return;
+
+        virtualArm.Silence(joint, silent);
+        silenced[joint] = silent;
+    }
+
+    void VirtualArmTargetLink::Collide(std::size_t joint, foc::NewtonMeter torque)
+    {
+        if (joint >= arm::jointCount)
+            return;
+
+        virtualArm.Collide(joint, torque);
+        torques[joint] = torque;
+    }
+
+    std::optional<std::string> VirtualArmTargetLink::PowerOff(std::size_t joint)
+    {
+        auto refusal = virtualArm.PowerOff(joint);
+        if (!refusal.has_value())
+            silenced[joint] = false;
+        return refusal;
     }
 
     void VirtualArmTargetLink::Collect()

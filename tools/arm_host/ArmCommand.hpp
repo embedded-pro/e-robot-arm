@@ -62,6 +62,22 @@ namespace arm_host
         std::size_t joint;
     };
 
+    struct ResumeJoint
+    {
+        std::size_t joint;
+    };
+
+    struct CollideJoint
+    {
+        std::size_t joint;
+        foc::NewtonMeter torque;
+    };
+
+    struct PowerOffMotor
+    {
+        std::size_t joint;
+    };
+
     struct BringUp
     {};
 
@@ -109,7 +125,7 @@ namespace arm_host
     };
 
     using ArmCommand = std::variant<CheckContracts, SelectMode, StartJoints, StopJoints, ClearFaults, EmergencyStop, Rearm, MoveTo, AbortMove, InjectFault, SilenceJoint,
-        BringUp, Enable, Disable, ApplyController, ReadController, ApplyMotor, ReadMotor, EnableArmController, DisableArmController, SelectArmController, AlignJoints, RestartMotor>;
+        BringUp, Enable, Disable, ApplyController, ReadController, ApplyMotor, ReadMotor, EnableArmController, DisableArmController, SelectArmController, AlignJoints, RestartMotor, ResumeJoint, CollideJoint, PowerOffMotor>;
 
     std::string_view CommandName(const ArmCommand& command);
     std::string_view StateName(arm::ArmState state);

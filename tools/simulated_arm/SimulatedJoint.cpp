@@ -30,6 +30,16 @@ namespace simulation
         port.Mute();
     }
 
+    void SimulatedJoint::Resume()
+    {
+        port.Unmute();
+    }
+
+    bool SimulatedJoint::Silent() const
+    {
+        return port.Muted();
+    }
+
     can::FocMotorState SimulatedJoint::State() const
     {
         return node.state;
