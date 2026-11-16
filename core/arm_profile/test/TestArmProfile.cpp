@@ -209,6 +209,38 @@ TEST_F(ArmProfileTest, a_written_profile_reads_back_to_the_same_configuration)
     EXPECT_NE(std::string::npos, std::string(written.begin(), written.end()).find(R"("fluxLinkageMilliWeber": 6.4)"));
 }
 
+TEST_F(ArmProfileTest, reads_the_following_error_supervision_and_leaves_it_off_when_it_is_left_out)
+{
+    const std::string custom{ R"("resistanceOhm": 0.36, "inductanceMilliHenry": 0.2, "polePairs": 4, "fluxLinkageMilliWeber": 6.4, "inertiaGramCm2": 70.6,)"
+                              R"( "viscousFrictionMicroNmSPerRad": 15, "coulombFrictionMilliNm": 3.7, "continuousCurrentA": 7.1, "peakCurrentA": 20,)"
+                              R"( "peakCurrentTimeS": 1, "overspeedLimitRadPerS": 754)" };
+    const auto supervised = Read(Profile(Joint(1, R"(, "motor": { "preset": "teknic-m2310p-ln-04k", "followingErrorWindowRad": 2.5, "followingErrorTimeS": 0.05 })")));
+    const auto unsupervised = Read(Profile(Joint(1, R"(, "motor": { )" + custom + " }")));
+
+    ASSERT_TRUE(supervised.has_value()) << Problem();
+    EXPECT_NEAR(2.5f, (*supervised->config.motors[0]).settings[arm::MotorParameter::followingErrorWindow], 1.0e-6f);
+    EXPECT_NEAR(0.05f, (*supervised->config.motors[0]).settings[arm::MotorParameter::followingErrorTime], 1.0e-6f);
+    ASSERT_TRUE(unsupervised.has_value()) << Problem();
+    EXPECT_NEAR(0.0f, (*unsupervised->config.motors[0]).settings[arm::MotorParameter::followingErrorWindow], 1.0e-6f);
+    EXPECT_NEAR(0.1f, (*unsupervised->config.motors[0]).settings[arm::MotorParameter::followingErrorTime], 1.0e-6f);
+}
+
+TEST_F(ArmProfileTest, reads_a_version_1_profile_and_writes_version_2)
+{
+    const auto version1 = Read(Profile(Joint(1)));
+    ASSERT_TRUE(version1.has_value()) << Problem();
+
+    infra::StringOutputStream::WithStorage<16384> stream;
+    arm::WriteArmProfile(*version1, stream);
+    const std::string written{ stream.Storage().begin(), stream.Storage().end() };
+    EXPECT_NE(std::string::npos, written.find(R"("version": 2,)"));
+
+    auto version3{ Profile(Joint(1)) };
+    version3.replace(version3.find(R"("version": 1)"), 12, R"("version": 3)");
+    EXPECT_FALSE(Read(version3).has_value());
+    EXPECT_EQ("version: is not a version this reader knows", Problem());
+}
+
 TEST_F(ArmProfileTest, refuses_a_profile_and_names_the_first_problem)
 {
     const std::vector<std::pair<std::string, std::string>> cases{
@@ -252,7 +284,7 @@ TEST_F(ArmProfileTest, refuses_a_profile_and_names_the_first_problem)
         { Profile(Joint(1), R"( "meshes": { "link1": "arm.stl" },)"), "meshes.link1: must name a .gltf or .glb file" },
         { Profile(Joint(1), R"( "meshes": { "base": "" },)"), "meshes.base: must be a path of 1 to 96 characters" },
         { Profile(Joint(1), R"( "meshes": { "base": 3 },)"), "meshes.base: must be a path of 1 to 96 characters" },
-        { R"({ "format": "e-robot-arm profile", "version": 2 })", "version: is not a version this reader knows" },
+        { R"({ "format": "e-robot-arm profile", "version": 3 })", "version: is not a version this reader knows" },
         { R"({ "format": "something else" })", "format: must be \"e-robot-arm profile\"" },
         { R"({ "format": "e-robot-arm profile", "version": 1, "controlPeriodMs": 5 })", "name: is missing" },
         { R"({ "format": "e-robot-arm profile", "version": 1, "controlPeriodMs": 0 })", "controlPeriodMs: must be a whole number from 1 to 1000" },

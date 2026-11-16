@@ -2,7 +2,7 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.15.0
+version: 0.16.0
 component: "tool-simulator"
 date: 2026-11-14
 ---
@@ -12,7 +12,7 @@ date: 2026-11-14
 | Title     | Simulator Screen Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.15.0                  |
+| Version   | 0.16.0                  |
 | Component | tool-simulator          |
 | Date      | 2026-11-14              |
 
@@ -358,12 +358,14 @@ Part D) and applies it like the Motor Controller panel (Part H): same joint sele
 │   Peak current        [  20.000] A                   │
 │   Peak-current time   [   1.000] s                   │
 │   Overspeed limit     [ 754.000] rad/s               │
+│   Following-error window [ 0.000] rad                │
+│   Following-error time   [ 0.100] s                  │
 │ State: Verified · Custom: differs from Teknic in R   │
 │ [Read] [Apply] [Verify] [Apply to All Joints]        │
 └──────────────────────────────────────────────────────┘
 ```
 
-- **Preset** lists e-foc's reference motors and **Custom**. Choosing a preset fills the eleven fields; editing a
+- **Preset** lists e-foc's reference motors and **Custom**. Choosing a preset fills the thirteen fields; editing a
   field turns the choice to Custom, and the hint names the preset it came from and every field that differs from it.
 - **Fields** carry the display units of Part D and the contract's ranges; pole pairs is a whole number.
 - Applying replaces what the node holds, its own identification included; the confirmation is the read-back
