@@ -123,11 +123,11 @@ A virtual motor's motor is its plant, fixed when it starts (`virtual-motor.md` P
 joint's plant as an e-foc text plant description (`virtual-motor.md` Part A), `jointN.plant` in its folder, and
 starts the motor with it. The profile's motor per joint ([arm-profile.md](arm-profile.md)) chooses the description:
 
-| Profile motor                           | Plant                                                                     | Shown as  |
-|-----------------------------------------|---------------------------------------------------------------------------|-----------|
-| None                                    | `teknic`, e-foc's nominal motor                                           | `teknic`  |
-| A reference motor (`teknic`, `anaheim`) | The e-foc preset of the same name, with every value the profile changed   | its name  |
-| Custom values                           | The `teknic` preset with every value that differs from it                 | `custom`  |
+| Profile motor                           | Plant                                                                   | Shown as |
+|-----------------------------------------|-------------------------------------------------------------------------|----------|
+| None                                    | `teknic`, e-foc's nominal motor                                         | `teknic` |
+| A reference motor (`teknic`, `anaheim`) | The e-foc preset of the same name, with every value the profile changed | its name |
+| Custom values                           | The `teknic` preset with every value that differs from it               | `custom` |
 
 The values a description carries are the motor model's: resistance, inductance, flux linkage, pole pairs, rotor
 inertia, viscous and Coulomb friction, and the peak current as the most the motor supports. Every description also
