@@ -2,9 +2,9 @@
 title: "Arm Controllers Design"
 type: design
 status: draft
-version: 0.2.0
+version: 0.3.0
 component: "arm-controllers"
-date: 2026-11-14
+date: 2026-11-16
 ---
 
 | Field     | Value                  |
@@ -12,9 +12,9 @@ date: 2026-11-14
 | Title     | Arm Controllers Design |
 | Type      | design                 |
 | Status    | draft                  |
-| Version   | 0.2.0                  |
+| Version   | 0.3.0                  |
 | Component | arm-controllers        |
-| Date      | 2026-11-14             |
+| Date      | 2026-11-16             |
 
 > Which controller turns the motion's reference into the joints' setpoints, and how one is enabled, disabled and
 > switched at run time without a setpoint step (phase 2, [#18](https://github.com/embedded-pro/e-robot-arm/issues/18)
@@ -39,7 +39,7 @@ date: 2026-11-14
 - Guarding the setpoints: the safety supervisor checks every set it is sent ([safety.md](safety.md)).
 - Deciding when setpoints stream: the arm starts and stops the streaming with the lifecycle's `Enabled` and `Moving`
   states ([arm-lifecycle.md](arm-lifecycle.md)).
-- Speed and torque feed-forward, and the controller catalogue from robotics-toolbox: phase 5
+- Speed and torque feed-forward on a position setpoint, and the controller catalogue from robotics-toolbox: phase 5
   ([#21](https://github.com/embedded-pro/e-robot-arm/issues/21)) widens the setpoint set and adds controllers.
 - Saving which controllers are enabled and active in the arm profile: a later item of the profile format
   ([arm-profile.md](arm-profile.md)).
@@ -51,8 +51,10 @@ date: 2026-11-14
 ### Part A — The controller
 
 A controller takes the measured joints (positions and speeds from the latest telemetry) and the reference (the
-joint positions the motion wants now) and returns a setpoint set. Today a set is the six joint positions; phase 5
-adds speed and torque feed-forward to it.
+joint positions the motion wants now) and returns a setpoint set. A controller runs the joints in one control mode
+and its set matches it: six joint positions for a position-mode controller; six joint torques, with the reference
+positions alongside for the trace, for a torque-mode controller. Phase 5 adds speed and torque feed-forward to the
+position set.
 
 A controller may keep state between periods. `Reset` gives it the measured joints to start from. A controller
 declares whether it supports **bumpless transfer**: after a `Reset` its sets continue from the measured positions,
@@ -61,26 +63,42 @@ does not: the reference can be ahead of where the joints are.
 
 Two controllers come first:
 
-| Name           | Output                                                                                      | Bumpless |
-|----------------|---------------------------------------------------------------------------------------------|----------|
-| `pass-through` | The reference, unchanged: today's behaviour                                                 | no       |
-| `smoothed`     | Each joint's reference through a first-order low-pass of time constant τ, reset to measured | yes      |
+| Name           | Output                                                                                                | Bumpless |
+|----------------|-------------------------------------------------------------------------------------------------------|----------|
+| `pass-through` | The reference, unchanged: today's behaviour                                                           | no       |
+| `smoothed`     | Each joint's reference through a first-order low-pass of time constant τ, reset to measured           | yes      |
+| `gravity-pd`   | Joint torques: a PD law on the position error plus the gravity torque, τ = Kp·(q* − q) − Kd·q′ + G(q) | yes      |
 
 `smoothed` filters each joint with an exponential moving average whose weight per period T is T / (τ + T)
 (numerical-toolbox `ExponentialMovingAverage`). It trades tracking lag for gentler setpoints; τ is 50 ms in the
 reference arm.
 
+**The arm controls torque.** The e-foc drives run in torque mode and every arm controller runs on the host (the PC
+now, a microcontroller later), built from robotics-toolbox's manipulator controllers and numerical-toolbox's control
+blocks rather than written here. `gravity-pd` is the first: robotics-toolbox's `PdGravityCompensation` over the arm
+model's dynamics ([arm-model.md](arm-model.md) Part F), with q* the reference, q and q̇ the measured joints and Kp
+(N·m/rad) and Kd (N·m·s/rad) per joint from the arm's configuration, on a diagonal. It has no state, and when
+streaming starts the reference is the measured position, so its first set is G(q) − Kd·q̇: it takes over without a
+step. Its bandwidth is bounded by the control period and the telemetry's age.
+
+`pass-through` and `smoothed` are what remains of the position path, where the drive closes the position loop; they
+go when that path is removed, and computed torque (robotics-toolbox `ComputedTorqueControl`) and a per-joint PID
+with gravity feed-forward (numerical-toolbox) join `gravity-pd` (phase 8d, [#31](https://github.com/embedded-pro/e-robot-arm/issues/31)).
+Until then the profile's enable mode chooses the path.
+
 ### Part B — Registry and selection
 
 The arm registers its controllers once, when it is built, up to a fixed capacity of four. Ids are their
-registration order. A controller is registered disabled; the arm then enables and selects its default
-(`pass-through`).
+registration order. A controller is registered disabled; the arm then enables all three and selects the default
+for its control mode, the profile's enable mode: `pass-through` in position mode, `gravity-pd` in torque mode. A
+controller of another mode cannot be selected: the joints run in one mode from enable to disable, so switching
+between position and torque control means a profile with the other enable mode.
 
-| Request      | Accepted when                                                   | Effect                                                              |
-|--------------|-----------------------------------------------------------------|---------------------------------------------------------------------|
-| enable *id*  | *id* is registered                                              | The controller may be selected                                      |
-| disable *id* | *id* is registered                                              | It may not be selected; if it was active, no controller is active   |
-| select *id*  | *id* is enabled, and no move runs or the controller is bumpless | It is `Reset` from the measured joints and becomes active; reported |
+| Request      | Accepted when                                                                                  | Effect                                                              |
+|--------------|------------------------------------------------------------------------------------------------|---------------------------------------------------------------------|
+| enable *id*  | *id* is registered                                                                             | The controller may be selected                                      |
+| disable *id* | *id* is registered                                                                             | It may not be selected; if it was active, no controller is active   |
+| select *id*  | *id* is enabled, its control mode is the arm's, and no move runs or the controller is bumpless | It is `Reset` from the measured joints and becomes active; reported |
 
 Selecting the active controller again is accepted and changes nothing. With no controller active the arm cannot
 stream setpoints: a running move is aborted at its next period and the joints hold their last setpoint. That is how
@@ -94,7 +112,7 @@ after joint motion has advanced its reference:
 1. The reference is the motion's sample while a move runs. Otherwise it is the last reference given: the target of
    the last move, where an aborted move stopped, or the measured positions when streaming started.
 2. The measured joints are each joint's latest reading.
-3. The active controller's set goes to the safety supervisor. A set the supervisor refuses, or a period with no
+3. The active controller's set goes to the safety supervisor, as positions or torques by the controller's mode. A set the supervisor refuses, or a period with no
    active controller, stops the streaming and aborts the running move.
 
 Streaming starts when the arm becomes `Enabled` (the active controller is `Reset` from the measured joints) and stops
@@ -125,15 +143,17 @@ move: a controller with state, `smoothed` or phase 5's, keeps converging after t
 
 ## Data Model
 
-| Entity          | Field         | Type / Unit    | Range        | Notes                                      |
-|-----------------|---------------|----------------|--------------|--------------------------------------------|
-| Measured joints | positions     | radians        | finite       | Latest reading per joint                   |
-| Measured joints | speeds        | radians/second | finite       | Latest reading per joint                   |
-| Setpoint set    | positions     | radians        | joint limits | Phase 5 adds speed and torque feed-forward |
-| Registry entry  | id            | integer        | 0–3          | Registration order                         |
-| Registry entry  | name          | text           | unique       | `pass-through`, `smoothed`                 |
-| Registry entry  | enabled       | flag           |              | Registered disabled                        |
-| `smoothed`      | time constant | seconds        | > 0          | 50 ms in the reference arm                 |
+| Entity          | Field         | Type / Unit        | Range        | Notes                                      |
+|-----------------|---------------|--------------------|--------------|--------------------------------------------|
+| Measured joints | positions     | radians            | finite       | Latest reading per joint                   |
+| Measured joints | speeds        | radians/second     | finite       | Latest reading per joint                   |
+| Setpoint set    | positions     | radians            | joint limits | Phase 5 adds speed and torque feed-forward |
+| Setpoint set    | torques       | N·m, joint side    | finite       | Torque-mode controllers only               |
+| `gravity-pd`    | Kp, Kd        | N·m/rad, N·m·s/rad | ≥ 0, finite  | Per joint; the arm's configuration         |
+| Registry entry  | id            | integer            | 0–3          | Registration order                         |
+| Registry entry  | name          | text               | unique       | `pass-through`, `smoothed`                 |
+| Registry entry  | enabled       | flag               |              | Registered disabled                        |
+| `smoothed`      | time constant | seconds            | > 0          | 50 ms in the reference arm                 |
 
 ---
 

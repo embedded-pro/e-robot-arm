@@ -18,9 +18,10 @@ namespace
 
     constexpr arm::JointNodeIds nodes{ 21, 22, 23, 24, 25, 26 };
 
-    arm::ArmConfig Config()
+    arm::ArmConfig Config(can::FocMotorMode mode = can::FocMotorMode::position)
     {
         arm::ArmConfig config{ nodes, 3, {}, {}, 10ms };
+        config.enableMode = mode;
         for (auto& limit : config.positionLimits)
             limit = { foc::Radians{ -std::numbers::pi_v<float> }, foc::Radians{ std::numbers::pi_v<float> } };
         for (auto& limit : config.motionLimits)
@@ -35,7 +36,8 @@ namespace
         services::CanPriority priority;
     };
 
-    class ArmTest
+    template<can::FocMotorMode mode>
+    class ArmTestBase
         : public Test
         , public infra::ClockFixture
     {
@@ -101,8 +103,11 @@ namespace
                         }));
             } };
         can::FocMotorCanClient client{ canMock };
-        arm::Arm arm{ client.CategoryClient(), Config() };
+        arm::Arm arm{ client.CategoryClient(), Config(mode) };
     };
+
+    using ArmTest = ArmTestBase<can::FocMotorMode::position>;
+    using TorqueArmTest = ArmTestBase<can::FocMotorMode::torque>;
 }
 
 TEST_F(ArmTest, the_running_loop_requests_telemetry_from_every_joint_each_period)
@@ -192,4 +197,21 @@ TEST_F(ArmTest, a_target_outside_the_joint_limits_is_refused_before_anything_mov
 
     ForwardTime(5ms);
     EXPECT_EQ(0u, SentOf(can::SetpointCommandId(can::FocSetpointKind::position)));
+}
+
+TEST_F(TorqueArmTest, an_arm_enabled_in_torque_mode_streams_the_gravity_compensated_torques)
+{
+    const auto gravityPd = arm.Controllers().Find("gravity-pd");
+    ASSERT_TRUE(gravityPd.has_value());
+    EXPECT_EQ(gravityPd, arm.Controllers().Active());
+    EXPECT_FALSE(arm.Controllers().Select(*arm.Controllers().Find("pass-through")));
+
+    EnableArm();
+    const auto streamed = SentOf(can::SetpointCommandId(can::FocSetpointKind::torqueNewtonMeter));
+    ForwardTime(10ms);
+
+    EXPECT_EQ(streamed + arm::jointCount, SentOf(can::SetpointCommandId(can::FocSetpointKind::torqueNewtonMeter)));
+    EXPECT_EQ(0u, SentOf(can::SetpointCommandId(can::FocSetpointKind::position)));
+    ASSERT_TRUE(arm.Controllers().LastSetpoints().has_value());
+    EXPECT_TRUE(arm.Controllers().LastSetpoints()->torques.has_value());
 }

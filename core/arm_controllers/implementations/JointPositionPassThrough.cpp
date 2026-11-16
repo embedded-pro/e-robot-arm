@@ -2,6 +2,11 @@
 
 namespace arm
 {
+    can::FocMotorMode JointPositionPassThrough::Mode() const
+    {
+        return can::FocMotorMode::position;
+    }
+
     bool JointPositionPassThrough::BumplessTransfer() const
     {
         return false;

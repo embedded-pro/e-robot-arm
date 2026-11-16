@@ -16,7 +16,7 @@ namespace arm
         : public ArmControllers
     {
     public:
-        ArmControllersImpl(JointBus& bus, const JointMotion& motion);
+        ArmControllersImpl(JointBus& bus, const JointMotion& motion, can::FocMotorMode mode = can::FocMotorMode::position);
 
         ArmControllerId Register(infra::BoundedConstString name, ArmController& controller);
 
@@ -24,6 +24,7 @@ namespace arm
         infra::BoundedConstString Name(ArmControllerId id) const override;
         std::optional<ArmControllerId> Find(infra::BoundedConstString name) const override;
         bool Enabled(ArmControllerId id) const override;
+        bool FitsJointMode(ArmControllerId id) const override;
         std::optional<ArmControllerId> Active() const override;
         std::optional<JointSetpoints> LastSetpoints() const override;
 
@@ -50,6 +51,7 @@ namespace arm
 
         JointBus& bus;
         const JointMotion& motion;
+        can::FocMotorMode mode;
         infra::BoundedVector<Entry>::WithMaxSize<maxArmControllers> entries;
         std::optional<ArmControllerId> active;
         bool streaming{ false };

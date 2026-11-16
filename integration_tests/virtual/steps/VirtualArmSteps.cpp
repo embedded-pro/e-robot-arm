@@ -13,11 +13,14 @@ namespace
 {
     bool InState(VirtualArmFixture& fixture, arm::ArmState state, std::chrono::milliseconds timeout)
     {
-        return fixture.WaitFor([state](const arm_host::ArmSnapshot& snapshot)
+        const auto reached = fixture.WaitFor([state](const arm_host::ArmSnapshot& snapshot)
             {
                 return snapshot.state == state;
             },
             timeout);
+        if (!reached)
+            std::cout << "waited " << timeout.count() << " ms for " << arm_host::StateName(state) << "; " << fixture.History() << std::flush;
+        return reached;
     }
 }
 

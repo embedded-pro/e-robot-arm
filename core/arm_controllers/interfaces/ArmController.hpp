@@ -2,6 +2,7 @@
 #define CORE_ARM_CONTROLLERS_INTERFACES_ARM_CONTROLLER_HPP
 
 #include "core/joint_bus/interfaces/JointBus.hpp"
+#include <optional>
 
 namespace arm
 {
@@ -14,6 +15,7 @@ namespace arm
     struct JointSetpoints
     {
         JointPositions positions{};
+        std::optional<JointTorques> torques{};
     };
 
     class ArmController
@@ -24,6 +26,7 @@ namespace arm
         ArmController& operator=(const ArmController& other) = delete;
 
         virtual bool BumplessTransfer() const = 0;
+        virtual can::FocMotorMode Mode() const = 0;
         virtual void Reset(const MeasuredJoints& measured) = 0;
         virtual JointSetpoints Step(const MeasuredJoints& measured, const JointPositions& reference) = 0;
 

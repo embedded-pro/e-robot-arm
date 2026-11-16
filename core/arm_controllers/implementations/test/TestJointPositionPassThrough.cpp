@@ -22,4 +22,5 @@ TEST_F(JointPositionPassThroughTest, sends_the_reference_unchanged_and_is_not_bu
 
     EXPECT_EQ(reference, controller.Step(measured, reference).positions);
     EXPECT_FALSE(controller.BumplessTransfer());
+    EXPECT_EQ(can::FocMotorMode::position, controller.Mode());
 }

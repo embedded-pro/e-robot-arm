@@ -299,8 +299,9 @@ TEST_F(ArmSessionConfiguringTest, names_the_joint_whose_motor_controller_reads_b
 TEST_F(ArmSessionTest, lists_the_arm_controllers_and_reports_each_change_of_the_active_one)
 {
     Execute(1, arm_host::CheckContracts{});
-    ASSERT_EQ(2u, sink.snapshot.armControllers.size());
+    ASSERT_EQ(3u, sink.snapshot.armControllers.size());
     EXPECT_EQ("pass-through", sink.snapshot.armControllers[0].name);
+    EXPECT_EQ("gravity-pd", sink.snapshot.armControllers[2].name);
     EXPECT_TRUE(sink.snapshot.armControllers[0].active);
     EXPECT_TRUE(sink.snapshot.armControllers[1].enabled);
 
@@ -318,6 +319,8 @@ TEST_F(ArmSessionTest, lists_the_arm_controllers_and_reports_each_change_of_the_
     EXPECT_EQ("the arm controller is disabled", sink.Last()->reason);
     Execute(5, arm_host::SelectArmController{ 9 });
     EXPECT_EQ("no such arm controller", sink.Last()->reason);
+    Execute(6, arm_host::SelectArmController{ 2 });
+    EXPECT_EQ("the arm controller needs the joints in another control mode: set the profile's enable mode", sink.Last()->reason);
 }
 
 TEST_F(ArmSessionTest, refuses_a_switch_that_would_step_the_setpoints_of_a_running_move)

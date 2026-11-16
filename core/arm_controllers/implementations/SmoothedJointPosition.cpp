@@ -26,6 +26,11 @@ namespace arm
         : filters(Filters(Weight(period, timeConstant), std::make_index_sequence<jointCount>{}))
     {}
 
+    can::FocMotorMode SmoothedJointPosition::Mode() const
+    {
+        return can::FocMotorMode::position;
+    }
+
     bool SmoothedJointPosition::BumplessTransfer() const
     {
         return true;

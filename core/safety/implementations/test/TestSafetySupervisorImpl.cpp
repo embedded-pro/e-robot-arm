@@ -83,6 +83,18 @@ TEST_F(SafetySupervisorImplTest, refuses_a_setpoint_set_with_a_position_that_is_
     EXPECT_FALSE(supervisor.SendPositions(notANumber));
 }
 
+TEST_F(SafetySupervisorImplTest, passes_a_finite_torque_set_on_and_refuses_one_that_is_not)
+{
+    CompatibleContracts();
+    arm::JointTorques torques{};
+    torques[1] = foc::NewtonMeter{ 12.0f };
+    EXPECT_CALL(bus, SendTorques(torques)).WillOnce(Return(true));
+    EXPECT_TRUE(supervisor.SendTorques(torques));
+
+    torques[4] = foc::NewtonMeter{ std::numeric_limits<float>::infinity() };
+    EXPECT_FALSE(supervisor.SendTorques(torques));
+}
+
 TEST_F(SafetySupervisorImplTest, refuses_motion_until_every_contract_is_compatible)
 {
     EXPECT_CALL(bus, Contracts()).WillRepeatedly(Return(can::ContractCompatibility::unknown));
@@ -91,6 +103,7 @@ TEST_F(SafetySupervisorImplTest, refuses_motion_until_every_contract_is_compatib
     EXPECT_FALSE(supervisor.Start());
     EXPECT_FALSE(supervisor.Align());
     EXPECT_FALSE(supervisor.SendPositions(withinLimits));
+    EXPECT_FALSE(supervisor.SendTorques({}));
 }
 
 TEST_F(SafetySupervisorImplTest, passes_motion_commands_on_once_contracts_are_compatible)

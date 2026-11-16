@@ -1,6 +1,7 @@
 #ifndef CORE_ARM_ARM_CONFIG_HPP
 #define CORE_ARM_ARM_CONFIG_HPP
 
+#include "core/arm_controllers/implementations/GravityCompensatedPd.hpp"
 #include "core/arm_model/ArmGeometry.hpp"
 #include "core/arm_model/ArmMass.hpp"
 #include "core/joint_bus/interfaces/JointBus.hpp"
@@ -29,6 +30,7 @@ namespace arm
         JointMotors motors{};
         ArmGeometry geometry{ ReferenceGeometry() };
         ArmMass mass{ ReferenceMass() };
+        JointPdGains gravityGains{ ReferenceGravityGains() };
     };
 }
 

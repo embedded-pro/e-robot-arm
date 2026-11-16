@@ -15,6 +15,7 @@ namespace arm
         SmoothedJointPosition(infra::Duration period, infra::Duration timeConstant);
 
         bool BumplessTransfer() const override;
+        can::FocMotorMode Mode() const override;
         void Reset(const MeasuredJoints& measured) override;
         JointSetpoints Step(const MeasuredJoints& measured, const JointPositions& reference) override;
 

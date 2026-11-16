@@ -66,6 +66,15 @@ namespace arm
         return MayCommandMotion() && WithinLimits(limits, positions) && bus.SendPositions(positions);
     }
 
+    bool SafetySupervisorImpl::SendTorques(const JointTorques& torques)
+    {
+        const auto finite = std::ranges::all_of(torques, [](foc::NewtonMeter torque)
+            {
+                return math::IsFinite(torque.Value());
+            });
+        return MayCommandMotion() && finite && bus.SendTorques(torques);
+    }
+
     bool SafetySupervisorImpl::RequestTelemetry()
     {
         return bus.RequestTelemetry();

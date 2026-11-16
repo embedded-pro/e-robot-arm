@@ -2,9 +2,9 @@
 title: "Safety Supervisor Design"
 type: design
 status: draft
-version: 0.2.0
+version: 0.3.0
 component: "safety"
-date: 2026-11-12
+date: 2026-11-16
 ---
 
 | Field     | Value                    |
@@ -12,9 +12,9 @@ date: 2026-11-12
 | Title     | Safety Supervisor Design |
 | Type      | design                   |
 | Status    | draft                    |
-| Version   | 0.2.0                    |
+| Version   | 0.3.0                    |
 | Component | safety                   |
-| Date      | 2026-11-12               |
+| Date      | 2026-11-16               |
 
 > The guard between the arm controller and the joint bus. Behaviour only; diagrams are Mermaid.
 
@@ -24,7 +24,8 @@ date: 2026-11-12
 
 **Is responsible for:**
 
-- Refusing a position setpoint that lies outside a joint's limits or is not finite.
+- Refusing a position setpoint that lies outside a joint's limits or is not finite, and a torque setpoint that is not
+  finite.
 - Refusing to start or move the joints before every node has a compatible contract.
 - Stopping all six joints at once, with an emergency stop, when any joint faults or goes silent.
 - Holding the arm stopped after such a trip until it is re-armed, and re-arming only when no joint is faulted.
@@ -50,7 +51,9 @@ supervisor is the real joint bus's only observer and passes its events on to its
 
 Each joint has a lower and an upper position limit in radians, finite, with the lower below the upper. A
 setpoint set is sent only if every one of its six positions is finite and within its joint's limits, ends
-included; otherwise none of it is sent.
+included; otherwise none of it is sent. A torque setpoint set is sent only if its six torques are finite; the drive
+holds the torque within its own current limits. A torque set carries no position, so the joint limits are not
+checked on it (open question 2).
 
 ### Part C — Contract gate
 
@@ -162,6 +165,7 @@ sequenceDiagram
 
 ## Open Questions
 
-| # | Question                                            | Options                                      | Status |
-|---|-----------------------------------------------------|----------------------------------------------|--------|
-| 1 | Whether a trip also cuts power through a safe relay | Software emergency stop only, hardware relay | open   |
+| # | Question                                            | Options                                                                   | Status |
+|---|-----------------------------------------------------|---------------------------------------------------------------------------|--------|
+| 1 | Whether a trip also cuts power through a safe relay | Software emergency stop only, hardware relay                              | open   |
+| 2 | Keeping a torque-controlled joint within its limits | Trip on a measured position outside the limits; the drive's travel limits | open   |

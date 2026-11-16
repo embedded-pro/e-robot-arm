@@ -9,7 +9,9 @@ namespace arm
         , configurator(safety, lifecycle)
         , lifecycle(safety, motion, configurator, config.enableMode, config.controllers, config.motors)
         , smoothed(config.controlPeriod, config.smoothingTimeConstant)
-        , controllers(safety, motion)
+        , model(config.geometry, config.mass, config.positionLimits)
+        , gravityPd(model, config.gravityGains)
+        , controllers(safety, motion, config.enableMode)
         , engagement(lifecycle, controllers)
         , loop(safety, config.controlPeriod, [this]()
               {
@@ -19,7 +21,9 @@ namespace arm
         const auto passThroughId = controllers.Register("pass-through", passThrough);
         controllers.Enable(passThroughId);
         controllers.Enable(controllers.Register("smoothed", smoothed));
-        controllers.Select(passThroughId);
+        const auto gravityPdId = controllers.Register("gravity-pd", gravityPd);
+        controllers.Enable(gravityPdId);
+        controllers.Select(config.enableMode == can::FocMotorMode::torque ? gravityPdId : passThroughId);
     }
 
     SafetySupervisor& Arm::Safety()

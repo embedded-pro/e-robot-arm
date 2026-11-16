@@ -11,6 +11,7 @@ namespace arm
     {
     public:
         MOCK_METHOD(bool, BumplessTransfer, (), (const, override));
+        MOCK_METHOD(can::FocMotorMode, Mode, (), (const, override));
         MOCK_METHOD(void, Reset, (const MeasuredJoints& measured), (override));
         MOCK_METHOD(JointSetpoints, Step, (const MeasuredJoints& measured, const JointPositions& reference), (override));
     };

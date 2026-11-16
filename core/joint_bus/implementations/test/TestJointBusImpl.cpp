@@ -216,6 +216,23 @@ TEST_F(JointBusImplTest, sends_one_position_setpoint_per_joint_in_motor_space)
     }
 }
 
+TEST_F(JointBusImplTest, sends_one_torque_setpoint_per_joint_in_motor_space)
+{
+    const arm::JointTorques torques{ foc::NewtonMeter{ 1.0f }, foc::NewtonMeter{ -2.0f }, foc::NewtonMeter{ 3.0f }, foc::NewtonMeter{ 4.0f },
+        foc::NewtonMeter{ 5.0f }, foc::NewtonMeter{ -6.0f } };
+    const std::array<float, arm::jointCount> motorTorques{ 1.0f, -2.0f, -0.3f, 4.0f, 5.0f, -6.0f };
+
+    EXPECT_TRUE(bus.SendTorques(torques));
+
+    ExpectOneFramePerJoint(can::SetpointCommandId(can::FocSetpointKind::torqueNewtonMeter));
+    for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+    {
+        services::CanPayloadReader reader{ sent[joint].payload };
+        reader.Skip(1);
+        EXPECT_NEAR(motorTorques[joint], reader.ReadFloat32(), tolerance) << "joint " << joint;
+    }
+}
+
 TEST_F(JointBusImplTest, a_refused_joint_fails_the_emergency_stop_but_the_others_are_still_stopped)
 {
     EXPECT_CALL(observer, OnCommandDelivered(arm::JointCommand::queryContracts));

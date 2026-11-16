@@ -17,6 +17,7 @@ namespace arm
     using JointNodeIds = std::array<uint16_t, jointCount>;
     using JointPositions = std::array<foc::Radians, jointCount>;
     using JointSpeeds = std::array<foc::RadiansPerSecond, jointCount>;
+    using JointTorques = std::array<foc::NewtonMeter, jointCount>;
     using JointTransmissions = std::array<JointTransmission, jointCount>;
 
     struct JointLimit
@@ -110,6 +111,7 @@ namespace arm
         virtual bool Align() = 0;
         virtual bool EmergencyStop() = 0;
         virtual bool SendPositions(const JointPositions& positions) = 0;
+        virtual bool SendTorques(const JointTorques& torques) = 0;
         virtual bool RequestTelemetry() = 0;
 
         virtual bool SelectAlgorithm(std::size_t joint, can::FocControlLoop loop, uint8_t algorithm) = 0;

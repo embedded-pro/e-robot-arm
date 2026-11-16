@@ -7,6 +7,8 @@ target_include_directories(e_robot_arm.arm_controllers.implementations PUBLIC
 
 target_link_libraries(e_robot_arm.arm_controllers.implementations PUBLIC
     e_robot_arm.arm_controllers.interfaces
+    e_robot_arm.arm_model
+    robotics.controllers.manipulator
     e_robot_arm.motion.interfaces
     infra.timer
     numerical.filters.passive
@@ -15,6 +17,8 @@ target_link_libraries(e_robot_arm.arm_controllers.implementations PUBLIC
 target_sources(e_robot_arm.arm_controllers.implementations PRIVATE
     ArmControllersImpl.cpp
     ArmControllersImpl.hpp
+    GravityCompensatedPd.cpp
+    GravityCompensatedPd.hpp
     JointPositionPassThrough.cpp
     JointPositionPassThrough.hpp
     SmoothedJointPosition.cpp

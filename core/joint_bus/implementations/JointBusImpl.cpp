@@ -104,6 +104,14 @@ namespace arm
             });
     }
 
+    bool JointBusImpl::SendTorques(const JointTorques& torques)
+    {
+        return ForEachJoint([this, &torques](std::size_t joint, uint16_t node)
+            {
+                return client.SendSetpoint(node, can::FocSetpoint{ can::FocSetpointKind::torqueNewtonMeter, transmissions[joint].MotorTorque(torques[joint]).Value() });
+            });
+    }
+
     bool JointBusImpl::RequestTelemetry()
     {
         if (telemetryRequested)

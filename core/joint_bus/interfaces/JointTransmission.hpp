@@ -44,6 +44,11 @@ namespace arm
             return foc::RadiansPerSecond{ motor.Value() / Gain() };
         }
 
+        foc::NewtonMeter MotorTorque(foc::NewtonMeter joint) const
+        {
+            return foc::NewtonMeter{ joint.Value() / Gain() };
+        }
+
         bool Valid() const
         {
             return math::IsFinite(ratio) && ratio > 0.0f && math::IsFinite(offset.Value());
