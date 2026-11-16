@@ -1,5 +1,6 @@
 #include "tools/simulated_arm/ArmPlant.hpp"
 #include "numerical/math/CholeskyDecomposition.hpp"
+#include <algorithm>
 
 namespace simulation
 {
@@ -44,6 +45,12 @@ namespace simulation
             torques[joint] = joints[joint]->DrivingTorque();
 
         TakeKinematicJoints(torques);
+        const auto driven = std::ranges::any_of(torques, [](const std::optional<foc::NewtonMeter>& torque)
+            {
+                return torque.has_value();
+            });
+        if (!driven || now - simulated > longestCatchUp)
+            simulated = driven ? now - longestCatchUp : now;
         for (; simulated + step <= now; simulated += step)
             Step(torques);
     }

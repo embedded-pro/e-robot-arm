@@ -25,6 +25,7 @@ namespace simulation
     {
     public:
         static constexpr infra::Duration step{ std::chrono::milliseconds{ 1 } };
+        static constexpr infra::Duration longestCatchUp{ std::chrono::milliseconds{ 100 } };
 
         ArmPlant(const PlantConfig& config, const std::array<SimulatedJoint*, arm::jointCount>& joints);
 

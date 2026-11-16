@@ -134,7 +134,8 @@ A `SimulatedJoint` is an e-foc node on the in-process bus (a `FocMotorCategorySe
   through its transmission (efficiency 1). Every other joint is held as on a brake:
   its acceleration is zero in the solve, so the driven joints feel its constraint, and it keeps its lag-driven or
   held position.
-  The integration catches up with the time whenever a joint is asked for telemetry. Positions and speeds are
+  The integration catches up with the time whenever a joint is asked for telemetry or changes state, never by more
+  than 100 ms at once, and only while a joint is driven: a stalled host never spends a burst of steps catching up. Positions and speeds are
   reported in motor space through the same transmissions, so the arm reads them as from a real node. A simulated
   arm built from node ids alone has no dynamics: a torque setpoint is accepted and moves nothing.
 - **Is always aligned:** it acknowledges an align and stays ready.
