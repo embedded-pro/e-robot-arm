@@ -2,7 +2,7 @@
 title: "Virtual Arm Design"
 type: design
 status: draft
-version: 0.5.0
+version: 0.6.0
 component: "virtual-arm"
 date: 2026-11-15
 ---
@@ -12,7 +12,7 @@ date: 2026-11-15
 | Title     | Virtual Arm Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.5.0              |
+| Version   | 0.6.0              |
 | Component | virtual-arm        |
 | Date      | 2026-11-15         |
 
@@ -202,17 +202,19 @@ and Stream to it) from `virtual-motor.md` Part F, and refuses a motor that does 
 `@virtual` scenarios run the arm on the virtual arm in real time, so they have a binary of their own,
 `e_robot_arm.integration_tests.virtual` (`integration_tests/virtual/`), that ctest does not run. Each scenario starts
 the virtual arm from `integration_tests/virtual/virtual-arm.json`, the reference arm geared 50:1 and allowed ten missed
-telemetry periods, since a desktop or CI host can stall for more than three. It then brings the arm up through the
+telemetry periods, since a desktop or CI host can stall for more than three. Its motors are the Teknic preset with the
+drive's following-error supervision on: a window of 3 rad on the motor's side for 0.1 s. It then brings the arm up through the
 arm host on `virtual:arm` as the console does: contract check, align, bring-up and enable. The motors start
 calibrated but not aligned.
 
 | Scenario               | Checks                                                                                                                                       |
 |------------------------|----------------------------------------------------------------------------------------------------------------------------------------------|
 | Tracking under gravity | The largest difference between commanded and measured position while the shoulder lifts, as a `[METRIC]` line held to a limit pinned from it |
+| Collision | A 30 N·m torque against the shoulder while it moves, about the drive's peak torque through the gear, trips the arm on that joint's following error (REQ-ARM-004); without the supervision the drive holds on and nothing trips |
 | Silent joint           | A paused motor trips the arm as a silent joint (REQ-ARM-005)                                                                                 |
 
-CI runs them in a job of its own after building the engine (Part F). A collision that stops the arm needs the
-drive's following-error supervision, set per joint by the profile; it comes with that setting. Tracking error with
+CI runs them in a job of its own after building the engine (Part F). A torque well beyond the drive's peak is no
+collision to detect: it drives the joint backwards until the drive's overspeed protection trips. Tracking error with
 gravity compensation waits for phase 5's controller, and a start-up through calibration waits for the lifecycle to
 drive one (open question 3).
 
