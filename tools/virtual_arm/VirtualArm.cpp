@@ -18,6 +18,13 @@ namespace virtual_arm
             return lines;
         }
 
+        bool HubAnswers(uint16_t port)
+        {
+            const auto probe = services::loopback::Connect(port);
+            services::loopback::Close(probe);
+            return probe != services::loopback::invalidSocket;
+        }
+
         bool HubPortUsable(uint16_t port)
         {
             auto socket = services::loopback::Listen(port);
@@ -38,6 +45,15 @@ namespace virtual_arm
             }
             return true;
         }
+
+        MotorPhase PhaseOf(MotorProcess& process, bool joined)
+        {
+            if (!process.Started())
+                return MotorPhase::stopped;
+            if (process.Ended().has_value())
+                return MotorPhase::ended;
+            return joined ? MotorPhase::up : MotorPhase::starting;
+        }
     }
 
     VirtualArm::VirtualArm(const arm::ArmConfig& config, VirtualArmOptions options)
@@ -56,23 +72,28 @@ namespace virtual_arm
 
     std::optional<std::string> VirtualArm::Start()
     {
-        const auto plan = PlanVirtualArm(config);
-        if (const auto* refusal = std::get_if<std::string>(&plan))
+        const auto planned = PlanVirtualArm(config);
+        if (const auto* refusal = std::get_if<std::string>(&planned))
             return *refusal;
+        auto plan = std::get<VirtualArmPlan>(planned);
+        for (auto& motor : plan)
+            motor.hostsBus = motor.hostsBus && options.hostBus;
 
         std::error_code error;
         std::filesystem::create_directories(options.workDirectory, error);
         if (error)
             return std::format("cannot create {}: {}", options.workDirectory.string(), error.message());
 
-        if (!WaitForHubPort(options.hubPort, options.hubPortTimeout))
+        if (!options.hostBus && !HubAnswers(options.hubPort))
+            return std::format("no virtual CAN hub listens on port {}", options.hubPort);
+        if (options.hostBus && !WaitForHubPort(options.hubPort, options.hubPortTimeout))
             return std::format("the virtual CAN hub port {} is still held by a closed connection", options.hubPort);
 
         listener.emplace();
         if (!listener->Port().has_value())
             return std::string{ "cannot listen on a loopback port for the plant ports" };
 
-        if (auto refusal = StartMotors(std::get<VirtualArmPlan>(plan)); refusal.has_value())
+        if (auto refusal = StartMotors(plan); refusal.has_value())
         {
             Stop();
             return refusal;
@@ -134,9 +155,7 @@ namespace virtual_arm
         const auto deadline = std::chrono::steady_clock::now() + options.upTimeout;
         while (true)
         {
-            const auto probe = services::loopback::Connect(options.hubPort);
-            services::loopback::Close(probe);
-            if (probe != services::loopback::invalidSocket)
+            if (HubAnswers(options.hubPort))
                 return std::nullopt;
             if (const auto exitCode = host.process.Ended(); exitCode.has_value())
                 return std::format("joint {}'s motor ended before it came up, exit code {}", host.start.joint + 1, *exitCode);
@@ -174,6 +193,7 @@ namespace virtual_arm
         }
         arrivals.clear();
         listener.reset();
+        Publish();
 
         std::scoped_lock lock{ mutex };
         up = false;
@@ -194,6 +214,12 @@ namespace virtual_arm
     {
         std::scoped_lock lock{ mutex };
         return problem;
+    }
+
+    MotorReports VirtualArm::Motors() const
+    {
+        std::scoped_lock lock{ mutex };
+        return reports;
     }
 
     void VirtualArm::Silence(std::size_t joint, bool silent)
@@ -218,6 +244,69 @@ namespace virtual_arm
             });
     }
 
+    std::optional<std::string> VirtualArm::Restart(std::size_t joint, const std::optional<arm::JointMotor>& motor)
+    {
+        if (auto refusal = RefusalToCycle(joint); refusal.has_value())
+            return refusal;
+
+        auto plant = PlantOf(motor);
+        if (!plant.has_value())
+            return std::format("joint {} has a custom motor: a virtual motor takes e-foc's plant presets only", joint + 1);
+
+        Post([this, joint, plant = std::move(*plant)]()
+            {
+                RestartMotor(joint, plant);
+            });
+        return std::nullopt;
+    }
+
+    std::optional<std::string> VirtualArm::PowerOff(std::size_t joint)
+    {
+        if (auto refusal = RefusalToCycle(joint); refusal.has_value())
+            return refusal;
+
+        Post([this, joint]()
+            {
+                PowerOffMotor(joint);
+            });
+        return std::nullopt;
+    }
+
+    std::optional<std::string> VirtualArm::RefusalToCycle(std::size_t joint) const
+    {
+        if (!Up())
+            return std::string{ "the virtual arm is not up" };
+        if (joint >= arm::jointCount)
+            return std::format("no joint {}", joint + 1);
+        if (motors[joint].start.hostsBus)
+            return std::format("joint {}'s motor hosts the virtual CAN bus: restart the whole virtual arm", joint + 1);
+        return std::nullopt;
+    }
+
+    void VirtualArm::RestartMotor(std::size_t joint, const std::string& plant)
+    {
+        PowerOffMotor(joint);
+
+        auto& motor = motors[joint];
+        if (motor.start.plant != plant)
+        {
+            std::error_code ignored;
+            std::filesystem::remove(options.workDirectory / motor.start.memoryFile, ignored);
+            motor.start.plant = plant;
+        }
+
+        if (auto refusal = StartMotor(motor.start); refusal.has_value())
+            Report(*refusal);
+    }
+
+    void VirtualArm::PowerOffMotor(std::size_t joint)
+    {
+        auto& motor = motors[joint];
+        motor.socket.reset();
+        motor.connection = plant_port::MotorConnection{};
+        motor.process.Stop();
+    }
+
     void VirtualArm::Run(const std::stop_token& stop)
     {
         nextCoupling = std::chrono::steady_clock::now();
@@ -230,6 +319,7 @@ namespace virtual_arm
             Watch();
             Couple();
             Send();
+            Publish();
         }
     }
 
@@ -288,28 +378,24 @@ namespace virtual_arm
             motor->connection.Stream(true);
             arrival = arrivals.erase(arrival);
         }
-
-        if (AllIntroduced())
-        {
-            std::scoped_lock lock{ mutex };
-            if (!up)
-            {
-                up = true;
-                changed.notify_all();
-            }
-        }
     }
 
     void VirtualArm::Watch()
     {
         for (auto& motor : motors)
-            if (const auto exitCode = motor.process.Ended(); exitCode.has_value() && motor.socket.has_value())
+        {
+            const auto exitCode = motor.process.Started() ? motor.process.Ended() : std::nullopt;
+            if (!exitCode.has_value())
+                continue;
+
+            if (motor.socket.has_value())
             {
                 Report(std::format("joint {}'s motor ended unasked, exit code {}{}", motor.start.joint + 1, *exitCode, LastLines(motor.connection)));
                 motor.socket.reset();
             }
-            else if (exitCode.has_value() && !motor.connection.Introduction().has_value())
+            else if (!motor.connection.Introduction().has_value())
                 Report(std::format("joint {}'s motor ended before it came up, exit code {}", motor.start.joint + 1, *exitCode));
+        }
     }
 
     void VirtualArm::Couple()
@@ -342,6 +428,27 @@ namespace virtual_arm
                 const auto outgoing = motor.connection.TakeOutgoing();
                 motor.socket->Write(outgoing);
             }
+    }
+
+    void VirtualArm::Publish()
+    {
+        std::scoped_lock lock{ mutex };
+        for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+        {
+            auto& motor = motors[joint];
+            auto& report = reports[joint];
+            const bool joined = motor.socket.has_value() && motor.connection.Introduction().has_value() && motor.connection.LastStatus().has_value();
+            report.phase = PhaseOf(motor.process, joined);
+            report.exitCode = report.phase == MotorPhase::ended ? motor.process.Ended() : std::nullopt;
+            if (report.plant != motor.start.plant)
+                report.plant = motor.start.plant;
+        }
+
+        if (!up && AllIntroduced())
+        {
+            up = true;
+            changed.notify_all();
+        }
     }
 
     void VirtualArm::Report(std::string reason)
