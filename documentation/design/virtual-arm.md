@@ -207,11 +207,11 @@ drive's following-error supervision on: a window of 3 rad on the motor's side fo
 arm host on `virtual:arm` as the console does: contract check, align, bring-up and enable. The motors start
 calibrated but not aligned.
 
-| Scenario               | Checks                                                                                                                                       |
-|------------------------|----------------------------------------------------------------------------------------------------------------------------------------------|
-| Tracking under gravity | The largest difference between commanded and measured position while the shoulder lifts, as a `[METRIC]` line held to a limit pinned from it |
-| Collision | A 30 N·m torque against the shoulder while it moves, about the drive's peak torque through the gear, trips the arm on that joint's following error (REQ-ARM-004); without the supervision the drive holds on and nothing trips |
-| Silent joint           | A paused motor trips the arm as a silent joint (REQ-ARM-005)                                                                                 |
+| Scenario               | Checks                                                                                                                                                                                                                         |
+|------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Tracking under gravity | The largest difference between commanded and measured position while the shoulder lifts, as a `[METRIC]` line held to a limit pinned from it                                                                                   |
+| Collision              | A 30 N·m torque against the shoulder while it moves, about the drive's peak torque through the gear, trips the arm on that joint's following error (REQ-ARM-004); without the supervision the drive holds on and nothing trips |
+| Silent joint           | A paused motor trips the arm as a silent joint (REQ-ARM-005)                                                                                                                                                                   |
 
 CI runs them in a job of its own after building the engine (Part F). A torque well beyond the drive's peak is no
 collision to detect: it drives the joint backwards until the drive's overspeed protection trips. Tracking error with
