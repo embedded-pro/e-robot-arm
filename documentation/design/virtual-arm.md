@@ -104,7 +104,9 @@ directory. **Stop.** It ends every motor it started, the first motor last so tha
 which leaves the bus silent as a powered-off arm; a motor that ends without being asked is reported with the last
 lines of its debug log; the others keep running, so the arm sees that joint silent. Each motor runs in a process group of its
 own, so Ctrl-C reaches only the virtual arm, which then stops the motors; a motor whose virtual arm dies is ended
-with it, since an e-foc virtual motor otherwise outlives its plant port.
+with it, since an e-foc virtual motor otherwise outlives its plant port. Linux ties that to the thread that started
+the motor, not the process, so the virtual arm is started from a thread that outlives it: the simulator's target
+keeps the thread that started it waiting until the target closes.
 
 **Motor states.** The virtual arm reports, for each joint, its motor's plant and its process's state:
 
@@ -135,6 +137,10 @@ six joints' states. A restart is refused, with the reason, when:
 - the joint's motor hosts the bus: its hub would close under the other five, so the whole virtual arm restarts
   instead;
 - the new motor has custom values.
+
+A new profile with the same node ids is adopted while the virtual arm runs: the coupling takes the new geometry,
+mass and transmissions, and only the joints whose motor changed restart, under the same refusals. A profile with
+other node ids needs the whole virtual arm restarted.
 
 Custom values wait for e-foc to read a plant description as text (open question 1).
 
@@ -192,7 +198,7 @@ A scenario or the console asks the virtual arm for them; the arm only sees their
 | User                | How                                                                                             |
 |---------------------|-------------------------------------------------------------------------------------------------|
 | Console             | `--virtual-arm <profile>` starts the virtual arm, then the console's own arm on `virtual:<bus>` |
-| Simulator           | A *Virtual e-foc motors* target beside *Simulated joints* (phase 8d)                            |
+| Simulator           | The *Virtual arm* target, which hosts the hub itself ([simulator.md](simulator.md) Part C)      |
 | Scenarios           | The `@virtual` fixture starts it before a scenario and stops it after (Part G)                  |
 | By hand or a script | `e-robot-arm-virtual-arm --profile <file> [--bus <name>]`, ended with Ctrl-C                    |
 

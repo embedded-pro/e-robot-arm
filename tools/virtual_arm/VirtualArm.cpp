@@ -59,8 +59,8 @@ namespace virtual_arm
     VirtualArm::VirtualArm(const arm::ArmConfig& config, VirtualArmOptions options)
         : config(config)
         , options(std::move(options))
-        , coupling(config)
     {
+        coupling.emplace(config);
         if (this->options.engine.has_parent_path())
             this->options.engine = std::filesystem::absolute(this->options.engine);
     }
@@ -272,6 +272,38 @@ namespace virtual_arm
         return std::nullopt;
     }
 
+    std::optional<std::string> VirtualArm::Adopt(const arm::ArmConfig& newConfig)
+    {
+        if (!Up())
+            return std::string{ "the virtual arm is not up" };
+        if (newConfig.nodes != config.nodes)
+            return std::string{ "the profile's node ids changed: restart the whole virtual arm" };
+
+        const auto running = Motors();
+        std::array<std::optional<std::string>, arm::jointCount> changed{};
+        for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+        {
+            auto plant = PlantOf(newConfig.motors[joint]);
+            if (!plant.has_value())
+                return std::format("joint {} has a custom motor: a virtual motor takes e-foc's plant presets only", joint + 1);
+            if (*plant == running[joint].plant)
+                continue;
+            if (motors[joint].start.hostsBus)
+                return std::format("joint {}'s motor hosts the virtual CAN bus: restart the whole virtual arm", joint + 1);
+            changed[joint] = std::move(*plant);
+        }
+
+        config = newConfig;
+        Post([this, newConfig, changed]()
+            {
+                coupling.emplace(newConfig);
+                for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+                    if (changed[joint].has_value())
+                        RestartMotor(joint, *changed[joint]);
+            });
+        return std::nullopt;
+    }
+
     std::optional<std::string> VirtualArm::RefusalToCycle(std::size_t joint) const
     {
         if (!Up())
@@ -283,7 +315,7 @@ namespace virtual_arm
         return std::nullopt;
     }
 
-    void VirtualArm::RestartMotor(std::size_t joint, const std::string& plant)
+    void VirtualArm::RestartMotor(std::size_t joint, std::string_view plant)
     {
         PowerOffMotor(joint);
 
@@ -415,7 +447,7 @@ namespace virtual_arm
             states[joint] = { *angle, *speed };
         }
 
-        const auto torques = coupling.ShaftTorques(states, collision);
+        const auto torques = coupling->ShaftTorques(states, collision);
         for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
             motors[joint].connection.ExternalTorque(torques[joint]);
     }

@@ -3,6 +3,7 @@
 
 #include "tools/virtual_arm/ArmCoupling.hpp"
 #include "tools/virtual_arm/MotorProcess.hpp"
+#include "tools/virtual_arm/MotorReport.hpp"
 #include "tools/virtual_arm/PlantPortListener.hpp"
 #include "tools/virtual_arm/VirtualArmPlan.hpp"
 #include "tools/virtual_arm/plant_port/MotorConnection.hpp"
@@ -30,23 +31,6 @@ namespace virtual_arm
         bool hostBus{ true };
     };
 
-    enum class MotorPhase : uint8_t
-    {
-        stopped,
-        starting,
-        up,
-        ended
-    };
-
-    struct MotorReport
-    {
-        MotorPhase phase{ MotorPhase::stopped };
-        std::string plant;
-        std::optional<int> exitCode;
-    };
-
-    using MotorReports = std::array<MotorReport, arm::jointCount>;
-
     class VirtualArm
     {
     public:
@@ -66,6 +50,7 @@ namespace virtual_arm
         void Collide(std::size_t joint, foc::NewtonMeter torque);
         std::optional<std::string> Restart(std::size_t joint, const std::optional<arm::JointMotor>& motor);
         std::optional<std::string> PowerOff(std::size_t joint);
+        std::optional<std::string> Adopt(const arm::ArmConfig& newConfig);
 
     private:
         struct Motor
@@ -87,7 +72,7 @@ namespace virtual_arm
         std::optional<std::string> WaitForHub(Motor& host);
         std::optional<std::string> WaitUntilUp();
         std::optional<std::string> RefusalToCycle(std::size_t joint) const;
-        void RestartMotor(std::size_t joint, const std::string& plant);
+        void RestartMotor(std::size_t joint, std::string_view plant);
         void PowerOffMotor(std::size_t joint);
         void Run(const std::stop_token& stop);
         void Poll();
@@ -104,7 +89,7 @@ namespace virtual_arm
 
         arm::ArmConfig config;
         VirtualArmOptions options;
-        ArmCoupling coupling;
+        std::optional<ArmCoupling> coupling;
         std::optional<PlantPortListener> listener;
         std::array<Motor, arm::jointCount> motors{};
         std::vector<Arrival> arrivals;

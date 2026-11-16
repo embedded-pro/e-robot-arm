@@ -20,6 +20,7 @@ namespace simulator
         enum TargetChoice
         {
             simulatedJoints,
+            virtualArm,
             virtualBus,
             realArm
         };

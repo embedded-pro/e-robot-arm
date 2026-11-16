@@ -10,13 +10,15 @@ namespace arm_host
     {
         simulated,
         virtualBus,
-        real
+        real,
+        virtualArm
     };
 
     struct ArmTarget
     {
         TargetKind kind{ TargetKind::simulated };
         std::string bus;
+        std::string engine{};
 
         friend bool operator==(const ArmTarget& lhs, const ArmTarget& rhs) = default;
     };

@@ -47,10 +47,12 @@ namespace arm_host
 
     TargetOpener HostTargetOpener(infra::Duration simulatedTimeConstant, uint32_t bitrate)
     {
-        return [simulatedTimeConstant, bitrate](const ArmTarget& target, const arm::JointNodeIds& nodes) -> std::unique_ptr<ArmTargetLink>
+        return [simulatedTimeConstant, bitrate](const ArmTarget& target, const arm::ArmConfig& config) -> std::unique_ptr<ArmTargetLink>
         {
             if (target.kind == TargetKind::simulated)
-                return std::make_unique<SimulatedTargetLink>(nodes, simulatedTimeConstant);
+                return std::make_unique<SimulatedTargetLink>(config.nodes, simulatedTimeConstant);
+            if (target.kind == TargetKind::virtualArm)
+                return nullptr;
             return AdapterTargetLink::Open(target, bitrate);
         };
     }

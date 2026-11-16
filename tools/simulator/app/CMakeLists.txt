@@ -66,4 +66,9 @@ target_link_libraries(e_robot_arm.tool.simulator PRIVATE
     ui.backend.quick3d_plugin
     e_robot_arm.tool.simulator.app
 )
+
+if (TARGET e_robot_arm.tool.arm_host.virtual_arm)
+    target_link_libraries(e_robot_arm.tool.simulator PRIVATE e_robot_arm.tool.arm_host.virtual_arm)
+    target_compile_definitions(e_robot_arm.tool.simulator PRIVATE E_ROBOT_ARM_VIRTUAL_ARM)
+endif()
 add_subdirectory(test)

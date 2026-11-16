@@ -7,15 +7,18 @@
 #include "infra/timer/Timer.hpp"
 #include "tools/arm_host/ArmCommand.hpp"
 #include "tools/arm_host/ArmSnapshot.hpp"
+#include "tools/arm_host/VirtualMotors.hpp"
 #include "tools/simulated_arm/SimulatedArm.hpp"
 #include <optional>
+#include <string>
 
 namespace arm_host
 {
     class ArmSession
     {
     public:
-        ArmSession(hal::Can& can, const arm::ArmProfile& profile, const ArmTarget& target, ArmSessionSink& sink, simulation::SimulatedArm* simulation);
+        ArmSession(hal::Can& can, const arm::ArmProfile& profile, const ArmTarget& target, ArmSessionSink& sink, simulation::SimulatedArm* simulation,
+            VirtualMotors* virtualMotors = nullptr);
         ArmSession(const ArmSession& other) = delete;
         ArmSession& operator=(const ArmSession& other) = delete;
         ~ArmSession();
@@ -73,6 +76,7 @@ namespace arm_host
         void Failed(arm::JointCommand command, arm::CommandFailure failure);
         bool Run(const ArmCommand& command);
         bool Simulate(std::size_t joint, const infra::Function<void(simulation::SimulatedJoint&)>& action);
+        bool RestartVirtualMotor(std::size_t joint);
         std::string_view RefusalReason(const ArmCommand& command) const;
         std::string_view ArmControllerRefusal(arm::ArmControllerId id) const;
         void ReportTrip(std::size_t joint, can::FocFaultCode fault);
@@ -86,6 +90,8 @@ namespace arm_host
         ArmTarget target;
         ArmSessionSink& sink;
         simulation::SimulatedArm* simulation;
+        VirtualMotors* virtualMotors;
+        std::string motorRefusal;
         Events events{ *this, arm };
         infra::TimerRepeating publishTimer;
         std::optional<Pending> issuing;

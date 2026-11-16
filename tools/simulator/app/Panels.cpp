@@ -189,6 +189,92 @@ namespace simulator
         }
     }
 
+    VirtualMotorsPanel::VirtualMotorsPanel(QWidget* parent)
+        : QWidget{ parent }
+        , mark{ new QLabel{ "Simulation only", this } }
+        , table{ new QTableWidget{ static_cast<int>(arm::jointCount), 4, this } }
+        , folder{ new QLabel{ this } }
+        , hint{ new QLabel{ this } }
+    {
+        mark->setAccessibleName("Simulation only: these motors are processes on this computer");
+        folder->setAccessibleName("Folder of the motors' logs and memory");
+        folder->setTextInteractionFlags(Qt::TextSelectableByMouse);
+        folder->setWordWrap(true);
+        hint->setAccessibleName("Why Restart is disabled");
+        hint->setWordWrap(true);
+
+        table->setObjectName("virtualMotorsTable");
+        table->setAccessibleName("Virtual motor per joint");
+        table->setHorizontalHeaderLabels({ "Joint", "Motor", "Process", "" });
+        table->verticalHeader()->setVisible(false);
+        table->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+        table->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Stretch);
+        table->setEditTriggers(QAbstractItemView::NoEditTriggers);
+        table->setSelectionMode(QAbstractItemView::NoSelection);
+        for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+        {
+            const auto row = static_cast<int>(joint);
+            processes[joint] = new QLabel{ table };
+            restarts[joint] = new QPushButton{ "Restart", table };
+            restarts[joint]->setAccessibleName(QString{ "Restart joint %1's motor" }.arg(row + 1));
+            table->setCellWidget(row, 2, processes[joint]);
+            table->setCellWidget(row, 3, restarts[joint]);
+            connect(restarts[joint], &QPushButton::clicked, this, [this, row]()
+                {
+                    emit restartRequested(row);
+                });
+        }
+
+        auto* header = new QHBoxLayout{};
+        header->addStretch();
+        header->addWidget(mark);
+        auto* layout = new QVBoxLayout{ this };
+        layout->setContentsMargins(8, 8, 8, 8);
+        layout->addLayout(header);
+        layout->addWidget(table);
+        layout->addWidget(folder);
+        layout->addWidget(hint);
+        Render();
+        ApplyTheme();
+    }
+
+    void VirtualMotorsPanel::Update(const VirtualMotorsView& view)
+    {
+        if (view == shown)
+            return;
+
+        shown = view;
+        Render();
+    }
+
+    void VirtualMotorsPanel::Render()
+    {
+        const auto& view = shown;
+        for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+        {
+            const auto& motor = view.rows[joint];
+            const auto row = static_cast<int>(joint);
+            table->setItem(row, 0, new QTableWidgetItem{ ui::backend::qt::ToQt(motor.joint) });
+            table->setItem(row, 1, new QTableWidgetItem{ ui::backend::qt::ToQt(motor.motor) });
+            processes[joint]->setText(ui::backend::qt::ToQt(motor.process));
+            ui::backend::qt::StyleStatusLabel(*processes[joint], motor.level);
+            restarts[joint]->setEnabled(motor.restartEnabled);
+            restarts[joint]->setToolTip(motor.restartEnabled ? QString{ "Power-cycle this joint's virtual motor with the profile's motor" }
+                                                             : ui::backend::qt::ToQt(view.hint));
+        }
+        folder->setText(ui::backend::qt::ToQt(view.folder));
+        hint->setText(ui::backend::qt::ToQt(view.hint));
+        hint->setVisible(!view.hint.empty());
+    }
+
+    void VirtualMotorsPanel::ApplyTheme()
+    {
+        ui::backend::qt::StyleStatusLabel(*mark, ui::theme::StatusLevel::Warning);
+        ui::backend::qt::StyleStatusLabel(*hint, ui::theme::StatusLevel::Neutral);
+        for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+            ui::backend::qt::StyleStatusLabel(*processes[joint], shown.rows[joint].level);
+    }
+
     ScopePanel::ScopePanel(QWidget* parent)
         : QWidget{ parent }
         , joints{ new QComboBox{ this } }

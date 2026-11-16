@@ -7,6 +7,7 @@
 #include "tools/simulator/view_models/EventLog.hpp"
 #include "tools/simulator/view_models/JointRows.hpp"
 #include "tools/simulator/view_models/ToolReadout.hpp"
+#include "tools/simulator/view_models/VirtualMotorRows.hpp"
 #include "ui/core/Callback.hpp"
 #include "ui/model/FormModel.hpp"
 #include "ui/shell/AppShell.hpp"
@@ -79,6 +80,7 @@ namespace simulator
         void ConfirmRearm();
         bool InjectFault(std::size_t joint);
         bool SilenceJoint(std::size_t joint);
+        bool RestartMotor(std::size_t joint);
         bool SelectJoint(int joint);
         bool SingleStep(Control control);
 

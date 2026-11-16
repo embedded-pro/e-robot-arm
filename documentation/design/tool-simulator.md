@@ -2,9 +2,9 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.16.0
+version: 0.17.0
 component: "tool-simulator"
-date: 2026-11-14
+date: 2026-11-16
 ---
 
 | Field     | Value                   |
@@ -12,9 +12,9 @@ date: 2026-11-14
 | Title     | Simulator Screen Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.16.0                  |
+| Version   | 0.17.0                  |
 | Component | tool-simulator          |
-| Date      | 2026-11-14              |
+| Date      | 2026-11-16              |
 
 > What the e-robot-arm Simulator shows, what each control does and when, and how it looks (phase 8a,
 > [#28](https://github.com/embedded-pro/e-robot-arm/issues/28)). Components and threads are in
@@ -117,6 +117,7 @@ the target is built and at least one joint has answered. Joints are numbered 1�
 | Move             | The arm is Enabled, all targets valid                                            | "Not connected", "Tripped", "Moving", "Enable the arm first", "J N outside limits"                                                                                                                         | Move to the six targets through the lifecycle                            |
 | Abort            | A move running                                                                   | "No move running"                                                                                                                                                                                          | Abort the move                                                           |
 | Target selector  | No move running                                                                  | "Moving"                                                                                                                                                                                                   | Part C                                                                   |
+| Restart (motor)  | Virtual arm, arm not enabling, enabled, moving or disabling, motor not starting  | "Disable the arm first", "Starting"                                                                                                                                                                        | Restart that joint's virtual motor (Part L)                              |
 
 - **Arm → Single Step** holds the joints' own commands for debugging: Check Contracts (connected, no move
   running), Position Mode and Start (contracts compatible, not tripped), Stop (any joint running). A disabled item
@@ -131,7 +132,8 @@ the target is built and at least one joint has answered. Joints are numbered 1�
 joints. A remembered real target is not reconnected on launch: the simulator opens on simulated joints and the
 selector shows the real adapter as the last used.
 
-**Choose a target.** The selector lists *Simulated joints*, *Virtual bus…* (asks for the bus name) and *Real arm…*
+**Choose a target.** The selector lists *Simulated joints*, *Virtual arm…* (asks for the e-foc virtual motor
+binary, Part L), *Virtual bus…* (asks for the bus name) and *Real arm…*
 (asks for the adapter, `socketcan:<interface>` or `slcan:<port>`; the last one used is offered). The switch shows
 "Switch to … requested…" and then "done" or "failed: <reason>" in the status bar. Choosing *Real arm*
 opens a confirmation: "Connect to the real arm on `<adapter>`? Joints start stopped." with **Connect** and
@@ -150,6 +152,10 @@ source. Re-arm returns the arm to Waiting for calibration, then (configuring the
 again.
 
 **Inject a failure** (simulated target only). **Simulation → Inject Fault → Joint N** or **Silence Joint N**.
+
+**Change a virtual joint's motor.** Edit the joint's motor in the profile file and open it (Part I): on the virtual
+arm only the joints whose motor changed restart, and the Virtual Motors dock shows them go from Starting to Up
+(Part L). Bring Up applies the new motor model to the node.
 
 ### Part D — Keyboard
 
@@ -388,6 +394,40 @@ The arm model's view of the measured arm ([arm-model.md](arm-model.md) Parts B a
   the colour.
 - Without a target, or while any joint is silent, every read-out shows "—" and the warning hides: the model of a
   stale arm is not shown as live.
+
+### Part L — Virtual arm target and Virtual Motors dock (phase 8d)
+
+**Choosing it.** *Virtual arm…* asks for the e-foc virtual motor binary, offering the last one used, else the
+`E_FOC_VIRTUAL_MOTOR` environment variable, else `e-foc-virtual-motor` on the path. The target starts six virtual
+motors from the profile in effect, one per joint, each with the joint's motor ([simulator.md](simulator.md) Part C).
+Starting takes seconds: the status strip's connection reads **Starting virtual motors: `n` of 6 up** (`Neutral`)
+until the target is ready, and a failure names its reason ("joint 3 has a custom motor: …", "the virtual CAN hub
+port 29536 is in use …") in the status bar and the log. The window title and the target selector read **Virtual
+arm**. Closing the window or switching target stops every motor.
+
+**Virtual Motors dock**, tabbed with the Profile dock, shown while the target is the virtual arm and hidden
+otherwise:
+
+```text
+┌ Virtual Motors ─────────────────────────────────── Simulation only ┐
+│ Joint  Motor     Process                                           │
+│ J1     teknic    Up                                     [Restart]  │
+│ J2     anaheim   Starting…                              [Restart]  │
+│ J3     teknic    Ended: exit code 3 (see joint3.log)    [Restart]  │
+│ …                                                                  │
+│ Logs and memory: /run/user/1000/e-robot-arm/virtual-arm-4711-1      │
+│ Restart: disable the arm first                                     │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+- **Simulation only** sits in the dock's title row in the `Warning` colour, so the dock can never be mistaken for a
+  control of real hardware.
+- **Process** reads Stopped (`Neutral`), Starting… (`Neutral`), Up (`Ok`) or **Ended: exit code `n` (see
+  `joint<n>.log`)** (`Fault`). Until the target first publishes its motors, every row reads "—".
+- **Restart** power-cycles that joint's virtual motor with the profile's motor. It is enabled while the target is
+  the virtual arm, the arm is not enabling, enabled, moving or disabling, and that motor is not starting. The
+  reasons shown are "Disable the arm first" and "Starting". The arm sees the joint go silent and come back; Bring Up
+  again afterwards.
 
 ---
 
