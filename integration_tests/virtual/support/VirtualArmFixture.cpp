@@ -6,6 +6,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <filesystem>
+#include <format>
 #include <thread>
 
 namespace integration
@@ -106,6 +107,20 @@ namespace integration
             for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
                 largest = std::max(largest, std::abs(sample.commanded[joint].Value() - sample.measured[joint].Value()));
         return largest;
+    }
+
+    std::string VirtualArmFixture::History()
+    {
+        Collect();
+        const auto snapshot = host->Snapshot();
+        auto history = std::format("arm state {}, tripped {}; events:\n", arm_host::StateName(snapshot.state), snapshot.tripped);
+        for (const auto& event : events)
+            history += std::format("  kind {} command {} '{}' reason '{}' joint {} fault {} state {}\n", static_cast<int>(event.kind), event.command, event.commandName,
+                event.reason, event.joint == arm_host::noJoint ? -1 : static_cast<int>(event.joint), static_cast<int>(event.fault), arm_host::StateName(event.state));
+        for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+            history += std::format("  J{} state {} fault {} silent {}\n", joint + 1, static_cast<int>(snapshot.readings[joint].state),
+                static_cast<int>(snapshot.readings[joint].fault), snapshot.readings[joint].silent);
+        return history;
     }
 
     void VirtualArmFixture::Collect()
