@@ -48,3 +48,9 @@ TEST_F(JointTransmissionTest, a_transmission_needs_a_positive_finite_ratio_and_a
     EXPECT_FALSE((arm::JointTransmission{ -2.0f, arm::JointDirection::positive, foc::Radians{ 0.0f } }.Valid()));
     EXPECT_FALSE((arm::JointTransmission{ 2.0f, arm::JointDirection::positive, foc::Radians{ std::numeric_limits<float>::infinity() } }.Valid()));
 }
+
+TEST_F(JointTransmissionTest, a_joint_torque_divides_by_the_ratio_in_the_configured_direction)
+{
+    EXPECT_NEAR(-0.3f, geared.MotorTorque(foc::NewtonMeter{ 3.0f }).Value(), tolerance);
+    EXPECT_NEAR(1.5f, arm::JointTransmission{}.MotorTorque(foc::NewtonMeter{ 1.5f }).Value(), tolerance);
+}

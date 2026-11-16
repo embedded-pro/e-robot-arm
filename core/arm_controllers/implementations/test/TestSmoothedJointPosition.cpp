@@ -28,6 +28,7 @@ namespace
 TEST_F(SmoothedJointPositionTest, starts_from_the_measured_joints_and_closes_a_fifth_of_the_gap_each_period)
 {
     EXPECT_TRUE(controller.BumplessTransfer());
+    EXPECT_EQ(can::FocMotorMode::position, controller.Mode());
 
     const auto first = controller.Step(measured, reference);
     const auto second = controller.Step(measured, reference);

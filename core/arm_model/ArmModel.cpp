@@ -275,6 +275,19 @@ namespace arm
         return vector;
     }
 
+    const dynamics::EulerLagrangeDynamics<float, jointCount>& ArmModel::Dynamics() const
+    {
+        return dynamics;
+    }
+
+    ArmModel::JointVector ArmModel::ModelSpeeds(const JointSpeeds& speeds) const
+    {
+        JointVector vector{};
+        for (std::size_t joint = 0; joint != jointCount; ++joint)
+            vector.at(joint, 0) = static_cast<float>(geometry.opw.signs[joint]) * speeds[joint].Value();
+        return vector;
+    }
+
     JointTorques ArmModel::ToJointTorques(const JointVector& torques) const
     {
         JointTorques result{};

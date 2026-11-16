@@ -12,7 +12,6 @@
 namespace arm
 {
     using JointAccelerations = std::array<foc::RadiansPerSecondSquared, jointCount>;
-    using JointTorques = std::array<foc::NewtonMeter, jointCount>;
 
     struct Singularities
     {
@@ -64,9 +63,14 @@ namespace arm
         JointTorques InverseDynamics(const JointPositions& joints, const JointSpeeds& speeds, const JointAccelerations& accelerations) const;
         MassMatrix JointMassMatrix(const JointPositions& joints) const;
 
-    private:
         using JointVector = math::Vector<float, 6>;
 
+        const dynamics::EulerLagrangeDynamics<float, jointCount>& Dynamics() const;
+        JointVector ModelVector(const JointPositions& joints) const;
+        JointVector ModelSpeeds(const JointSpeeds& speeds) const;
+        JointTorques ToJointTorques(const JointVector& torques) const;
+
+    private:
         struct ModelAngles
         {
             std::array<float, 6> theta{};
@@ -75,8 +79,6 @@ namespace arm
         ModelAngles Angles(const JointPositions& joints) const;
         math::Vector3<float> WristCentre(const ModelAngles& angles) const;
         std::optional<JointPositions> WithinLimits(const JointVector& solution, const JointPositions& current) const;
-        JointVector ModelVector(const JointPositions& joints) const;
-        JointTorques ToJointTorques(const JointVector& torques) const;
 
         ArmGeometry geometry;
         JointLimits limits;

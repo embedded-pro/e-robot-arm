@@ -19,6 +19,7 @@ namespace arm
         MOCK_METHOD(bool, Align, (), (override));
         MOCK_METHOD(bool, EmergencyStop, (), (override));
         MOCK_METHOD(bool, SendPositions, (const JointPositions& positions), (override));
+        MOCK_METHOD(bool, SendTorques, (const JointTorques& torques), (override));
         MOCK_METHOD(bool, RequestTelemetry, (), (override));
         MOCK_METHOD(bool, SelectAlgorithm, (std::size_t joint, can::FocControlLoop loop, uint8_t algorithm), (override));
         MOCK_METHOD(bool, QueryAlgorithms, (std::size_t joint), (override));

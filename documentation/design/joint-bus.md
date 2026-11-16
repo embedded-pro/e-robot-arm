@@ -2,9 +2,9 @@
 title: "Joint Bus Design"
 type: design
 status: draft
-version: 0.9.0
+version: 0.10.0
 component: "joint_bus"
-date: 2026-11-12
+date: 2026-11-16
 ---
 
 | Field     | Value            |
@@ -12,9 +12,9 @@ date: 2026-11-12
 | Title     | Joint Bus Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.9.0            |
+| Version   | 0.10.0           |
 | Component | joint_bus        |
-| Date      | 2026-11-12       |
+| Date      | 2026-11-16       |
 
 > The six joints of the arm as one set of commands and readings. Behaviour only; diagrams are Mermaid.
 
@@ -27,7 +27,7 @@ date: 2026-11-12
 - Mapping the six joints, in kinematic order from the base, to the CAN node of each e-foc motor node.
 - Sending one command to every joint at once: select a control mode, start, stop, clear a fault, align,
   emergency stop.
-- Sending one position setpoint per joint each control period.
+- Sending one position or torque setpoint per joint each control period.
 - Checking that every node speaks a compatible FOC motor contract and reporting the outcome once.
 - Keeping the latest position, speed, state and fault reported by each joint.
 - Reporting a joint that enters a fault, naming the joint.
@@ -80,8 +80,9 @@ retracted from the joints that already accepted it: the caller decides what to d
 stops the arm on any fault.
 
 Setpoints are joint positions, converted to motor positions (Part F) and sent as position setpoints in radians,
-once per control period and never held: the next period
-sends newer ones. A non-finite value is refused by the client and makes the whole call report failure.
+or joint torques, converted to motor torques and sent as torque setpoints in N·m, once per control period and never
+held: the next period sends newer ones. Which the joints obey follows the control mode selected at enable. A
+non-finite value is refused by the client and makes the whole call report failure.
 
 ### Part C — Contract check
 
@@ -125,7 +126,8 @@ Each joint has a transmission between its motor's shaft and the joint: a gear ra
 | Torque   | motor torque = joint torque / (direction · ratio · efficiency) | joint torque = direction · ratio · efficiency · motor torque |
 
 The ratio is positive (motor turns per joint turn), the direction is +1 or −1 and the offset is the joint angle
-at the motor's zero, in radians. Torque is not sent or read yet; its row fixes the convention for when it is. The
+at the motor's zero, in radians. Torque setpoints follow the torque row with an efficiency of 1 until the profile
+carries one; torque is not read yet. The
 bus converts every setpoint on the way out and every motion reading on the way in, so position limits, motion
 limits and trajectories stay in joint space. The e-foc node's own position limits are in motor space: whoever
 brings a joint up sets them from the joint limits through the same transformation. An identity transmission

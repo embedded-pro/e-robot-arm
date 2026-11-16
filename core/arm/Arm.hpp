@@ -4,6 +4,7 @@
 #include "core/arm/ArmConfig.hpp"
 #include "core/arm/ArmControllerEngagement.hpp"
 #include "core/arm_controllers/implementations/ArmControllersImpl.hpp"
+#include "core/arm_controllers/implementations/GravityCompensatedPd.hpp"
 #include "core/arm_controllers/implementations/JointPositionPassThrough.hpp"
 #include "core/arm_controllers/implementations/SmoothedJointPosition.hpp"
 #include "core/control_loop/implementations/ControlLoopImpl.hpp"
@@ -47,6 +48,8 @@ namespace arm
         ArmLifecycleImpl lifecycle;
         JointPositionPassThrough passThrough;
         SmoothedJointPosition smoothed;
+        ArmModel model;
+        GravityCompensatedPd gravityPd;
         ArmControllersImpl controllers;
         ArmControllerEngagement engagement;
         ControlLoopImpl loop;

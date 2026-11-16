@@ -404,6 +404,8 @@ namespace arm_host
             return "no such arm controller";
         if (!controllers.Enabled(id))
             return "the arm controller is disabled";
+        if (!controllers.FitsJointMode(id))
+            return "the arm controller needs the joints in another control mode: set the profile's enable mode";
         return "a move runs and the arm controller cannot take over without a step";
     }
 

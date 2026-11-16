@@ -30,6 +30,7 @@ namespace arm
         bool Align() override;
         bool EmergencyStop() override;
         bool SendPositions(const JointPositions& positions) override;
+        bool SendTorques(const JointTorques& torques) override;
         bool RequestTelemetry() override;
         bool SelectAlgorithm(std::size_t joint, can::FocControlLoop loop, uint8_t algorithm) override;
         bool QueryAlgorithms(std::size_t joint) override;

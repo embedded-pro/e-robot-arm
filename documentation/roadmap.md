@@ -90,6 +90,18 @@ The simulator and the platform choose at run time, from the arm profile, never a
   - current loop: PID, decoupled PID, deadbeat or sliding mode;
   - speed loop: PID, LQI, ADRC or two-DOF;
   - position loop: PID, cascade P, LQR, LQI or two-DOF.
+
+**The arm controls torque.** The drives run in torque mode; position, speed and gravity are closed by the arm
+controllers on the host (the PC now, a microcontroller later), built from robotics-toolbox and numerical-toolbox.
+The move there, in phase 8d ([#31](https://github.com/embedded-pro/e-robot-arm/issues/31)):
+
+1. Torque setpoints and `gravity-pd` (robotics-toolbox `PdGravityCompensation`), beside the position path.
+2. The position path removed: torque is the only enable mode; `pass-through` and `smoothed` go.
+3. Simulated joints driven by the arm's forward dynamics (robotics-toolbox); the supervisor trips on a measured
+   position outside the limits and on a tracking error held too long, replacing the drive's following-error
+   supervision.
+4. Computed torque and a per-joint PID with gravity feed-forward; collision detection with robotics-toolbox's
+   momentum observer (phase 6).
 - **Motor characteristics per joint**: a preset or custom resistance, inductance, pole pairs, flux, inertia,
   friction and limits. Real nodes get these as motor-model parameters; virtual motors get them as their plant
   (phases 2 and 7).
@@ -102,7 +114,7 @@ The architecture is described in [system.md](architecture/system.md#configurabil
 |---------------------------------------------------------------|-------|------------------------------------------------------------------------------------------------------|
 | The arm's geometry, gear ratios and mass properties           | 1, 3  | A generic six-joint arm with a spherical wrist until real numbers exist                              |
 | Profile file format                                           | 2     | A format already in the dev container's libraries                                                    |
-| Combined and unacknowledged setpoints in e-foc-protocol       | 5     | Combined setpoint first; drop acknowledgements if the bus needs it                                   |
+| Combined and unacknowledged setpoints in e-foc-protocol       | 5     | Decided: torque setpoints only, the arm closes the loops; drop acknowledgements if the bus needs it  |
 | Hardware stop: relay or safe-torque-off, and how it is read   | 6     | Decided with the bring-up hardware                                                                   |
 | Position range of geared joints: e-foc stops at ±2π motor rad | 7     | Decided: multi-turn position in e-foc and e-foc-protocol                                             |
 | 3-D rendering of the simulator                                | 8a    | Decided: Qt Quick 3D (PBR, image-based lighting, soft shadows, SSAO); ui-cpp for the rest of the GUI |
