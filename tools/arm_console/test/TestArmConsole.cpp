@@ -218,3 +218,42 @@ TEST_F(ArmConsoleTest, pose_gravity_fk_and_ik_convert_without_moving_the_arm)
     EXPECT_EQ("ik refused: unreachable\n", Run("ik 2 0 0 0 0 0"));
     EXPECT_THAT(Run("fk 1 2"), HasSubstr("usage:"));
 }
+
+TEST_F(ArmConsoleTest, tune_step_runs_a_step_test_and_prints_its_metrics_once_it_has_recorded)
+{
+    arm_host::ArmSnapshot snapshot;
+    snapshot.state = arm::ArmState::enabled;
+    snapshot.commanded = arm::JointPositions{};
+    EXPECT_CALL(arm, Snapshot()).WillRepeatedly(Return(snapshot));
+    EXPECT_CALL(arm, Post(Holds(arm_host::StepTo{}))).WillOnce(Return(9u));
+
+    const auto result = console.Execute("tune step 2 0.1");
+    EXPECT_EQ(arm_console::Outcome::posted, result.outcome);
+    EXPECT_EQ(9u, result.command);
+
+    console.Print(arm_host::ArmEvent{ .kind = arm_host::ArmEventKind::accepted, .command = 9 });
+    output.str("");
+    infra::TimePoint time{};
+    for (int index = 0; index != 201; ++index)
+    {
+        arm_host::TraceSample sample{ .time = time };
+        sample.commanded[1] = foc::Radians{ 0.1f };
+        sample.measured[1] = foc::Radians{ 0.1f };
+        console.Trace(sample);
+        time += std::chrono::milliseconds{ 10 };
+    }
+
+    EXPECT_EQ("tune step joint 2 by 0.100 rad: rise 0.000 s, overshoot 0.0 %, settling 0.000 s, steady-state error 0.0000 rad, tracking RMS 0.0000 rad, "
+              "peak 0.0000 rad\n",
+        output.str());
+}
+
+TEST_F(ArmConsoleTest, tune_prints_why_a_test_does_not_start_and_the_usage_when_malformed)
+{
+    arm_host::ArmSnapshot snapshot;
+    EXPECT_CALL(arm, Snapshot()).WillRepeatedly(Return(snapshot));
+
+    EXPECT_EQ("tune refused: the arm is not enabled\n", Run("tune move 3 -0.5"));
+    EXPECT_THAT(Run("tune spin 2 0.1"), StartsWith("usage:"));
+    EXPECT_THAT(Run("tune step 2"), StartsWith("usage:"));
+}

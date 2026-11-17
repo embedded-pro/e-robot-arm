@@ -67,6 +67,7 @@ namespace arm
         MotorSettings motor{};
         infra::TimerSingleShot retryTimer;
         infra::TimerSingleShot timeoutTimer;
+        infra::TimerRepeating resendTimer;
     };
 }
 

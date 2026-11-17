@@ -156,6 +156,24 @@ TEST_F(JointBusImplTest, a_control_mode_is_delivered_once_every_joint_confirms_i
     EXPECT_EQ(arm::jointCount, sent.size());
 }
 
+TEST_F(JointBusImplTest, a_control_mode_a_joint_has_not_confirmed_is_selected_again_on_that_joint_every_fifth_of_the_timeout)
+{
+    EXPECT_TRUE(bus.SelectMode(can::FocMotorMode::position));
+    for (std::size_t joint = 0; joint + 1 != arm::jointCount; ++joint)
+        ConfirmMode(nodes[joint], can::FocMotorMode::position);
+
+    ForwardTime(commandTimeout / 5);
+
+    ASSERT_EQ(arm::jointCount + 1, sent.size());
+    EXPECT_EQ(nodes.back(), sent.back().node);
+    EXPECT_EQ(can::focSelectControlModeId, sent.back().messageType);
+
+    EXPECT_CALL(observer, OnCommandDelivered(arm::JointCommand::selectMode));
+    ConfirmMode(nodes.back(), can::FocMotorMode::position);
+    ForwardTime(commandTimeout);
+    EXPECT_EQ(arm::jointCount + 1, sent.size());
+}
+
 TEST_F(JointBusImplTest, a_control_mode_a_joint_does_not_confirm_in_time_fails)
 {
     EXPECT_TRUE(bus.SelectMode(can::FocMotorMode::position));
@@ -164,7 +182,7 @@ TEST_F(JointBusImplTest, a_control_mode_a_joint_does_not_confirm_in_time_fails)
 
     EXPECT_CALL(observer, OnCommandFailed(arm::JointCommand::selectMode, arm::CommandFailure::timedOut));
     ForwardTime(commandTimeout);
-    EXPECT_EQ(arm::jointCount, sent.size());
+    EXPECT_EQ(arm::jointCount + 5, sent.size());
 }
 
 TEST_F(JointBusImplTest, start_stop_clear_fault_and_align_reach_every_joint)

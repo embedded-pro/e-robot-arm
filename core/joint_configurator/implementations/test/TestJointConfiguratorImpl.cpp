@@ -233,3 +233,21 @@ TEST_F(JointConfiguratorImplTest, read_motor_collects_every_motor_parameter)
     for (std::size_t parameter = 0; parameter != arm::motorParameterCount; ++parameter)
         AnswerParameter(joint, arm::motorParameters[parameter], arm::motorPresets[1].settings.values[parameter]);
 }
+
+TEST_F(JointConfiguratorImplTest, a_parameter_request_left_unanswered_is_sent_again_every_fifth_of_the_answer_timeout_and_a_late_answer_is_ignored)
+{
+    auto motor = arm::motorPresets[0].settings;
+    EXPECT_CALL(bus, SetParameter(joint, arm::motorParameters[0], motor.values[0])).WillOnce(Return(true));
+    EXPECT_TRUE(configurator.ApplyMotor(joint, motor));
+
+    ForwardTime(49ms);
+    EXPECT_CALL(bus, SetParameter(joint, arm::motorParameters[0], motor.values[0])).WillOnce(Return(true));
+    ForwardTime(1ms);
+
+    EXPECT_CALL(bus, SetParameter(joint, arm::motorParameters[1], motor.values[1])).WillOnce(Return(true));
+    AnswerParameter(joint, arm::motorParameters[0], motor.values[0]);
+    AnswerParameter(joint, arm::motorParameters[0], motor.values[0]);
+
+    ForwardTime(49ms);
+    EXPECT_TRUE(configurator.Busy());
+}

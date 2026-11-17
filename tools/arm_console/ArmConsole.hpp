@@ -3,7 +3,11 @@
 
 #include "tools/arm_host/ArmCommands.hpp"
 #include "tools/arm_host/ArmEvent.hpp"
+#include "tools/arm_host/ArmSnapshot.hpp"
+#include "tools/tuning/TuningRun.hpp"
 #include <cstdint>
+#include <filesystem>
+#include <mutex>
 #include <optional>
 #include <ostream>
 #include <sstream>
@@ -32,6 +36,7 @@ namespace arm_console
 
         ExecuteResult Execute(const std::string& line);
         void Print(const arm_host::ArmEvent& event);
+        void Trace(const arm_host::TraceSample& sample);
 
     private:
         std::optional<arm_host::ArmCommand> Parse(std::string_view command, std::istringstream& arguments) const;
@@ -43,10 +48,16 @@ namespace arm_console
         std::optional<arm_host::ArmCommand> Mode(std::istringstream& arguments) const;
         std::optional<arm_host::ArmCommand> Move(std::istringstream& arguments) const;
         void Status();
+        ExecuteResult Tune(std::istringstream& arguments);
+        void ReportTuning();
+        void PrintEvent(const arm_host::ArmEvent& event);
         void Usage();
 
         arm_host::ArmCommands& arm;
         std::ostream& output;
+        std::mutex tuningMutex;
+        std::optional<tuning::TuningRun> tuningRun;
+        std::filesystem::path tuningCsv;
     };
 }
 

@@ -2,6 +2,7 @@
 #define INTEGRATION_TESTS_VIRTUAL_SUPPORT_VIRTUAL_ARM_FIXTURE_HPP
 
 #include "tools/arm_host/ArmHost.hpp"
+#include "tools/tuning/TuningRun.hpp"
 #include "tools/virtual_arm/VirtualArm.hpp"
 #include <chrono>
 #include <functional>
@@ -24,6 +25,7 @@ namespace integration
         float LargestTrackingError();
         std::pair<float, std::size_t> LargestExternalTorque();
         std::string History();
+        bool Run(tuning::TuningRun& run, std::chrono::milliseconds timeout);
 
         arm::ArmProfile profile;
         std::optional<virtual_arm::VirtualArm> virtualArm;

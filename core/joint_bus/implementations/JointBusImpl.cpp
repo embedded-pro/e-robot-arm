@@ -273,6 +273,11 @@ namespace arm
                 {
                     Fail(CommandFailure::timedOut);
                 });
+            if (command == JointCommand::selectMode)
+                resendTimer.Start(commandTimeout / 5, [this]()
+                    {
+                        ResendUnconfirmed();
+                    });
         }
 
         return true;
@@ -285,6 +290,13 @@ namespace arm
                 held->accepted[joint] = Send(*held, nodes[joint]);
 
         CompleteHeldOnceDone();
+    }
+
+    void JointBusImpl::ResendUnconfirmed()
+    {
+        for (std::size_t joint = 0; joint != jointCount; ++joint)
+            if (held->accepted[joint] && !held->confirmed[joint])
+                held->accepted[joint] = Send(*held, nodes[joint]);
     }
 
     void JointBusImpl::CompleteHeldOnceDone()
@@ -327,6 +339,7 @@ namespace arm
     {
         held.reset();
         retryTimer.Cancel();
+        resendTimer.Cancel();
         timeoutTimer.Cancel();
     }
 

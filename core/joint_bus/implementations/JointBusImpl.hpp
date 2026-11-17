@@ -62,6 +62,7 @@ namespace arm
 
         bool Deliver(JointCommand command, can::FocMotorMode mode);
         void SendHeld();
+        void ResendUnconfirmed();
         void CompleteHeldOnceDone();
         bool Send(const HeldCommand& command, uint16_t node);
         void Release();
@@ -94,6 +95,7 @@ namespace arm
         infra::Duration commandTimeout;
         std::optional<HeldCommand> held;
         infra::TimerRepeating retryTimer;
+        infra::TimerRepeating resendTimer;
         infra::TimerSingleShot timeoutTimer;
     };
 }

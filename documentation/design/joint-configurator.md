@@ -2,7 +2,7 @@
 title: "Joint Configurator Design"
 type: design
 status: draft
-version: 0.5.0
+version: 0.6.0
 component: "joint_configurator"
 date: 2026-11-16
 ---
@@ -12,7 +12,7 @@ date: 2026-11-16
 | Title     | Joint Configurator Design |
 | Type      | design                    |
 | Status    | draft                     |
-| Version   | 0.5.0                     |
+| Version   | 0.6.0                     |
 | Component | joint_configurator        |
 | Date      | 2026-11-16                |
 
@@ -81,9 +81,12 @@ the previous one was answered. **Read** queries the algorithms (the answer also 
 fourteen gains. Each operation works on one joint and is reported once: applied, read with the settings, or
 failed with its reason.
 
-A request the transmit queue refuses is sent again a millisecond later. A request not answered within the arm's
-silence window (the missed telemetry periods the profile allows, times the control period: 100 ms for the reference
-arm), or a refusal by the node, fails the whole operation; the requests already answered are not undone. A node
+A request the transmit queue refuses is sent again a millisecond later. A parameter request not answered within a
+fifth of the answer timeout is sent again, every fifth until it is answered: a frame lost on a congested bus costs
+a retry, not the configuration. Each answer names its parameter, so a late answer to an earlier send is not taken for
+the next request's. An algorithm request is not sent again: its answer names no loop. A request not answered within
+the arm's silence window (the missed telemetry periods the profile allows, times the control period: 100 ms for the
+reference arm), or a refusal by the node, fails the whole operation; the requests already answered are not undone. A node
 that answers telemetry within that window is not silent, so it is not given up on while configuring either. While one
 operation runs, another is refused.
 

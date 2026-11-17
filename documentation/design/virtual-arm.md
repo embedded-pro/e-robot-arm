@@ -2,7 +2,7 @@
 title: "Virtual Arm Design"
 type: design
 status: draft
-version: 0.14.0
+version: 0.15.0
 component: "virtual-arm"
 date: 2026-11-16
 ---
@@ -12,7 +12,7 @@ date: 2026-11-16
 | Title     | Virtual Arm Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.14.0             |
+| Version   | 0.15.0             |
 | Component | virtual-arm        |
 | Date      | 2026-11-16         |
 
@@ -258,8 +258,9 @@ scenario, and a failed step prints each motor's real-time factor and overrun cou
 | Tracking under gravity | The largest difference between commanded and measured position while the shoulder lifts, and the largest external torque the collision observer estimates on any joint, each as a `[METRIC]` line held to a limit pinned from it |
 | Computed torque        | The same move under `computed-torque`, with the reference speed and acceleration: a tighter tracking limit, pinned from its own `[METRIC]` line                                                                                  |
 | PID with gravity       | The same move under `gravity-pid`: every joint settles within 0.015 rad despite the drives' friction, and a tracking limit pinned from its `[METRIC]` line                                                                       |
+| Step test              | A 0.05 rad reference step on the elbow under `gravity-pid` through the tuning runner ([tuning.md](tuning.md)): rise time and overshoot as `[METRIC]` lines held to limits pinned from them                                       |
 | Collision              | A 30 N·m torque against the shoulder while it moves, about the drive's peak torque through the gear, trips the arm on that joint's collision within 300 ms (REQ-ARM-016)                                                         |
-| Held back              | The same collision with every joint's collision limit at 1000 N·m, out of reach, trips the arm on that joint's tracking error instead (REQ-ARM-014); without either supervision the drive holds on and nothing trips             |
+| Held back              | The same collision with every joint's collision limit at 1000 N·m, out of reach, trips the arm on a joint's tracking error instead (REQ-ARM-014); without either supervision the drive holds on and nothing trips                |
 | Silent joint           | A paused motor trips the arm as a silent joint (REQ-ARM-005)                                                                                                                                                                     |
 
 CI runs them in a job of its own after building the engine (Part F). A torque well beyond the drive's peak is no

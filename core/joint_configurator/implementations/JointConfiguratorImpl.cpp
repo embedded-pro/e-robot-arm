@@ -168,6 +168,13 @@ namespace arm
             {
                 Fail(ConfigurationFailure::timedOut);
             });
+        if (ExpectsAlgorithms())
+            resendTimer.Cancel();
+        else
+            resendTimer.Start(answerTimeout / 5, [this]()
+                {
+                    TrySend();
+                });
         TrySend();
     }
 
@@ -209,6 +216,7 @@ namespace arm
         const auto finishedMotor = motor;
         operation.reset();
         retryTimer.Cancel();
+        resendTimer.Cancel();
         timeoutTimer.Cancel();
 
         switch (finished)
@@ -245,6 +253,7 @@ namespace arm
         const auto failedJoint = joint;
         operation.reset();
         retryTimer.Cancel();
+        resendTimer.Cancel();
         timeoutTimer.Cancel();
         NotifyObservers([failedJoint, failure](auto& observer)
             {

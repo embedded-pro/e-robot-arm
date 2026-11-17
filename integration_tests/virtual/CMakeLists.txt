@@ -14,6 +14,7 @@ if (UNIX)
     target_link_libraries(e_robot_arm.integration_tests.virtual PRIVATE
         e_robot_arm.tool.arm_host
         e_robot_arm.tool.arm_host.adapters
+        e_robot_arm.tool.tuning
         e_robot_arm.tool.virtual_arm
         cucumber_cpp.runner
         GTest::gtest

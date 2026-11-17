@@ -2,7 +2,7 @@
 title: "Joint Bus Design"
 type: design
 status: draft
-version: 0.11.0
+version: 0.12.0
 component: "joint_bus"
 date: 2026-11-16
 ---
@@ -12,7 +12,7 @@ date: 2026-11-16
 | Title     | Joint Bus Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.11.0           |
+| Version   | 0.12.0           |
 | Component | joint_bus        |
 | Date      | 2026-11-16       |
 
@@ -71,7 +71,9 @@ delivered once all six joints have accepted it, or failed when one of these come
 
 A control mode counts as delivered only once every joint has also answered that the mode is active. An e-foc node
 switches its control mode in the background and refuses a start until the switch is done, so a start sent on the
-mode's heels would be lost. An answer naming another mode does not count.
+mode's heels would be lost. An answer naming another mode does not count. A joint that has accepted the frame but not
+confirmed the mode is sent it again every fifth of the command timeout: a frame lost on the way, or an answer lost on
+the way back, costs a fifth of the timeout instead of the command. Selecting the active mode again only confirms it.
 
 A command accepted by all six joints at once is reported delivered before the call returns. A command to an
 arm with a joint whose contract is known to be incompatible is refused before any frame is sent; the contract
