@@ -31,6 +31,7 @@ namespace arm
         ArmMass mass{ ReferenceMass() };
         BandwidthTuning gravityPd{};
         BandwidthTuning computedTorque{};
+        BandwidthTuning gravityPid{ 20.0f, 0.7f };
         TrackingLimits tracking{};
     };
 
