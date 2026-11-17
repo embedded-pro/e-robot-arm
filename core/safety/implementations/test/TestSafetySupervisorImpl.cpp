@@ -122,6 +122,16 @@ TEST_F(SafetySupervisorImplTest, passes_a_finite_torque_set_on_and_refuses_one_t
     EXPECT_FALSE(supervisor.SendTorques(torques));
 }
 
+TEST_F(SafetySupervisorImplTest, a_torque_set_the_joint_bus_cannot_queue_in_full_is_a_missed_period_not_a_refusal)
+{
+    CompatibleContracts();
+    arm::JointTorques torques{};
+    torques[1] = foc::NewtonMeter{ 12.0f };
+
+    EXPECT_CALL(bus, SendTorques(torques)).WillOnce(Return(false));
+    EXPECT_TRUE(supervisor.SendTorques(torques));
+}
+
 TEST_F(SafetySupervisorImplTest, refuses_motion_until_every_contract_is_compatible)
 {
     EXPECT_CALL(bus, Contracts()).WillRepeatedly(Return(can::ContractCompatibility::unknown));

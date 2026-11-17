@@ -2,7 +2,7 @@
 title: "Arm Controllers Design"
 type: design
 status: draft
-version: 0.8.0
+version: 0.9.0
 component: "arm-controllers"
 date: 2026-11-17
 ---
@@ -12,7 +12,7 @@ date: 2026-11-17
 | Title     | Arm Controllers Design |
 | Type      | design                 |
 | Status    | draft                  |
-| Version   | 0.8.0                  |
+| Version   | 0.9.0                  |
 | Component | arm-controllers        |
 | Date      | 2026-11-17             |
 
@@ -139,7 +139,8 @@ after joint motion has advanced its reference:
    positions when streaming started.
 2. The measured joints are each joint's latest reading.
 3. The active controller's torques go to the safety supervisor. A set the supervisor refuses, or a period with no
-   active controller, stops the streaming and aborts the running move.
+   active controller, stops the streaming and aborts the running move. A set the transmit queue could not take in
+   full is a missed period, not a refusal ([safety.md](safety.md) Part B): streaming goes on.
 
 Streaming starts when the arm becomes `Enabled` (the active controller is `Reset` from the measured joints) and stops
 when it leaves `Enabled` and `Moving`. So setpoints go out every period while the arm is enabled, not only during a

@@ -57,7 +57,11 @@ Each joint has a lower and an upper position limit in radians, finite, with the 
 setpoint set is sent only if every one of its six positions is finite and within its joint's limits, ends
 included; otherwise none of it is sent. A torque setpoint set is sent only if its six torques are finite; the drive
 holds the torque within its own current limits. A torque set carries no position, so the joint limits are not
-checked on it (open question 2).
+checked on it (open question 2). A finite set the supervisor lets through but the joint bus cannot queue in full,
+because can-lite's transmit queue is still holding the period's telemetry requests, is a missed period and not a
+refusal: the drives hold the last torque, the next period sends a fresh set, and a drive left without setpoints for
+its command timeout stops on its own and faults, which trips the arm (Part D). Only the supervisor's own refusals,
+an armed trip, an incompatible contract or a torque that is not finite, stop the controllers' streaming.
 
 ### Part C — Contract gate
 

@@ -89,7 +89,11 @@ namespace arm
             {
                 return math::IsFinite(torque.Value());
             });
-        return MayCommandMotion() && finite && bus.SendTorques(torques);
+        if (!MayCommandMotion() || !finite)
+            return false;
+
+        bus.SendTorques(torques);
+        return true;
     }
 
     bool SafetySupervisorImpl::RequestTelemetry()

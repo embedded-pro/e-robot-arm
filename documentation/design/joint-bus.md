@@ -2,7 +2,7 @@
 title: "Joint Bus Design"
 type: design
 status: draft
-version: 0.10.0
+version: 0.11.0
 component: "joint_bus"
 date: 2026-11-16
 ---
@@ -12,7 +12,7 @@ date: 2026-11-16
 | Title     | Joint Bus Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.10.0           |
+| Version   | 0.11.0           |
 | Component | joint_bus        |
 | Date      | 2026-11-16       |
 
@@ -261,15 +261,15 @@ sequenceDiagram
 
 ## Constraints & Limitations
 
-| Constraint        | Value / Description                                                                                                                                                                       |
-|-------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Joints            | Exactly six                                                                                                                                                                               |
-| Burst size        | Six frames per command; can-lite's transmit queue holds eight, two of them kept for emergency frames, so a telemetry request and a setpoint burst go out at different times in the period |
-| Contract tracking | The e-foc-protocol client remembers eight nodes, enough for the six joints                                                                                                                |
-| Single observer   | The bus observes the category client; nothing else may observe the same client                                                                                                            |
-| Retry interval    | One millisecond while a command is held; the bus owns one timer for retries and one for the timeout                                                                                       |
-| Delivery spread   | A held command reaches the joints that had room first and the others on a later retry, a few milliseconds apart at most                                                                   |
-| Memory            | No heap; all state is fixed-size                                                                                                                                                          |
+| Constraint        | Value / Description                                                                                                                                                                                                                                                                                                                        |
+|-------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Joints            | Exactly six                                                                                                                                                                                                                                                                                                                                |
+| Burst size        | Six frames per command; can-lite's transmit queue holds eight, two of them kept for emergency frames, so a telemetry request and a setpoint burst go out at different times in the period; when the loop runs late and both land together, part of the setpoint burst is refused and that period is missed ([safety.md](safety.md) Part B) |
+| Contract tracking | The e-foc-protocol client remembers eight nodes, enough for the six joints                                                                                                                                                                                                                                                                 |
+| Single observer   | The bus observes the category client; nothing else may observe the same client                                                                                                                                                                                                                                                             |
+| Retry interval    | One millisecond while a command is held; the bus owns one timer for retries and one for the timeout                                                                                                                                                                                                                                        |
+| Delivery spread   | A held command reaches the joints that had room first and the others on a later retry, a few milliseconds apart at most                                                                                                                                                                                                                    |
+| Memory            | No heap; all state is fixed-size                                                                                                                                                                                                                                                                                                           |
 
 ---
 
