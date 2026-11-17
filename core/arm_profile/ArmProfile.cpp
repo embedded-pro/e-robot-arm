@@ -249,7 +249,32 @@ namespace arm
                     return ReadMass(path, value, profile.config.mass);
                 if (key == "meshes")
                     return ReadMeshes(path, value, profile.meshes);
+                if (key == "gravityPd")
+                    return ReadGravityPd(path, value, profile.config.gravityPd);
                 return Unknown(path);
+            }
+
+            bool ReadGravityPd(const Path& path, const Value& value, GravityPdTuning& tuning)
+            {
+                return ReadMembers(path, value, [this, &tuning](const Path& item, infra::JsonString key, const Value& member)
+                    {
+                        if (key == "bandwidthRadPerS")
+                            return ReadBounded(item, member, 500.0f, "must be above 0 and at most 500", tuning.bandwidth);
+                        if (key == "dampingRatio")
+                            return ReadBounded(item, member, 5.0f, "must be above 0 and at most 5", tuning.dampingRatio);
+                        return Unknown(item);
+                    });
+            }
+
+            bool ReadBounded(const Path& path, const Value& value, float maximum, infra::BoundedConstString range, float& result)
+            {
+                float number{ 0.0f };
+                if (!ReadReal(path, value, number))
+                    return false;
+                if (!(number > 0.0f && number <= maximum))
+                    return Fail(path, range);
+                result = number;
+                return true;
             }
 
             bool ReadMeshes(const Path& path, const Value& value, std::array<infra::BoundedString::WithStorage<meshPathSize>, meshCount>& meshes)
@@ -853,7 +878,11 @@ namespace arm
                 stream << ",\n  \"controlPeriodMs\": " << static_cast<int64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(config.controlPeriod).count())
                        << ",\n  \"missedRequestsBeforeSilent\": " << static_cast<uint32_t>(config.missedRequestsBeforeSilent)
                        << ",\n  \"commandTimeoutPeriods\": " << static_cast<uint32_t>(config.commandTimeoutPeriods) << ",\n  \"enableMode\": \""
-                       << modeNames[static_cast<std::size_t>(config.enableMode)] << "\",\n  \"joints\": [";
+                       << modeNames[static_cast<std::size_t>(config.enableMode)] << "\",\n  \"gravityPd\": { \"bandwidthRadPerS\": ";
+                Number(config.gravityPd.bandwidth);
+                stream << ", \"dampingRatio\": ";
+                Number(config.gravityPd.dampingRatio);
+                stream << " },\n  \"joints\": [";
 
                 for (std::size_t joint = 0; joint != jointCount; ++joint)
                 {

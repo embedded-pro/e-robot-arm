@@ -2,30 +2,29 @@
 
 namespace arm
 {
-    namespace
+    PdGainMatrices DiagonalGains(const JointPdGains& gains)
     {
-        using GainMatrix = controllers::PdGravityCompensation<float, jointCount>::GainMatrix;
-
-        GainMatrix Stiffness(const JointPdGains& gains)
+        PdGainMatrices matrices{};
+        for (std::size_t joint = 0; joint != jointCount; ++joint)
         {
-            GainMatrix matrix{};
-            for (std::size_t joint = 0; joint != jointCount; ++joint)
-                matrix.at(joint, joint) = gains[joint].kp;
-            return matrix;
+            matrices.kp.at(joint, joint) = gains[joint].kp;
+            matrices.kd.at(joint, joint) = gains[joint].kd;
         }
-
-        GainMatrix Damping(const JointPdGains& gains)
-        {
-            GainMatrix matrix{};
-            for (std::size_t joint = 0; joint != jointCount; ++joint)
-                matrix.at(joint, joint) = gains[joint].kd;
-            return matrix;
-        }
+        return matrices;
     }
 
-    GravityCompensatedPd::GravityCompensatedPd(const ArmModel& model, const JointPdGains& gains)
+    PdGainMatrices PlacedGains(const ArmModel& model, const JointInertias& rotors, const GravityPdTuning& tuning)
+    {
+        auto inertia = model.Dynamics().ComputeMassMatrix(model.ModelVector(JointPositions{}));
+        for (std::size_t joint = 0; joint != jointCount; ++joint)
+            inertia.at(joint, joint) += rotors[joint];
+
+        return { inertia * (tuning.bandwidth * tuning.bandwidth), inertia * (2.0f * tuning.dampingRatio * tuning.bandwidth) };
+    }
+
+    GravityCompensatedPd::GravityCompensatedPd(const ArmModel& model, const PdGainMatrices& gains)
         : model(model)
-        , law(model.Dynamics(), Stiffness(gains), Damping(gains))
+        , law(model.Dynamics(), gains.kp, gains.kd)
     {}
 
     bool GravityCompensatedPd::BumplessTransfer() const

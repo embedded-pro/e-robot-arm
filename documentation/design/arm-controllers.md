@@ -2,7 +2,7 @@
 title: "Arm Controllers Design"
 type: design
 status: draft
-version: 0.4.0
+version: 0.5.0
 component: "arm-controllers"
 date: 2026-11-16
 ---
@@ -12,7 +12,7 @@ date: 2026-11-16
 | Title     | Arm Controllers Design |
 | Type      | design                 |
 | Status    | draft                  |
-| Version   | 0.4.0                  |
+| Version   | 0.5.0                  |
 | Component | arm-controllers        |
 | Date      | 2026-11-16             |
 
@@ -77,9 +77,19 @@ reference arm.
 now, a microcontroller later), built from robotics-toolbox's manipulator controllers and numerical-toolbox's control
 blocks rather than written here. `gravity-pd` is the first: robotics-toolbox's `PdGravityCompensation` over the arm
 model's dynamics ([arm-model.md](arm-model.md) Part F), with q* the reference, q and q̇ the measured joints and Kp
-(N·m/rad) and Kd (N·m·s/rad) per joint from the arm's configuration, on a diagonal. It has no state, and when
-streaming starts the reference is the measured position, so its first set is G(q) − Kd·q̇: it takes over without a
-step. Its bandwidth is bounded by the control period and the telemetry's age.
+(N·m/rad) and Kd (N·m·s/rad) six-by-six gain matrices. It has no state, and when streaming starts the reference is
+the measured position, so its first set is G(q) − Kd·q̇: it takes over without a step.
+
+**Gains from a bandwidth.** The joints differ by more than ten times in the inertia they move, and the shoulder
+and elbow move each other, so no diagonal gain set suits them all: gains sized from each joint's own inertia leave
+the fast coupled mode of shoulder and elbow, whose inertia is much smaller, damped beyond what a 10 ms loop can
+hold, and it oscillates. The profile names a bandwidth ω (rad/s) and a damping ratio ζ instead, and the gains are
+the arm's inertia matrix scaled: Kp = ω²·J, Kd = 2·ζ·ω·J, with J the arm model's mass matrix at the home position
+plus, on its diagonal, each motor's rotor inertia times its gear ratio squared (Teknic's when the profile names no
+motor). Near home every mode of the arm then has its poles at ω with damping ζ; away from home the mass matrix
+drifts from J, and the poles with it. Each joint lags a move by about 2·ζ/ω times its speed, and the damping per
+control period, 2·ζ·ω·T, does not depend on any inertia. The bandwidth is bounded by the control period and the
+telemetry's age: 30 rad/s at 10 ms leaves a wide margin.
 
 `pass-through` and `smoothed` are what remains of the position path, where the drive closes the position loop; they
 go when that path is removed, and computed torque (robotics-toolbox `ComputedTorqueControl`) and a per-joint PID
@@ -144,17 +154,18 @@ move: a controller with state, `smoothed` or phase 5's, keeps converging after t
 
 ## Data Model
 
-| Entity          | Field         | Type / Unit        | Range        | Notes                                      |
-|-----------------|---------------|--------------------|--------------|--------------------------------------------|
-| Measured joints | positions     | radians            | finite       | Latest reading per joint                   |
-| Measured joints | speeds        | radians/second     | finite       | Latest reading per joint                   |
-| Setpoint set    | positions     | radians            | joint limits | Phase 5 adds speed and torque feed-forward |
-| Setpoint set    | torques       | N·m, joint side    | finite       | Torque-mode controllers only               |
-| `gravity-pd`    | Kp, Kd        | N·m/rad, N·m·s/rad | ≥ 0, finite  | Per joint; the arm's configuration         |
-| Registry entry  | id            | integer            | 0–3          | Registration order                         |
-| Registry entry  | name          | text               | unique       | `pass-through`, `smoothed`                 |
-| Registry entry  | enabled       | flag               |              | Registered disabled                        |
-| `smoothed`      | time constant | seconds            | > 0          | 50 ms in the reference arm                 |
+| Entity          | Field         | Type / Unit     | Range        | Notes                                      |
+|-----------------|---------------|-----------------|--------------|--------------------------------------------|
+| Measured joints | positions     | radians         | finite       | Latest reading per joint                   |
+| Measured joints | speeds        | radians/second  | finite       | Latest reading per joint                   |
+| Setpoint set    | positions     | radians         | joint limits | Phase 5 adds speed and torque feed-forward |
+| Setpoint set    | torques       | N·m, joint side | finite       | Torque-mode controllers only               |
+| `gravity-pd`    | bandwidth     | rad/s           | above 0      | 30 by default; Kp = ω²·J                   |
+| `gravity-pd`    | damping ratio | 1               | above 0      | 0.7 by default; Kd = 2·ζ·ω·J               |
+| Registry entry  | id            | integer         | 0–3          | Registration order                         |
+| Registry entry  | name          | text            | unique       | `pass-through`, `smoothed`                 |
+| Registry entry  | enabled       | flag            |              | Registered disabled                        |
+| `smoothed`      | time constant | seconds         | > 0          | 50 ms in the reference arm                 |
 
 ---
 

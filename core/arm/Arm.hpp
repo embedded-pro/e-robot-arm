@@ -19,6 +19,8 @@
 
 namespace arm
 {
+    PdGainMatrices GravityPdGains(const ArmModel& model, const ArmConfig& config);
+
     class Arm
     {
     public:

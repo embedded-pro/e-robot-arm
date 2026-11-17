@@ -153,7 +153,8 @@ TEST_F(ArmProfileTest, reads_the_link_meshes_and_leaves_the_others_out)
 
 TEST_F(ArmProfileTest, a_written_profile_reads_back_to_the_same_configuration)
 {
-    const auto original = Read(Profile(configuredJoint, geometry + Mass(Link("1.25")) + R"( "meshes": { "link6": "flange \"v2\".glb" },)"));
+    const auto original = Read(Profile(configuredJoint, geometry + Mass(Link("1.25")) + R"( "meshes": { "link6": "flange \"v2\".glb" },)" +
+                                                            R"( "gravityPd": { "bandwidthRadPerS": 22.5, "dampingRatio": 0.9 },)"));
     ASSERT_TRUE(original.has_value()) << Problem();
 
     infra::StringOutputStream::WithStorage<16384> stream;
@@ -167,6 +168,8 @@ TEST_F(ArmProfileTest, a_written_profile_reads_back_to_the_same_configuration)
     EXPECT_EQ(original->config.controlPeriod, copy->config.controlPeriod);
     EXPECT_EQ(original->config.missedRequestsBeforeSilent, copy->config.missedRequestsBeforeSilent);
     EXPECT_EQ(original->config.enableMode, copy->config.enableMode);
+    EXPECT_EQ(original->config.gravityPd.bandwidth, copy->config.gravityPd.bandwidth);
+    EXPECT_EQ(original->config.gravityPd.dampingRatio, copy->config.gravityPd.dampingRatio);
     EXPECT_EQ(original->config.nodes, copy->config.nodes);
     for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
     {
@@ -239,6 +242,19 @@ TEST_F(ArmProfileTest, reads_the_tracking_error_supervision_and_defaults_it_to_0
     EXPECT_EQ(std::chrono::milliseconds{ 200 }, profile->config.tracking[1].time);
 }
 
+TEST_F(ArmProfileTest, reads_the_gravity_pd_bandwidth_and_damping_and_defaults_them_to_30_and_0_7)
+{
+    const auto tuned = Read(Profile(Joint(1), R"( "gravityPd": { "bandwidthRadPerS": 45, "dampingRatio": 1 },)"));
+    const auto plain = Read(Profile(Joint(1)));
+
+    ASSERT_TRUE(tuned.has_value()) << Problem();
+    EXPECT_NEAR(45.0f, tuned->config.gravityPd.bandwidth, 1.0e-6f);
+    EXPECT_NEAR(1.0f, tuned->config.gravityPd.dampingRatio, 1.0e-6f);
+    ASSERT_TRUE(plain.has_value()) << Problem();
+    EXPECT_NEAR(30.0f, plain->config.gravityPd.bandwidth, 1.0e-6f);
+    EXPECT_NEAR(0.7f, plain->config.gravityPd.dampingRatio, 1.0e-6f);
+}
+
 TEST_F(ArmProfileTest, reads_a_version_1_profile_and_writes_version_2)
 {
     const auto version1 = Read(Profile(Joint(1)));
@@ -269,6 +285,8 @@ TEST_F(ArmProfileTest, refuses_a_profile_and_names_the_first_problem)
             "joints[0].motorController.speed: must be pid, lqi, adrc or twoDof" },
         { Profile(Joint(1, R"(, "motorController": { "current": "pid", "speed": "pid" })")), "joints[0].motorController.position: is missing" },
         { Profile(Joint(1, R"(, "trackingError": { "windowRad": 0 })")), "joints[0].trackingError.windowRad: must be above 0" },
+        { Profile(Joint(1), R"( "gravityPd": { "bandwidthRadPerS": 600 },)"), "gravityPd.bandwidthRadPerS: must be above 0 and at most 500" },
+        { Profile(Joint(1), R"( "gravityPd": { "dampingRatio": 0 },)"), "gravityPd.dampingRatio: must be above 0 and at most 5" },
         { Profile(Joint(1, R"(, "trackingError": { "timeS": 11 })")), "joints[0].trackingError.timeS: must be above 0 and at most 10" },
         { Profile(Joint(1, R"(, "trackingError": { "gain": 1 })")), "joints[0].trackingError.gain: is not a profile item" },
         { Profile(Joint(1, R"(, "motor": { "preset": "maxon-ec45" })")),

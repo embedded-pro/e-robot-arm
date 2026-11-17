@@ -54,11 +54,12 @@ WHEN(R"(the arm moves the joints to {float}, {float}, {float}, {float}, {float},
 THEN(R"(the move shall be done within {int} ms)", (std::int32_t milliseconds))
 {
     auto& fixture = context.Get<VirtualArmFixture>();
-    EXPECT_TRUE(fixture.WaitForEvent([](const arm_host::ArmEvent& event)
+    const bool done = fixture.WaitForEvent([](const arm_host::ArmEvent& event)
         {
             return event.kind == arm_host::ArmEventKind::moveDone;
         },
-        std::chrono::milliseconds{ milliseconds }));
+        std::chrono::milliseconds{ milliseconds });
+    EXPECT_TRUE(done) << fixture.History();
 }
 
 THEN(R"(within {int} ms every joint shall be within {float} rad of {float}, {float}, {float}, {float}, {float}, {float})",
@@ -66,14 +67,21 @@ THEN(R"(within {int} ms every joint shall be within {float} rad of {float}, {flo
 {
     auto& fixture = context.Get<VirtualArmFixture>();
     const std::array<float, arm::jointCount> target{ q1, q2, q3, q4, q5, q6 };
-    EXPECT_TRUE(fixture.WaitFor([&target, tolerance](const arm_host::ArmSnapshot& snapshot)
+    std::array<float, arm::jointCount> errors{};
+    const bool settled = fixture.WaitFor([&target, &errors, tolerance](const arm_host::ArmSnapshot& snapshot)
         {
             for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
-                if (std::abs(snapshot.readings[joint].position.Value() - target[joint]) > tolerance)
-                    return false;
-            return true;
+                errors[joint] = std::abs(snapshot.readings[joint].position.Value() - target[joint]);
+            return std::ranges::all_of(errors, [tolerance](float error)
+                {
+                    return error <= tolerance;
+                });
         },
-        std::chrono::milliseconds{ milliseconds }));
+        std::chrono::milliseconds{ milliseconds });
+    const auto largest = std::ranges::max_element(errors);
+    std::cout << "[METRIC] virtual_arm.settled_error_rad=" << *largest << " joint=" << std::distance(errors.begin(), largest) + 1 << " limit=" << tolerance
+              << std::endl;
+    EXPECT_TRUE(settled);
 }
 
 THEN(R"(the largest tracking error during the move shall stay below {float} rad)", (float limit))

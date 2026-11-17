@@ -1,8 +1,10 @@
 @virtual
 Feature: The arm on six e-foc virtual motors
   The arm runs on six e-foc virtual motors, one per joint, each through a 50:1 gear and each carrying the load the
-  arm's links put on its shaft. The motors run the e-foc firmware against a motor model in real time, and the arm
-  supervises each joint's tracking error: a joint that lags its reference by more than 0.2 rad for 0.2 s trips the arm.
+  arm's links put on its shaft. The motors run the e-foc firmware against a motor model in real time, in torque mode:
+  the arm closes position with gravity-pd on the host, and supervises each joint's tracking error, so a joint that
+  lags its reference by more than 0.1 rad for 0.1 s trips the arm. gravity-pd has no integral action, so the joints
+  settle short of the target by the drives' Coulomb friction over its stiffness.
 
   Background:
     Given the arm on six e-foc virtual motors
@@ -11,7 +13,7 @@ Feature: The arm on six e-foc virtual motors
   Scenario: The arm lifts its shoulder against gravity and tracks the move
     When the arm moves the joints to 0.3, -0.5, 0.4, 0.2, 0.3, 0.1 rad
     Then the move shall be done within 8000 ms
-    And within 2000 ms every joint shall be within 0.01 rad of 0.3, -0.5, 0.4, 0.2, 0.3, 0.1
+    And within 2000 ms every joint shall be within 0.06 rad of 0.3, -0.5, 0.4, 0.2, 0.3, 0.1
     And the largest tracking error during the move shall stay below 0.1 rad
 
   @REQ-ARM-014

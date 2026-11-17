@@ -2,7 +2,7 @@
 title: "Virtual Arm Design"
 type: design
 status: draft
-version: 0.10.0
+version: 0.11.0
 component: "virtual-arm"
 date: 2026-11-16
 ---
@@ -12,7 +12,7 @@ date: 2026-11-16
 | Title     | Virtual Arm Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.10.0             |
+| Version   | 0.11.0             |
 | Component | virtual-arm        |
 | Date      | 2026-11-16         |
 
@@ -240,7 +240,11 @@ the host's cores: a CI runner has descheduled one for a hundred milliseconds, an
 the arm saw ten requests go unanswered and called a live motor silent, or gave up on an acknowledgement after three
 periods. A node on its own microcontroller does not stall, so a real arm keeps short windows. Its motors are the Teknic
 preset with the drive's following-error supervision off: the arm's own tracking-error supervision ([safety.md](safety.md)
-Part F, 0.2 rad for 0.2 s) watches every joint instead. It then brings the arm up through the
+Part F, 0.1 rad for 0.1 s in this profile) watches every joint instead. The drives run in torque mode and the arm
+closes position with `gravity-pd` at the profile's default bandwidth ([arm-controllers.md](arm-controllers.md)
+Part A). Without integral action the joints settle short of the target by the drives' Coulomb friction over the
+controller's stiffness, about 0.04 rad on the elbow, so the settling check is pinned at 0.06 rad until a PID with
+gravity feed-forward closes that gap. It then brings the arm up through the
 arm host on `virtual:arm` as the console does: contract check, align, bring-up and enable. The motors start
 calibrated but not aligned.
 

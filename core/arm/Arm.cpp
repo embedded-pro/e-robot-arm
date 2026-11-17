@@ -2,6 +2,18 @@
 
 namespace arm
 {
+    PdGainMatrices GravityPdGains(const ArmModel& model, const ArmConfig& config)
+    {
+        JointInertias rotors{};
+        for (std::size_t joint = 0; joint != jointCount; ++joint)
+        {
+            const auto& motor = config.motors[joint].has_value() ? config.motors[joint]->settings : motorPresets[0].settings;
+            const auto ratio = config.transmissions[joint].ratio;
+            rotors[joint] = motor[MotorParameter::inertia] * ratio * ratio;
+        }
+        return PlacedGains(model, rotors, config.gravityPd);
+    }
+
     Arm::Arm(can::FocMotorCategoryClient& client, const ArmConfig& config)
         : jointBus(client, config.nodes, config.transmissions, config.missedRequestsBeforeSilent, config.controlPeriod * config.commandTimeoutPeriods)
         , safety(jointBus, config.positionLimits, config.tracking, config.controlPeriod)
@@ -10,7 +22,7 @@ namespace arm
         , lifecycle(safety, motion, configurator, config.enableMode, config.controllers, config.motors)
         , smoothed(config.controlPeriod, config.smoothingTimeConstant)
         , model(config.geometry, config.mass, config.positionLimits)
-        , gravityPd(model, config.gravityGains)
+        , gravityPd(model, GravityPdGains(model, config))
         , controllers(safety, motion, config.enableMode)
         , engagement(lifecycle, controllers)
         , loop(safety, config.controlPeriod, [this]()
