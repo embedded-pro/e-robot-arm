@@ -605,12 +605,16 @@ sequenceDiagram
 
 ## Constraints & Limitations
 
-| Constraint   | Value / Description                                                                                                                                                                            |
-|--------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Frame rate   | 60 fps target at 1080p on an integrated GPU with the loop at 100 Hz; never below 30 fps                                                                                                        |
-| Measured     | Mesa llvmpipe (software, 4 cores), Qt 6.4.2, 1600 × 900, MSAA High, shadows, AO, loop at 100 Hz: 9–11 fps while the arm moves, no frames while it rests. A GPU desktop is still to be measured |
-| Qt           | 6.4.2 in the dev container; `ExtendedSceneEnvironment`, `InfiniteGrid`, `DebugView` only on 6.5+, guarded                                                                                      |
-| Minimum size | 1280 × 720 at 100 %; no clipped text at 150 %                                                                                                                                                  |
+| Constraint            | Value / Description                                                                                                                                                                                                                                                               |
+|-----------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Frame rate            | 60 fps target at 1080p on an integrated GPU with the loop at 100 Hz; never below 30 fps                                                                                                                                                                                           |
+| Measured, setup       | Mesa llvmpipe (software, 4 cores, no GPU), Qt 6.4.2, Debug build, 1600 × 900, MSAA High, shadows, AO, loop at 100 Hz, the Scope (three channels) and the Tuning plot; Part O's statistics while the arm moves and a tuning step records (window test `frame_statistics_report_…`) |
+| Measured, simulated   | 3-D 8–9 fps, render 92–99 ms, GUI 2.4–3.7 ms (largest 6.8 ms); 96–104 control-loop overruns in 18 s                                                                                                                                                                               |
+| Measured, virtual arm | Six e-foc virtual motors: 3-D 6.2–6.8 fps, render 115–130 ms, GUI 1.9–8.8 ms (largest 24.8 ms); 119 overruns in 20 s                                                                                                                                                              |
+| Reading               | The GUI work fits a 60 fps frame; the 3-D view does not without a GPU, and llvmpipe's four render threads most likely take the cores the control loop needs, hence the overruns. A GPU desktop is read from Part O's status line                                                  |
+| First frame           | Without a GPU the first 3-D frame compiles the scene's shaders for about 14 s, with the GUI frozen; the arm is not enabled yet at that point                                                                                                                                      |
+| Qt                    | 6.4.2 in the dev container; `ExtendedSceneEnvironment`, `InfiniteGrid`, `DebugView` only on 6.5+, guarded                                                                                                                                                                         |
+| Minimum size          | 1280 × 720 at 100 %; no clipped text at 150 %                                                                                                                                                                                                                                     |
 
 ---
 

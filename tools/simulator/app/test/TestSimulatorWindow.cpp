@@ -4,6 +4,9 @@
 #include "tools/simulator/app/SimulatorWindow.hpp"
 #include "ui/backend/qt/QtTheme.hpp"
 #include "gmock/gmock.h"
+#ifdef E_ROBOT_ARM_VIRTUAL_ARM
+#include "tools/arm_host/VirtualArmTargetLink.hpp"
+#endif
 #include <QApplication>
 #include <QComboBox>
 #include <QDockWidget>
@@ -90,6 +93,15 @@ namespace
         return nullptr;
     }
 
+    arm_host::TargetOpener Opener()
+    {
+        auto opener = arm_host::HostTargetOpener(arm_host::simulatedTimeConstant, 1000000);
+#ifdef E_ROBOT_ARM_VIRTUAL_ARM
+        opener = arm_host::VirtualArmTargetOpener(std::move(opener), 1000000);
+#endif
+        return opener;
+    }
+
     class SimulatorWindowTest
         : public testing::Test
     {
@@ -124,7 +136,7 @@ namespace
 
         arm::ArmProfile profile{ arm_host::DefaultArmProfile(arm_host::defaultNodes) };
         infra::TimePoint start{ std::chrono::system_clock::now() };
-        arm_host::ArmHost host{ profile, arm_host::HostTargetOpener(arm_host::simulatedTimeConstant, 1000000), {} };
+        arm_host::ArmHost host{ profile, Opener(), {} };
         simulator::SimulatorWindow window{ host, profile.config.positionLimits, start };
     };
 }
@@ -146,35 +158,14 @@ TEST_F(SimulatorWindowTest, loads_the_lit_scene_and_shows_a_move_with_its_ghost)
         foc::Radians{ 0.0f } };
     BringUpAndMove(target);
 
-    int frames = 0;
-    QElapsedTimer rendering;
-    qint64 renderNanoseconds = 0;
-    auto* quickWindow = window.ArmView().quickWindow();
-    const auto before = QObject::connect(quickWindow, &QQuickWindow::beforeRendering, [&rendering]()
-        {
-            rendering.start();
-        });
-    const auto after = QObject::connect(quickWindow, &QQuickWindow::afterRendering, [&frames, &renderNanoseconds, &rendering]()
-        {
-            ++frames;
-            renderNanoseconds += rendering.nsecsElapsed();
-        });
-    QElapsedTimer measuring;
-    measuring.start();
     EXPECT_TRUE(Eventually([this]()
         {
             return window.Presenter().Scene().GhostVisible() && window.Presenter().Scene().MeasuredDegrees()[0] > 20.0f;
         }));
-    const auto elapsed = measuring.elapsed();
-    QObject::disconnect(before);
-    QObject::disconnect(after);
 
     const auto frame = window.ArmView().grabFramebuffer();
     ASSERT_FALSE(frame.isNull());
     EXPECT_TRUE(HasDetail(frame));
-    EXPECT_GT(frames, 0);
-    std::printf("[METRIC] simulator frames per second while moving: %.1f\n", frames * 1000.0 / static_cast<double>(std::max<qint64>(elapsed, 1)));
-    std::printf("[METRIC] simulator mean scene-graph render call per frame: %.2f ms\n", frames == 0 ? 0.0 : static_cast<double>(renderNanoseconds) / frames / 1.0e6);
 
     if (const auto* path = std::getenv("SIMULATOR_FRAME_CAPTURE"))
     {
@@ -498,8 +489,17 @@ TEST_F(SimulatorWindowTest, the_tuning_dock_runs_a_step_and_shows_its_metrics_an
 
 TEST_F(SimulatorWindowTest, frame_statistics_report_the_gui_and_render_cost_while_the_arm_moves_and_a_tuning_run_records)
 {
+    auto onVirtualMotors = false;
+#ifdef E_ROBOT_ARM_VIRTUAL_ARM
     if (const auto* engine = std::getenv("E_FOC_VIRTUAL_MOTOR"))
     {
+        onVirtualMotors = true;
+        window.LoadProfileFrom(VIRTUAL_ARM_PROFILE);
+        ASSERT_TRUE(Eventually([this]()
+            {
+                return Logged(window.Presenter(), "Profile loaded");
+            }))
+            << LogText(window.Presenter());
         window.Presenter().SwitchTarget({ arm_host::TargetKind::virtualArm, "virtual:arm", engine });
         ASSERT_TRUE(Eventually([this]()
             {
@@ -508,6 +508,7 @@ TEST_F(SimulatorWindowTest, frame_statistics_report_the_gui_and_render_cost_whil
             30000))
             << LogText(window.Presenter());
     }
+#endif
 
     std::vector<std::string> seconds;
     const auto record = [this, &seconds]()
@@ -519,7 +520,34 @@ TEST_F(SimulatorWindowTest, frame_statistics_report_the_gui_and_render_cost_whil
 
     const arm::JointPositions target{ foc::Radians{ 0.7f }, foc::Radians{ -0.5f }, foc::Radians{ 0.6f }, foc::Radians{ 0.4f }, foc::Radians{ 0.8f },
         foc::Radians{ 0.0f } };
-    BringUpAndMove(target);
+    host.Post(arm_host::BringUp{});
+    if (onVirtualMotors)
+    {
+        ASSERT_TRUE(Eventually([this, &record]()
+            {
+                record();
+                return Logged(window.Presenter(), "Arm waiting for calibration");
+            },
+            30000))
+            << LogText(window.Presenter());
+        host.Post(arm_host::AlignJoints{});
+    }
+    ASSERT_TRUE(Eventually([this, &record]()
+        {
+            record();
+            return window.Presenter().State(simulator::Control::enable).enabled;
+        },
+        60000))
+        << LogText(window.Presenter());
+    host.Post(arm_host::Enable{});
+    ASSERT_TRUE(Eventually([this, &record]()
+        {
+            record();
+            return window.Presenter().State(simulator::Control::move).enabled;
+        },
+        30000))
+        << LogText(window.Presenter());
+    host.Post(arm_host::MoveTo{ target });
     ASSERT_TRUE(Eventually([this, &record]()
         {
             record();
