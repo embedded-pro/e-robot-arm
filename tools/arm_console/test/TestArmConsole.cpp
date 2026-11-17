@@ -87,9 +87,24 @@ TEST_F(ArmConsoleTest, move_posts_the_six_positions)
     Run("move 0.1 -0.2 0.3 0 1.5 -1", arm_console::Outcome::posted);
 }
 
+TEST_F(ArmConsoleTest, step_posts_the_six_positions_as_a_reference_step)
+{
+    const arm::JointPositions target{ foc::Radians{ 0.1f }, foc::Radians{ 0.0f }, foc::Radians{ 0.0f }, foc::Radians{ 0.0f }, foc::Radians{ 0.0f },
+        foc::Radians{ 0.0f } };
+    EXPECT_CALL(arm, Post(Holds(arm_host::StepTo{})))
+        .WillOnce(Invoke([&target](const arm_host::ArmCommand& command)
+            {
+                EXPECT_EQ(target, std::get<arm_host::StepTo>(command).target);
+                return 1u;
+            }));
+
+    Run("step 0.1 0 0 0 0 0", arm_console::Outcome::posted);
+}
+
 TEST_F(ArmConsoleTest, a_malformed_or_unknown_command_prints_the_usage_and_posts_nothing)
 {
     EXPECT_THAT(Run("move 1 2 3"), StartsWith("usage:"));
+    EXPECT_THAT(Run("step 1 2"), StartsWith("usage:"));
     EXPECT_THAT(Run("move 1 2 3 4 5 six"), StartsWith("usage:"));
     EXPECT_THAT(Run("mode fast"), StartsWith("usage:"));
     EXPECT_THAT(Run("jump"), StartsWith("usage:"));

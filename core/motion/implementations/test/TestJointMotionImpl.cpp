@@ -191,3 +191,40 @@ TEST_F(JointMotionImplTest, a_step_without_a_move_has_no_reference)
     EXPECT_TRUE(sent.empty());
     EXPECT_FALSE(motion.Moving());
 }
+
+TEST_F(JointMotionImplTest, a_step_jumps_the_reference_to_its_target_at_rest_and_is_done_at_once)
+{
+    EXPECT_TRUE(motion.StepTo(Target(0.15f)));
+    EXPECT_TRUE(motion.Moving());
+
+    EXPECT_CALL(observer, OnMoveDone());
+    const auto reference = motion.Step();
+
+    ASSERT_TRUE(reference.has_value());
+    EXPECT_EQ(arm::AtRest(Target(0.15f)), *reference);
+    EXPECT_FALSE(motion.Moving());
+    Step(5);
+    EXPECT_TRUE(sent.empty());
+}
+
+TEST_F(JointMotionImplTest, refuses_a_step_larger_than_0_2_rad_on_any_joint)
+{
+    EXPECT_FALSE(motion.StepTo(Target(0.21f)));
+    EXPECT_FALSE(motion.StepTo(Target(-0.21f)));
+
+    EXPECT_FALSE(motion.Moving());
+}
+
+TEST_F(JointMotionImplTest, refuses_a_step_outside_the_joint_limits_from_a_stale_reading_or_while_moving)
+{
+    readings[0].position = foc::Radians{ 1.9f };
+    EXPECT_FALSE(motion.StepTo(Target(2.05f)));
+
+    readings[0].position = foc::Radians{ 0.0f };
+    readings[3].period = currentPeriod - 2;
+    EXPECT_FALSE(motion.StepTo(Target(0.1f)));
+
+    readings[3].period = currentPeriod;
+    EXPECT_TRUE(motion.MoveTo(Target(1.0f)));
+    EXPECT_FALSE(motion.StepTo(Target(0.1f)));
+}

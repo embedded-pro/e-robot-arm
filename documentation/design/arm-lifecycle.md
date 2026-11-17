@@ -2,7 +2,7 @@
 title: "Arm Lifecycle Design"
 type: design
 status: draft
-version: 0.5.0
+version: 0.6.0
 component: "lifecycle"
 date: 2026-11-13
 ---
@@ -12,7 +12,7 @@ date: 2026-11-13
 | Title     | Arm Lifecycle Design |
 | Type      | design               |
 | Status    | draft                |
-| Version   | 0.5.0                |
+| Version   | 0.6.0                |
 | Component | lifecycle            |
 | Date      | 2026-11-13           |
 
@@ -68,13 +68,14 @@ command aligns every joint, and it moves each motor.
 
 ### Part B — Commands
 
-| Command  | Allowed in                             | Does                                                                         |
-|----------|----------------------------------------|------------------------------------------------------------------------------|
-| Bring up | Unpowered, Incompatible, Misconfigured | Queries the contracts of every joint                                         |
-| Enable   | Ready                                  | Selects torque mode; once delivered, starts every joint                      |
-| Disable  | Enabled                                | Stops every joint                                                            |
-| Move     | Enabled                                | Starts a move through joint motion                                           |
-| Re-arm   | Tripped                                | Re-arms the safety supervisor, which refuses while a joint is still in fault |
+| Command  | Allowed in                             | Does                                                                                                                           |
+|----------|----------------------------------------|--------------------------------------------------------------------------------------------------------------------------------|
+| Bring up | Unpowered, Incompatible, Misconfigured | Queries the contracts of every joint                                                                                           |
+| Enable   | Ready                                  | Selects torque mode; once delivered, starts every joint                                                                        |
+| Disable  | Enabled                                | Stops every joint                                                                                                              |
+| Move     | Enabled                                | Starts a move through joint motion                                                                                             |
+| Step     | Enabled                                | Starts a reference step through joint motion ([joint-motion.md](joint-motion.md) Part C); Moving until it is done, like a move |
+| Re-arm   | Tripped                                | Re-arms the safety supervisor, which refuses while a joint is still in fault                                                   |
 
 A command in any other state is refused and changes nothing. Enable always selects torque mode: the arm closes
 position on the host through its arm controllers ([arm-controllers.md](arm-controllers.md) Part A).
@@ -120,10 +121,10 @@ start, stop, align) still work for debugging, and the lifecycle shows where they
 
 ### Provided
 
-| Interface       | Purpose                                  | Contract                                                          |
-|-----------------|------------------------------------------|-------------------------------------------------------------------|
-| Arm lifecycle   | Bring up, enable, disable, move, re-arm  | Each command returns whether it was accepted in the current state |
-| Lifecycle state | The current state, and each change of it | Every change is reported once, after it has happened              |
+| Interface       | Purpose                                       | Contract                                                          |
+|-----------------|-----------------------------------------------|-------------------------------------------------------------------|
+| Arm lifecycle   | Bring up, enable, disable, move, step, re-arm | Each command returns whether it was accepted in the current state |
+| Lifecycle state | The current state, and each change of it      | Every change is reported once, after it has happened              |
 
 ### Required
 

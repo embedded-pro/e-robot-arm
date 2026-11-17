@@ -237,6 +237,20 @@ TEST_F(ArmLifecycleImplTest, a_move_starts_only_while_enabled_and_ends_back_in_e
     EXPECT_EQ(ArmState::enabled, lifecycle.State());
 }
 
+TEST_F(ArmLifecycleImplTest, a_step_starts_only_while_enabled_moves_like_a_move_and_ends_back_in_enabled)
+{
+    EXPECT_FALSE(lifecycle.StepTo(target));
+
+    BringToEnabled();
+    EXPECT_CALL(motion, StepTo(_)).WillOnce(Return(true));
+    EXPECT_TRUE(lifecycle.StepTo(target));
+    EXPECT_EQ(ArmState::moving, lifecycle.State());
+    EXPECT_FALSE(lifecycle.StepTo(target));
+
+    FinishMove();
+    EXPECT_EQ(ArmState::enabled, lifecycle.State());
+}
+
 TEST_F(ArmLifecycleImplTest, a_move_refused_by_joint_motion_leaves_the_arm_enabled)
 {
     BringToEnabled();

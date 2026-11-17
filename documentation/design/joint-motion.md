@@ -2,7 +2,7 @@
 title: "Joint Motion Design"
 type: design
 status: draft
-version: 0.7.0
+version: 0.8.0
 component: "motion"
 date: 2026-11-14
 ---
@@ -12,7 +12,7 @@ date: 2026-11-14
 | Title     | Joint Motion Design |
 | Type      | design              |
 | Status    | draft               |
-| Version   | 0.7.0               |
+| Version   | 0.8.0               |
 | Component | motion              |
 | Date      | 2026-11-14          |
 
@@ -30,6 +30,7 @@ date: 2026-11-14
 - Synchronising the joints so that they start together and arrive together.
 - Sampling the planned positions, speeds and accelerations once per control period, and the target at rest last,
   as the reference the arm controllers follow ([arm-controllers.md](arm-controllers.md)).
+- A reference step: the reference jumps to a target close to the joints at once, for tuning the arm controllers.
 - Reporting when the move is done, or when it was aborted.
 
 **Is NOT responsible for:**
@@ -69,6 +70,17 @@ setpoint set right after. With no move running a step has no reference. The firs
 step after the start. The sample at or after the move's end is the target itself, at rest (zero speed and
 acceleration); it is given once and the move is done.
 
+### Part C — Reference step
+
+A step is a move without a trajectory: the reference jumps from where the joints are to the target, at rest, so the
+arm controllers see a true step and its response shows their bandwidth and damping (the tuning views of
+[tool-simulator.md](tool-simulator.md)). The first sample after a step is the target at rest, and the step is done
+at once; the arm controllers then hold the target. A step is refused for every reason a move is (Part A), and also
+when any joint's target lies more than 0.2 rad from its latest position: a larger jump asks the controllers for more
+torque than a test needs, and a joint that should travel further is moved, not stepped.
+
+### Part D — Aborting
+
 If the arm cannot send the period's set (the safety supervisor refuses it, or no arm controller is active), the
 arm aborts the move. Aborting a move, by request or so, stops the sampling; the arm controllers hold the last
 reference, so the joints stay where the move left them.
@@ -79,11 +91,11 @@ reference, so the joints stay where the move left them.
 
 ### Provided
 
-| Interface           | Purpose                                                     | Contract                                            |
-|---------------------|-------------------------------------------------------------|-----------------------------------------------------|
-| Joint motion        | Move to a target, abort, whether moving                     | One move at a time; refused targets send nothing    |
-| Joint motion events | Move done, move aborted                                     | Exactly one of the two per accepted move            |
-| Reference           | Position, speed and acceleration per step while a move runs | None without a move; the target at rest is the last |
+| Interface           | Purpose                                                     | Contract                                                 |
+|---------------------|-------------------------------------------------------------|----------------------------------------------------------|
+| Joint motion        | Move or step to a target, abort, whether moving             | One move or step at a time; refused targets send nothing |
+| Joint motion events | Move done, move aborted                                     | Exactly one of the two per accepted move                 |
+| Reference           | Position, speed and acceleration per step while a move runs | None without a move; the target at rest is the last      |
 
 ### Required
 
@@ -105,6 +117,7 @@ reference, so the joints stay where the move left them.
 | Reference    | position         | radians         | joint limits  | Per joint, from the move's trapezoid     |
 | Reference    | speed            | radians/second  | finite        | Per joint; zero at rest                  |
 | Reference    | acceleration     | radians/second² | finite        | Per joint; zero at rest                  |
+| Step         | size             | radians         | at most 0.2   | Per joint, from its latest position      |
 
 ---
 
@@ -113,7 +126,7 @@ reference, so the joints stay where the move left them.
 ```mermaid
 stateDiagram-v2
     [*] --> Idle
-    Idle --> Moving : move [target finite]
+    Idle --> Moving : move or step [target finite]
     Moving --> Idle : target sent / done
     Moving --> Idle : set not sent / aborted
     Moving --> Idle : abort / aborted

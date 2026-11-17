@@ -63,6 +63,7 @@ namespace arm_host
         arm::JointPositions commanded{};
         arm::JointPositions measured{};
         std::optional<arm::JointTorques> externalTorques{};
+        std::optional<arm::JointTorques> torques{};
     };
 
     class ArmSessionSink

@@ -31,13 +31,39 @@ namespace arm
 
     bool JointMotionImpl::MoveTo(const JointPositions& newTarget)
     {
-        if (Moving() || !std::ranges::all_of(newTarget, Finite) || !WithinLimits(positionLimits, newTarget) || AnyReadingStale())
+        if (!Accepts(newTarget))
             return false;
 
         target = newTarget;
         plan.Plan(LatestPositions(), target, limits);
         periodsElapsed = 0;
         moving = true;
+        stepping = false;
+        return true;
+    }
+
+    bool JointMotionImpl::StepTo(const JointPositions& newTarget)
+    {
+        if (!Accepts(newTarget) || !WithinStep(newTarget))
+            return false;
+
+        target = newTarget;
+        moving = true;
+        stepping = true;
+        return true;
+    }
+
+    bool JointMotionImpl::Accepts(const JointPositions& newTarget) const
+    {
+        return !Moving() && std::ranges::all_of(newTarget, Finite) && WithinLimits(positionLimits, newTarget) && !AnyReadingStale();
+    }
+
+    bool JointMotionImpl::WithinStep(const JointPositions& newTarget) const
+    {
+        const auto latest = LatestPositions();
+        for (std::size_t joint = 0; joint != jointCount; ++joint)
+            if (math::Abs(newTarget[joint].Value() - latest[joint].Value()) > maxStep)
+                return false;
         return true;
     }
 
@@ -83,7 +109,7 @@ namespace arm
 
         ++periodsElapsed;
         const auto elapsed = std::chrono::duration<float>(period * periodsElapsed).count();
-        const bool arrived = elapsed >= plan.Duration();
+        const bool arrived = stepping || elapsed >= plan.Duration();
         const auto reference = arrived ? AtRest(target) : plan.Sample(elapsed);
 
         if (arrived)

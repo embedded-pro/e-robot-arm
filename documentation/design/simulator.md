@@ -2,7 +2,7 @@
 title: "Simulator Design"
 type: design
 status: draft
-version: 0.13.0
+version: 0.14.0
 component: "simulator"
 date: 2026-11-16
 ---
@@ -12,7 +12,7 @@ date: 2026-11-16
 | Title     | Simulator Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.13.0           |
+| Version   | 0.14.0           |
 | Component | simulator        |
 | Date      | 2026-11-16       |
 
@@ -148,14 +148,14 @@ A `SimulatedJoint` is an e-foc node on the in-process bus (a `FocMotorCategorySe
 
 `ArmHost` owns the arm thread and, on it, the target and the arm. Its operator-facing surface:
 
-| Operation              | Effect                                                                                                                                                                                                                                                                                                                                                                          |
-|------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `Post(command)`        | One of: bring up, enable, disable, check contracts, select a control mode, start, stop, clear faults, align, emergency stop, re-arm, move, abort, inject fault, silence joint. Its result arrives as an event. Bring up, enable, disable, re-arm and move go through the arm's lifecycle ([arm-lifecycle.md](arm-lifecycle.md)), so a move is refused unless the arm is enabled |
-| `SwitchTarget(target)` | Part C; its result arrives as an event                                                                                                                                                                                                                                                                                                                                          |
-| `LoadProfile(profile)` | Rebuilds the arm from the profile on the current target, as a target switch does; refused while the arm is enabling, enabled, moving or disabling, or while a target switch runs. Answered `profileLoaded` or `refused` with the reason ([arm-profile.md](arm-profile.md))                                                                                                      |
-| `Snapshot()`           | A copy of the latest snapshot                                                                                                                                                                                                                                                                                                                                                   |
-| `TakeEvents()`         | Every event since the last call, in order                                                                                                                                                                                                                                                                                                                                       |
-| `TakeTrace()`          | Every trace sample since the last call, in order                                                                                                                                                                                                                                                                                                                                |
+| Operation              | Effect                                                                                                                                                                                                                                                                                                                                                                                      |
+|------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `Post(command)`        | One of: bring up, enable, disable, check contracts, select a control mode, start, stop, clear faults, align, emergency stop, re-arm, move, step, abort, inject fault, silence joint. Its result arrives as an event. Bring up, enable, disable, re-arm, move and step go through the arm's lifecycle ([arm-lifecycle.md](arm-lifecycle.md)), so a move is refused unless the arm is enabled |
+| `SwitchTarget(target)` | Part C; its result arrives as an event                                                                                                                                                                                                                                                                                                                                                      |
+| `LoadProfile(profile)` | Rebuilds the arm from the profile on the current target, as a target switch does; refused while the arm is enabling, enabled, moving or disabling, or while a target switch runs. Answered `profileLoaded` or `refused` with the reason ([arm-profile.md](arm-profile.md))                                                                                                                  |
+| `Snapshot()`           | A copy of the latest snapshot                                                                                                                                                                                                                                                                                                                                                               |
+| `TakeEvents()`         | Every event since the last call, in order                                                                                                                                                                                                                                                                                                                                                   |
+| `TakeTrace()`          | Every trace sample since the last call, in order                                                                                                                                                                                                                                                                                                                                            |
 
 It is built in layers, each tested on its own:
 
@@ -209,7 +209,7 @@ The snapshot is what the screen shows; events are what the log shows; traces are
   ready, target failed, lifecycle state changed; each with the arm-thread time. The snapshot carries the lifecycle
   state as well.
 - **Trace samples** — one per control period: the time, the six commanded positions, the six measured positions and,
-  while the arm drives its joints, the six estimated external torques.
+  while the arm drives its joints, the six commanded torques and the six estimated external torques.
 
 The commanded positions are the last setpoint set the active arm controller sent (`ArmControllers::LastSetpoints()`,
 empty until the arm has been enabled); nothing else in `core/` changes for the simulator.
