@@ -84,7 +84,7 @@ control period, 2·ζ·ω·T, does not depend on any inertia. The bandwidth is b
 telemetry's age: 30 rad/s at 10 ms leaves a wide margin.
 
 **Computed torque.** `computed-torque` is robotics-toolbox's `ComputedTorqueControl`: it asks the arm's inverse
-dynamics for the torque that gives each joint the acceleration a = q̈* + Kd·(q̇* − q̇) + Kp·(q* − q), so the arm's
+dynamics for the torque that gives each joint the acceleration `a = q̈* + Kd·(q̇* − q̇) + Kp·(q* − q)`, so the arm's
 inertia, its coupling and gravity are cancelled and every joint follows the reference as a decoupled second-order
 system. The gains are in acceleration units and the same for every joint: Kp = ω²·I, Kd = 2·ζ·ω·I, from the
 profile's own bandwidth and damping ratio for it. The arm model has no rotors, so the inverse dynamics it is given
