@@ -20,6 +20,23 @@ namespace tuning
         }
     }
 
+    std::optional<std::string> Refusal(const TuningTest& test, const arm_host::ArmSnapshot& snapshot)
+    {
+        if (test.joint >= arm::jointCount)
+            return "the joint is 1 to 6";
+        if (test.kind == TestKind::step && (test.amplitude == 0.0f || math::Abs(test.amplitude) > maxStep))
+            return "a step is not 0 and at most 0.2 rad";
+        if (test.amplitude == 0.0f)
+            return "the amplitude is not 0";
+        if (!snapshot.targetReady)
+            return "not connected";
+        if (snapshot.state != arm::ArmState::enabled)
+            return snapshot.moving ? "the arm is moving" : "the arm is not enabled";
+        if (snapshot.moving)
+            return "the arm is moving";
+        return std::nullopt;
+    }
+
     TuningRun::TuningRun(arm_host::ArmCommands& arm, const TuningTest& test)
         : arm(arm)
         , test(test)
@@ -28,7 +45,7 @@ namespace tuning
     std::optional<std::string> TuningRun::Start()
     {
         const auto snapshot = arm.Snapshot();
-        if (auto refusal = Refusal(snapshot))
+        if (auto refusal = Refusal(test, snapshot))
             return refusal;
 
         origin = Origin(snapshot);
@@ -36,21 +53,6 @@ namespace tuning
         target[test.joint] = foc::Radians{ origin[test.joint].Value() + test.amplitude };
         pending = test.kind == TestKind::step ? arm.Post(arm_host::StepTo{ target }) : arm.Post(arm_host::MoveTo{ target });
         state = RunState::starting;
-        return std::nullopt;
-    }
-
-    std::optional<std::string> TuningRun::Refusal(const arm_host::ArmSnapshot& snapshot) const
-    {
-        if (test.joint >= arm::jointCount)
-            return "the joint is 1 to 6";
-        if (test.kind == TestKind::step && (test.amplitude == 0.0f || math::Abs(test.amplitude) > maxStep))
-            return "a step is not 0 and at most 0.2 rad";
-        if (test.amplitude == 0.0f)
-            return "the amplitude is not 0";
-        if (snapshot.state != arm::ArmState::enabled)
-            return snapshot.moving ? "the arm is moving" : "the arm is not enabled";
-        if (snapshot.moving)
-            return "the arm is moving";
         return std::nullopt;
     }
 

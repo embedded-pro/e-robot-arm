@@ -222,6 +222,7 @@ TEST_F(ArmConsoleTest, pose_gravity_fk_and_ik_convert_without_moving_the_arm)
 TEST_F(ArmConsoleTest, tune_step_runs_a_step_test_and_prints_its_metrics_once_it_has_recorded)
 {
     arm_host::ArmSnapshot snapshot;
+    snapshot.targetReady = true;
     snapshot.state = arm::ArmState::enabled;
     snapshot.commanded = arm::JointPositions{};
     EXPECT_CALL(arm, Snapshot()).WillRepeatedly(Return(snapshot));
@@ -251,6 +252,7 @@ TEST_F(ArmConsoleTest, tune_step_runs_a_step_test_and_prints_its_metrics_once_it
 TEST_F(ArmConsoleTest, tune_prints_why_a_test_does_not_start_and_the_usage_when_malformed)
 {
     arm_host::ArmSnapshot snapshot;
+    snapshot.targetReady = true;
     EXPECT_CALL(arm, Snapshot()).WillRepeatedly(Return(snapshot));
 
     EXPECT_EQ("tune refused: the arm is not enabled\n", Run("tune move 3 -0.5"));

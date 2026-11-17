@@ -38,6 +38,8 @@ namespace tuning
         failed
     };
 
+    std::optional<std::string> Refusal(const TuningTest& test, const arm_host::ArmSnapshot& snapshot);
+
     class TuningRun
     {
     public:
@@ -58,7 +60,6 @@ namespace tuning
         TrackingMetrics Tracking() const;
 
     private:
-        std::optional<std::string> Refusal(const arm_host::ArmSnapshot& snapshot) const;
         void OnAnswer(const arm_host::ArmEvent& event);
         void OnMoveDone();
         void Record(const arm_host::TraceSample& sample);

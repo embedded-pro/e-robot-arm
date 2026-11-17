@@ -12,6 +12,7 @@
 #include "tools/simulator/view_models/MotorControllerPresenter.hpp"
 #include "tools/simulator/view_models/MotorPresenter.hpp"
 #include "tools/simulator/view_models/SimulatorPresenter.hpp"
+#include "tools/simulator/view_models/TuningPresenter.hpp"
 #include "ui/backend/qt/QtAppShell.hpp"
 #include <QByteArray>
 #include <QMainWindow>
@@ -42,6 +43,7 @@ namespace simulator
         SimulatorPresenter& Presenter();
         MotorControllerPresenter& MotorController();
         MotorPresenter& Motor();
+        TuningPresenter& Tuning();
         void LoadProfileFrom(const QString& path);
         void SaveProfileTo(const QString& path);
         void Frame();
@@ -75,6 +77,7 @@ namespace simulator
         void UpdateBanner(const StatusStrip& status);
         void UpdateVirtualMotors(const arm_host::ArmSnapshot& snapshot);
         void UpdateDisturbances(const arm_host::ArmSnapshot& snapshot);
+        void ExportTuningRun();
         void ChooseVirtualArm();
         void ApplyMeshes(const MeshNames& names, const QString& directory);
         void NoteMesh(int node, const QString& problem);
@@ -101,6 +104,8 @@ namespace simulator
         DisturbancePresenter disturbances;
         QDockWidget* disturbancesDock{ nullptr };
         std::optional<bool> disturbancesShown;
+        TuningPanel* tuningPanel;
+        TuningPresenter tuning;
         QMenu* faultMenu{ nullptr };
         QDockWidget* virtualMotorsDock{ nullptr };
         std::optional<bool> virtualMotorsShown;

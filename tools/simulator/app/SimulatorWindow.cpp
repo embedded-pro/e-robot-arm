@@ -23,6 +23,7 @@
 #include <QToolBar>
 #include <QVBoxLayout>
 #include <QtGlobal>
+#include <fstream>
 
 namespace simulator
 {
@@ -76,6 +77,8 @@ namespace simulator
             {
                 presenter.Disturb(command);
             } }
+        , tuningPanel{ new TuningPanel{ this } }
+        , tuning{ tuningPanel->Form(), host }
         , logPanel{ new EventLogPanel{ presenter.Log(), this } }
         , emergencyStopKey{ *QCoreApplication::instance(), [this]()
             {
@@ -144,6 +147,11 @@ namespace simulator
         return motor;
     }
 
+    TuningPresenter& SimulatorWindow::Tuning()
+    {
+        return tuning;
+    }
+
     void SimulatorWindow::Frame()
     {
         const auto snapshot = host.Snapshot();
@@ -174,6 +182,7 @@ namespace simulator
             motorController.SelectJoint(*selected);
             motor.SelectJoint(*selected);
             disturbances.SelectJoint(*selected);
+            tuning.SelectJoint(*selected);
         }
         motorController.Refresh(snapshot, events);
         motorControllerPanel->SetState(motorController.StateText(), motorController.StateLevel());
@@ -184,6 +193,8 @@ namespace simulator
         profilePanel->Update(DescribeProfile(snapshot), profilePath);
         UpdateVirtualMotors(snapshot);
         UpdateDisturbances(snapshot);
+        tuning.Refresh(snapshot, events, trace);
+        tuningPanel->Update(tuning);
 
         scope->Add(trace);
         if (std::ranges::any_of(events, [](const arm_host::ArmEvent& event)
@@ -294,7 +305,9 @@ namespace simulator
         disturbancesDock = Dock("Disturbances", "disturbancesDock", disturbancesPanel, Qt::RightDockWidgetArea);
         tabifyDockWidget(virtualMotorsDock, disturbancesDock);
         armDock->raise();
-        Dock("Scope", "scopeDock", scope, Qt::BottomDockWidgetArea);
+        auto* scopeDock = Dock("Scope", "scopeDock", scope, Qt::BottomDockWidgetArea);
+        tabifyDockWidget(scopeDock, Dock("Tuning", "tuningDock", tuningPanel, Qt::BottomDockWidgetArea));
+        scopeDock->raise();
         Dock("Event Log", "logDock", logPanel, Qt::BottomDockWidgetArea);
     }
 
@@ -460,6 +473,7 @@ namespace simulator
                 scope->SelectJoint(static_cast<std::size_t>(joint));
             });
         connect(&sceneState, &ArmSceneState::meshFailed, this, &SimulatorWindow::NoteMesh);
+        connect(tuningPanel->ExportButton(), &QPushButton::clicked, this, &SimulatorWindow::ExportTuningRun);
         connect(&sceneState, &ArmSceneState::jointPicked, this, [this](int joint)
             {
                 if (presenter.SelectJoint(joint))
@@ -545,6 +559,17 @@ namespace simulator
         const auto path = QFileDialog::getSaveFileName(this, "Save Log", "e-robot-arm-simulator.log", "Log files (*.log *.txt)");
         if (!path.isEmpty() && !logPanel->SaveTo(path))
             shell.ShowAlert("Save Log", "The log could not be written to " + path.toStdString() + ".");
+    }
+
+    void SimulatorWindow::ExportTuningRun()
+    {
+        const auto path = QFileDialog::getSaveFileName(this, "Export Tuning Run", "tuning-run.csv", "CSV files (*.csv)");
+        if (path.isEmpty())
+            return;
+        std::ofstream file{ path.toStdString() };
+        tuning.WriteCsv(file);
+        if (!file)
+            shell.ShowAlert("Export Tuning Run", "The run could not be written to " + path.toStdString() + ".");
     }
 
     void SimulatorWindow::OpenProfile()
@@ -640,6 +665,7 @@ namespace simulator
         tool->ApplyTheme();
         virtualMotorsPanel->ApplyTheme();
         disturbancesPanel->ApplyTheme();
+        tuningPanel->ApplyTheme();
         ui::backend::qt::StyleStatusLabel(*banner, ui::theme::StatusLevel::Warning);
         Settings().setValue("lightTheme", light);
     }

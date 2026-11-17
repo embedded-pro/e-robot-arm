@@ -6,6 +6,8 @@ target_include_directories(e_robot_arm.tool.simulator.view_models PUBLIC
 
 target_link_libraries(e_robot_arm.tool.simulator.view_models PUBLIC
     e_robot_arm.tool.arm_host
+    e_robot_arm.tool.tuning
+    ui.charts
     ui.model
     ui.shell
     ui.stage
@@ -38,6 +40,8 @@ target_sources(e_robot_arm.tool.simulator.view_models PRIVATE
     SimulatorPresenter.cpp
     SimulatorPresenter.hpp
     ToolReadout.cpp
+    TuningPresenter.cpp
+    TuningPresenter.hpp
     ToolReadout.hpp
     VirtualMotorRows.cpp
     VirtualMotorRows.hpp

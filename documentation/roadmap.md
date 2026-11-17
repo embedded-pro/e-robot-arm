@@ -111,7 +111,7 @@ The move there, in phase 8d ([#31](https://github.com/embedded-pro/e-robot-arm/i
 7. Tuning views, in three steps: a reference step of at most 0.2 rad through joint motion and the commanded torque
    in the arm host's trace (done); a tuning runner with step and out-and-back tests per joint, their metrics from
    numerical-toolbox and a CSV export, from the console (done: [tuning.md](design/tuning.md)); then the simulator's
-   tuning panel, plotting two runs overlaid.
+   Tuning dock, plotting a run against a kept reference (done: [tool-simulator.md](design/tool-simulator.md) Part N).
 - **Motor characteristics per joint**: a preset or custom resistance, inductance, pole pairs, flux, inertia,
   friction and limits. Real nodes get these as motor-model parameters; virtual motors get them as their plant
   (phases 2 and 7).

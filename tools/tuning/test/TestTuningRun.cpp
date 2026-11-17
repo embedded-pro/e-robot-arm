@@ -14,6 +14,7 @@ namespace
     public:
         TuningRunTest()
         {
+            snapshot.targetReady = true;
             snapshot.state = arm::ArmState::enabled;
             arm::JointPositions commanded{};
             commanded[2] = foc::Radians{ 0.4f };
