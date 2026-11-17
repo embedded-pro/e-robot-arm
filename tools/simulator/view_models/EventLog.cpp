@@ -43,6 +43,8 @@ namespace simulator
                     return { LogLevel::fault, Joint(event.joint) + " fault: " + Text(FaultName(event.fault)) };
                 case jointSilent:
                     return { LogLevel::fault, Joint(event.joint) + " silent" };
+                case supervisionTrip:
+                    return { LogLevel::fault, Joint(event.joint) + " " + Text(event.reason) };
                 case tripped:
                     return { LogLevel::fault, "Tripped by " + Joint(event.joint) };
                 case moveDone:

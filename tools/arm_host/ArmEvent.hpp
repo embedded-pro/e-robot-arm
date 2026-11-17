@@ -33,7 +33,8 @@ namespace arm_host
         motorApplied,
         motorRead,
         profileLoaded,
-        armControllerChanged
+        armControllerChanged,
+        supervisionTrip
     };
 
     inline constexpr std::size_t noJoint{ std::numeric_limits<std::size_t>::max() };

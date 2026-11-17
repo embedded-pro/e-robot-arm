@@ -302,6 +302,21 @@ TEST_F(ArmLifecycleImplTest, a_fault_trips_a_moving_arm_and_aborts_the_move)
     EXPECT_FALSE(lifecycle.BringUp());
 }
 
+TEST_F(ArmLifecycleImplTest, a_supervision_trip_trips_a_moving_arm_and_aborts_the_move)
+{
+    BringToEnabled();
+    EXPECT_CALL(motion, MoveTo(_)).WillOnce(Return(true));
+    EXPECT_TRUE(lifecycle.MoveTo(target));
+
+    EXPECT_CALL(motion, Abort());
+    safety.NotifyObservers([](auto& joints)
+        {
+            joints.OnSupervisionTrip(1, arm::SupervisionTrip::trackingError, foc::Radians{ 0.3f });
+        });
+
+    EXPECT_EQ(ArmState::tripped, lifecycle.State());
+}
+
 TEST_F(ArmLifecycleImplTest, rearm_needs_the_safety_supervisor_and_then_waits_for_calibration_again)
 {
     BringToReady();

@@ -42,6 +42,7 @@ namespace arm
         MOCK_METHOD(void, OnCommandFailed, (arm::JointCommand command, arm::CommandFailure failure), (override));
         MOCK_METHOD(void, OnAlgorithms, (std::size_t joint, const can::FocAlgorithms& algorithms), (override));
         MOCK_METHOD(void, OnParameter, (std::size_t joint, can::FocParameter parameter, can::FocParameterValue value), (override));
+        MOCK_METHOD(void, OnSupervisionTrip, (std::size_t joint, arm::SupervisionTrip trip, foc::Radians value), (override));
     };
 }
 

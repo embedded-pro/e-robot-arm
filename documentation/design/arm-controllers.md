@@ -2,7 +2,7 @@
 title: "Arm Controllers Design"
 type: design
 status: draft
-version: 0.3.0
+version: 0.4.0
 component: "arm-controllers"
 date: 2026-11-16
 ---
@@ -12,7 +12,7 @@ date: 2026-11-16
 | Title     | Arm Controllers Design |
 | Type      | design                 |
 | Status    | draft                  |
-| Version   | 0.3.0                  |
+| Version   | 0.4.0                  |
 | Component | arm-controllers        |
 | Date      | 2026-11-16             |
 
@@ -125,12 +125,13 @@ move: a controller with state, `smoothed` or phase 5's, keeps converging after t
 
 ### Provided
 
-| Interface              | Purpose                                                     | Contract                                                         |
-|------------------------|-------------------------------------------------------------|------------------------------------------------------------------|
-| Arm controller         | Reset from the measured joints; one setpoint set per period | No heap; a bumpless controller continues from the measured state |
-| Arm controllers        | List, find by name, enable, disable, select; the active one | Refuses as Part B says; changes nothing when it refuses          |
-| Arm controllers events | The active controller changed (to one, or to none)          | Exactly one per change                                           |
-| Streaming              | Engage, disengage, one step per period; the last set sent   | A step reports when the streaming stopped                        |
+| Interface              | Purpose                                                     | Contract                                                                  |
+|------------------------|-------------------------------------------------------------|---------------------------------------------------------------------------|
+| Arm controller         | Reset from the measured joints; one setpoint set per period | No heap; a bumpless controller continues from the measured state          |
+| Arm controllers        | List, find by name, enable, disable, select; the active one | Refuses as Part B says; changes nothing when it refuses                   |
+| Arm controllers events | The active controller changed (to one, or to none)          | Exactly one per change                                                    |
+| Streaming              | Engage, disengage, one step per period; the last set sent   | A step reports when the streaming stopped                                 |
+| Reference              | The joint reference the active controller tracks            | Only while streaming; checked by the safety supervisor (safety.md Part F) |
 
 ### Required
 

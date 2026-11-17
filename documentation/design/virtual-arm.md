@@ -2,7 +2,7 @@
 title: "Virtual Arm Design"
 type: design
 status: draft
-version: 0.9.0
+version: 0.10.0
 component: "virtual-arm"
 date: 2026-11-16
 ---
@@ -12,7 +12,7 @@ date: 2026-11-16
 | Title     | Virtual Arm Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.9.0              |
+| Version   | 0.10.0             |
 | Component | virtual-arm        |
 | Date      | 2026-11-16         |
 
@@ -238,16 +238,17 @@ the virtual arm from `integration_tests/virtual/virtual-arm.json`, the reference
 telemetry periods and waits fifty periods for an acknowledgement (500 ms each). Six motors paced on the wall clock share
 the host's cores: a CI runner has descheduled one for a hundred milliseconds, and its pacer drops the time it missed, so
 the arm saw ten requests go unanswered and called a live motor silent, or gave up on an acknowledgement after three
-periods. A node on its own microcontroller does not stall, so a real arm keeps short windows. Its motors are the Teknic preset with the
-drive's following-error supervision on: a window of 3 rad on the motor's side for 0.1 s. It then brings the arm up through the
+periods. A node on its own microcontroller does not stall, so a real arm keeps short windows. Its motors are the Teknic
+preset with the drive's following-error supervision off: the arm's own tracking-error supervision ([safety.md](safety.md)
+Part F, 0.2 rad for 0.2 s) watches every joint instead. It then brings the arm up through the
 arm host on `virtual:arm` as the console does: contract check, align, bring-up and enable. The motors start
 calibrated but not aligned.
 
-| Scenario               | Checks                                                                                                                                                                                                                         |
-|------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Tracking under gravity | The largest difference between commanded and measured position while the shoulder lifts, as a `[METRIC]` line held to a limit pinned from it                                                                                   |
-| Collision              | A 30 N·m torque against the shoulder while it moves, about the drive's peak torque through the gear, trips the arm on that joint's following error (REQ-ARM-004); without the supervision the drive holds on and nothing trips |
-| Silent joint           | A paused motor trips the arm as a silent joint (REQ-ARM-005)                                                                                                                                                                   |
+| Scenario               | Checks                                                                                                                                                                                                                        |
+|------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Tracking under gravity | The largest difference between commanded and measured position while the shoulder lifts, as a `[METRIC]` line held to a limit pinned from it                                                                                  |
+| Collision              | A 30 N·m torque against the shoulder while it moves, about the drive's peak torque through the gear, trips the arm on that joint's tracking error (REQ-ARM-014); without the supervision the drive holds on and nothing trips |
+| Silent joint           | A paused motor trips the arm as a silent joint (REQ-ARM-005)                                                                                                                                                                  |
 
 CI runs them in a job of its own after building the engine (Part F). A torque well beyond the drive's peak is no
 collision to detect: it drives the joint backwards until the drive's overspeed protection trips. Tracking error with

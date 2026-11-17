@@ -115,6 +115,7 @@ namespace simulator
         void OnMoveAction(ui::model::ActionId action);
         void Post(const arm_host::ArmCommand& command);
         void Handle(const arm_host::ArmEvent& event);
+        static std::string_view TripCause(const arm_host::ArmEvent& event);
         void UpdateControls();
         void UpdateStatus();
         void TrackSequence();

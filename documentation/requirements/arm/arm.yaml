@@ -101,3 +101,16 @@
     shall refuse a switch during a move unless the new controller takes over from the measured joint positions
     without a setpoint step, and shall stop a running move with the joints held where they are when the active
     controller is disabled.
+
+- id: REQ-ARM-014
+  title: Stop on a joint held back
+  shall: >
+    While the arm drives its joints, when a joint's measured position stays farther from the position the arm
+    commands than that joint's configured tolerance for longer than its configured time, the arm shall
+    emergency-stop all six joints and report the joint and how far it lagged.
+
+- id: REQ-ARM-015
+  title: Stop outside the joint limits
+  shall: >
+    While the arm drives its joints, when any joint's measured position leaves that joint's position limits, the
+    arm shall emergency-stop all six joints and report the joint and its position.

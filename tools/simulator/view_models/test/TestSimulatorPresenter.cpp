@@ -179,6 +179,17 @@ TEST_F(SimulatorPresenterTest, a_trip_names_its_source_in_the_status_and_in_the_
     EXPECT_EQ("Re-arm after the trip by Joint 3 (Overcurrent)?", prompt);
 }
 
+TEST_F(SimulatorPresenterTest, a_supervision_trip_names_its_reason_as_its_source)
+{
+    auto tripped = simulator::test::Running();
+    tripped.tripped = true;
+    tripped.state = arm::ArmState::tripped;
+    const std::array events{ arm_host::ArmEvent{ .kind = ArmEventKind::tripped, .reason = "tracking error 0.250 rad", .joint = 1 } };
+    presenter.Refresh(tripped, events);
+
+    EXPECT_EQ("Tripped — Joint 2 (tracking error 0.250 rad)", presenter.Status().trip);
+}
+
 TEST_F(SimulatorPresenterTest, confirming_the_rearm_posts_it)
 {
     EXPECT_CALL(arm, Post(Holds(arm_host::Rearm{}))).WillOnce(Return(1));

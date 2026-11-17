@@ -8,6 +8,7 @@
 #include "core/joint_configurator/interfaces/ControllerSettings.hpp"
 #include "core/joint_configurator/interfaces/MotorSettings.hpp"
 #include "core/motion/interfaces/JointMotion.hpp"
+#include "core/safety/interfaces/SafetySupervisor.hpp"
 #include "e-foc-protocol/contract/FocMotorMessages.hpp"
 #include "infra/timer/Timer.hpp"
 #include <chrono>
@@ -31,6 +32,7 @@ namespace arm
         ArmGeometry geometry{ ReferenceGeometry() };
         ArmMass mass{ ReferenceMass() };
         JointPdGains gravityGains{ ReferenceGravityGains() };
+        TrackingLimits tracking{};
     };
 
     inline infra::Duration SilenceWindow(const ArmConfig& config)

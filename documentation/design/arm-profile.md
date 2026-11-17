@@ -2,7 +2,7 @@
 title: "Arm Profile Design"
 type: design
 status: draft
-version: 0.6.0
+version: 0.7.0
 component: "arm_profile"
 date: 2026-11-13
 ---
@@ -12,7 +12,7 @@ date: 2026-11-13
 | Title     | Arm Profile Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.6.0              |
+| Version   | 0.7.0              |
 | Component | arm_profile        |
 | Date      | 2026-11-13         |
 
@@ -97,8 +97,13 @@ Each joint:
 | Position limits    | `positionLimitsRad.lower`, `.upper` | rad, joint space, lower below upper         | required            |
 | Speed limit        | `motionLimits.speedRadPerS`         | rad/s, joint space, above 0                 | required            |
 | Acceleration limit | `motionLimits.accelerationRadPerS2` | rad/s², joint space, above 0                | required            |
+| Tracking window    | `trackingError.windowRad`           | rad, joint space, above 0                   | 0.2                 |
+| Tracking time      | `trackingError.timeS`               | s, above 0, at most 10                      | 0.2                 |
 | Motor controller   | `motorController`                   | see below                                   | not configured      |
 | Motor              | `motor`                             | see below                                   | not configured      |
+
+The tracking window and time are the safety supervisor's ([safety.md](safety.md) Part F): a joint whose tracking
+error stays above its window for its time trips the arm. They have defaults, so the check is on in every profile.
 
 A joint's motor controller names one algorithm per loop and any of its fourteen gains:
 
