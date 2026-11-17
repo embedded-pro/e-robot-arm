@@ -337,16 +337,16 @@ namespace simulator
         ui::charts::ChartPanel effort{ "Torque", "N·m", {}, 1 };
         if (last.has_value())
         {
-            position.series.push_back({ "Cmd", theme.Series(0), column(last, commanded) });
-            position.series.push_back({ "Meas", theme.Series(1), column(last, measured) });
-            tracking.series.push_back({ "Err", theme.Series(2), column(last, error) });
-            effort.series.push_back({ "Torque", theme.Series(3), column(last, torque) });
+            position.series.emplace_back("Cmd", theme.Series(0), column(last, commanded));
+            position.series.emplace_back("Meas", theme.Series(1), column(last, measured));
+            tracking.series.emplace_back("Err", theme.Series(2), column(last, error));
+            effort.series.emplace_back("Torque", theme.Series(3), column(last, torque));
         }
         if (reference.has_value())
         {
-            position.series.push_back({ "Ref meas", theme.Series(4), column(reference, measured) });
-            tracking.series.push_back({ "Ref err", theme.Series(5), column(reference, error) });
-            effort.series.push_back({ "Ref torque", theme.Series(6), column(reference, torque) });
+            position.series.emplace_back("Ref meas", theme.Series(4), column(reference, measured));
+            tracking.series.emplace_back("Ref err", theme.Series(5), column(reference, error));
+            effort.series.emplace_back("Ref torque", theme.Series(6), column(reference, torque));
         }
         chart.panels = { std::move(position), std::move(tracking), std::move(effort) };
     }
