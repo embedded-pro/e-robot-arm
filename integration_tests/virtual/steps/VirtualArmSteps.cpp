@@ -43,6 +43,22 @@ WHEN(R"(the arm is brought up and enabled)")
     ASSERT_TRUE(InState(fixture, arm::ArmState::enabled, 10s));
 }
 
+WHEN(R"(the arm controls its joints with {string})", (const std::string& name))
+{
+    auto& fixture = context.Get<VirtualArmFixture>();
+    std::optional<arm::ArmControllerId> id;
+    ASSERT_TRUE(fixture.WaitFor([&name, &id](const arm_host::ArmSnapshot& snapshot)
+        {
+            const auto found = std::ranges::find(snapshot.armControllers, name, &arm_host::ArmControllerStatus::name);
+            if (found != snapshot.armControllers.end())
+                id = static_cast<arm::ArmControllerId>(std::distance(snapshot.armControllers.begin(), found));
+            return id.has_value();
+        },
+        1s))
+        << name;
+    ASSERT_TRUE(fixture.Command(arm_host::SelectArmController{ *id }));
+}
+
 WHEN(R"(the arm moves the joints to {float}, {float}, {float}, {float}, {float}, {float} rad)", (float q1, float q2, float q3, float q4, float q5, float q6))
 {
     auto& fixture = context.Get<VirtualArmFixture>();

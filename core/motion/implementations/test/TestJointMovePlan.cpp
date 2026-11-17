@@ -60,9 +60,9 @@ TEST_F(JointMovePlanTest, all_joints_start_together_and_arrive_together)
 {
     plan.Plan(from, to, UniformLimits(1.0f, 1.0f));
 
-    ExpectPositions(from, plan.Sample(0.0f));
-    ExpectPositions(to, plan.Sample(plan.Duration()));
-    ExpectPositions(to, plan.Sample(plan.Duration() + 1.0f));
+    ExpectPositions(from, plan.Sample(0.0f).positions);
+    ExpectPositions(to, plan.Sample(plan.Duration()).positions);
+    ExpectPositions(to, plan.Sample(plan.Duration() + 1.0f).positions);
 }
 
 TEST_F(JointMovePlanTest, every_joint_is_halfway_at_half_the_duration)
@@ -73,7 +73,7 @@ TEST_F(JointMovePlanTest, every_joint_is_halfway_at_half_the_duration)
     for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
         halfway[joint] = foc::Radians{ (from[joint].Value() + to[joint].Value()) / 2.0f };
 
-    ExpectPositions(halfway, plan.Sample(plan.Duration() / 2.0f));
+    ExpectPositions(halfway, plan.Sample(plan.Duration() / 2.0f).positions);
 }
 
 TEST_F(JointMovePlanTest, no_joint_exceeds_its_speed_limit)
@@ -82,10 +82,10 @@ TEST_F(JointMovePlanTest, no_joint_exceeds_its_speed_limit)
     constexpr float step{ 1.0e-3f };
     plan.Plan(from, to, UniformLimits(maxSpeed, 1.0f));
 
-    auto previous = plan.Sample(0.0f);
+    auto previous = plan.Sample(0.0f).positions;
     for (float t = step; t <= plan.Duration(); t += step)
     {
-        const auto current = plan.Sample(t);
+        const auto current = plan.Sample(t).positions;
         for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
             EXPECT_LE(std::abs(current[joint].Value() - previous[joint].Value()) / step, maxSpeed + 1.0e-2f) << "joint " << joint << " at " << t;
         previous = current;
@@ -97,5 +97,25 @@ TEST_F(JointMovePlanTest, a_move_to_where_the_joints_are_takes_no_time)
     plan.Plan(from, from, UniformLimits(1.0f, 1.0f));
 
     EXPECT_NEAR(0.0f, plan.Duration(), tolerance);
-    ExpectPositions(from, plan.Sample(0.0f));
+    ExpectPositions(from, plan.Sample(0.0f).positions);
+}
+
+TEST_F(JointMovePlanTest, samples_each_joints_speed_and_acceleration_from_its_trapezoid)
+{
+    plan.Plan(from, to, UniformLimits(1.0f, 1.0f));
+    constexpr float step{ 1.0e-3f };
+
+    for (const float t : { 0.25f, 1.5f, 2.75f })
+    {
+        const auto now = plan.Sample(t);
+        const auto later = plan.Sample(t + step);
+        for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+        {
+            EXPECT_NEAR((later.positions[joint].Value() - now.positions[joint].Value()) / step, now.speeds[joint].Value(), 1.0e-2f) << "joint " << joint << " at " << t;
+            EXPECT_NEAR((later.speeds[joint].Value() - now.speeds[joint].Value()) / step, now.accelerations[joint].Value(), 1.0e-2f) << "joint " << joint << " at " << t;
+        }
+    }
+    const auto end = plan.Sample(plan.Duration() + 1.0f);
+    EXPECT_EQ(arm::JointSpeeds{}, end.speeds);
+    EXPECT_EQ(arm::JointAccelerations{}, end.accelerations);
 }

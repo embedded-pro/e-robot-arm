@@ -16,6 +16,13 @@ Feature: The arm on six e-foc virtual motors
     And within 2000 ms every joint shall be within 0.06 rad of 0.3, -0.5, 0.4, 0.2, 0.3, 0.1
     And the largest tracking error during the move shall stay below 0.1 rad
 
+  Scenario: Computed torque tracks the move with the reference speed and acceleration
+    When the arm controls its joints with "computed-torque"
+    And the arm moves the joints to 0.3, -0.5, 0.4, 0.2, 0.3, 0.1 rad
+    Then the move shall be done within 8000 ms
+    And within 2000 ms every joint shall be within 0.06 rad of 0.3, -0.5, 0.4, 0.2, 0.3, 0.1
+    And the largest tracking error during the move shall stay below 0.06 rad
+
   @REQ-ARM-014
   Scenario: A collision that holds a joint back trips the arm on its tracking error
     When the arm moves the joints to 0.3, -0.5, 0.4, 0.2, 0.3, 0.1 rad

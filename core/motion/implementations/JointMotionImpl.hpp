@@ -20,7 +20,7 @@ namespace arm
         void Abort() override;
         bool Moving() const override;
 
-        std::optional<JointPositions> Step();
+        std::optional<JointReference> Step();
 
     private:
         bool AnyReadingStale() const;

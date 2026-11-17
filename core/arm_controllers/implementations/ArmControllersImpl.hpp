@@ -35,7 +35,7 @@ namespace arm
         void Engage();
         void Disengage();
         bool Streaming() const;
-        bool Step(const std::optional<JointPositions>& reference);
+        bool Step(const std::optional<JointReference>& reference);
 
     private:
         struct Entry
@@ -54,7 +54,7 @@ namespace arm
         infra::BoundedVector<Entry>::WithMaxSize<maxArmControllers> entries;
         std::optional<ArmControllerId> active;
         bool streaming{ false };
-        JointPositions heldReference{};
+        JointReference heldReference{};
         std::optional<JointSetpoints> lastSetpoints;
     };
 }

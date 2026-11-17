@@ -16,6 +16,8 @@ target_link_libraries(e_robot_arm.arm_controllers.implementations PUBLIC
 target_sources(e_robot_arm.arm_controllers.implementations PRIVATE
     ArmControllersImpl.cpp
     ArmControllersImpl.hpp
+    ComputedTorque.cpp
+    ComputedTorque.hpp
     GravityCompensatedPd.cpp
     GravityCompensatedPd.hpp
 )

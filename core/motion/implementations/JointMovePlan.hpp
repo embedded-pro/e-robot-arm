@@ -12,7 +12,7 @@ namespace arm
     {
     public:
         void Plan(const JointPositions& from, const JointPositions& to, const JointMotionLimits& limits);
-        JointPositions Sample(float time) const;
+        JointReference Sample(float time) const;
         float Duration() const;
 
     private:

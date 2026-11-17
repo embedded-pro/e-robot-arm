@@ -76,7 +76,7 @@ namespace arm
         return positions;
     }
 
-    std::optional<JointPositions> JointMotionImpl::Step()
+    std::optional<JointReference> JointMotionImpl::Step()
     {
         if (!moving)
             return std::nullopt;
@@ -84,7 +84,7 @@ namespace arm
         ++periodsElapsed;
         const auto elapsed = std::chrono::duration<float>(period * periodsElapsed).count();
         const bool arrived = elapsed >= plan.Duration();
-        const auto reference = arrived ? target : plan.Sample(elapsed);
+        const auto reference = arrived ? AtRest(target) : plan.Sample(elapsed);
 
         if (arrived)
         {

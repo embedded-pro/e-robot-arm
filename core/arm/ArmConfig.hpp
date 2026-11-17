@@ -29,7 +29,8 @@ namespace arm
         JointMotors motors{};
         ArmGeometry geometry{ ReferenceGeometry() };
         ArmMass mass{ ReferenceMass() };
-        GravityPdTuning gravityPd{};
+        BandwidthTuning gravityPd{};
+        BandwidthTuning computedTorque{};
         TrackingLimits tracking{};
     };
 

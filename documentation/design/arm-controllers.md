@@ -2,7 +2,7 @@
 title: "Arm Controllers Design"
 type: design
 status: draft
-version: 0.6.0
+version: 0.7.0
 component: "arm-controllers"
 date: 2026-11-17
 ---
@@ -12,7 +12,7 @@ date: 2026-11-17
 | Title     | Arm Controllers Design |
 | Type      | design                 |
 | Status    | draft                  |
-| Version   | 0.6.0                  |
+| Version   | 0.7.0                  |
 | Component | arm-controllers        |
 | Date      | 2026-11-17             |
 
@@ -50,17 +50,19 @@ date: 2026-11-17
 
 ### Part A — The controller
 
-A controller takes the measured joints (positions and speeds from the latest telemetry) and the reference (the
-joint positions the motion wants now) and returns a setpoint set: six joint torques, with the reference positions
-alongside for the trace and for the safety supervisor's tracking check.
+A controller takes the measured joints (positions and speeds from the latest telemetry) and the reference (the joint
+positions, speeds and accelerations the motion wants now, [joint-motion.md](joint-motion.md) Part B) and returns a
+setpoint set: six joint torques, with the reference positions alongside for the trace and for the safety
+supervisor's tracking check.
 
 A controller may keep state between periods. `Reset` gives it the measured joints to start from. A controller
 declares whether it supports **bumpless transfer**: after a `Reset` its torques continue from the measured state,
 so taking over mid-move does not make them jump.
 
-| Name         | Output                                                                                                | Bumpless |
-|--------------|-------------------------------------------------------------------------------------------------------|----------|
-| `gravity-pd` | Joint torques: a PD law on the position error plus the gravity torque, τ = Kp·(q* − q) − Kd·q′ + G(q) | yes      |
+| Name              | Output                                                                                                | Bumpless |
+|-------------------|-------------------------------------------------------------------------------------------------------|----------|
+| `gravity-pd`      | Joint torques: a PD law on the position error plus the gravity torque, τ = Kp·(q* − q) − Kd·q′ + G(q) | yes      |
+| `computed-torque` | Joint torques: the inverse dynamics of the reference acceleration corrected by a PD on the errors     | yes      |
 
 **The arm controls torque.** The e-foc drives run in torque mode, the only mode the arm enables them in, and every
 arm controller runs on the host (the PC
@@ -81,14 +83,24 @@ drifts from J, and the poles with it. Each joint lags a move by about 2·ζ/ω t
 control period, 2·ζ·ω·T, does not depend on any inertia. The bandwidth is bounded by the control period and the
 telemetry's age: 30 rad/s at 10 ms leaves a wide margin.
 
+**Computed torque.** `computed-torque` is robotics-toolbox's `ComputedTorqueControl`: it asks the arm's inverse
+dynamics for the torque that gives each joint the acceleration `a = q̈* + Kd·(q̇* − q̇) + Kp·(q* − q)`, so the arm's
+inertia, its coupling and gravity are cancelled and every joint follows the reference as a decoupled second-order
+system. The gains are in acceleration units and the same for every joint: Kp = ω²·I, Kd = 2·ζ·ω·I, from the
+profile's own bandwidth and damping ratio for it. The arm model has no rotors, so the inverse dynamics it is given
+adds each motor's rotor inertia times its gear ratio squared, times the joint's acceleration. Unlike `gravity-pd` it
+uses the reference speed and acceleration, so it tracks a move without the lag 2·ζ/ω times the speed; like it, it
+has no state and takes over without a step.
+
 The position path, where the drive closed the position loop and `pass-through` and `smoothed` shaped its setpoints,
-is gone. Computed torque (robotics-toolbox `ComputedTorqueControl`) and a per-joint PID with gravity feed-forward
-(numerical-toolbox) join `gravity-pd` next (phase 8d step 6, [#31](https://github.com/embedded-pro/e-robot-arm/issues/31)).
+is gone. A per-joint PID with gravity feed-forward (numerical-toolbox) joins next (phase 8d step 6,
+[#31](https://github.com/embedded-pro/e-robot-arm/issues/31)).
 
 ### Part B — Registry and selection
 
 The arm registers its controllers once, when it is built, up to a fixed capacity of four. Ids are their
-registration order. A controller is registered disabled; the arm then enables `gravity-pd` and selects it.
+registration order. A controller is registered disabled; the arm then enables `gravity-pd` and `computed-torque` and
+selects `gravity-pd`.
 
 | Request      | Accepted when                                                                           | Effect                                                              |
 |--------------|-----------------------------------------------------------------------------------------|---------------------------------------------------------------------|
@@ -106,8 +118,9 @@ then aborts at the first period, until a controller is selected again.
 While the arm streams, the active controller runs once per control period, in the control loop's setpoint phase,
 after joint motion has advanced its reference:
 
-1. The reference is the motion's sample while a move runs. Otherwise it is the last reference given: the target of
-   the last move, where an aborted move stopped, or the measured positions when streaming started.
+1. The reference is the motion's sample while a move runs. Otherwise it is the last reference's positions at rest
+   (zero speed and acceleration): the target of the last move, where an aborted move stopped, or the measured
+   positions when streaming started.
 2. The measured joints are each joint's latest reading.
 3. The active controller's torques go to the safety supervisor. A set the supervisor refuses, or a period with no
    active controller, stops the streaming and aborts the running move.
@@ -141,17 +154,20 @@ move: a controller holds the joints on the last reference against gravity betwee
 
 ## Data Model
 
-| Entity          | Field         | Type / Unit     | Range        | Notes                                      |
-|-----------------|---------------|-----------------|--------------|--------------------------------------------|
-| Measured joints | positions     | radians         | finite       | Latest reading per joint                   |
-| Measured joints | speeds        | radians/second  | finite       | Latest reading per joint                   |
-| Setpoint set    | positions     | radians         | joint limits | The reference, for the trace and the check |
-| Setpoint set    | torques       | N·m, joint side | finite       | Sent to the joints                         |
-| `gravity-pd`    | bandwidth     | rad/s           | above 0      | 30 by default; Kp = ω²·J                   |
-| `gravity-pd`    | damping ratio | 1               | above 0      | 0.7 by default; Kd = 2·ζ·ω·J               |
-| Registry entry  | id            | integer         | 0–3          | Registration order                         |
-| Registry entry  | name          | text            | unique       | `gravity-pd`                               |
-| Registry entry  | enabled       | flag            |              | Registered disabled                        |
+| Entity            | Field                 | Type / Unit     | Range        | Notes                                      |
+|-------------------|-----------------------|-----------------|--------------|--------------------------------------------|
+| Measured joints   | positions             | radians         | finite       | Latest reading per joint                   |
+| Measured joints   | speeds                | radians/second  | finite       | Latest reading per joint                   |
+| Setpoint set      | positions             | radians         | joint limits | The reference, for the trace and the check |
+| Setpoint set      | torques               | N·m, joint side | finite       | Sent to the joints                         |
+| `gravity-pd`      | bandwidth             | rad/s           | above 0      | 30 by default; Kp = ω²·J                   |
+| `gravity-pd`      | damping ratio         | 1               | above 0      | 0.7 by default; Kd = 2·ζ·ω·J               |
+| `computed-torque` | bandwidth             | rad/s           | above 0      | 30 by default; Kp = ω²·I                   |
+| `computed-torque` | damping ratio         | 1               | above 0      | 0.7 by default; Kd = 2·ζ·ω·I               |
+| Reference         | speeds, accelerations | rad/s, rad/s²   | finite       | Zero while holding                         |
+| Registry entry    | id                    | integer         | 0–3          | Registration order                         |
+| Registry entry    | name                  | text            | unique       | `gravity-pd`, `computed-torque`            |
+| Registry entry    | enabled               | flag            |              | Registered disabled                        |
 
 ---
 

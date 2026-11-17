@@ -40,7 +40,7 @@ namespace
 TEST_F(GravityCompensatedPdTest, holds_a_joint_at_rest_on_its_reference_with_the_gravity_torque_alone)
 {
     controller.Reset(measured);
-    const auto setpoints = controller.Step(measured, measured.positions);
+    const auto setpoints = controller.Step(measured, arm::AtRest(measured.positions));
     const auto gravity = model.GravityTorque(measured.positions);
 
     EXPECT_EQ(measured.positions, setpoints.positions);
@@ -55,7 +55,7 @@ TEST_F(GravityCompensatedPdTest, adds_a_stiffness_on_the_position_error_and_a_da
     reference[2] = foc::Radians{ reference[2].Value() + 0.05f };
     measured.speeds[4] = foc::RadiansPerSecond{ 2.0f };
 
-    const auto torques = controller.Step(measured, reference).torques;
+    const auto torques = controller.Step(measured, arm::AtRest(reference)).torques;
     const auto gravity = model.GravityTorque(measured.positions);
 
     EXPECT_NEAR(gravity[2].Value() + 30.0f * 0.05f, torques[2].Value(), tolerance);
@@ -71,7 +71,7 @@ TEST_F(GravityCompensatedPdTest, places_every_mode_at_the_bandwidth_through_the_
 {
     const arm::JointInertias rotors{ 0.01f, 0.02f, 0.03f, 0.04f, 0.05f, 0.06f };
 
-    const auto gains = arm::PlacedGains(model, rotors, arm::GravityPdTuning{ 30.0f, 0.7f });
+    const auto gains = arm::PlacedGains(model, rotors, arm::BandwidthTuning{ 30.0f, 0.7f });
 
     auto inertia = model.Dynamics().ComputeMassMatrix(model.ModelVector(arm::JointPositions{}));
     for (std::size_t joint = 0; joint != arm::jointCount; ++joint)

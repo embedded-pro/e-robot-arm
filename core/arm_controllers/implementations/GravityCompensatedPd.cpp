@@ -13,7 +13,7 @@ namespace arm
         return matrices;
     }
 
-    PdGainMatrices PlacedGains(const ArmModel& model, const JointInertias& rotors, const GravityPdTuning& tuning)
+    PdGainMatrices PlacedGains(const ArmModel& model, const JointInertias& rotors, const BandwidthTuning& tuning)
     {
         auto inertia = model.Dynamics().ComputeMassMatrix(model.ModelVector(JointPositions{}));
         for (std::size_t joint = 0; joint != jointCount; ++joint)
@@ -35,9 +35,9 @@ namespace arm
     void GravityCompensatedPd::Reset(const MeasuredJoints&)
     {}
 
-    JointSetpoints GravityCompensatedPd::Step(const MeasuredJoints& measured, const JointPositions& reference)
+    JointSetpoints GravityCompensatedPd::Step(const MeasuredJoints& measured, const JointReference& reference)
     {
-        const auto torques = law.ComputeTorque(model.ModelVector(measured.positions), model.ModelSpeeds(measured.speeds), model.ModelVector(reference));
-        return JointSetpoints{ reference, model.ToJointTorques(torques) };
+        const auto torques = law.ComputeTorque(model.ModelVector(measured.positions), model.ModelSpeeds(measured.speeds), model.ModelVector(reference.positions));
+        return JointSetpoints{ reference.positions, model.ToJointTorques(torques) };
     }
 }

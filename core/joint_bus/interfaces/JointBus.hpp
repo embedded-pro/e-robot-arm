@@ -17,6 +17,7 @@ namespace arm
     using JointNodeIds = std::array<uint16_t, jointCount>;
     using JointPositions = std::array<foc::Radians, jointCount>;
     using JointSpeeds = std::array<foc::RadiansPerSecond, jointCount>;
+    using JointAccelerations = std::array<foc::RadiansPerSecondSquared, jointCount>;
     using JointTorques = std::array<foc::NewtonMeter, jointCount>;
     using JointTransmissions = std::array<JointTransmission, jointCount>;
 
@@ -27,6 +28,20 @@ namespace arm
     };
 
     using JointLimits = std::array<JointLimit, jointCount>;
+
+    struct JointReference
+    {
+        JointPositions positions{};
+        JointSpeeds speeds{};
+        JointAccelerations accelerations{};
+
+        bool operator==(const JointReference& other) const = default;
+    };
+
+    inline JointReference AtRest(const JointPositions& positions)
+    {
+        return JointReference{ positions, {}, {} };
+    }
 
     inline bool WithinLimits(const JointLimits& limits, const JointPositions& positions)
     {
