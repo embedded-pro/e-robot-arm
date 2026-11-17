@@ -96,8 +96,8 @@ has no state and takes over without a step.
 **PID with gravity feed-forward.** Neither law above has integral action, so a joint settles short of its target by
 whatever torque the models leave out, the drives' Coulomb friction first: about 0.04 rad on the elbow of the
 virtual arm. `gravity-pid` runs one numerical-toolbox `PidIncremental` per joint on the position error, in
-acceleration units, and turns the result into torque the way `gravity-pd` does: τ = J·(q̈* + u) + G(q), with J the
-inertia matrix at home and the rotors (above), q̈* the reference acceleration and u the six PID outputs. The gains
+acceleration units, and turns the result into torque the way `gravity-pd` does: `τ = J·(q̈* + u) + G(q)`, with J the
+inertia matrix at home and the rotors (above), `q̈*` the reference acceleration and u the six PID outputs. The gains
 place each joint's poles at the profile's bandwidth ω: a pair with damping ζ and a real pole for the integral, so
 Kp = (2·ζ + 1)·ω², Ki = ω³ and Kd = (2·ζ + 1)·ω, discretised over the control period. The derivative acts on the
 error, so it sees the reference speed. Each PID's output is clamped to ±200 rad/s², far beyond any move's need: in the
