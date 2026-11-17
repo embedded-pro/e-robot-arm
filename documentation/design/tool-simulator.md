@@ -2,7 +2,7 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.19.0
+version: 0.20.0
 component: "tool-simulator"
 date: 2026-11-16
 ---
@@ -12,7 +12,7 @@ date: 2026-11-16
 | Title     | Simulator Screen Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.19.0                  |
+| Version   | 0.20.0                  |
 | Component | tool-simulator          |
 | Date      | 2026-11-16              |
 
@@ -109,7 +109,7 @@ the target is built and at least one joint has answered. Joints are numbered 1�
 |------------------|----------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------|
 | Emergency stop   | A target is built                                                                | "No target"                                                                                                                                                                                                | Emergency stop to all joints, ahead of all else                          |
 | Bring Up         | Connected; the arm is Unpowered, Misconfigured or its contracts are incompatible | "Not connected", "Checking contracts", "Tripped: re-arm first", "Already brought up"                                                                                                                       | Lifecycle: check the contracts, wait for calibration                     |
-| Enable           | The arm is Ready                                                                 | "Bring the arm up first", "Checking contracts", "Waiting for calibration", "Configuring motor controllers", "Misconfigured: bring the arm up again", "Enabling", "Already enabled", "Disabling", "Tripped" | Lifecycle: select position mode, start the joints                        |
+| Enable           | The arm is Ready                                                                 | "Bring the arm up first", "Checking contracts", "Waiting for calibration", "Configuring motor controllers", "Misconfigured: bring the arm up again", "Enabling", "Already enabled", "Disabling", "Tripped" | Lifecycle: select torque mode, start the joints                          |
 | Disable          | The arm is Enabled                                                               | "Moving: abort first", "Not enabled"                                                                                                                                                                       | Lifecycle: stop the joints                                               |
 | Clear Faults     | Any joint in fault                                                               | "No joint in fault"                                                                                                                                                                                        | Clear faults on all joints                                               |
 | Re-arm…          | The arm is Tripped, no joint in fault                                            | "Not tripped", "Joint N in fault: clear it first"                                                                                                                                                          | Confirmation naming the trip's source, then re-arm through the lifecycle |
@@ -120,7 +120,7 @@ the target is built and at least one joint has answered. Joints are numbered 1�
 | Restart (motor)  | Virtual arm, arm not enabling, enabled, moving or disabling, motor not starting  | "Disable the arm first", "Starting"                                                                                                                                                                        | Restart that joint's virtual motor (Part L)                              |
 
 - **Arm → Single Step** holds the joints' own commands for debugging: Check Contracts (connected, no move
-  running), Position Mode and Start (contracts compatible, not tripped), Stop (any joint running). A disabled item
+  running), Torque Mode and Start (contracts compatible, not tripped), Stop (any joint running). A disabled item
   shows its reason in the status bar when hovered. The lifecycle follows where they leave the arm.
 - A clicked action shows "requested…" in the status strip within 100 ms and is replaced by the result event.
 - Spin boxes have keyboard tracking off; Enter in a target field does not move — only **Move** or Ctrl+Enter does.
@@ -322,7 +322,7 @@ loaded, so the file stays the single description of the arm.
 ```text
 ┌ Profile ─────────────────────────────────────────────────────────────────────────────┐
 │ generic six-joint                                    /home/me/arms/bench.json        │
-│ Control period 10 ms · Enable mode position · Silent after 3 · Command timeout 3      │
+│ Control period 10 ms · gravity-pd 30 rad/s, ζ 0.7 · Silent after 3 · Command timeout 3│
 │ Joint Node Ratio Dir  Offset rad  Lower rad  Upper rad  Speed rad/s  Accel rad/s²  Motor controller │
 │ J1      11  50.0  +      0.000     -3.142     3.142       1.000        2.000    PID / PID / LQR       │
 │ J2      12   1.0  −      0.000     -1.571     1.571       1.000        2.000    node's own            │

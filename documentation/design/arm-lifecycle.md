@@ -2,7 +2,7 @@
 title: "Arm Lifecycle Design"
 type: design
 status: draft
-version: 0.4.0
+version: 0.5.0
 component: "lifecycle"
 date: 2026-11-13
 ---
@@ -12,7 +12,7 @@ date: 2026-11-13
 | Title     | Arm Lifecycle Design |
 | Type      | design               |
 | Status    | draft                |
-| Version   | 0.4.0                |
+| Version   | 0.5.0                |
 | Component | lifecycle            |
 | Date      | 2026-11-13           |
 
@@ -26,7 +26,7 @@ date: 2026-11-13
 **Is responsible for:**
 
 - Walking the arm through a fixed order: check the contracts, wait until every joint is calibrated, apply and
-  verify each joint's motor controller from the configuration, select the control mode and start the joints, move.
+  verify each joint's motor controller from the configuration, select torque mode and start the joints, move.
 - Allowing a move only while the arm is enabled, and one move at a time.
 - Following the arm's real state from telemetry and command outcomes, so that a joint that stops running, a
   contract that turns out incompatible or a fault moves the lifecycle as well.
@@ -54,7 +54,7 @@ date: 2026-11-13
 | Configuring           | Every joint is calibrated; each configured motor controller is applied and verified  |
 | Misconfigured         | A motor controller could not be applied, or reads back different; the joint is named |
 | Ready                 | Every joint is calibrated and configured, and not all of them are running            |
-| Enabling              | The configured control mode, then start, is being delivered to the joints            |
+| Enabling              | Torque mode, then start, is being delivered to the joints                            |
 | Enabled               | Every joint is running in the configured mode; a move may start                      |
 | Moving                | A move is in progress                                                                |
 | Disabling             | Stop is being delivered to the joints                                                |
@@ -71,13 +71,13 @@ command aligns every joint, and it moves each motor.
 | Command  | Allowed in                             | Does                                                                         |
 |----------|----------------------------------------|------------------------------------------------------------------------------|
 | Bring up | Unpowered, Incompatible, Misconfigured | Queries the contracts of every joint                                         |
-| Enable   | Ready                                  | Selects the configured control mode; once delivered, starts every joint      |
+| Enable   | Ready                                  | Selects torque mode; once delivered, starts every joint                      |
 | Disable  | Enabled                                | Stops every joint                                                            |
 | Move     | Enabled                                | Starts a move through joint motion                                           |
 | Re-arm   | Tripped                                | Re-arms the safety supervisor, which refuses while a joint is still in fault |
 
-A command in any other state is refused and changes nothing. The control mode enable selects is part of the
-arm's configuration; position is the default and the only mode joint motion drives.
+A command in any other state is refused and changes nothing. Enable always selects torque mode: the arm closes
+position on the host through its arm controllers ([arm-controllers.md](arm-controllers.md) Part A).
 
 ### Part C — Following the arm
 
@@ -138,12 +138,11 @@ start, stop, align) still work for debugging, and the lifecycle shows where they
 
 ## Data Model
 
-| Entity        | Field            | Type / Unit                          | Range                   | Notes                  |
-|---------------|------------------|--------------------------------------|-------------------------|------------------------|
-| Configuration | enable mode      | FOC control mode                     | torque, speed, position | Position by default    |
-| Configuration | controllers      | per joint, motor-controller settings | present or absent       | Absent: not configured |
-| Lifecycle     | misconfiguration | joint and reason                     | failed, differs         | Set in Misconfigured   |
-| Lifecycle     | state            | lifecycle state                      | Unpowered … Tripped     | Unpowered at start     |
+| Entity        | Field            | Type / Unit                          | Range               | Notes                  |
+|---------------|------------------|--------------------------------------|---------------------|------------------------|
+| Configuration | controllers      | per joint, motor-controller settings | present or absent   | Absent: not configured |
+| Lifecycle     | misconfiguration | joint and reason                     | failed, differs     | Set in Misconfigured   |
+| Lifecycle     | state            | lifecycle state                      | Unpowered … Tripped | Unpowered at start     |
 
 ---
 

@@ -12,7 +12,7 @@ namespace arm
     namespace
     {
         constexpr const char* formatMarker{ "e-robot-arm profile" };
-        constexpr std::array<const char*, 3> modeNames{ "torque", "speed", "position" };
+        constexpr std::array<const char*, 1> modeNames{ "torque" };
         constexpr std::array<const char*, 4> currentNames{ "pid", "decoupledPid", "deadbeat", "slidingMode" };
         constexpr std::array<const char*, 4> speedNames{ "pid", "lqi", "adrc", "twoDof" };
         constexpr std::array<const char*, 5> positionNames{ "pid", "cascadeP", "lqr", "lqi", "twoDof" };
@@ -240,7 +240,7 @@ namespace arm
                 if (key == "commandTimeoutPeriods")
                     return ReadPeriods(path, value, profile.config.commandTimeoutPeriods);
                 if (key == "enableMode")
-                    return ReadMode(path, value, profile.config);
+                    return ReadMode(path, value);
                 if (key == "joints")
                     return Mark(seen.joints, ReadJoints(path, value, profile.config));
                 if (key == "geometry")
@@ -511,13 +511,10 @@ namespace arm
                 return true;
             }
 
-            bool ReadMode(const Path& path, const Value& value, ArmConfig& config)
+            bool ReadMode(const Path& path, const Value& value)
             {
                 std::size_t mode{ 0 };
-                if (!ReadChoice(path, value, modeNames, "must be torque, speed or position", mode))
-                    return false;
-                config.enableMode = static_cast<can::FocMotorMode>(mode);
-                return true;
+                return ReadChoice(path, value, modeNames, "must be torque: the arm runs its joints in torque mode only", mode);
             }
 
             bool ReadJoints(const Path& path, const Value& value, ArmConfig& config)
@@ -877,8 +874,8 @@ namespace arm
                 Text(profile.name);
                 stream << ",\n  \"controlPeriodMs\": " << static_cast<int64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(config.controlPeriod).count())
                        << ",\n  \"missedRequestsBeforeSilent\": " << static_cast<uint32_t>(config.missedRequestsBeforeSilent)
-                       << ",\n  \"commandTimeoutPeriods\": " << static_cast<uint32_t>(config.commandTimeoutPeriods) << ",\n  \"enableMode\": \""
-                       << modeNames[static_cast<std::size_t>(config.enableMode)] << "\",\n  \"gravityPd\": { \"bandwidthRadPerS\": ";
+                       << ",\n  \"commandTimeoutPeriods\": " << static_cast<uint32_t>(config.commandTimeoutPeriods)
+                       << ",\n  \"gravityPd\": { \"bandwidthRadPerS\": ";
                 Number(config.gravityPd.bandwidth);
                 stream << ", \"dampingRatio\": ";
                 Number(config.gravityPd.dampingRatio);

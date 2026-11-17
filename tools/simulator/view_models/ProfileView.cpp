@@ -6,7 +6,6 @@ namespace simulator
 {
     namespace
     {
-        constexpr std::array<std::string_view, 3> modeNames{ "torque", "speed", "position" };
         constexpr std::array<std::string_view, 4> currentNames{ "PID", "decoupled PID", "deadbeat", "sliding mode" };
         constexpr std::array<std::string_view, 4> speedNames{ "PID", "LQI", "ADRC", "two-DOF" };
         constexpr std::array<std::string_view, 5> positionNames{ "PID", "cascade P", "LQR", "LQI", "two-DOF" };
@@ -47,8 +46,8 @@ namespace simulator
 
         const auto& config = snapshot.config;
         ProfileView view{ snapshot.profileName,
-            std::format("Control period {} ms · Enable mode {} · Silent after {} · Command timeout {}",
-                std::chrono::duration_cast<std::chrono::milliseconds>(config.controlPeriod).count(), modeNames[static_cast<std::size_t>(config.enableMode)],
+            std::format("Control period {} ms · gravity-pd {} rad/s, ζ {} · Silent after {} · Command timeout {}",
+                std::chrono::duration_cast<std::chrono::milliseconds>(config.controlPeriod).count(), config.gravityPd.bandwidth, config.gravityPd.dampingRatio,
                 config.missedRequestsBeforeSilent, config.commandTimeoutPeriods),
             {} };
         for (std::size_t joint = 0; joint != arm::jointCount; ++joint)

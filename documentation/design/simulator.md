@@ -2,7 +2,7 @@
 title: "Simulator Design"
 type: design
 status: draft
-version: 0.10.0
+version: 0.11.0
 component: "simulator"
 date: 2026-11-16
 ---
@@ -12,7 +12,7 @@ date: 2026-11-16
 | Title     | Simulator Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.10.0           |
+| Version   | 0.11.0           |
 | Component | simulator        |
 | Date      | 2026-11-16       |
 
@@ -148,14 +148,14 @@ A `SimulatedJoint` is an e-foc node on the in-process bus (a `FocMotorCategorySe
 
 `ArmHost` owns the arm thread and, on it, the target and the arm. Its operator-facing surface:
 
-| Operation              | Effect                                                                                                                                                                                                                                                                                                                                                                         |
-|------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `Post(command)`        | One of: bring up, enable, disable, check contracts, select position mode, start, stop, clear faults, align, emergency stop, re-arm, move, abort, inject fault, silence joint. Its result arrives as an event. Bring up, enable, disable, re-arm and move go through the arm's lifecycle ([arm-lifecycle.md](arm-lifecycle.md)), so a move is refused unless the arm is enabled |
-| `SwitchTarget(target)` | Part C; its result arrives as an event                                                                                                                                                                                                                                                                                                                                         |
-| `LoadProfile(profile)` | Rebuilds the arm from the profile on the current target, as a target switch does; refused while the arm is enabling, enabled, moving or disabling, or while a target switch runs. Answered `profileLoaded` or `refused` with the reason ([arm-profile.md](arm-profile.md))                                                                                                     |
-| `Snapshot()`           | A copy of the latest snapshot                                                                                                                                                                                                                                                                                                                                                  |
-| `TakeEvents()`         | Every event since the last call, in order                                                                                                                                                                                                                                                                                                                                      |
-| `TakeTrace()`          | Every trace sample since the last call, in order                                                                                                                                                                                                                                                                                                                               |
+| Operation              | Effect                                                                                                                                                                                                                                                                                                                                                                          |
+|------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `Post(command)`        | One of: bring up, enable, disable, check contracts, select a control mode, start, stop, clear faults, align, emergency stop, re-arm, move, abort, inject fault, silence joint. Its result arrives as an event. Bring up, enable, disable, re-arm and move go through the arm's lifecycle ([arm-lifecycle.md](arm-lifecycle.md)), so a move is refused unless the arm is enabled |
+| `SwitchTarget(target)` | Part C; its result arrives as an event                                                                                                                                                                                                                                                                                                                                          |
+| `LoadProfile(profile)` | Rebuilds the arm from the profile on the current target, as a target switch does; refused while the arm is enabling, enabled, moving or disabling, or while a target switch runs. Answered `profileLoaded` or `refused` with the reason ([arm-profile.md](arm-profile.md))                                                                                                      |
+| `Snapshot()`           | A copy of the latest snapshot                                                                                                                                                                                                                                                                                                                                                   |
+| `TakeEvents()`         | Every event since the last call, in order                                                                                                                                                                                                                                                                                                                                       |
+| `TakeTrace()`          | Every trace sample since the last call, in order                                                                                                                                                                                                                                                                                                                                |
 
 It is built in layers, each tested on its own:
 

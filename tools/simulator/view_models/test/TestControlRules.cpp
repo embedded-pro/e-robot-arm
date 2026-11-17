@@ -35,7 +35,7 @@ TEST_F(ControlRulesTest, without_a_target_only_the_target_selector_works)
 
     ExpectDisabled(Control::emergencyStop, disconnected, "No target");
     ExpectDisabled(Control::checkContracts, disconnected, "Not connected");
-    ExpectDisabled(Control::positionMode, disconnected, "Not connected");
+    ExpectDisabled(Control::torqueMode, disconnected, "Not connected");
     ExpectDisabled(Control::move, disconnected, "Not connected");
     ExpectEnabled(Control::target, disconnected);
 }
@@ -55,9 +55,9 @@ TEST_F(ControlRulesTest, motion_waits_for_compatible_contracts)
     auto incompatible = simulator::test::Connected();
     incompatible.contracts = can::ContractCompatibility::incompatible;
 
-    ExpectDisabled(Control::positionMode, simulator::test::Connected(), "Contracts not checked");
+    ExpectDisabled(Control::torqueMode, simulator::test::Connected(), "Contracts not checked");
     ExpectDisabled(Control::start, incompatible, "Contracts incompatible");
-    ExpectEnabled(Control::positionMode, simulator::test::Compatible());
+    ExpectEnabled(Control::torqueMode, simulator::test::Compatible());
     ExpectEnabled(Control::start, simulator::test::Compatible());
 }
 
@@ -94,7 +94,7 @@ TEST_F(ControlRulesTest, a_running_move_allows_abort_and_blocks_what_would_distu
     ExpectEnabled(Control::abort, moving);
     ExpectDisabled(Control::move, moving, "Moving");
     ExpectDisabled(Control::checkContracts, moving, "Moving");
-    ExpectDisabled(Control::positionMode, moving, "Moving");
+    ExpectDisabled(Control::torqueMode, moving, "Moving");
     ExpectDisabled(Control::target, moving, "Moving");
     ExpectDisabled(Control::abort, simulator::test::Running(), "No move running");
 }

@@ -18,10 +18,9 @@ namespace
 
     constexpr arm::JointNodeIds nodes{ 21, 22, 23, 24, 25, 26 };
 
-    arm::ArmConfig Config(can::FocMotorMode mode = can::FocMotorMode::position)
+    arm::ArmConfig Config()
     {
         arm::ArmConfig config{ nodes, 3, {}, {}, 10ms };
-        config.enableMode = mode;
         for (auto& limit : config.positionLimits)
             limit = { foc::Radians{ -std::numbers::pi_v<float> }, foc::Radians{ std::numbers::pi_v<float> } };
         for (auto& limit : config.motionLimits)
@@ -36,8 +35,7 @@ namespace
         services::CanPriority priority;
     };
 
-    template<can::FocMotorMode mode>
-    class ArmTestBase
+    class ArmTest
         : public Test
         , public infra::ClockFixture
     {
@@ -103,11 +101,8 @@ namespace
                         }));
             } };
         can::FocMotorCanClient client{ canMock };
-        arm::Arm arm{ client.CategoryClient(), Config(mode) };
+        arm::Arm arm{ client.CategoryClient(), Config() };
     };
-
-    using ArmTest = ArmTestBase<can::FocMotorMode::position>;
-    using TorqueArmTest = ArmTestBase<can::FocMotorMode::torque>;
 }
 
 TEST_F(ArmTest, the_running_loop_requests_telemetry_from_every_joint_each_period)
@@ -121,12 +116,12 @@ TEST_F(ArmTest, the_running_loop_requests_telemetry_from_every_joint_each_period
 
 TEST_F(ArmTest, an_enabled_arm_streams_the_active_controllers_setpoints_to_every_joint_each_period)
 {
-    EXPECT_EQ(0u, SentOf(can::SetpointCommandId(can::FocSetpointKind::position)));
+    EXPECT_EQ(0u, SentOf(can::SetpointCommandId(can::FocSetpointKind::torqueNewtonMeter)));
     EnableArm();
-    const auto streamed = SentOf(can::SetpointCommandId(can::FocSetpointKind::position));
+    const auto streamed = SentOf(can::SetpointCommandId(can::FocSetpointKind::torqueNewtonMeter));
 
     ForwardTime(10ms);
-    EXPECT_EQ(streamed + arm::jointCount, SentOf(can::SetpointCommandId(can::FocSetpointKind::position)));
+    EXPECT_EQ(streamed + arm::jointCount, SentOf(can::SetpointCommandId(can::FocSetpointKind::torqueNewtonMeter)));
     EXPECT_EQ(std::optional<arm::ArmControllerId>{ 0 }, arm.Controllers().Active());
 }
 
@@ -134,48 +129,32 @@ TEST_F(ArmTest, a_move_reaches_every_joint_through_the_supervisor_in_the_setpoin
 {
     EnableArm();
     ForwardTime(5ms);
-    const auto streamed = SentOf(can::SetpointCommandId(can::FocSetpointKind::position));
+    const auto streamed = SentOf(can::SetpointCommandId(can::FocSetpointKind::torqueNewtonMeter));
 
     arm::JointPositions target{};
     target[0] = foc::Radians{ 0.5f };
     EXPECT_TRUE(arm.Lifecycle().MoveTo(target));
 
     ForwardTime(10ms);
-    EXPECT_EQ(streamed + arm::jointCount, SentOf(can::SetpointCommandId(can::FocSetpointKind::position)));
+    EXPECT_EQ(streamed + arm::jointCount, SentOf(can::SetpointCommandId(can::FocSetpointKind::torqueNewtonMeter)));
     ASSERT_TRUE(arm.Controllers().LastSetpoints().has_value());
     EXPECT_GT(arm.Controllers().LastSetpoints()->positions[0].Value(), 0.0f);
 }
 
-TEST_F(ArmTest, disabling_the_active_controller_aborts_a_running_move_and_stops_the_setpoints)
+TEST_F(ArmTest, the_controller_that_drives_the_joints_cannot_be_disabled)
 {
     EnableArm();
     arm::JointPositions target{};
     target[0] = foc::Radians{ 0.5f };
     EXPECT_TRUE(arm.Lifecycle().MoveTo(target));
     ForwardTime(10ms);
+    const auto streamed = SentOf(can::SetpointCommandId(can::FocSetpointKind::torqueNewtonMeter));
 
-    EXPECT_TRUE(arm.Controllers().Disable(0));
-    ForwardTime(10ms);
-    const auto streamed = SentOf(can::SetpointCommandId(can::FocSetpointKind::position));
-
-    ForwardTime(30ms);
-    EXPECT_FALSE(arm.Motion().Moving());
-    EXPECT_EQ(streamed, SentOf(can::SetpointCommandId(can::FocSetpointKind::position)));
-}
-
-TEST_F(ArmTest, switches_to_the_smoothed_controller_mid_move)
-{
-    EnableArm();
-    arm::JointPositions target{};
-    target[0] = foc::Radians{ 0.5f };
-    EXPECT_TRUE(arm.Lifecycle().MoveTo(target));
+    EXPECT_FALSE(arm.Controllers().Disable(0));
     ForwardTime(10ms);
 
-    const auto smoothed = arm.Controllers().Find("smoothed");
-    ASSERT_TRUE(smoothed.has_value());
-    EXPECT_TRUE(arm.Controllers().Select(*smoothed));
-    EXPECT_EQ(smoothed, arm.Controllers().Active());
-    EXPECT_FALSE(arm.Controllers().Select(0));
+    EXPECT_TRUE(arm.Motion().Moving());
+    EXPECT_EQ(streamed + arm::jointCount, SentOf(can::SetpointCommandId(can::FocSetpointKind::torqueNewtonMeter)));
 }
 
 TEST_F(ArmTest, a_faulted_joint_stops_every_joint)
@@ -196,15 +175,15 @@ TEST_F(ArmTest, a_target_outside_the_joint_limits_is_refused_before_anything_mov
     EXPECT_FALSE(arm.Motion().MoveTo(target));
 
     ForwardTime(5ms);
-    EXPECT_EQ(0u, SentOf(can::SetpointCommandId(can::FocSetpointKind::position)));
+    EXPECT_EQ(0u, SentOf(can::SetpointCommandId(can::FocSetpointKind::torqueNewtonMeter)));
 }
 
-TEST_F(TorqueArmTest, an_arm_enabled_in_torque_mode_streams_the_gravity_compensated_torques)
+TEST_F(ArmTest, enables_the_joints_in_torque_mode_and_streams_the_gravity_compensated_torques)
 {
     const auto gravityPd = arm.Controllers().Find("gravity-pd");
     ASSERT_TRUE(gravityPd.has_value());
     EXPECT_EQ(gravityPd, arm.Controllers().Active());
-    EXPECT_FALSE(arm.Controllers().Select(*arm.Controllers().Find("pass-through")));
+    EXPECT_EQ(1u, arm.Controllers().Count());
 
     EnableArm();
     const auto streamed = SentOf(can::SetpointCommandId(can::FocSetpointKind::torqueNewtonMeter));
@@ -212,13 +191,11 @@ TEST_F(TorqueArmTest, an_arm_enabled_in_torque_mode_streams_the_gravity_compensa
 
     EXPECT_EQ(streamed + arm::jointCount, SentOf(can::SetpointCommandId(can::FocSetpointKind::torqueNewtonMeter)));
     EXPECT_EQ(0u, SentOf(can::SetpointCommandId(can::FocSetpointKind::position)));
-    ASSERT_TRUE(arm.Controllers().LastSetpoints().has_value());
-    EXPECT_TRUE(arm.Controllers().LastSetpoints()->torques.has_value());
 }
 
-TEST_F(TorqueArmTest, gravity_pd_gains_follow_the_arms_inertia_with_each_rotor_through_its_gear)
+TEST_F(ArmTest, gravity_pd_gains_follow_the_arms_inertia_with_each_rotor_through_its_gear)
 {
-    auto config = Config(can::FocMotorMode::torque);
+    auto config = Config();
     config.transmissions[1].ratio = 50.0f;
     config.motors[2] = arm::JointMotor{ 1, arm::motorPresets[1].settings };
     config.gravityPd = { 20.0f, 0.5f };

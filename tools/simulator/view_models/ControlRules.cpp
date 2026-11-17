@@ -161,7 +161,7 @@ namespace simulator
                 return snapshot.targetReady ? Enabled() : Disabled("No target");
             case Control::checkContracts:
                 return WhileConnected(snapshot, false);
-            case Control::positionMode:
+            case Control::torqueMode:
                 return snapshot.moving ? Disabled("Moving") : Check(MotionBlocked(snapshot));
             case Control::start:
                 return Check(MotionBlocked(snapshot));

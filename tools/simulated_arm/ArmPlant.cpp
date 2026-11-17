@@ -4,6 +4,18 @@
 
 namespace simulation
 {
+    PlantConfig PlantFor(const arm::JointTransmissions& transmissions, const arm::ArmGeometry& geometry, const arm::ArmMass& mass, const arm::JointMotors& motors)
+    {
+        PlantConfig plant{ transmissions, geometry, mass };
+        for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+        {
+            const auto& motor = motors[joint].has_value() ? motors[joint]->settings : arm::motorPresets[0].settings;
+            plant.rotorInertia[joint] = motor[arm::MotorParameter::inertia];
+            plant.motorFriction[joint] = motor[arm::MotorParameter::viscousFriction];
+        }
+        return plant;
+    }
+
     namespace
     {
         constexpr float stepSeconds{ std::chrono::duration<float>(ArmPlant::step).count() };

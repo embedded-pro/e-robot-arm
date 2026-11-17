@@ -8,7 +8,7 @@ Feature: Joint transmissions
 
   @REQ-ARM-007
   Scenario: A geared joint moves its motor through the transmission
-    Given the joints are started in position mode
+    Given the joints are started in torque mode
     When the arm moves the joints to 0.2, 0.2, 0.9, 0.2, 0.2, 0.2 rad
     Then the move shall be done within 2000 ms
     And the arm shall report every joint at its target

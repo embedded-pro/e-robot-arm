@@ -3,6 +3,7 @@
 
 #include "core/arm_model/ArmModel.hpp"
 #include "core/joint_bus/interfaces/JointBus.hpp"
+#include "core/joint_configurator/interfaces/MotorSettings.hpp"
 #include "infra/timer/Timer.hpp"
 #include "tools/simulated_arm/JointPlant.hpp"
 #include "tools/simulated_arm/SimulatedJoint.hpp"
@@ -19,6 +20,8 @@ namespace simulation
         std::array<float, arm::jointCount> rotorInertia{};
         std::array<float, arm::jointCount> motorFriction{};
     };
+
+    PlantConfig PlantFor(const arm::JointTransmissions& transmissions, const arm::ArmGeometry& geometry, const arm::ArmMass& mass, const arm::JointMotors& motors);
 
     class ArmPlant
         : public JointPlant

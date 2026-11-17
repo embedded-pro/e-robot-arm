@@ -376,6 +376,8 @@ namespace arm_host
     {
         if (TargetCommand(command))
             return refusal;
+        if (std::holds_alternative<DisableArmController>(command) && arm.Controllers().Active() == ArmControllerOf(command))
+            return "the arm drives the joints with it: disable the arm first";
         if (const auto id = ArmControllerOf(command); id.has_value())
             return ArmControllerRefusal(*id);
         if (std::holds_alternative<Rearm>(command))
@@ -405,8 +407,6 @@ namespace arm_host
             return "no such arm controller";
         if (!controllers.Enabled(id))
             return "the arm controller is disabled";
-        if (!controllers.FitsJointMode(id))
-            return "the arm controller needs the joints in another control mode: set the profile's enable mode";
         return "a move runs and the arm controller cannot take over without a step";
     }
 

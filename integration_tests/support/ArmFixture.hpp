@@ -52,7 +52,7 @@ namespace integration
         explicit ArmFixture(const arm::JointTransmissions& transmissions = {}, const arm::JointControllers& controllers = {}, const arm::JointMotors& motors = {});
 
         simulation::SimulatedJoint& Joint(std::size_t number);
-        void StartInPositionMode();
+        void StartInTorqueMode();
 
         simulation::SimulatedArm simulatedArm;
         can::FocMotorCanClient client{ simulatedArm.ArmSide() };

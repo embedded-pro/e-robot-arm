@@ -13,7 +13,7 @@ namespace simulator
     {
         emergencyStop,
         checkContracts,
-        positionMode,
+        torqueMode,
         start,
         stop,
         clearFaults,
