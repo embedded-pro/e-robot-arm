@@ -2,7 +2,7 @@
 title: "Collision Observer Design"
 type: design
 status: draft
-version: 0.3.0
+version: 0.4.0
 component: "collision"
 date: 2026-11-17
 ---
@@ -12,7 +12,7 @@ date: 2026-11-17
 | Title     | Collision Observer Design |
 | Type      | design                    |
 | Status    | draft                     |
-| Version   | 0.3.0                     |
+| Version   | 0.4.0                     |
 | Component | collision                 |
 | Date      | 2026-11-17                |
 
@@ -66,6 +66,10 @@ The arm steps the observer after the arm controllers, once per control step:
   that acted since the previous reading. The control loop requests telemetry half a period before it sends the
   setpoints ([control-loop.md](control-loop.md)), so between two readings the set commanded two steps before acted
   for the first half and the set commanded the step before for the second: the observer integrates their mean.
+- It updates only once every joint has reported since its previous update. A step in which a joint's reading has not
+  arrived keeps the previous estimate; the next update integrates over every period since the previous one, with the
+  mean of the torque that acted in them. Taking a held-over reading as new integrates a period's torque against a
+  momentum that did not move: on a busy host one missed reading of a shoulder that accelerates read 11 N·m.
 - The first streaming step after any step without streaming resets it to the momentum measured then, and reports no
   estimate for that step.
 - A step without streaming reports no estimate.
@@ -115,8 +119,8 @@ snapshot and trace.
 - The estimate carries every torque the model misses: Coulomb friction while a joint moves, an unmodelled payload,
   wrong link masses. On the virtual arm it stays below 4.6 N·m through the reference move, on the shoulder; the
   collision limit sits above that.
-- A reading that arrives a period late shows the joints where they were, so that step's estimate is off by about
-  the gain times one period's momentum change; the next fresh reading corrects it.
+- A reading that arrives within the period but late in it still shows the joints a little earlier than the torque
+  assumes; the error is a fraction of the gain times one period's momentum change and the next reading corrects it.
 - The observer takes the commanded torque as applied. A drive that cannot deliver it, at its current limit or
   behind its current loop, leaves the difference in the estimate: a 0.1 rad reference step on the virtual arm's
   elbow reads up to 5.6 N·m on the shoulder. The scenarios step 0.05 rad, below 2 N·m, to keep a margin to the

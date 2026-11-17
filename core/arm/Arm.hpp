@@ -60,6 +60,9 @@ namespace arm
         infra::Duration period;
         bool observing{ false };
         JointTorques previousApplied{};
+        JointTorques actingSum{};
+        uint32_t actingPeriods{ 0 };
+        std::array<uint32_t, jointCount> observedReadings{};
         std::optional<JointTorques> externalTorques;
         ArmControllersImpl controllers;
         ArmControllerEngagement engagement;
