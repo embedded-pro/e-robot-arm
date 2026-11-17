@@ -108,6 +108,10 @@ The move there, in phase 8d ([#31](https://github.com/embedded-pro/e-robot-arm/i
    joint motion), a per-joint PID with gravity feed-forward (`gravity-pid`, numerical-toolbox `PidIncremental`), and
    collision detection: robotics-toolbox's momentum observer estimates each joint's external torque and the safety
    supervisor trips on one above the joint's collision limit ([collision.md](design/collision.md)).
+7. Tuning views, in three steps: a reference step of at most 0.2 rad through joint motion and the commanded torque
+   in the arm host's trace (done); a tuning runner with step and out-and-back tests per joint, their metrics from
+   numerical-toolbox and a CSV export, from the console; then the simulator's tuning panel, plotting two runs
+   overlaid.
 - **Motor characteristics per joint**: a preset or custom resistance, inductance, pole pairs, flux, inertia,
   friction and limits. Real nodes get these as motor-model parameters; virtual motors get them as their plant
   (phases 2 and 7).

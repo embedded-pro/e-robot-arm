@@ -220,6 +220,11 @@ namespace arm
         return fsm.Is<Enabled>() && motion.MoveTo(target) && Accepted(MoveStarted{});
     }
 
+    bool ArmLifecycleImpl::StepTo(const JointPositions& target)
+    {
+        return fsm.Is<Enabled>() && motion.StepTo(target) && Accepted(MoveStarted{});
+    }
+
     ArmState ArmLifecycleImpl::State() const
     {
         return static_cast<ArmState>(fsm.CurrentState().index());

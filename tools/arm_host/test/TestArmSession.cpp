@@ -441,6 +441,43 @@ TEST_F(TorqueArmSessionTest, computed_torque_takes_over_mid_move_and_tracks_the_
         EXPECT_NEAR(goal[joint].Value(), sink.snapshot.readings[joint].position.Value(), 0.01f) << "joint " << joint;
 }
 
+TEST_F(TorqueArmSessionTest, a_step_jumps_one_joints_reference_traces_the_commanded_torque_and_settles_the_simulated_arm)
+{
+    Execute(1, arm_host::BringUp{});
+    Execute(2, arm_host::Enable{});
+    arm::JointPositions goal{};
+    goal[1] = foc::Radians{ 0.1f };
+    sink.trace.clear();
+
+    Execute(3, arm_host::StepTo{ goal });
+    const auto accepted = std::ranges::find_if(sink.events, [](const arm_host::ArmEvent& event)
+        {
+            return event.kind == ArmEventKind::accepted && event.command == 3;
+        });
+    ASSERT_NE(sink.events.end(), accepted);
+    EXPECT_EQ("step", accepted->commandName);
+    ForwardTime(2s);
+
+    ASSERT_NE(nullptr, sink.Find(ArmEventKind::moveDone));
+    ASSERT_FALSE(sink.trace.empty());
+    EXPECT_NEAR(0.1f, sink.trace.back().commanded[1].Value(), 1.0e-6f);
+    ASSERT_TRUE(sink.trace.front().torques.has_value());
+    EXPECT_NEAR(0.1f, sink.snapshot.readings[1].position.Value(), 0.01f);
+}
+
+TEST_F(TorqueArmSessionTest, a_step_larger_than_0_2_rad_is_refused)
+{
+    Execute(1, arm_host::BringUp{});
+    Execute(2, arm_host::Enable{});
+    arm::JointPositions goal{};
+    goal[1] = foc::Radians{ 0.3f };
+
+    Execute(3, arm_host::StepTo{ goal });
+
+    ASSERT_NE(nullptr, sink.Find(ArmEventKind::refused));
+    EXPECT_EQ("a step is at most 0.2 rad from where the joints are, within the joint limits", sink.Find(ArmEventKind::refused)->reason);
+}
+
 TEST_F(TorqueArmSessionTest, the_gravity_pid_takes_over_mid_move_and_settles_the_simulated_arm_on_its_target)
 {
     Execute(1, arm_host::BringUp{});

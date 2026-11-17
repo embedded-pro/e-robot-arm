@@ -73,6 +73,7 @@ namespace arm
         virtual bool Disable() = 0;
         virtual bool Rearm() = 0;
         virtual bool MoveTo(const JointPositions& target) = 0;
+        virtual bool StepTo(const JointPositions& target) = 0;
         virtual ArmState State() const = 0;
         virtual std::optional<Misconfiguration> MisconfiguredJoint() const = 0;
 

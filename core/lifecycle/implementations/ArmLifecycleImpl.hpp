@@ -172,6 +172,7 @@ namespace arm
         bool Disable() override;
         bool Rearm() override;
         bool MoveTo(const JointPositions& target) override;
+        bool StepTo(const JointPositions& target) override;
         ArmState State() const override;
         std::optional<Misconfiguration> MisconfiguredJoint() const override;
 

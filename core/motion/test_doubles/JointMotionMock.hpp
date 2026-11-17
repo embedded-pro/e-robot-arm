@@ -11,6 +11,7 @@ namespace arm
     {
     public:
         MOCK_METHOD(bool, MoveTo, (const JointPositions& target), (override));
+        MOCK_METHOD(bool, StepTo, (const JointPositions& target), (override));
         MOCK_METHOD(void, Abort, (), (override));
         MOCK_METHOD(bool, Moving, (), (const, override));
     };

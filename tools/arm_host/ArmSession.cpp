@@ -9,7 +9,7 @@ namespace arm_host
         bool NeedsMotionPermission(const ArmCommand& command)
         {
             return std::holds_alternative<SelectMode>(command) || std::holds_alternative<StartJoints>(command) || std::holds_alternative<AlignJoints>(command) ||
-                   std::holds_alternative<MoveTo>(command);
+                   std::holds_alternative<MoveTo>(command) || std::holds_alternative<StepTo>(command);
         }
 
         bool DeliveredByTheJoints(const ArmCommand& command)
@@ -251,6 +251,11 @@ namespace arm_host
             return session.arm.Lifecycle().MoveTo(move.target);
         }
 
+        bool operator()(const StepTo& step) const
+        {
+            return session.arm.Lifecycle().StepTo(step.target);
+        }
+
         bool operator()(const AbortMove&) const
         {
             session.arm.Motion().Abort();
@@ -430,10 +435,13 @@ namespace arm_host
             return "tripped";
         if (NeedsMotionPermission(command) && arm.Safety().Contracts() != can::ContractCompatibility::compatible)
             return "contracts not compatible";
-        if (std::holds_alternative<MoveTo>(command) && arm.Lifecycle().State() != arm::ArmState::enabled)
+        const bool motion = std::holds_alternative<MoveTo>(command) || std::holds_alternative<StepTo>(command);
+        if (motion && arm.Lifecycle().State() != arm::ArmState::enabled)
             return Moving() ? "moving" : "the arm is not enabled";
         if (std::holds_alternative<MoveTo>(command))
             return "target outside the joint limits";
+        if (std::holds_alternative<StepTo>(command))
+            return "a step is at most 0.2 rad from where the joints are, within the joint limits";
         if (DeliveredByTheJoints(command))
             return "a joint's contract is incompatible";
         return "CAN transmit queue full";
@@ -596,6 +604,8 @@ namespace arm_host
             snapshot.commanded.reset();
         snapshot.externalTorques = arm.EstimatedExternalTorques();
         sample.externalTorques = snapshot.externalTorques;
+        if (const auto setpoints = arm.Controllers().LastSetpoints())
+            sample.torques = setpoints->torques;
         snapshot.contracts = safety.Contracts();
         snapshot.tripped = safety.Tripped();
         snapshot.moving = arm.Motion().Moving();

@@ -17,12 +17,15 @@ namespace arm
         JointMotionImpl(JointBus& bus, const JointLimits& positionLimits, const JointMotionLimits& limits, infra::Duration period);
 
         bool MoveTo(const JointPositions& target) override;
+        bool StepTo(const JointPositions& target) override;
         void Abort() override;
         bool Moving() const override;
 
         std::optional<JointReference> Step();
 
     private:
+        bool Accepts(const JointPositions& target) const;
+        bool WithinStep(const JointPositions& target) const;
         bool AnyReadingStale() const;
         JointPositions LatestPositions() const;
         void Finish();
@@ -35,6 +38,7 @@ namespace arm
         JointPositions target{};
         uint32_t periodsElapsed{ 0 };
         bool moving{ false };
+        bool stepping{ false };
     };
 }
 

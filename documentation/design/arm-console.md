@@ -2,7 +2,7 @@
 title: "Arm Composition and Console Design"
 type: design
 status: draft
-version: 0.7.0
+version: 0.8.0
 component: "arm"
 date: 2026-11-12
 ---
@@ -12,7 +12,7 @@ date: 2026-11-12
 | Title     | Arm Composition and Console Design |
 | Type      | design                             |
 | Status    | draft                              |
-| Version   | 0.7.0                              |
+| Version   | 0.8.0                              |
 | Component | arm                                |
 | Date      | 2026-11-12                         |
 
@@ -71,6 +71,7 @@ control loop and reads one command per line from standard input:
 | `align`                                     | Align all six joints' rotors; it moves the motors. A joint that kept its calibration reports ready once aligned           |
 | `rearm`                                     | Re-arm the arm after a trip                                                                                               |
 | `move q1 q2 q3 q4 q5 q6`                    | Move the six joints to the positions, in radians; only while enabled                                                      |
+| `step q1 q2 q3 q4 q5 q6`                    | Step the reference to the positions at once, each at most 0.2 rad from its joint; only while enabled                      |
 | `abort`                                     | Abort the running move                                                                                                    |
 | `load <file>`                               | Load an arm profile file: the arm is rebuilt from it; refused while the arm is enabled ([arm-profile.md](arm-profile.md)) |
 | `save <file>`                               | Write the profile in effect to a file                                                                                     |

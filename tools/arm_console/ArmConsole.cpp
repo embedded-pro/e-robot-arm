@@ -99,6 +99,13 @@ namespace arm_console
             return Mode(arguments);
         if (command == "move")
             return Move(arguments);
+        if (command == "step")
+        {
+            auto move = Move(arguments);
+            if (const auto* target = move.has_value() ? std::get_if<arm_host::MoveTo>(&*move) : nullptr)
+                return arm_host::StepTo{ target->target };
+            return std::nullopt;
+        }
         return std::nullopt;
     }
 
@@ -280,7 +287,7 @@ namespace arm_console
 
     void ArmConsole::Usage()
     {
-        output << "usage: bringup | enable | disable | move q1 q2 q3 q4 q5 q6 | rearm | contracts | mode torque|speed|position | start | stop | estop | clear | align | abort | load <file> | save <file> | controllers | controller enable|disable|select <name> | pose | gravity | fk q1..q6 | ik x y z roll pitch yaw | status | quit\n";
+        output << "usage: bringup | enable | disable | move q1 q2 q3 q4 q5 q6 | step q1 q2 q3 q4 q5 q6 | rearm | contracts | mode torque|speed|position | start | stop | estop | clear | align | abort | load <file> | save <file> | controllers | controller enable|disable|select <name> | pose | gravity | fk q1..q6 | ik x y z roll pitch yaw | status | quit\n";
     }
 
     void ArmConsole::Print(const arm_host::ArmEvent& event)
