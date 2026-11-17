@@ -125,7 +125,7 @@ TEST_F(SimulatorPresenterTest, a_single_step_posts_its_command_only_while_its_ru
     EXPECT_CALL(arm, Post(Holds(arm_host::SelectMode{}))).WillOnce(Return(2));
     EXPECT_CALL(arm, Post(Holds(arm_host::StartJoints{}))).WillOnce(Return(3));
     EXPECT_TRUE(presenter.SingleStep(simulator::Control::checkContracts));
-    EXPECT_TRUE(presenter.SingleStep(simulator::Control::positionMode));
+    EXPECT_TRUE(presenter.SingleStep(simulator::Control::torqueMode));
     EXPECT_TRUE(presenter.SingleStep(simulator::Control::start));
     EXPECT_FALSE(presenter.SingleStep(simulator::Control::stop));
     EXPECT_FALSE(presenter.SingleStep(simulator::Control::move));

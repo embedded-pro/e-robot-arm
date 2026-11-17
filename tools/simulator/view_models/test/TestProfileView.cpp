@@ -35,7 +35,7 @@ TEST_F(ProfileViewTest, describes_the_profile_in_effect_joint_by_joint)
     const auto view = simulator::DescribeProfile(snapshot);
 
     EXPECT_EQ("bench arm", view.name);
-    EXPECT_EQ("Control period 5 ms · Enable mode position · Silent after 4 · Command timeout 3", view.summary);
+    EXPECT_EQ("Control period 5 ms · gravity-pd 30 rad/s, ζ 0.7 · Silent after 4 · Command timeout 3", view.summary);
     EXPECT_EQ((simulator::ProfileRow{ "J1", "11", "50.00", "−", "0.125", "-1.500", "2.250", "1.000", "2.500", "sliding mode / LQI / LQR", "Anaheim BLY172S-24V-4000" }), view.rows[0]);
     EXPECT_EQ("node's own", view.rows[1].controller);
     EXPECT_EQ("node's own", view.rows[1].motor);

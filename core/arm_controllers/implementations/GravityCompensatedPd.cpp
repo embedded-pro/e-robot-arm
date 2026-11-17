@@ -32,11 +32,6 @@ namespace arm
         return true;
     }
 
-    can::FocMotorMode GravityCompensatedPd::Mode() const
-    {
-        return can::FocMotorMode::torque;
-    }
-
     void GravityCompensatedPd::Reset(const MeasuredJoints&)
     {}
 

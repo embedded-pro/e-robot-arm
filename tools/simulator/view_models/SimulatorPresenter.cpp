@@ -258,8 +258,8 @@ namespace simulator
 
         if (control == Control::checkContracts)
             Post(arm_host::CheckContracts{});
-        else if (control == Control::positionMode)
-            Post(arm_host::SelectMode{ can::FocMotorMode::position });
+        else if (control == Control::torqueMode)
+            Post(arm_host::SelectMode{ can::FocMotorMode::torque });
         else if (control == Control::start)
             Post(arm_host::StartJoints{});
         else if (control == Control::stop)

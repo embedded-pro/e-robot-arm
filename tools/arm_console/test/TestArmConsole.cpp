@@ -135,21 +135,21 @@ TEST_F(ArmConsoleTest, events_print_as_one_line_each_with_joints_numbered_from_o
 TEST_F(ArmConsoleTest, controllers_lists_the_arm_controllers_and_controller_posts_by_name)
 {
     arm_host::ArmSnapshot snapshot;
-    snapshot.armControllers = { { "pass-through", true, true }, { "smoothed", false, false } };
+    snapshot.armControllers = { { "gravity-pd", true, true }, { "computed-torque", false, false } };
     EXPECT_CALL(arm, Snapshot()).WillRepeatedly(Return(snapshot));
 
-    EXPECT_EQ("* pass-through\n  smoothed (disabled)\n", Run("controllers"));
+    EXPECT_EQ("* gravity-pd\n  computed-torque (disabled)\n", Run("controllers"));
 
     EXPECT_CALL(arm, Post(VariantWith<arm_host::EnableArmController>(Field(&arm_host::EnableArmController::id, 1)))).WillOnce(Return(4));
     EXPECT_CALL(arm, Post(VariantWith<arm_host::SelectArmController>(Field(&arm_host::SelectArmController::id, 1)))).WillOnce(Return(5));
     EXPECT_CALL(arm, Post(VariantWith<arm_host::DisableArmController>(Field(&arm_host::DisableArmController::id, 0)))).WillOnce(Return(6));
-    EXPECT_EQ(4u, console.Execute("controller enable smoothed").command);
-    EXPECT_EQ(5u, console.Execute("controller select smoothed").command);
-    EXPECT_EQ(6u, console.Execute("controller disable pass-through").command);
+    EXPECT_EQ(4u, console.Execute("controller enable computed-torque").command);
+    EXPECT_EQ(5u, console.Execute("controller select computed-torque").command);
+    EXPECT_EQ(6u, console.Execute("controller disable gravity-pd").command);
 
     EXPECT_EQ("no arm controller lqr\n", Run("controller select lqr"));
-    EXPECT_THAT(Run("controller toggle smoothed"), StartsWith("usage:"));
-    EXPECT_EQ("arm controller: smoothed\n", Printed({ .kind = ArmEventKind::armControllerChanged, .armController = "smoothed" }));
+    EXPECT_THAT(Run("controller toggle computed-torque"), StartsWith("usage:"));
+    EXPECT_EQ("arm controller: computed-torque\n", Printed({ .kind = ArmEventKind::armControllerChanged, .armController = "computed-torque" }));
 }
 
 TEST_F(ArmConsoleTest, quit_ends_the_console)

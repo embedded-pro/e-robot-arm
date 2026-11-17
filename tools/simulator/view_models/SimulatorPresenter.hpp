@@ -51,7 +51,7 @@ namespace simulator
 
     inline constexpr std::array<SingleStepItem, 4> singleStepItems{ {
         { Control::checkContracts, "Check &Contracts" },
-        { Control::positionMode, "&Position Mode" },
+        { Control::torqueMode, "&Torque Mode" },
         { Control::start, "&Start" },
         { Control::stop, "S&top" },
     } };

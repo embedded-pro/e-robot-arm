@@ -2,6 +2,7 @@
 #include "integration_tests/support/ArmFixture.hpp"
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <gtest/gtest.h>
 
 using integration::ArmFixture;
@@ -10,6 +11,19 @@ using namespace std::chrono_literals;
 namespace
 {
     constexpr float positionTolerance{ 1.0e-3f };
+
+    void SettleOnTarget(ArmFixture& fixture)
+    {
+        const auto settled = [&fixture]()
+        {
+            for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+                if (std::abs(fixture.target[joint].Value() - fixture.arm.Safety().Reading(joint).position.Value()) > positionTolerance / 2.0f)
+                    return false;
+            return true;
+        };
+        for (int period = 0; period != 100 && !settled(); ++period)
+            fixture.ForwardTime(10ms);
+    }
 
     arm::JointPositions Positions(float q1, float q2, float q3, float q4, float q5, float q6)
     {
@@ -52,9 +66,9 @@ GIVEN(R"(the control loop is running)")
     fixture.ExecuteAllActions();
 }
 
-GIVEN(R"(the joints are started in position mode)")
+GIVEN(R"(the joints are started in torque mode)")
 {
-    context.Get<ArmFixture>().StartInPositionMode();
+    context.Get<ArmFixture>().StartInTorqueMode();
 }
 
 WHEN(R"(the arm is commanded to start the joints)")
@@ -82,10 +96,10 @@ THEN(R"(the contracts shall be reported compatible)")
     EXPECT_EQ(can::ContractCompatibility::compatible, *contracts);
 }
 
-THEN(R"(the arm shall start every joint in position mode)")
+THEN(R"(the arm shall start every joint in torque mode)")
 {
     auto& fixture = context.Get<ArmFixture>();
-    EXPECT_TRUE(fixture.arm.Safety().SelectMode(can::FocMotorMode::position));
+    EXPECT_TRUE(fixture.arm.Safety().SelectMode(can::FocMotorMode::torque));
     fixture.ForwardTime(20ms);
     EXPECT_TRUE(fixture.arm.Safety().Start());
     fixture.ForwardTime(20ms);
@@ -93,7 +107,7 @@ THEN(R"(the arm shall start every joint in position mode)")
 
     for (std::size_t joint = 1; joint <= arm::jointCount; ++joint)
     {
-        EXPECT_EQ(can::FocMotorMode::position, fixture.Joint(joint).Mode()) << "joint " << joint;
+        EXPECT_EQ(can::FocMotorMode::torque, fixture.Joint(joint).Mode()) << "joint " << joint;
         EXPECT_EQ(can::FocMotorState::running, fixture.Joint(joint).State()) << "joint " << joint;
     }
 }
@@ -135,6 +149,7 @@ THEN(R"(the move shall be done within {int} ms)", (std::int32_t milliseconds))
 THEN(R"(every joint shall be at its target)")
 {
     auto& fixture = context.Get<ArmFixture>();
+    SettleOnTarget(fixture);
     for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
         EXPECT_NEAR(fixture.target[joint].Value(), fixture.Joint(joint + 1).Position().Value(), positionTolerance) << "joint " << joint + 1;
 }
@@ -142,6 +157,7 @@ THEN(R"(every joint shall be at its target)")
 THEN(R"(the arm shall report every joint at its target)")
 {
     auto& fixture = context.Get<ArmFixture>();
+    SettleOnTarget(fixture);
     for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
         EXPECT_NEAR(fixture.target[joint].Value(), fixture.arm.Safety().Reading(joint).position.Value(), positionTolerance) << "joint " << joint + 1;
 }
@@ -255,23 +271,23 @@ THEN(R"(the arm shall refuse a move and refuse to be enabled)")
     EXPECT_FALSE(fixture.arm.Lifecycle().Enable());
 }
 
-THEN(R"(the arm shall be enabled with every joint running in position mode)")
+THEN(R"(the arm shall be enabled with every joint running in torque mode)")
 {
     auto& fixture = context.Get<ArmFixture>();
     EXPECT_EQ(arm::ArmState::enabled, fixture.arm.Lifecycle().State());
     for (std::size_t joint = 1; joint <= arm::jointCount; ++joint)
     {
-        EXPECT_EQ(can::FocMotorMode::position, fixture.Joint(joint).Mode()) << "joint " << joint;
+        EXPECT_EQ(can::FocMotorMode::torque, fixture.Joint(joint).Mode()) << "joint " << joint;
         EXPECT_EQ(can::FocMotorState::running, fixture.Joint(joint).State()) << "joint " << joint;
     }
 }
 
-GIVEN(R"(the contracts are compatible and position mode is selected)")
+GIVEN(R"(the contracts are compatible and torque mode is selected)")
 {
     auto& fixture = context.Get<ArmFixture>();
     EXPECT_TRUE(fixture.arm.Safety().QueryContracts());
     fixture.ForwardTime(20ms);
-    EXPECT_TRUE(fixture.arm.Safety().SelectMode(can::FocMotorMode::position));
+    EXPECT_TRUE(fixture.arm.Safety().SelectMode(can::FocMotorMode::torque));
     fixture.ForwardTime(1ms);
     fixture.events.deliveredCommands.clear();
 }

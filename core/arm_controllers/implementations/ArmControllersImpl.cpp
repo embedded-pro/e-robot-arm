@@ -3,10 +3,9 @@
 
 namespace arm
 {
-    ArmControllersImpl::ArmControllersImpl(JointBus& bus, const JointMotion& motion, can::FocMotorMode mode)
+    ArmControllersImpl::ArmControllersImpl(JointBus& bus, const JointMotion& motion)
         : bus(bus)
         , motion(motion)
-        , mode(mode)
     {}
 
     ArmControllerId ArmControllersImpl::Register(infra::BoundedConstString name, ArmController& controller)
@@ -56,18 +55,13 @@ namespace arm
 
     bool ArmControllersImpl::Disable(ArmControllerId id)
     {
-        if (!Registered(id))
+        if (!Registered(id) || (streaming && active == id))
             return false;
 
         entries[id].enabled = false;
         if (active == id)
             Activate(std::nullopt);
         return true;
-    }
-
-    bool ArmControllersImpl::FitsJointMode(ArmControllerId id) const
-    {
-        return Registered(id) && entries[id].controller->Mode() == mode;
     }
 
     bool ArmControllersImpl::Select(ArmControllerId id)
@@ -78,8 +72,6 @@ namespace arm
             return true;
 
         auto& controller = *entries[id].controller;
-        if (!FitsJointMode(id))
-            return false;
         if (motion.Moving() && !controller.BumplessTransfer())
             return false;
 
@@ -123,8 +115,7 @@ namespace arm
         }
 
         const auto setpoints = entries[*active].controller->Step(Measured(), heldReference);
-        const auto sent = setpoints.torques.has_value() ? bus.SendTorques(*setpoints.torques) : bus.SendPositions(setpoints.positions);
-        if (!sent)
+        if (!bus.SendTorques(setpoints.torques))
         {
             Disengage();
             return false;

@@ -24,9 +24,7 @@ namespace arm
         JointMotionLimits motionLimits;
         infra::Duration controlPeriod;
         uint8_t commandTimeoutPeriods{ 3 };
-        infra::Duration smoothingTimeConstant{ std::chrono::milliseconds(50) };
         JointTransmissions transmissions{};
-        can::FocMotorMode enableMode{ can::FocMotorMode::position };
         JointControllers controllers{};
         JointMotors motors{};
         ArmGeometry geometry{ ReferenceGeometry() };

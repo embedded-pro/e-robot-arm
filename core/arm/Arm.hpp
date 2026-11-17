@@ -5,8 +5,6 @@
 #include "core/arm/ArmControllerEngagement.hpp"
 #include "core/arm_controllers/implementations/ArmControllersImpl.hpp"
 #include "core/arm_controllers/implementations/GravityCompensatedPd.hpp"
-#include "core/arm_controllers/implementations/JointPositionPassThrough.hpp"
-#include "core/arm_controllers/implementations/SmoothedJointPosition.hpp"
 #include "core/control_loop/implementations/ControlLoopImpl.hpp"
 #include "core/joint_bus/implementations/JointBusImpl.hpp"
 #include "core/joint_configurator/implementations/JointConfiguratorImpl.hpp"
@@ -48,8 +46,6 @@ namespace arm
         JointMotionImpl motion;
         JointConfiguratorImpl configurator;
         ArmLifecycleImpl lifecycle;
-        JointPositionPassThrough passThrough;
-        SmoothedJointPosition smoothed;
         ArmModel model;
         GravityCompensatedPd gravityPd;
         ArmControllersImpl controllers;

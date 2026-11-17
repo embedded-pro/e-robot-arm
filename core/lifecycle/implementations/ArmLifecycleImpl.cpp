@@ -181,15 +181,13 @@ namespace arm
             .Allow<Tripped, WaitingForCalibration>();
     }
 
-    ArmLifecycleImpl::ArmLifecycleImpl(SafetySupervisor& safety, JointMotion& motion, JointConfigurator& configurator, can::FocMotorMode enableMode,
-        const JointControllers& controllers, const JointMotors& motors)
+    ArmLifecycleImpl::ArmLifecycleImpl(SafetySupervisor& safety, JointMotion& motion, JointConfigurator& configurator, const JointControllers& controllers, const JointMotors& motors)
         : JointBusObserver(safety)
         , JointMotionObserver(motion)
         , JointConfiguratorObserver(configurator)
         , safety(safety)
         , motion(motion)
         , configurator(configurator)
-        , enableMode(enableMode)
         , controllers(controllers)
         , motors(motors)
         , fsm(*this, services::Validated<ArmLifecycleImpl>())
@@ -361,7 +359,7 @@ namespace arm
 
     void ArmLifecycleImpl::SelectMode()
     {
-        if (!safety.SelectMode(enableMode))
+        if (!safety.SelectMode(can::FocMotorMode::torque))
             fsm.Dispatch(Failed{ JointCommand::selectMode });
     }
 

@@ -93,7 +93,7 @@ namespace integration
     }
 
     ArmFixture::ArmFixture(const arm::JointTransmissions& transmissions, const arm::JointControllers& controllers, const arm::JointMotors& motors)
-        : simulatedArm(nodes, infra::Duration{})
+        : simulatedArm(nodes, infra::Duration{}, simulation::PlantFor(transmissions, arm::ReferenceGeometry(), arm::ReferenceMass(), motors))
         , arm(client.CategoryClient(), Config(transmissions, controllers, motors))
     {}
 
@@ -102,11 +102,11 @@ namespace integration
         return simulatedArm.Joint(number - 1);
     }
 
-    void ArmFixture::StartInPositionMode()
+    void ArmFixture::StartInTorqueMode()
     {
         EXPECT_TRUE(arm.Safety().QueryContracts());
         ForwardTime(20ms);
-        EXPECT_TRUE(arm.Safety().SelectMode(can::FocMotorMode::position));
+        EXPECT_TRUE(arm.Safety().SelectMode(can::FocMotorMode::torque));
         ForwardTime(20ms);
         EXPECT_TRUE(arm.Safety().Start());
         ForwardTime(20ms);

@@ -89,7 +89,7 @@ namespace
         void BringToEnabled()
         {
             BringToReady();
-            EXPECT_CALL(safety, SelectMode(can::FocMotorMode::speed)).WillOnce(Return(true));
+            EXPECT_CALL(safety, SelectMode(can::FocMotorMode::torque)).WillOnce(Return(true));
             EXPECT_TRUE(lifecycle.Enable());
             EXPECT_CALL(safety, Start()).WillOnce(Return(true));
             Deliver(arm::JointCommand::selectMode);
@@ -103,7 +103,7 @@ namespace
         StrictMock<arm::JointConfiguratorMock> configurator;
         arm::JointControllers controllers;
         arm::JointMotors motors;
-        arm::ArmLifecycleImpl lifecycle{ safety, motion, configurator, can::FocMotorMode::speed, controllers, motors };
+        arm::ArmLifecycleImpl lifecycle{ safety, motion, configurator, controllers, motors };
         StrictMock<arm::ArmLifecycleObserverMock> observer{ lifecycle };
         arm::JointPositions target{};
     };
@@ -175,11 +175,11 @@ TEST_F(ArmLifecycleImplTest, a_contract_query_directly_on_the_joints_also_brings
     EXPECT_EQ(ArmState::waitingForCalibration, lifecycle.State());
 }
 
-TEST_F(ArmLifecycleImplTest, enable_selects_the_configured_mode_then_starts_the_joints)
+TEST_F(ArmLifecycleImplTest, enable_selects_torque_mode_then_starts_the_joints)
 {
     BringToReady();
 
-    EXPECT_CALL(safety, SelectMode(can::FocMotorMode::speed)).WillOnce(Return(true));
+    EXPECT_CALL(safety, SelectMode(can::FocMotorMode::torque)).WillOnce(Return(true));
     EXPECT_TRUE(lifecycle.Enable());
     EXPECT_EQ(ArmState::enabling, lifecycle.State());
 
@@ -195,7 +195,7 @@ TEST_F(ArmLifecycleImplTest, enable_selects_the_configured_mode_then_starts_the_
 TEST_F(ArmLifecycleImplTest, enable_falls_back_to_ready_when_the_start_is_not_delivered)
 {
     BringToReady();
-    EXPECT_CALL(safety, SelectMode(can::FocMotorMode::speed)).WillOnce(Return(true));
+    EXPECT_CALL(safety, SelectMode(can::FocMotorMode::torque)).WillOnce(Return(true));
     EXPECT_TRUE(lifecycle.Enable());
     EXPECT_CALL(safety, Start()).WillOnce(Return(true));
     Deliver(arm::JointCommand::selectMode);
@@ -208,7 +208,7 @@ TEST_F(ArmLifecycleImplTest, enable_falls_back_to_ready_when_the_start_is_not_de
 TEST_F(ArmLifecycleImplTest, enable_refused_by_the_safety_supervisor_falls_back_to_ready)
 {
     BringToReady();
-    EXPECT_CALL(safety, SelectMode(can::FocMotorMode::speed)).WillOnce(Return(false));
+    EXPECT_CALL(safety, SelectMode(can::FocMotorMode::torque)).WillOnce(Return(false));
 
     EXPECT_TRUE(lifecycle.Enable());
 

@@ -24,14 +24,7 @@ namespace arm_host
 
     simulation::PlantConfig PlantFor(const arm::ArmConfig& config)
     {
-        simulation::PlantConfig plant{ config.transmissions, config.geometry, config.mass };
-        for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
-        {
-            const auto& motor = config.motors[joint].has_value() ? config.motors[joint]->settings : arm::motorPresets[0].settings;
-            plant.rotorInertia[joint] = motor[arm::MotorParameter::inertia];
-            plant.motorFriction[joint] = motor[arm::MotorParameter::viscousFriction];
-        }
-        return plant;
+        return simulation::PlantFor(config.transmissions, config.geometry, config.mass, config.motors);
     }
 
     SimulatedTargetLink::SimulatedTargetLink(const arm::JointNodeIds& nodes, infra::Duration timeConstant)

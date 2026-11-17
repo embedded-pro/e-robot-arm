@@ -24,6 +24,13 @@ namespace
         return positions;
     }
 
+    arm::JointTorques Torques(float value)
+    {
+        arm::JointTorques torques{};
+        torques.fill(foc::NewtonMeter{ value });
+        return torques;
+    }
+
     MATCHER_P(MeasuredAt, positions, "")
     {
         return arg.positions == positions;
@@ -47,10 +54,6 @@ namespace
                 }));
             EXPECT_CALL(stateless, BumplessTransfer()).WillRepeatedly(Return(false));
             EXPECT_CALL(bumpless, BumplessTransfer()).WillRepeatedly(Return(true));
-            EXPECT_CALL(torque, BumplessTransfer()).WillRepeatedly(Return(true));
-            EXPECT_CALL(stateless, Mode()).WillRepeatedly(Return(can::FocMotorMode::position));
-            EXPECT_CALL(bumpless, Mode()).WillRepeatedly(Return(can::FocMotorMode::position));
-            EXPECT_CALL(torque, Mode()).WillRepeatedly(Return(can::FocMotorMode::torque));
         }
 
         void SelectStateless()
@@ -71,21 +74,20 @@ namespace
         StrictMock<arm::JointMotionMock> motion;
         StrictMock<arm::ArmControllerMock> stateless;
         StrictMock<arm::ArmControllerMock> bumpless;
-        StrictMock<arm::ArmControllerMock> torque;
         std::array<arm::JointReading, arm::jointCount> readings{};
         bool moving{ false };
         arm::ArmControllersImpl controllers{ bus, motion };
         StrictMock<ArmControllersObserverMock> observer{ controllers };
-        arm::ArmControllerId statelessId{ controllers.Register("pass-through", stateless) };
-        arm::ArmControllerId bumplessId{ controllers.Register("smoothed", bumpless) };
+        arm::ArmControllerId statelessId{ controllers.Register("stepping", stateless) };
+        arm::ArmControllerId bumplessId{ controllers.Register("bumpless", bumpless) };
     };
 }
 
 TEST_F(ArmControllersImplTest, registers_controllers_disabled_and_finds_them_by_name)
 {
     EXPECT_EQ(2u, controllers.Count());
-    EXPECT_EQ("smoothed", controllers.Name(bumplessId));
-    EXPECT_EQ(std::optional<arm::ArmControllerId>{ bumplessId }, controllers.Find("smoothed"));
+    EXPECT_EQ("bumpless", controllers.Name(bumplessId));
+    EXPECT_EQ(std::optional<arm::ArmControllerId>{ bumplessId }, controllers.Find("bumpless"));
     EXPECT_EQ(std::nullopt, controllers.Find("missing"));
     EXPECT_FALSE(controllers.Enabled(statelessId));
     EXPECT_EQ(std::nullopt, controllers.Active());
@@ -136,16 +138,16 @@ TEST_F(ArmControllersImplTest, streams_the_active_controllers_set_each_step_hold
     EngageStateless();
     EXPECT_TRUE(controllers.Streaming());
 
-    EXPECT_CALL(stateless, Step(MeasuredAt(Uniform(0.25f)), Uniform(0.25f))).WillOnce(Return(arm::JointSetpoints{ Uniform(0.3f) }));
-    EXPECT_CALL(bus, SendPositions(Uniform(0.3f))).WillOnce(Return(true));
+    EXPECT_CALL(stateless, Step(MeasuredAt(Uniform(0.25f)), Uniform(0.25f))).WillOnce(Return(arm::JointSetpoints{ Uniform(0.25f), Torques(0.3f) }));
+    EXPECT_CALL(bus, SendTorques(Torques(0.3f))).WillOnce(Return(true));
     EXPECT_TRUE(controllers.Step(std::nullopt));
 
-    EXPECT_CALL(stateless, Step(_, Uniform(1.0f))).Times(2).WillRepeatedly(Return(arm::JointSetpoints{ Uniform(0.9f) }));
-    EXPECT_CALL(bus, SendPositions(Uniform(0.9f))).Times(2).WillRepeatedly(Return(true));
+    EXPECT_CALL(stateless, Step(_, Uniform(1.0f))).Times(2).WillRepeatedly(Return(arm::JointSetpoints{ Uniform(1.0f), Torques(0.9f) }));
+    EXPECT_CALL(bus, SendTorques(Torques(0.9f))).Times(2).WillRepeatedly(Return(true));
     EXPECT_TRUE(controllers.Step(Uniform(1.0f)));
     EXPECT_TRUE(controllers.Step(std::nullopt));
     ASSERT_TRUE(controllers.LastSetpoints().has_value());
-    EXPECT_EQ(Uniform(0.9f), controllers.LastSetpoints()->positions);
+    EXPECT_EQ(Torques(0.9f), controllers.LastSetpoints()->torques);
     EXPECT_EQ(std::optional<arm::JointPositions>{ Uniform(1.0f) }, controllers.Reference());
 
     controllers.Disengage();
@@ -153,13 +155,24 @@ TEST_F(ArmControllersImplTest, streams_the_active_controllers_set_each_step_hold
     EXPECT_EQ(std::nullopt, controllers.Reference());
 }
 
-TEST_F(ArmControllersImplTest, disabling_the_active_controller_stops_the_streaming)
+TEST_F(ArmControllersImplTest, the_active_controller_is_disabled_only_while_it_does_not_drive_the_joints)
 {
     EngageStateless();
 
+    EXPECT_FALSE(controllers.Disable(statelessId));
+    EXPECT_EQ(std::optional<arm::ArmControllerId>{ statelessId }, controllers.Active());
+    EXPECT_TRUE(controllers.Enabled(statelessId));
+    EXPECT_TRUE(controllers.Disable(bumplessId));
+
+    controllers.Disengage();
     EXPECT_CALL(observer, OnActiveControllerChanged(std::optional<arm::ArmControllerId>{}));
     EXPECT_TRUE(controllers.Disable(statelessId));
     EXPECT_EQ(std::nullopt, controllers.Active());
+}
+
+TEST_F(ArmControllersImplTest, streaming_without_an_active_controller_stops_at_once)
+{
+    controllers.Engage();
 
     EXPECT_FALSE(controllers.Step(Uniform(1.0f)));
     EXPECT_FALSE(controllers.Streaming());
@@ -169,48 +182,10 @@ TEST_F(ArmControllersImplTest, a_set_the_supervisor_refuses_stops_the_streaming)
 {
     EngageStateless();
 
-    EXPECT_CALL(stateless, Step(_, _)).WillOnce(Return(arm::JointSetpoints{ Uniform(3.0f) }));
-    EXPECT_CALL(bus, SendPositions(_)).WillOnce(Return(false));
+    EXPECT_CALL(stateless, Step(_, _)).WillOnce(Return(arm::JointSetpoints{ Uniform(3.0f), Torques(3.0f) }));
+    EXPECT_CALL(bus, SendTorques(_)).WillOnce(Return(false));
     EXPECT_FALSE(controllers.Step(Uniform(3.0f)));
 
     EXPECT_FALSE(controllers.Streaming());
     EXPECT_FALSE(controllers.LastSetpoints().has_value());
-}
-
-TEST_F(ArmControllersImplTest, refuses_to_select_a_controller_of_another_control_mode)
-{
-    const auto torqueId = controllers.Register("gravity-pd", torque);
-    EXPECT_TRUE(controllers.Enable(torqueId));
-
-    EXPECT_FALSE(controllers.FitsJointMode(torqueId));
-    EXPECT_TRUE(controllers.FitsJointMode(statelessId));
-    EXPECT_FALSE(controllers.Select(torqueId));
-    EXPECT_EQ(std::nullopt, controllers.Active());
-}
-
-TEST_F(ArmControllersImplTest, streams_a_torque_controllers_set_as_torques)
-{
-    arm::ArmControllersImpl torqueControllers{ bus, motion, can::FocMotorMode::torque };
-    const auto torqueId = torqueControllers.Register("gravity-pd", torque);
-    const auto positionId = torqueControllers.Register("pass-through", stateless);
-    torqueControllers.Enable(torqueId);
-    torqueControllers.Enable(positionId);
-    EXPECT_FALSE(torqueControllers.Select(positionId));
-    EXPECT_TRUE(torqueControllers.Select(torqueId));
-    EXPECT_CALL(torque, Reset(_));
-    torqueControllers.Engage();
-
-    arm::JointTorques torques{};
-    torques[1] = foc::NewtonMeter{ 7.5f };
-    EXPECT_CALL(torque, Step(_, Uniform(1.0f))).WillOnce(Return(arm::JointSetpoints{ Uniform(1.0f), torques }));
-    EXPECT_CALL(bus, SendTorques(torques)).WillOnce(Return(true));
-    EXPECT_TRUE(torqueControllers.Step(Uniform(1.0f)));
-
-    ASSERT_TRUE(torqueControllers.LastSetpoints().has_value());
-    EXPECT_EQ(std::optional<arm::JointTorques>{ torques }, torqueControllers.LastSetpoints()->torques);
-
-    EXPECT_CALL(torque, Step(_, _)).WillOnce(Return(arm::JointSetpoints{ Uniform(1.0f), torques }));
-    EXPECT_CALL(bus, SendTorques(torques)).WillOnce(Return(false));
-    EXPECT_FALSE(torqueControllers.Step(std::nullopt));
-    EXPECT_FALSE(torqueControllers.Streaming());
 }

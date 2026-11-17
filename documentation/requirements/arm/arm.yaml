@@ -97,10 +97,9 @@
 - id: REQ-ARM-013
   title: Arm controllers switched at run time
   shall: >
-    The arm shall let its operator enable, disable and select among more than one arm controller while it runs,
-    shall refuse a switch during a move unless the new controller takes over from the measured joint positions
-    without a setpoint step, and shall stop a running move with the joints held where they are when the active
-    controller is disabled.
+    The arm shall let its operator enable, disable and select among its arm controllers while it runs, shall
+    refuse a switch during a move unless the new controller takes over from the measured joints without a step in
+    the joint torques, and shall refuse to disable the controller that drives the joints until the arm is disabled.
 
 - id: REQ-ARM-014
   title: Stop on a joint held back

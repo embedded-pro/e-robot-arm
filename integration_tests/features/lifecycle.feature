@@ -12,7 +12,7 @@ Feature: Arm start-up sequence
     Then the arm shall be ready
     And the arm shall refuse a move
     When the arm is enabled
-    Then the arm shall be enabled with every joint running in position mode
+    Then the arm shall be enabled with every joint running in torque mode
     When the arm moves the joints to 0.3, 0.3, 0.3, 0.3, 0.3, 0.3 rad
     Then the move shall be done within 1000 ms
     When joint 3 faults
@@ -22,5 +22,5 @@ Feature: Arm start-up sequence
     Then the arm shall be ready
     When the arm is enabled
     And the arm moves the joints to -0.2, -0.2, -0.2, -0.2, -0.2, -0.2 rad
-    Then the move shall be done within 1000 ms
+    Then the move shall be done within 1500 ms
     And every joint shall be at its target

@@ -65,7 +65,7 @@ namespace
 
 TEST_F(ArmProfileTest, reads_every_item_and_fills_in_the_defaults)
 {
-    const auto profile = Read(Profile(configuredJoint, R"( "enableMode": "speed",)"));
+    const auto profile = Read(Profile(configuredJoint, R"( "enableMode": "torque",)"));
     ASSERT_TRUE(profile.has_value()) << Problem();
     const auto& config = profile->config;
 
@@ -73,7 +73,6 @@ TEST_F(ArmProfileTest, reads_every_item_and_fills_in_the_defaults)
     EXPECT_EQ(std::chrono::milliseconds{ 5 }, config.controlPeriod);
     EXPECT_EQ(4, config.missedRequestsBeforeSilent);
     EXPECT_EQ(3, config.commandTimeoutPeriods);
-    EXPECT_EQ(can::FocMotorMode::speed, config.enableMode);
     EXPECT_EQ((arm::JointNodeIds{ 1, 2, 3, 4, 5, 6 }), config.nodes);
 
     EXPECT_NEAR(50.0f, config.transmissions[0].ratio, 1.0e-6f);
@@ -167,7 +166,6 @@ TEST_F(ArmProfileTest, a_written_profile_reads_back_to_the_same_configuration)
     EXPECT_EQ(original->name, copy->name);
     EXPECT_EQ(original->config.controlPeriod, copy->config.controlPeriod);
     EXPECT_EQ(original->config.missedRequestsBeforeSilent, copy->config.missedRequestsBeforeSilent);
-    EXPECT_EQ(original->config.enableMode, copy->config.enableMode);
     EXPECT_EQ(original->config.gravityPd.bandwidth, copy->config.gravityPd.bandwidth);
     EXPECT_EQ(original->config.gravityPd.dampingRatio, copy->config.gravityPd.dampingRatio);
     EXPECT_EQ(original->config.nodes, copy->config.nodes);
@@ -284,6 +282,7 @@ TEST_F(ArmProfileTest, refuses_a_profile_and_names_the_first_problem)
         { Profile(Joint(1, R"(, "motorController": { "current": "pid", "speed": "fuzzy", "position": "pid" })")),
             "joints[0].motorController.speed: must be pid, lqi, adrc or twoDof" },
         { Profile(Joint(1, R"(, "motorController": { "current": "pid", "speed": "pid" })")), "joints[0].motorController.position: is missing" },
+        { Profile(Joint(1), R"( "enableMode": "position",)"), "enableMode: must be torque: the arm runs its joints in torque mode only" },
         { Profile(Joint(1, R"(, "trackingError": { "windowRad": 0 })")), "joints[0].trackingError.windowRad: must be above 0" },
         { Profile(Joint(1), R"( "gravityPd": { "bandwidthRadPerS": 600 },)"), "gravityPd.bandwidthRadPerS: must be above 0 and at most 500" },
         { Profile(Joint(1), R"( "gravityPd": { "dampingRatio": 0 },)"), "gravityPd.dampingRatio: must be above 0 and at most 5" },

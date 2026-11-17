@@ -164,8 +164,8 @@ namespace arm
         static constexpr std::array<Machine::Transition, rowCount> Rows();
         static constexpr Machine::Rules Rules();
 
-        ArmLifecycleImpl(SafetySupervisor& safety, JointMotion& motion, JointConfigurator& configurator, can::FocMotorMode enableMode,
-            const JointControllers& controllers, const JointMotors& motors = {});
+        ArmLifecycleImpl(SafetySupervisor& safety, JointMotion& motion, JointConfigurator& configurator, const JointControllers& controllers,
+            const JointMotors& motors = {});
 
         bool BringUp() override;
         bool Enable() override;
@@ -221,7 +221,6 @@ namespace arm
         SafetySupervisor& safety;
         JointMotion& motion;
         JointConfigurator& configurator;
-        can::FocMotorMode enableMode;
         JointControllers controllers;
         JointMotors motors;
         std::size_t nextStep{ 0 };

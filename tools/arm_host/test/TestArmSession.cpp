@@ -25,7 +25,7 @@ namespace
         void BringUp()
         {
             Execute(1, arm_host::CheckContracts{});
-            Execute(2, arm_host::SelectMode{ can::FocMotorMode::position });
+            Execute(2, arm_host::SelectMode{ can::FocMotorMode::torque });
             Execute(3, arm_host::StartJoints{});
         }
 
@@ -37,7 +37,7 @@ namespace
         }
 
         arm_host::ArmTarget target{ arm_host::TargetKind::simulated, "" };
-        simulation::SimulatedArm simulatedArm{ arm_host::test::nodes, 50ms };
+        simulation::SimulatedArm simulatedArm{ arm_host::test::nodes, 50ms, arm_host::PlantFor(arm_host::test::Config()) };
         arm_host::test::RecordingSink sink;
         arm_host::ArmSession session{ simulatedArm.ArmSide(), arm_host::test::Profile(), target, sink, &simulatedArm };
     };
@@ -187,7 +187,7 @@ TEST_F(ArmSessionTest, bring_up_and_enable_walk_the_lifecycle_and_report_each_st
 
     Execute(2, arm_host::Enable{});
     EXPECT_EQ(arm::ArmState::enabled, sink.snapshot.state);
-    EXPECT_EQ(can::FocMotorMode::position, simulatedArm.Joint(5).Mode());
+    EXPECT_EQ(can::FocMotorMode::torque, simulatedArm.Joint(5).Mode());
 
     std::vector<arm::ArmState> states;
     for (const auto& event : sink.events)
@@ -300,39 +300,36 @@ TEST_F(ArmSessionConfiguringTest, names_the_joint_whose_motor_controller_reads_b
 TEST_F(ArmSessionTest, lists_the_arm_controllers_and_reports_each_change_of_the_active_one)
 {
     Execute(1, arm_host::CheckContracts{});
-    ASSERT_EQ(3u, sink.snapshot.armControllers.size());
-    EXPECT_EQ("pass-through", sink.snapshot.armControllers[0].name);
-    EXPECT_EQ("gravity-pd", sink.snapshot.armControllers[2].name);
+    ASSERT_EQ(1u, sink.snapshot.armControllers.size());
+    EXPECT_EQ("gravity-pd", sink.snapshot.armControllers[0].name);
     EXPECT_TRUE(sink.snapshot.armControllers[0].active);
-    EXPECT_TRUE(sink.snapshot.armControllers[1].enabled);
+    EXPECT_TRUE(sink.snapshot.armControllers[0].enabled);
 
-    Execute(2, arm_host::SelectArmController{ 1 });
-    EXPECT_EQ("smoothed", sink.Find(ArmEventKind::armControllerChanged)->armController);
-    EXPECT_TRUE(sink.snapshot.armControllers[1].active);
+    Execute(2, arm_host::DisableArmController{ 0 });
+    EXPECT_EQ("none", sink.Find(ArmEventKind::armControllerChanged)->armController);
+    EXPECT_FALSE(sink.snapshot.armControllers[0].active);
 
-    Execute(3, arm_host::DisableArmController{ 1 });
-    const auto lastChange = std::ranges::find(sink.events.rbegin(), sink.events.rend(), ArmEventKind::armControllerChanged, &arm_host::ArmEvent::kind);
-    ASSERT_NE(sink.events.rend(), lastChange);
-    EXPECT_EQ("none", lastChange->armController);
-    EXPECT_FALSE(sink.snapshot.armControllers[1].active);
-
-    Execute(4, arm_host::SelectArmController{ 1 });
+    Execute(3, arm_host::SelectArmController{ 0 });
     EXPECT_EQ("the arm controller is disabled", sink.Last()->reason);
-    Execute(5, arm_host::SelectArmController{ 9 });
+    Execute(4, arm_host::SelectArmController{ 9 });
     EXPECT_EQ("no such arm controller", sink.Last()->reason);
-    Execute(6, arm_host::SelectArmController{ 2 });
-    EXPECT_EQ("the arm controller needs the joints in another control mode: set the profile's enable mode", sink.Last()->reason);
+
+    Execute(5, arm_host::EnableArmController{ 0 });
+    Execute(6, arm_host::SelectArmController{ 0 });
+    EXPECT_TRUE(sink.snapshot.armControllers[0].active);
 }
 
-TEST_F(ArmSessionTest, refuses_a_switch_that_would_step_the_setpoints_of_a_running_move)
+TEST_F(ArmSessionTest, refuses_to_disable_the_controller_that_drives_the_joints)
 {
-    BringUp();
-    Execute(4, arm_host::SelectArmController{ 1 });
-    Execute(5, arm_host::MoveTo{ Target(1.0f) });
+    Execute(1, arm_host::BringUp{});
+    Execute(2, arm_host::Enable{});
+    ASSERT_EQ(arm::ArmState::enabled, sink.snapshot.state);
 
-    Execute(6, arm_host::SelectArmController{ 0 });
-    EXPECT_EQ(6u, sink.Last()->command);
-    EXPECT_EQ("a move runs and the arm controller cannot take over without a step", sink.Last()->reason);
+    Execute(3, arm_host::DisableArmController{ 0 });
+
+    EXPECT_EQ(3u, sink.Last()->command);
+    EXPECT_EQ("the arm drives the joints with it: disable the arm first", sink.Last()->reason);
+    EXPECT_TRUE(sink.snapshot.armControllers[0].active);
 }
 
 TEST_F(ArmSessionTest, offers_faults_and_silence_on_simulated_joints_and_reports_who_is_silent)
@@ -362,7 +359,6 @@ namespace
     arm::ArmConfig TorqueConfig()
     {
         auto config = arm_host::test::Config();
-        config.enableMode = can::FocMotorMode::torque;
         for (auto& transmission : config.transmissions)
             transmission.ratio = 50.0f;
         return config;

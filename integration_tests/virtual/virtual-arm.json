@@ -5,7 +5,6 @@
   "controlPeriodMs": 10,
   "missedRequestsBeforeSilent": 50,
   "commandTimeoutPeriods": 50,
-  "enableMode": "torque",
   "joints": [
     {
       "node": 1,
