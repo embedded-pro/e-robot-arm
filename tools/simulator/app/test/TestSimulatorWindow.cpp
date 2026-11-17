@@ -28,6 +28,7 @@
 #include <filesystem>
 #include <functional>
 #include <string>
+#include <vector>
 
 Q_IMPORT_QML_PLUGIN(SimulatorPlugin)
 Q_IMPORT_QML_PLUGIN(UiQuick3DPlugin)
@@ -493,4 +494,64 @@ TEST_F(SimulatorWindowTest, the_tuning_dock_runs_a_step_and_shows_its_metrics_an
         QApplication::processEvents();
         window.grab().save(QString{ path }.replace(".png", "-tuning.png"));
     }
+}
+
+TEST_F(SimulatorWindowTest, frame_statistics_report_the_gui_and_render_cost_while_the_arm_moves_and_a_tuning_run_records)
+{
+    if (const auto* engine = std::getenv("E_FOC_VIRTUAL_MOTOR"))
+    {
+        window.Presenter().SwitchTarget({ arm_host::TargetKind::virtualArm, "virtual:arm", engine });
+        ASSERT_TRUE(Eventually([this]()
+            {
+                return host.Snapshot().target.kind == arm_host::TargetKind::virtualArm && host.Snapshot().targetReady;
+            },
+            30000))
+            << LogText(window.Presenter());
+    }
+
+    std::vector<std::string> seconds;
+    const auto record = [this, &seconds]()
+    {
+        if (seconds.empty() || seconds.back() != window.Frames().Text())
+            seconds.push_back(window.Frames().Text());
+    };
+    const auto overrunsBefore = host.Snapshot().overruns;
+
+    const arm::JointPositions target{ foc::Radians{ 0.7f }, foc::Radians{ -0.5f }, foc::Radians{ 0.6f }, foc::Radians{ 0.4f }, foc::Radians{ 0.8f },
+        foc::Radians{ 0.0f } };
+    BringUpAndMove(target);
+    ASSERT_TRUE(Eventually([this, &record]()
+        {
+            record();
+            return Logged(window.Presenter(), "Move done");
+        },
+        30000))
+        << LogText(window.Presenter());
+
+    auto* dock = window.findChild<QDockWidget*>("tuningDock");
+    ASSERT_NE(nullptr, dock);
+    dock->raise();
+    auto* run = Button(*dock, "Run");
+    ASSERT_NE(nullptr, run);
+    ASSERT_TRUE(Eventually([run, &record]()
+        {
+            record();
+            return run->isEnabled();
+        }));
+    run->click();
+    ASSERT_TRUE(Eventually([this, &record]()
+        {
+            record();
+            return window.Tuning().Status().starts_with("Done");
+        },
+        15000))
+        << window.Tuning().Status();
+
+    for (const auto& second : seconds)
+        std::printf("[METRIC] simulator frame statistics: %s\n", second.c_str());
+    std::printf("[METRIC] simulator control-loop overruns during the run: %u\n", host.Snapshot().overruns - overrunsBefore);
+    EXPECT_TRUE(std::ranges::any_of(seconds, [](const std::string& second)
+        {
+            return second.starts_with("3-D ") && second.find("fps") != std::string::npos;
+        }));
 }

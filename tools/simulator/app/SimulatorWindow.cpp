@@ -18,11 +18,14 @@
 #include <QQmlEngine>
 #include <QQuickItem>
 #include <QQuickWidget>
+#include <QQuickWindow>
 #include <QScrollArea>
 #include <QSettings>
+#include <QStatusBar>
 #include <QToolBar>
 #include <QVBoxLayout>
 #include <QtGlobal>
+#include <cstdio>
 #include <fstream>
 
 namespace simulator
@@ -59,7 +62,11 @@ namespace simulator
         , shell{ *this, shellSpec }
         , strip{ new StatusStripBar{ this } }
         , banner{ new QLabel{ this } }
-        , armView{ new QQuickWidget{ this } }
+        , armView{ new TimedQuickWidget{ [this](std::chrono::nanoseconds duration)
+              {
+                  frameStatistics.AddRender(duration);
+              },
+              this } }
         , joints{ new JointTable{ this } }
         , tool{ new ToolPanel{ this } }
         , operate{ new FormPanel{ this } }
@@ -79,6 +86,7 @@ namespace simulator
             } }
         , tuningPanel{ new TuningPanel{ this } }
         , tuning{ tuningPanel->Form(), host }
+        , frameReadout{ new QLabel{ this } }
         , logPanel{ new EventLogPanel{ presenter.Log(), this } }
         , emergencyStopKey{ *QCoreApplication::instance(), [this]()
             {
@@ -93,6 +101,7 @@ namespace simulator
         armView->engine()->addImportPath(":/");
         armView->setSource(QUrl{ "qrc:/Simulator/qml/ArmScene.qml" });
         EnableAmbientOcclusion();
+        ShowFrameStatistics();
         shell.SetContent(armView);
 
         addToolBar(Qt::TopToolBarArea, strip);
@@ -127,6 +136,33 @@ namespace simulator
             environment->setProperty("aoEnabled", true);
     }
 
+    void SimulatorWindow::ShowFrameStatistics()
+    {
+        frameReadout->setAccessibleName("Frame statistics");
+        frameReadout->setText(QString::fromStdString(frameStatistics.Text()));
+        ui::backend::qt::StyleStatusLabel(*frameReadout, frameStatistics.Level());
+        statusBar()->addPermanentWidget(frameReadout);
+        clock.start();
+    }
+
+    void SimulatorWindow::UpdateFrameStatistics(std::chrono::nanoseconds guiFrame)
+    {
+        frameStatistics.AddGuiFrame(guiFrame);
+        if (!frameStatistics.Advance(std::chrono::nanoseconds{ clock.nsecsElapsed() }))
+            return;
+
+        frameReadout->setText(QString::fromStdString(frameStatistics.Text()));
+        ui::backend::qt::StyleStatusLabel(*frameReadout, frameStatistics.Level());
+#ifndef NDEBUG
+        std::fprintf(stderr, "[frames] %s\n", frameStatistics.Text().c_str());
+#endif
+    }
+
+    const FrameStatistics& SimulatorWindow::Frames() const
+    {
+        return frameStatistics;
+    }
+
     QQuickWidget& SimulatorWindow::ArmView()
     {
         return *armView;
@@ -154,6 +190,8 @@ namespace simulator
 
     void SimulatorWindow::Frame()
     {
+        QElapsedTimer guiFrame;
+        guiFrame.start();
         const auto snapshot = host.Snapshot();
         const auto events = host.TakeEvents();
         const auto trace = host.TakeTrace();
@@ -208,6 +246,7 @@ namespace simulator
         sceneState.Update(presenter.Scene());
         simulationMenu->setEnabled(snapshot.targetReady && snapshot.disturbances.has_value());
         faultMenu->setEnabled(snapshot.disturbances.has_value() && snapshot.disturbances->injectFault);
+        UpdateFrameStatistics(std::chrono::nanoseconds{ guiFrame.nsecsElapsed() });
     }
 
     void SimulatorWindow::ApplyMeshes(const MeshNames& names, const QString& directory)

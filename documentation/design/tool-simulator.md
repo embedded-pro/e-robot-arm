@@ -2,9 +2,9 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.21.0
+version: 0.22.0
 component: "tool-simulator"
-date: 2026-11-16
+date: 2026-11-17
 ---
 
 | Field     | Value                   |
@@ -12,9 +12,9 @@ date: 2026-11-16
 | Title     | Simulator Screen Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.21.0                  |
+| Version   | 0.22.0                  |
 | Component | tool-simulator          |
-| Date      | 2026-11-16              |
+| Date      | 2026-11-17              |
 
 > What the e-robot-arm Simulator shows, what each control does and when, and how it looks (phase 8a,
 > [#28](https://github.com/embedded-pro/e-robot-arm/issues/28)). Components and threads are in
@@ -512,6 +512,29 @@ The three columns sit in a splitter: the controls keep their width, the plot tak
   does not apply or was not reached.
 - A new run replaces the last one; the reference stays until it is cleared or replaced. Neither survives a target
   switch, since the arm they ran on is gone.
+
+
+### Part O — Frame statistics (phase 8d)
+
+The frame budget is measured where the simulator runs, not only in CI: a container renders in software and says
+little about a desktop GPU. The status bar's right end always shows one line, updated once a second:
+
+```text
+… Ready                                         3-D 58 fps · render 6.1 ms · GUI 1.9 ms (max 4.2 ms)
+```
+
+| Figure  | What it measures                                                                                                                                                                                     |
+|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 3-D fps | Frames the 3-D view presented in the last second, with one decimal below 10; "3-D idle" when it drew none, since a still arm draws none                                                              |
+| render  | The mean time the 3-D view took to produce one of those frames on the GUI thread: the scene's synchronisation, its 3-D passes and, where the window has no GPU surface, the read-back of the picture |
+| GUI     | The mean and the largest time of one GUI frame: reading the arm host and updating every panel, scope and plot                                                                                        |
+
+- The line is `Neutral`; it turns `Warning` when the 3-D view drew frames at fewer than 30 a second, or when a GUI
+  frame took longer than a 60 fps frame (16.7 ms), the two limits of the budget (Constraints).
+- Debug builds also write the line to standard error once a second, so a run can be read back without
+  filling the event log.
+- The control loop's overruns stay in the status strip (Part B): the arm runs on its own thread and is never
+  timed here.
 
 ---
 

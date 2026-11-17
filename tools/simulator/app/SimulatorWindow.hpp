@@ -8,13 +8,16 @@
 #include "tools/simulator/app/MeshFiles.hpp"
 #include "tools/simulator/app/Panels.hpp"
 #include "tools/simulator/app/StatusStripBar.hpp"
+#include "tools/simulator/app/TimedQuickWidget.hpp"
 #include "tools/simulator/view_models/DisturbancePresenter.hpp"
+#include "tools/simulator/view_models/FrameStatistics.hpp"
 #include "tools/simulator/view_models/MotorControllerPresenter.hpp"
 #include "tools/simulator/view_models/MotorPresenter.hpp"
 #include "tools/simulator/view_models/SimulatorPresenter.hpp"
 #include "tools/simulator/view_models/TuningPresenter.hpp"
 #include "ui/backend/qt/QtAppShell.hpp"
 #include <QByteArray>
+#include <QElapsedTimer>
 #include <QMainWindow>
 #include <QString>
 #include <QTimer>
@@ -44,6 +47,7 @@ namespace simulator
         MotorControllerPresenter& MotorController();
         MotorPresenter& Motor();
         TuningPresenter& Tuning();
+        const FrameStatistics& Frames() const;
         void LoadProfileFrom(const QString& path);
         void SaveProfileTo(const QString& path);
         void Frame();
@@ -53,6 +57,8 @@ namespace simulator
 
     private:
         void EnableAmbientOcclusion();
+        void ShowFrameStatistics();
+        void UpdateFrameStatistics(std::chrono::nanoseconds guiFrame);
         void BuildDocks();
         void BuildMenus();
         void BuildArmMenu();
@@ -86,7 +92,8 @@ namespace simulator
         ui::backend::qt::QtAppShell shell;
         StatusStripBar* strip;
         QLabel* banner;
-        QQuickWidget* armView;
+        FrameStatistics frameStatistics{ std::chrono::nanoseconds{ 0 } };
+        TimedQuickWidget* armView;
         JointTable* joints;
         ToolPanel* tool;
         FormPanel* operate;
@@ -106,6 +113,8 @@ namespace simulator
         std::optional<bool> disturbancesShown;
         TuningPanel* tuningPanel;
         TuningPresenter tuning;
+        QLabel* frameReadout;
+        QElapsedTimer clock;
         QMenu* faultMenu{ nullptr };
         QDockWidget* virtualMotorsDock{ nullptr };
         std::optional<bool> virtualMotorsShown;
