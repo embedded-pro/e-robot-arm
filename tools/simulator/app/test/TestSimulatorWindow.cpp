@@ -452,6 +452,13 @@ TEST_F(SimulatorWindowTest, the_tuning_dock_runs_a_step_and_shows_its_metrics_an
     ASSERT_NE(nullptr, dock);
     dock->raise();
     window.Presenter().SelectJoint(1);
+    ASSERT_TRUE(Eventually([dock]()
+        {
+            return std::ranges::any_of(dock->findChildren<QComboBox*>(), [](const QComboBox* box)
+                {
+                    return box->currentText() == "J2";
+                });
+        }));
     auto* run = Button(*dock, "Run");
     auto* exportCsv = Button(*dock, "Export CSV…");
     ASSERT_NE(nullptr, run);
