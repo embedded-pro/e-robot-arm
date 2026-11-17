@@ -2,9 +2,9 @@
 title: "Joint Bus Design"
 type: design
 status: draft
-version: 0.12.0
+version: 0.13.0
 component: "joint_bus"
-date: 2026-11-16
+date: 2026-11-17
 ---
 
 | Field     | Value            |
@@ -12,9 +12,9 @@ date: 2026-11-16
 | Title     | Joint Bus Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.12.0           |
+| Version   | 0.13.0           |
 | Component | joint_bus        |
-| Date      | 2026-11-16       |
+| Date      | 2026-11-17       |
 
 > The six joints of the arm as one set of commands and readings. Behaviour only; diagrams are Mermaid.
 
@@ -115,7 +115,8 @@ nothing is missed before the caller starts asking. Motion telemetry from the joi
 The bus numbers its telemetry requests from 1; the number of the latest one is the current period. Each reading
 records the number of the request it answered, so a caller can tell how old it is: a reading from the current
 request is fresh, one from the request before is a period old, and anything older, or a joint that has never
-answered, is stale.
+answered, is stale. It also records when that request went out: a host that runs late sends its requests further
+apart than the period, and the joints sample their motion when the request reaches them.
 
 ### Part F — Transmission
 
@@ -173,6 +174,7 @@ paces them one at a time.
 | Joint reading | fault     | FOC fault code             | none … other            | From status telemetry; none at start                                                   |
 | Joint reading | silent    | flag                       | —                       | Set when the joint is reported silent, cleared when its motion telemetry arrives again |
 | Joint reading | period    | request number             | 0 …                     | The telemetry request its motion telemetry answered; 0 before the first answer         |
+| Joint reading | requested | time point                 |                         | When that request went out                                                             |
 | Liveness      | missed    | count                      | 1 … 255                 | Requests in a row a joint may miss                                                     |
 | Transmission  | ratio     | motor turns per joint turn | > 0, finite             | One per joint; 1 sends joint angles unchanged                                          |
 | Transmission  | direction | sign                       | +1 or −1                | −1 when the motor turns opposite to the joint                                          |

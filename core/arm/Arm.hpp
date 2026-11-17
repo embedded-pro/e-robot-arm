@@ -63,6 +63,7 @@ namespace arm
         JointTorques actingSum{};
         uint32_t actingPeriods{ 0 };
         std::array<uint32_t, jointCount> observedReadings{};
+        infra::TimePoint observedRequest{};
         std::optional<JointTorques> externalTorques;
         ArmControllersImpl controllers;
         ArmControllerEngagement engagement;

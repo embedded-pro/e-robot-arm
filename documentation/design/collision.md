@@ -67,8 +67,10 @@ The arm steps the observer after the arm controllers, once per control step:
   setpoints ([control-loop.md](control-loop.md)), so between two readings the set commanded two steps before acted
   for the first half and the set commanded the step before for the second: the observer integrates their mean.
 - It updates only once every joint has reported since its previous update. A step in which a joint's reading has not
-  arrived keeps the previous estimate; the next update integrates over every period since the previous one, with the
-  mean of the torque that acted in them. Taking a held-over reading as new integrates a period's torque against a
+  arrived keeps the previous estimate; the next update integrates over the time between the telemetry requests the two
+  readings answered, with the mean of the torque that acted in the periods between. A host that runs late sends its
+  requests further apart than the period; integrating over the nominal period then misses the torque of the extra
+  time, about 5 N·m on the virtual arm's accelerating shoulder for 5 ms. Taking a held-over reading as new integrates a period's torque against a
   momentum that did not move: on a busy host one missed reading of a shoulder that accelerates read 11 N·m.
 - The first streaming step after any step without streaming resets it to the momentum measured then, and reports no
   estimate for that step.
