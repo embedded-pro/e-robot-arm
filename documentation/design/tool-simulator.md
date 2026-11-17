@@ -2,7 +2,7 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.20.0
+version: 0.21.0
 component: "tool-simulator"
 date: 2026-11-16
 ---
@@ -12,7 +12,7 @@ date: 2026-11-16
 | Title     | Simulator Screen Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.20.0                  |
+| Version   | 0.21.0                  |
 | Component | tool-simulator          |
 | Date      | 2026-11-16              |
 
@@ -465,6 +465,53 @@ disturbance ("not a simulation"), so no disturbance control ever sits on a scree
 - A disturbance is allowed whatever the arm's state: tripping the arm is what it is for.
 - **Simulation → Inject Fault** and **Silence Joint** stay as keyboard paths; they are enabled on the targets that
   offer them.
+
+### Part N — Tuning dock (phase 8d)
+
+A **Tuning** dock, tabbed with the Scope, runs a step or out-and-back test on one joint through the tuning runner
+([tuning.md](tuning.md)), plots it, shows its metrics and keeps one earlier run beside it for comparison: two arm
+controllers, or two motors, on the same test.
+
+```text
+┌ Tuning ──────────────────┬───────────────────────────────────────────────┬──────────────────────────────────┐
+│ Joint      [J3        ▾] │ Position     ── Cmd ── Meas ── Ref meas       │ Metric        This run  Reference│
+│ Test       [Step      ▾] │                                               │ Rise time     0.070 s   0.060 s  │
+│ Amplitude  [ 0.050] rad  │ Tracking error ── Err ── Ref err              │ Overshoot     51.4 %    5.5 %    │
+│ [Run]                    │                                               │ …                                │
+│ [Keep as Reference]      │ Torque       ── Torque ── Ref torque          │                                  │
+│ [Clear Reference]        │                                               │                                  │
+│ Run: <why disabled>      │ 0.00 ──────────── time (s) ─────────── 2.00   │                                  │
+│ Done: gravity-pid · …    │                                               │                                  │
+│ [Export CSV…]            │                                               │                                  │
+└──────────────────────────┴───────────────────────────────────────────────┴──────────────────────────────────┘
+```
+
+The three columns sit in a splitter: the controls keep their width, the plot takes the rest.
+
+| Control           | Does                                                                                     | Enabled when (otherwise the reason, on the hint line)                           |
+|-------------------|------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------|
+| Run               | Starts the test on the selected joint; the field values are read only when it is pressed | Connected, the arm enabled and not moving, no test running, the amplitude valid |
+| Keep as Reference | Keeps the last finished run as the reference the plot and the table compare against      | A finished run that is not already the reference                                |
+| Clear Reference   | Drops the reference                                                                      | A reference                                                                     |
+| Export CSV…       | Writes the last finished run's samples ([tuning.md](tuning.md) Part D)                   | A finished run                                                                  |
+
+- **Run is an explicit action:** a test moves the arm, so it starts only on the button, never when a field changes;
+  the amplitude field has keyboard tracking off. The amplitude's rules are the runner's: a step is not 0 and at
+  most 0.2 rad either way, an out-and-back test is not 0; the joint limits are the arm's, which refuses a target
+  outside them with the reason on the hint line. The emergency stop and **Move → Abort** stop a test like any move;
+  the run then fails and says why.
+- **State from the arm:** the status line reads **Running step on J3…** from the moment the step is accepted,
+  **Done: `<controller>` · `<test>` · `<joint>`**, or **Failed: `<reason>`** (a refusal, an aborted move or a trip,
+  with its source). The label names the arm controller that was active when the run started, so two runs are told
+  apart by what changed.
+- **Plot** (`ui::charts::ChartCore`, time axis in s): three panels, position (commanded and measured), tracking
+  error and commanded torque, each with the reference run's measured position, error and torque overlaid in the
+  theme's next series colours. The cursor read-out shows the values under the pointer.
+- **Metrics** (read-only table): rise time, overshoot, settling time and steady-state error for a step, RMS and
+  peak tracking error for both, for this run and the reference, with units and fixed precision; "—" where a metric
+  does not apply or was not reached.
+- A new run replaces the last one; the reference stays until it is cleared or replaced. Neither survives a target
+  switch, since the arm they ran on is gone.
 
 ---
 

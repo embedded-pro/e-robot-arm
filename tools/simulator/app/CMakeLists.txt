@@ -46,6 +46,7 @@ target_link_libraries(e_robot_arm.tool.simulator.app PUBLIC
     ui.backend.qt
     ui.backend.quick3d
     ui.scope
+    ui.charts
     Qt6::Gui
     Qt6::Qml
     Qt6::Quick

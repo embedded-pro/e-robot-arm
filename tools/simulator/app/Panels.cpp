@@ -10,6 +10,7 @@
 #include <QLabel>
 #include <QPlainTextEdit>
 #include <QPushButton>
+#include <QSplitter>
 #include <QTableWidget>
 #include <QTextStream>
 #include <QVBoxLayout>
@@ -71,6 +72,113 @@ namespace simulator
     void DisturbancesPanel::ApplyTheme()
     {
         ui::backend::qt::StyleStatusLabel(*mark, ui::theme::StatusLevel::Warning);
+    }
+
+    TuningPanel::TuningPanel(QWidget* parent)
+        : QWidget{ parent }
+        , controls{ new FormPanel{ this } }
+        , status{ new QLabel{ this } }
+        , exportCsv{ new QPushButton{ "Export CSV…", this } }
+        , plot{ new ui::backend::qt::QtPaintedWidget{ chart, this } }
+        , metrics{ new QTableWidget{ static_cast<int>(tuningMetricCount), 3, this } }
+    {
+        status->setAccessibleName("Tuning run state");
+        status->setWordWrap(true);
+        exportCsv->setAccessibleName("Export the last run as CSV");
+        exportCsv->setEnabled(false);
+        plot->SetBackgroundRole(ui::theme::ColorRole::ScopeBackground);
+        plot->setAccessibleName("Tuning run plot");
+        plot->setMinimumSize(320, 200);
+        BuildMetrics();
+
+        auto* column = new QWidget{ this };
+        auto* columnLayout = new QVBoxLayout{ column };
+        columnLayout->setContentsMargins(0, 0, 0, 0);
+        columnLayout->addWidget(controls, 1);
+        auto* result = new QVBoxLayout;
+        result->setContentsMargins(8, 0, 8, 8);
+        result->addWidget(status);
+        result->addWidget(exportCsv, 0, Qt::AlignLeft);
+        columnLayout->addLayout(result);
+        column->setMinimumWidth(260);
+
+        auto* split = new QSplitter{ Qt::Horizontal, this };
+        split->addWidget(column);
+        split->addWidget(plot);
+        split->addWidget(metrics);
+        split->setStretchFactor(0, 0);
+        split->setStretchFactor(1, 1);
+        split->setStretchFactor(2, 0);
+        split->setSizes({ 300, 900, 320 });
+
+        auto* panelLayout = new QHBoxLayout{ this };
+        panelLayout->setContentsMargins(0, 0, 0, 0);
+        panelLayout->addWidget(split);
+        ApplyTheme();
+    }
+
+    ui::backend::qt::QtFormView& TuningPanel::Form()
+    {
+        return controls->Form();
+    }
+
+    void TuningPanel::BuildMetrics()
+    {
+        metrics->setHorizontalHeaderLabels({ "Metric", "This run", "Reference" });
+        metrics->verticalHeader()->setVisible(false);
+        metrics->setEditTriggers(QAbstractItemView::NoEditTriggers);
+        metrics->setSelectionMode(QAbstractItemView::NoSelection);
+        metrics->setAccessibleName("Tuning metrics");
+        metrics->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+        for (int row = 0; row != static_cast<int>(tuningMetricCount); ++row)
+            for (int column = 0; column != 3; ++column)
+            {
+                auto* cell = new QTableWidgetItem;
+                if (column != 0)
+                    cell->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+                metrics->setItem(row, column, cell);
+            }
+    }
+
+    QPushButton* TuningPanel::ExportButton() const
+    {
+        return exportCsv;
+    }
+
+    void TuningPanel::Update(const TuningPresenter& presenter)
+    {
+        controls->SetHint(presenter.Hint());
+        const auto text = QString::fromStdString(presenter.Status());
+        if (status->text() != text)
+            status->setText(text);
+        if (presenter.StatusLevel() != level)
+        {
+            level = presenter.StatusLevel();
+            ui::backend::qt::StyleStatusLabel(*status, level);
+        }
+        exportCsv->setEnabled(presenter.CanExport());
+
+        for (std::size_t row = 0; row != tuningMetricCount; ++row)
+        {
+            const auto& metric = presenter.Metrics()[row];
+            const std::array values{ QString::fromUtf8(metric.name.data(), static_cast<int>(metric.name.size())), QString::fromStdString(metric.current),
+                QString::fromStdString(metric.reference) };
+            for (int column = 0; column != 3; ++column)
+                if (auto* cell = metrics->item(static_cast<int>(row), column); cell->text() != values[column])
+                    cell->setText(values[column]);
+        }
+
+        if (presenter.ChartRevision() == chartRevision)
+            return;
+        chartRevision = presenter.ChartRevision();
+        chart.SetAxisValues(presenter.Chart().time);
+        chart.SetPanels(presenter.Chart().panels);
+        plot->update();
+    }
+
+    void TuningPanel::ApplyTheme()
+    {
+        ui::backend::qt::StyleStatusLabel(*status, level);
     }
 
     ConfigurationPanel::ConfigurationPanel(QWidget* parent)

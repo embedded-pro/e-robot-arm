@@ -36,7 +36,7 @@ date: 2026-11-17
 - Moving the arm by itself: every motion is a command to the arm host ([simulator.md](simulator.md) Part D), so the
   lifecycle and the safety supervisor apply as they do to any move.
 - Choosing gains: it measures the arm controller that is active; the operator tunes it through the profile.
-- Plotting or overlaying runs: the simulator's tuning panel does ([tool-simulator.md](tool-simulator.md)).
+- Plotting or overlaying runs: the simulator's Tuning dock does ([tool-simulator.md](tool-simulator.md) Part N).
 
 ---
 

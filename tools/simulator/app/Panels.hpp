@@ -5,9 +5,12 @@
 #include "tools/simulator/view_models/EventLog.hpp"
 #include "tools/simulator/view_models/ProfileView.hpp"
 #include "tools/simulator/view_models/ToolReadout.hpp"
+#include "tools/simulator/view_models/TuningPresenter.hpp"
 #include "tools/simulator/view_models/VirtualMotorRows.hpp"
 #include "ui/backend/qt/QtFormView.hpp"
 #include "ui/backend/qt/QtPaintedWidget.hpp"
+#include "ui/charts/ChartCore.hpp"
+#include "ui/charts/LinearAxis.hpp"
 #include "ui/scope/ScopeCore.hpp"
 #include "ui/theme/Theme.hpp"
 #include <QWidget>
@@ -68,6 +71,33 @@ namespace simulator
     private:
         QLabel* mark;
         QLabel* active;
+    };
+
+    class TuningPanel
+        : public QWidget
+    {
+        Q_OBJECT
+
+    public:
+        explicit TuningPanel(QWidget* parent);
+
+        ui::backend::qt::QtFormView& Form();
+        QPushButton* ExportButton() const;
+        void Update(const TuningPresenter& presenter);
+        void ApplyTheme();
+
+    private:
+        void BuildMetrics();
+
+        ui::charts::LinearAxis axis{ "Time", 6, 2, "t = ", "s" };
+        ui::charts::ChartCore chart{ axis, {} };
+        FormPanel* controls;
+        QLabel* status;
+        QPushButton* exportCsv;
+        ui::backend::qt::QtPaintedWidget* plot;
+        QTableWidget* metrics;
+        uint32_t chartRevision{ 0 };
+        ui::theme::StatusLevel level{ ui::theme::StatusLevel::Neutral };
     };
 
     class ToolPanel

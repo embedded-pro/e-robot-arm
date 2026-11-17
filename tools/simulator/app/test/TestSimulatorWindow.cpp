@@ -439,3 +439,51 @@ TEST_F(SimulatorWindowTest, the_single_step_menu_follows_the_rules_and_names_why
     EXPECT_FALSE(actions[3]->isEnabled());
     EXPECT_EQ("No joint running", actions[3]->toolTip());
 }
+
+TEST_F(SimulatorWindowTest, the_tuning_dock_runs_a_step_and_shows_its_metrics_and_plot)
+{
+    BringUpAndMove(arm::JointPositions{});
+    ASSERT_TRUE(Eventually([this]()
+        {
+            return window.Presenter().State(simulator::Control::move).enabled;
+        }));
+
+    auto* dock = window.findChild<QDockWidget*>("tuningDock");
+    ASSERT_NE(nullptr, dock);
+    dock->raise();
+    window.Presenter().SelectJoint(1);
+    auto* run = Button(*dock, "Run");
+    auto* exportCsv = Button(*dock, "Export CSV…");
+    ASSERT_NE(nullptr, run);
+    ASSERT_NE(nullptr, exportCsv);
+    ASSERT_TRUE(Eventually([run]()
+        {
+            return run->isEnabled();
+        }))
+        << window.Tuning().Hint();
+    EXPECT_FALSE(exportCsv->isEnabled());
+
+    run->click();
+    ASSERT_TRUE(Eventually([this]()
+        {
+            return window.Tuning().Status().starts_with("Done");
+        },
+        10000))
+        << window.Tuning().Status() << "\n"
+        << LogText(window.Presenter());
+    EXPECT_NE(std::string::npos, window.Tuning().Status().find("J2"));
+    EXPECT_EQ(ui::theme::StatusLevel::Ok, window.Tuning().StatusLevel());
+    EXPECT_TRUE(exportCsv->isEnabled());
+
+    auto* metrics = dock->findChild<QTableWidget*>();
+    ASSERT_NE(nullptr, metrics);
+    EXPECT_EQ("Rise time", metrics->item(0, 0)->text());
+    EXPECT_TRUE(metrics->item(4, 1)->text().endsWith(" rad")) << metrics->item(4, 1)->text().toStdString();
+    EXPECT_EQ("—", metrics->item(4, 2)->text());
+
+    if (const auto* path = std::getenv("SIMULATOR_FRAME_CAPTURE"))
+    {
+        QApplication::processEvents();
+        window.grab().save(QString{ path }.replace(".png", "-tuning.png"));
+    }
+}
