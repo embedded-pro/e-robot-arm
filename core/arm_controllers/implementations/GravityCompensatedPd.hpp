@@ -15,19 +15,29 @@ namespace arm
     };
 
     using JointPdGains = std::array<PdGain, jointCount>;
+    using JointInertias = std::array<float, jointCount>;
+    using PdGainMatrix = controllers::PdGravityCompensation<float, jointCount>::GainMatrix;
 
-    inline JointPdGains ReferenceGravityGains()
+    struct PdGainMatrices
     {
-        JointPdGains gains{};
-        gains.fill(PdGain{ 20.0f, 0.5f });
-        return gains;
-    }
+        PdGainMatrix kp;
+        PdGainMatrix kd;
+    };
+
+    struct GravityPdTuning
+    {
+        float bandwidth{ 30.0f };
+        float dampingRatio{ 0.7f };
+    };
+
+    PdGainMatrices DiagonalGains(const JointPdGains& gains);
+    PdGainMatrices PlacedGains(const ArmModel& model, const JointInertias& rotors, const GravityPdTuning& tuning);
 
     class GravityCompensatedPd
         : public ArmController
     {
     public:
-        GravityCompensatedPd(const ArmModel& model, const JointPdGains& gains);
+        GravityCompensatedPd(const ArmModel& model, const PdGainMatrices& gains);
 
         bool BumplessTransfer() const override;
         can::FocMotorMode Mode() const override;

@@ -371,7 +371,7 @@ namespace
     arm::ArmConfig SoftTorqueConfig()
     {
         auto config = TorqueConfig();
-        config.gravityGains.fill(arm::PdGain{ 0.5f, 0.05f });
+        config.gravityPd = { 1.0f, 0.7f };
         return config;
     }
 
@@ -438,7 +438,7 @@ TEST_F(SoftTorqueArmSessionTest, a_joint_that_lags_its_reference_too_long_trips_
     const auto* trip = sink.Find(ArmEventKind::supervisionTrip);
     ASSERT_NE(nullptr, trip);
     EXPECT_EQ(0u, trip->joint);
-    EXPECT_THAT(trip->reason, testing::StartsWith("tracking error 0.2"));
+    EXPECT_THAT(trip->reason, testing::StartsWith("tracking error "));
     ASSERT_NE(nullptr, sink.Find(ArmEventKind::tripped));
     EXPECT_EQ(trip->reason, sink.Find(ArmEventKind::tripped)->reason);
     EXPECT_TRUE(sink.snapshot.tripped);

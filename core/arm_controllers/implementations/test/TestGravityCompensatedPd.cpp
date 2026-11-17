@@ -32,7 +32,7 @@ namespace
         }
 
         arm::ArmModel model{ arm::ReferenceGeometry(), arm::ReferenceMass(), WideLimits() };
-        arm::GravityCompensatedPd controller{ model, Gains() };
+        arm::GravityCompensatedPd controller{ model, arm::DiagonalGains(Gains()) };
         arm::MeasuredJoints measured{};
     };
 }
@@ -67,4 +67,21 @@ TEST_F(GravityCompensatedPdTest, runs_the_joints_in_torque_mode_and_takes_over_w
 {
     EXPECT_EQ(can::FocMotorMode::torque, controller.Mode());
     EXPECT_TRUE(controller.BumplessTransfer());
+}
+
+TEST_F(GravityCompensatedPdTest, places_every_mode_at_the_bandwidth_through_the_inertia_matrix_at_home)
+{
+    const arm::JointInertias rotors{ 0.01f, 0.02f, 0.03f, 0.04f, 0.05f, 0.06f };
+
+    const auto gains = arm::PlacedGains(model, rotors, arm::GravityPdTuning{ 30.0f, 0.7f });
+
+    auto inertia = model.Dynamics().ComputeMassMatrix(model.ModelVector(arm::JointPositions{}));
+    for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+        inertia.at(joint, joint) += rotors[joint];
+    for (std::size_t row = 0; row != arm::jointCount; ++row)
+        for (std::size_t column = 0; column != arm::jointCount; ++column)
+        {
+            EXPECT_NEAR(900.0f * inertia.at(row, column), gains.kp.at(row, column), 1.0e-3f);
+            EXPECT_NEAR(42.0f * inertia.at(row, column), gains.kd.at(row, column), 1.0e-4f);
+        }
 }

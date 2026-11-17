@@ -31,7 +31,7 @@ namespace arm
         JointMotors motors{};
         ArmGeometry geometry{ ReferenceGeometry() };
         ArmMass mass{ ReferenceMass() };
-        JointPdGains gravityGains{ ReferenceGravityGains() };
+        GravityPdTuning gravityPd{};
         TrackingLimits tracking{};
     };
 

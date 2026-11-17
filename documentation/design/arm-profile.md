@@ -2,7 +2,7 @@
 title: "Arm Profile Design"
 type: design
 status: draft
-version: 0.7.0
+version: 0.8.0
 component: "arm_profile"
 date: 2026-11-13
 ---
@@ -12,7 +12,7 @@ date: 2026-11-13
 | Title     | Arm Profile Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.7.0              |
+| Version   | 0.8.0              |
 | Component | arm_profile        |
 | Date      | 2026-11-13         |
 
@@ -54,10 +54,15 @@ A profile holds what `ArmConfig` holds:
 | Missed telemetry allowed | `missedRequestsBeforeSilent` | periods, 1 to 255             | required            |
 | Command timeout          | `commandTimeoutPeriods`      | periods, 1 to 255             | 3                   |
 | Enable mode              | `enableMode`                 | `torque`, `speed`, `position` | `position`          |
+| `gravity-pd` bandwidth   | `gravityPd.bandwidthRadPerS` | rad/s, above 0, at most 500   | 30                  |
+| `gravity-pd` damping     | `gravityPd.dampingRatio`     | above 0, at most 5            | 0.7                 |
 | Joints                   | `joints`                     | exactly six, in order         | required            |
 | Geometry                 | `geometry`                   | see below                     | the reference arm   |
 | Mass properties          | `massProperties`             | see below                     | the reference arm   |
 | Link meshes              | `meshes`                     | see below                     | none                |
+
+The two `gravityPd` items set the gains of the `gravity-pd` arm controller for every joint at once
+([arm-controllers.md](arm-controllers.md) Part A).
 
 The geometry is the arm model's ([arm-model.md](arm-model.md) Part A):
 

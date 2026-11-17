@@ -215,3 +215,22 @@ TEST_F(TorqueArmTest, an_arm_enabled_in_torque_mode_streams_the_gravity_compensa
     ASSERT_TRUE(arm.Controllers().LastSetpoints().has_value());
     EXPECT_TRUE(arm.Controllers().LastSetpoints()->torques.has_value());
 }
+
+TEST_F(TorqueArmTest, gravity_pd_gains_follow_the_arms_inertia_with_each_rotor_through_its_gear)
+{
+    auto config = Config(can::FocMotorMode::torque);
+    config.transmissions[1].ratio = 50.0f;
+    config.motors[2] = arm::JointMotor{ 1, arm::motorPresets[1].settings };
+    config.gravityPd = { 20.0f, 0.5f };
+    const arm::ArmModel model{ config.geometry, config.mass, config.positionLimits };
+
+    const auto gains = arm::GravityPdGains(model, config);
+
+    const auto mass = model.Dynamics().ComputeMassMatrix(model.ModelVector(arm::JointPositions{}));
+    const auto teknic = arm::motorPresets[0].settings[arm::MotorParameter::inertia];
+    const auto anaheim = arm::motorPresets[1].settings[arm::MotorParameter::inertia];
+    EXPECT_NEAR((mass.at(0, 0) + teknic) * 400.0f, gains.kp.at(0, 0), 1.0e-3f);
+    EXPECT_NEAR((mass.at(1, 1) + teknic * 2500.0f) * 400.0f, gains.kp.at(1, 1), 1.0e-3f);
+    EXPECT_NEAR(mass.at(1, 2) * 400.0f, gains.kp.at(1, 2), 1.0e-3f);
+    EXPECT_NEAR((mass.at(2, 2) + anaheim) * 20.0f, gains.kd.at(2, 2), 1.0e-4f);
+}
