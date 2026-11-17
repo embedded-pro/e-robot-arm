@@ -69,8 +69,9 @@ namespace simulator
     void FrameStatistics::Summarise(std::chrono::nanoseconds elapsed)
     {
         const auto framesPerSecond = render.count / std::chrono::duration<double>{ elapsed }.count();
+        const auto decimals = framesPerSecond < 10.0 ? 1 : 0;
         const auto view = render.count == 0 ? std::string{ "3-D idle" }
-                                            : std::format("3-D {:.{}f} fps · render {:.1f} ms", framesPerSecond, framesPerSecond < 10.0 ? 1 : 0, render.MeanMilliseconds());
+                                            : std::format("3-D {:.{}f} fps · render {:.1f} ms", framesPerSecond, decimals, render.MeanMilliseconds());
         const auto guiText = gui.count == 0 ? std::string{ "GUI —" }
                                             : std::format("GUI {:.1f} ms (max {:.1f} ms)", gui.MeanMilliseconds(), Milliseconds(gui.longest));
         text = view + " · " + guiText;
