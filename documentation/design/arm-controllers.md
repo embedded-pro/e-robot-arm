@@ -63,7 +63,7 @@ so taking over mid-move does not make them jump.
 |-------------------|-------------------------------------------------------------------------------------------------------|----------|
 | `gravity-pd`      | Joint torques: a PD law on the position error plus the gravity torque, τ = Kp·(q* − q) − Kd·q′ + G(q) | yes      |
 | `computed-torque` | Joint torques: the inverse dynamics of the reference acceleration corrected by a PD on the errors     | yes      |
-| `gravity-pid`     | Joint torques: gravity plus the arm's inertia times the reference acceleration and a PID per joint    | yes      |
+| `gravity-pid`     | Joint torques: gravity plus the arm's inertia times the reference acceleration and a PI-D per joint   | yes      |
 
 **The arm controls torque.** The e-foc drives run in torque mode, the only mode the arm enables them in, and every
 arm controller runs on the host (the PC
@@ -95,16 +95,19 @@ has no state and takes over without a step.
 
 **PID with gravity feed-forward.** Neither law above has integral action, so a joint settles short of its target by
 whatever torque the models leave out, the drives' Coulomb friction first: about 0.04 rad on the elbow of the
-virtual arm. `gravity-pid` runs one numerical-toolbox `PidIncremental` per joint on the position error, in
-acceleration units, and turns the result into torque the way `gravity-pd` does: `τ = J·(q̈* + u) + G(q)`, with J the
-inertia matrix at home and the rotors (above), `q̈*` the reference acceleration and u the six PID outputs. The gains
-place each joint's poles at the profile's bandwidth ω: a pair with damping ζ and a real pole for the integral, so
-Kp = (2·ζ + 1)·ω², Ki = ω³ and Kd = (2·ζ + 1)·ω, discretised over the control period. The derivative acts on the
-error, so it sees the reference speed. Each PID's output is clamped to ±200 rad/s², far beyond any move's need: in the
-velocity form the clamp is the anti-windup, so a joint held against an obstacle does not wind its integral up.
-`Reset` clears the six PIDs, and the first step after it primes each one's error history with the error at that
-moment: neither the proportional nor the derivative term sees a step, only the integral starts, so it takes over a
-running move without a torque kick.
+virtual arm. `gravity-pid` runs one numerical-toolbox `PidIncremental` per joint as a PI on the position error and
+adds a derivative on the speed error, in acceleration units, then turns the sum into torque the way `gravity-pd` does:
+`τ = J·(q̈* + u) + G(q)`, with J the inertia matrix at home and the rotors (above), `q̈*` the reference acceleration and
+u the six corrections. The gains place each joint's poles at the profile's bandwidth ω: a pair with damping ζ and a
+real pole for the integral, so Kp = (2·ζ + 1)·ω², Ki = ω³ (times the control period in the velocity form) and
+Kd = (2·ζ + 1)·ω. The derivative takes the drives' measured speed against the reference speed rather than differencing
+measured positions: a reading that arrives a period late repeats one position and then jumps, and a differenced
+derivative turns that into a kick of Kd over the period; on a loaded host it tripped the virtual arm on its tracking
+error. Each joint's correction is clamped to ±200 rad/s², far beyond any move's need, and the PI is clamped to the same
+range: in the velocity form that clamp is the anti-windup, so a joint held against an obstacle does not wind its
+integral up. `Reset` clears the six PIDs, and the first step after it primes each one's error history with the error
+at that moment: the proportional term sees no step, only the integral starts, so it takes over a running move without
+a torque kick.
 
 The position path, where the drive closed the position loop and `pass-through` and `smoothed` shaped its setpoints,
 is gone.
@@ -178,7 +181,7 @@ move: a controller holds the joints on the last reference against gravity betwee
 | `computed-torque` | bandwidth             | rad/s           | above 0      | 30 by default; Kp = ω²·I                       |
 | `computed-torque` | damping ratio         | 1               | above 0      | 0.7 by default; Kd = 2·ζ·ω·I                   |
 | `gravity-pid`     | bandwidth             | rad/s           | above 0      | 20 by default; Kp = (2ζ + 1)·ω², Ki = ω³       |
-| `gravity-pid`     | damping ratio         | 1               | above 0      | 0.7 by default; Kd = (2ζ + 1)·ω                |
+| `gravity-pid`     | damping ratio         | 1               | above 0      | 0.7 by default; Kd = (2ζ + 1)·ω, on the speed  |
 | `gravity-pid`     | output limit          | rad/s²          | ±200         | Per joint; the integral's anti-windup          |
 | Reference         | speeds, accelerations | rad/s, rad/s²   | finite       | Zero while holding                             |
 | Registry entry    | id                    | integer         | 0–3          | Registration order                             |

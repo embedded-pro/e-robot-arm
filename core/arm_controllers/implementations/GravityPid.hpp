@@ -29,6 +29,7 @@ namespace arm
 
         const ArmModel& model;
         ArmModel::MassMatrix inertia;
+        float derivativeGain;
         std::array<Pid, jointCount> pids;
         bool primed{ false };
     };

@@ -83,14 +83,25 @@ TEST_F(GravityPidTest, integrates_a_held_position_error_period_after_period)
     ExpectTorques(Expected(integral), second);
 }
 
-TEST_F(GravityPidTest, a_new_error_acts_through_the_proportional_and_derivative_gains)
+TEST_F(GravityPidTest, a_new_position_error_acts_through_the_proportional_gain_alone_while_the_speed_holds)
 {
     controller.Step(measured, arm::AtRest(measured.positions));
     auto reference = arm::AtRest(measured.positions);
     reference.positions[2] = foc::Radians{ reference.positions[2].Value() + 0.01f };
 
     arm::JointAccelerations correction{};
-    correction[2] = foc::RadiansPerSecondSquared{ (200.0f + 1000.0f * 0.01f + 20.0f / 0.01f) * 0.01f };
+    correction[2] = foc::RadiansPerSecondSquared{ (200.0f + 1000.0f * 0.01f) * 0.01f };
+    ExpectTorques(Expected(correction), controller.Step(measured, reference).torques);
+}
+
+TEST_F(GravityPidTest, damps_the_measured_speed_error_through_the_derivative_gain)
+{
+    auto reference = arm::AtRest(measured.positions);
+    reference.speeds[2] = foc::RadiansPerSecond{ 0.5f };
+    measured.speeds[2] = foc::RadiansPerSecond{ 0.1f };
+
+    arm::JointAccelerations correction{};
+    correction[2] = foc::RadiansPerSecondSquared{ 20.0f * 0.4f };
     ExpectTorques(Expected(correction), controller.Step(measured, reference).torques);
 }
 
@@ -99,9 +110,11 @@ TEST_F(GravityPidTest, clamps_each_joints_correction_to_200_rad_per_s2)
     controller.Step(measured, arm::AtRest(measured.positions));
     auto reference = arm::AtRest(measured.positions);
     reference.positions[0] = foc::Radians{ reference.positions[0].Value() + 2.0f };
+    reference.speeds[1] = foc::RadiansPerSecond{ -20.0f };
 
     arm::JointAccelerations clamped{};
     clamped[0] = foc::RadiansPerSecondSquared{ 200.0f };
+    clamped[1] = foc::RadiansPerSecondSquared{ -200.0f };
     ExpectTorques(Expected(clamped), controller.Step(measured, reference).torques);
 }
 

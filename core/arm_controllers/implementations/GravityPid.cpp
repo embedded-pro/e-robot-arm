@@ -1,4 +1,5 @@
 #include "core/arm_controllers/implementations/GravityPid.hpp"
+#include <algorithm>
 #include <chrono>
 #include <utility>
 
@@ -6,12 +7,16 @@ namespace arm
 {
     namespace
     {
-        controllers::PidTunings<float> Tunings(const BandwidthTuning& tuning, infra::Duration period)
+        float PairGain(const BandwidthTuning& tuning)
+        {
+            return 2.0f * tuning.dampingRatio + 1.0f;
+        }
+
+        controllers::PidTunings<float> ProportionalIntegral(const BandwidthTuning& tuning, infra::Duration period)
         {
             const auto seconds = std::chrono::duration<float>(period).count();
-            const auto pair = 2.0f * tuning.dampingRatio + 1.0f;
             const auto bandwidth = tuning.bandwidth;
-            return { pair * bandwidth * bandwidth, bandwidth * bandwidth * bandwidth * seconds, pair * bandwidth / seconds };
+            return { PairGain(tuning) * bandwidth * bandwidth, bandwidth * bandwidth * bandwidth * seconds, 0.0f };
         }
 
         template<std::size_t... Joint>
@@ -34,7 +39,8 @@ namespace arm
     GravityPid::GravityPid(const ArmModel& model, const JointInertias& rotors, const BandwidthTuning& tuning, infra::Duration period)
         : model(model)
         , inertia(InertiaAtHome(model, rotors))
-        , pids(MakePids(Tunings(tuning, period), std::make_index_sequence<jointCount>{}))
+        , derivativeGain(PairGain(tuning) * tuning.bandwidth)
+        , pids(MakePids(ProportionalIntegral(tuning, period), std::make_index_sequence<jointCount>{}))
     {}
 
     bool GravityPid::BumplessTransfer() const
@@ -70,10 +76,10 @@ namespace arm
             if (!primed)
             {
                 pid.Process(measured.positions[joint].Value());
-                pid.Process(measured.positions[joint].Value());
                 pid.SetPreviousOutput(0.0f);
             }
-            corrections[joint] = foc::RadiansPerSecondSquared{ pid.Process(measured.positions[joint].Value()) };
+            const auto damping = derivativeGain * (reference.speeds[joint].Value() - measured.speeds[joint].Value());
+            corrections[joint] = foc::RadiansPerSecondSquared{ std::clamp(pid.Process(measured.positions[joint].Value()) + damping, -correctionLimit, correctionLimit) };
         }
         primed = true;
         return corrections;
