@@ -2,7 +2,7 @@
 title: "Virtual Arm Design"
 type: design
 status: draft
-version: 0.13.0
+version: 0.14.0
 component: "virtual-arm"
 date: 2026-11-16
 ---
@@ -12,7 +12,7 @@ date: 2026-11-16
 | Title     | Virtual Arm Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.13.0             |
+| Version   | 0.14.0             |
 | Component | virtual-arm        |
 | Date      | 2026-11-16         |
 
@@ -240,7 +240,10 @@ the host's cores: a CI runner has descheduled one for a hundred milliseconds, an
 the arm saw ten requests go unanswered and called a live motor silent, or gave up on an acknowledgement after three
 periods. A node on its own microcontroller does not stall, so a real arm keeps short windows. Its motors are the Teknic
 preset with the drive's following-error supervision off: the arm's own tracking-error supervision ([safety.md](safety.md)
-Part F, 0.1 rad for 0.1 s in this profile) watches every joint instead. The drives run in torque mode and the arm
+Part F, 0.1 rad for 0.1 s in this profile) watches every joint instead, beside its collision supervision
+([collision.md](collision.md)) at 10 N·m on the first three joints and 2 N·m on the wrist, more than twice the
+largest external torque the observer estimates through the reference move. The `Held back` scenario is a feature
+of its own (`tracking_supervision.feature`), started with every collision limit out of reach. The drives run in torque mode and the arm
 closes position with `gravity-pd` at the profile's default bandwidth ([arm-controllers.md](arm-controllers.md)
 Part A). Without integral action the joints settle short of the target by the drives' Coulomb friction over the
 controller's stiffness, about 0.04 rad on the elbow, so the settling check is pinned at 0.06 rad for `gravity-pd` and
@@ -250,13 +253,14 @@ contract check, align, bring-up and enable. The motors start calibrated but not 
 in a working directory of its own (`scenario<n>` under the fixture's directory), so the logs CI uploads keep every
 scenario, and a failed step prints each motor's real-time factor and overrun count from its last status report.
 
-| Scenario               | Checks                                                                                                                                                                                                                        |
-|------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Tracking under gravity | The largest difference between commanded and measured position while the shoulder lifts, as a `[METRIC]` line held to a limit pinned from it                                                                                  |
-| Computed torque        | The same move under `computed-torque`, with the reference speed and acceleration: a tighter tracking limit, pinned from its own `[METRIC]` line                                                                               |
-| PID with gravity       | The same move under `gravity-pid`: every joint settles within 0.015 rad despite the drives' friction, and a tracking limit pinned from its `[METRIC]` line                                                                    |
-| Collision              | A 30 N·m torque against the shoulder while it moves, about the drive's peak torque through the gear, trips the arm on that joint's tracking error (REQ-ARM-014); without the supervision the drive holds on and nothing trips |
-| Silent joint           | A paused motor trips the arm as a silent joint (REQ-ARM-005)                                                                                                                                                                  |
+| Scenario               | Checks                                                                                                                                                                                                                           |
+|------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Tracking under gravity | The largest difference between commanded and measured position while the shoulder lifts, and the largest external torque the collision observer estimates on any joint, each as a `[METRIC]` line held to a limit pinned from it |
+| Computed torque        | The same move under `computed-torque`, with the reference speed and acceleration: a tighter tracking limit, pinned from its own `[METRIC]` line                                                                                  |
+| PID with gravity       | The same move under `gravity-pid`: every joint settles within 0.015 rad despite the drives' friction, and a tracking limit pinned from its `[METRIC]` line                                                                       |
+| Collision              | A 30 N·m torque against the shoulder while it moves, about the drive's peak torque through the gear, trips the arm on that joint's collision within 300 ms (REQ-ARM-016)                                                         |
+| Held back              | The same collision with every joint's collision limit at 1000 N·m, out of reach, trips the arm on that joint's tracking error instead (REQ-ARM-014); without either supervision the drive holds on and nothing trips             |
+| Silent joint           | A paused motor trips the arm as a silent joint (REQ-ARM-005)                                                                                                                                                                     |
 
 CI runs them in a job of its own after building the engine (Part F). A torque well beyond the drive's peak is no
 collision to detect: it drives the joint backwards until the drive's overspeed protection trips. Tracking error with

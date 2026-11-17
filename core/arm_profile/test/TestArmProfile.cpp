@@ -43,7 +43,7 @@ namespace
     const std::string configuredJoint{ Joint(1,
         R"(, "transmission": { "ratio": 50, "direction": "negative", "offsetRad": -0.125 },)"
         R"( "motorController": { "current": "slidingMode", "speed": "adrc", "position": "lqr", "gains": { "positionBandwidth": 25, "speedErrorWeight": 1.5 } },)"
-        R"( "motor": { "preset": "teknic-m2310p-ln-04k", "inertiaGramCm2": 120.5 }, "trackingError": { "windowRad": 0.1, "timeS": 0.35 })") };
+        R"( "motor": { "preset": "teknic-m2310p-ln-04k", "inertiaGramCm2": 120.5 }, "trackingError": { "windowRad": 0.1, "timeS": 0.35 }, "collisionTorqueNm": 7.5)") };
 
     class ArmProfileTest
         : public testing::Test
@@ -155,7 +155,8 @@ TEST_F(ArmProfileTest, a_written_profile_reads_back_to_the_same_configuration)
     const auto original = Read(Profile(configuredJoint, geometry + Mass(Link("1.25")) + R"( "meshes": { "link6": "flange \"v2\".glb" },)" +
                                                             R"( "gravityPd": { "bandwidthRadPerS": 22.5, "dampingRatio": 0.9 },)" +
                                                             R"( "computedTorque": { "bandwidthRadPerS": 40, "dampingRatio": 1.2 },)" +
-                                                            R"( "gravityPid": { "bandwidthRadPerS": 15, "dampingRatio": 0.8 },)"));
+                                                            R"( "gravityPid": { "bandwidthRadPerS": 15, "dampingRatio": 0.8 },)" +
+                                                            R"( "collisionObserverGainPerS": 40,)"));
     ASSERT_TRUE(original.has_value()) << Problem();
 
     infra::StringOutputStream::WithStorage<16384> stream;
@@ -174,6 +175,8 @@ TEST_F(ArmProfileTest, a_written_profile_reads_back_to_the_same_configuration)
     EXPECT_EQ(original->config.computedTorque.dampingRatio, copy->config.computedTorque.dampingRatio);
     EXPECT_EQ(original->config.gravityPid.bandwidth, copy->config.gravityPid.bandwidth);
     EXPECT_EQ(original->config.gravityPid.dampingRatio, copy->config.gravityPid.dampingRatio);
+    EXPECT_EQ(original->config.collisionObserverGain, copy->config.collisionObserverGain);
+    EXPECT_EQ(original->config.collision, copy->config.collision);
     EXPECT_EQ(original->config.nodes, copy->config.nodes);
     for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
     {
@@ -246,6 +249,19 @@ TEST_F(ArmProfileTest, reads_the_tracking_error_supervision_and_defaults_it_to_0
     EXPECT_EQ(std::chrono::milliseconds{ 200 }, profile->config.tracking[1].time);
 }
 
+TEST_F(ArmProfileTest, reads_the_collision_supervision_and_defaults_it_to_20_n_m_with_a_gain_of_50_per_s)
+{
+    const auto tuned = Read(Profile(Joint(1, R"(, "collisionTorqueNm": 12.5)"), R"( "collisionObserverGainPerS": 80,)"));
+    const auto plain = Read(Profile(Joint(1)));
+
+    ASSERT_TRUE(tuned.has_value()) << Problem();
+    EXPECT_NEAR(12.5f, tuned->config.collision[0].Value(), 1.0e-6f);
+    EXPECT_NEAR(20.0f, tuned->config.collision[1].Value(), 1.0e-6f);
+    EXPECT_NEAR(80.0f, tuned->config.collisionObserverGain, 1.0e-6f);
+    ASSERT_TRUE(plain.has_value()) << Problem();
+    EXPECT_NEAR(50.0f, plain->config.collisionObserverGain, 1.0e-6f);
+}
+
 TEST_F(ArmProfileTest, reads_the_controllers_bandwidth_and_damping_and_defaults_them_to_30_and_0_7)
 {
     const auto tuned = Read(Profile(Joint(1), R"( "gravityPd": { "bandwidthRadPerS": 45, "dampingRatio": 1 }, "computedTorque": { "dampingRatio": 0.9 },)"));
@@ -297,6 +313,8 @@ TEST_F(ArmProfileTest, refuses_a_profile_and_names_the_first_problem)
         { Profile(Joint(1), R"( "gravityPd": { "bandwidthRadPerS": 600 },)"), "gravityPd.bandwidthRadPerS: must be above 0 and at most 500" },
         { Profile(Joint(1), R"( "gravityPd": { "dampingRatio": 0 },)"), "gravityPd.dampingRatio: must be above 0 and at most 5" },
         { Profile(Joint(1, R"(, "trackingError": { "timeS": 11 })")), "joints[0].trackingError.timeS: must be above 0 and at most 10" },
+        { Profile(Joint(1, R"(, "collisionTorqueNm": 0)")), "joints[0].collisionTorqueNm: must be above 0 and at most 1000" },
+        { Profile(Joint(1), R"( "collisionObserverGainPerS": 2000,)"), "collisionObserverGainPerS: must be above 0 and at most 1000" },
         { Profile(Joint(1, R"(, "trackingError": { "gain": 1 })")), "joints[0].trackingError.gain: is not a profile item" },
         { Profile(Joint(1, R"(, "motor": { "preset": "maxon-ec45" })")),
             "joints[0].motor.preset: must be teknic-m2310p-ln-04k or anaheim-bly172s-24v-4000" },

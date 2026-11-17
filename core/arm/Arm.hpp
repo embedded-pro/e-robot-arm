@@ -7,6 +7,7 @@
 #include "core/arm_controllers/implementations/ComputedTorque.hpp"
 #include "core/arm_controllers/implementations/GravityCompensatedPd.hpp"
 #include "core/arm_controllers/implementations/GravityPid.hpp"
+#include "core/collision/CollisionObserver.hpp"
 #include "core/control_loop/implementations/ControlLoopImpl.hpp"
 #include "core/joint_bus/implementations/JointBusImpl.hpp"
 #include "core/joint_configurator/implementations/JointConfiguratorImpl.hpp"
@@ -39,10 +40,12 @@ namespace arm
         const ArmLifecycle& Lifecycle() const;
         ArmControllers& Controllers();
         const ArmControllers& Controllers() const;
+        const std::optional<JointTorques>& EstimatedExternalTorques() const;
         ControlLoop& Loop();
 
     private:
         void Step();
+        std::optional<JointTorques> ExternalTorques(const std::optional<JointSetpoints>& applied, bool streaming);
 
         JointBusImpl jointBus;
         SafetySupervisorImpl safety;
@@ -53,6 +56,10 @@ namespace arm
         GravityCompensatedPd gravityPd;
         ComputedTorque computedTorque;
         GravityPid gravityPid;
+        CollisionObserver collision;
+        infra::Duration period;
+        bool observing{ false };
+        std::optional<JointTorques> externalTorques;
         ArmControllersImpl controllers;
         ArmControllerEngagement engagement;
         ControlLoopImpl loop;

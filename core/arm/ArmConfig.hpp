@@ -33,6 +33,8 @@ namespace arm
         BandwidthTuning computedTorque{};
         BandwidthTuning gravityPid{ 20.0f, 0.7f };
         TrackingLimits tracking{};
+        CollisionLimits collision{ DefaultCollisionLimits() };
+        float collisionObserverGain{ 50.0f };
     };
 
     inline infra::Duration SilenceWindow(const ArmConfig& config)

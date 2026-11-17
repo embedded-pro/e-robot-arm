@@ -311,7 +311,7 @@ TEST_F(ArmLifecycleImplTest, a_supervision_trip_trips_a_moving_arm_and_aborts_th
     EXPECT_CALL(motion, Abort());
     safety.NotifyObservers([](auto& joints)
         {
-            joints.OnSupervisionTrip(1, arm::SupervisionTrip::trackingError, foc::Radians{ 0.3f });
+            joints.OnSupervisionTrip(1, arm::SupervisionTrip::trackingError, 0.3f);
         });
 
     EXPECT_EQ(ArmState::tripped, lifecycle.State());

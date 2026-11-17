@@ -110,6 +110,18 @@ namespace integration
         return largest;
     }
 
+    std::pair<float, std::size_t> VirtualArmFixture::LargestExternalTorque()
+    {
+        Collect();
+        std::pair<float, std::size_t> largest{ 0.0f, 0 };
+        for (const auto& sample : trace)
+            if (sample.externalTorques.has_value())
+                for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+                    if (std::abs((*sample.externalTorques)[joint].Value()) > largest.first)
+                        largest = { std::abs((*sample.externalTorques)[joint].Value()), joint };
+        return largest;
+    }
+
     std::string VirtualArmFixture::History()
     {
         Collect();

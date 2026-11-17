@@ -252,7 +252,7 @@ namespace arm
         fsm.Dispatch(Trip{});
     }
 
-    void ArmLifecycleImpl::OnSupervisionTrip(std::size_t, SupervisionTrip, foc::Radians)
+    void ArmLifecycleImpl::OnSupervisionTrip(std::size_t, SupervisionTrip, float)
     {
         fsm.Dispatch(Trip{});
     }

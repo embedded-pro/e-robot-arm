@@ -104,9 +104,10 @@ The move there, in phase 8d ([#31](https://github.com/embedded-pro/e-robot-arm/i
 5. Done: `gravity-pd` gains from a bandwidth and the arm's inertia matrix, the virtual arm's scenarios in torque
    mode, then the position path removed: torque is the only enable mode, `pass-through` and `smoothed` are gone, and
    the controller that drives the joints cannot be disabled while the arm is enabled.
-6. Computed torque (done: robotics-toolbox `ComputedTorqueControl`, with the reference speed and acceleration from
-   joint motion) and a per-joint PID with gravity feed-forward (done: `gravity-pid`, numerical-toolbox
-   `PidIncremental`); collision detection with robotics-toolbox's momentum observer (phase 6).
+6. Done: computed torque (robotics-toolbox `ComputedTorqueControl`, with the reference speed and acceleration from
+   joint motion), a per-joint PID with gravity feed-forward (`gravity-pid`, numerical-toolbox `PidIncremental`), and
+   collision detection: robotics-toolbox's momentum observer estimates each joint's external torque and the safety
+   supervisor trips on one above the joint's collision limit ([collision.md](design/collision.md)).
 - **Motor characteristics per joint**: a preset or custom resistance, inductance, pole pairs, flux, inertia,
   friction and limits. Real nodes get these as motor-model parameters; virtual motors get them as their plant
   (phases 2 and 7).

@@ -29,7 +29,7 @@ namespace arm
         MOCK_METHOD(uint32_t, Period, (), (const, override));
         MOCK_METHOD(bool, Tripped, (), (const, override));
         MOCK_METHOD(bool, Rearm, (), (override));
-        MOCK_METHOD(void, Supervise, (const std::optional<JointPositions>& reference), (override));
+        MOCK_METHOD(void, Supervise, (const std::optional<JointPositions>& reference, const std::optional<JointTorques>& externalTorques), (override));
     };
 }
 

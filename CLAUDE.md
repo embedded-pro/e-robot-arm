@@ -41,6 +41,10 @@ simulator runs the same core against e-foc virtual motors or the real arm.
     tool pose, Jacobian, singularities, inverse kinematics within the joint limits,
     gravity torque, inverse dynamics and the mass matrix, on robotics-toolbox.
     Design: `documentation/design/arm-model.md`.
+  - `core/collision/` — `arm::CollisionObserver`: robotics-toolbox's momentum
+    observer over the arm model and the reflected rotor inertia; estimates each
+    joint's external torque for the safety supervisor's collision check.
+    Design: `documentation/design/collision.md`.
   - `core/arm_profile/` — reads a JSON arm profile into `ArmConfig` and writes it
     back, heap-free on EMIL's JSON parser. Design: `documentation/design/arm-profile.md`.
   - `core/arm/` — `arm::Arm`: builds the joint bus, safety supervisor, motion,

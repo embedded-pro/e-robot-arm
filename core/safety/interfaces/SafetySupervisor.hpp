@@ -17,6 +17,14 @@ namespace arm
     };
 
     using TrackingLimits = std::array<TrackingLimit, jointCount>;
+    using CollisionLimits = std::array<foc::NewtonMeter, jointCount>;
+
+    inline CollisionLimits DefaultCollisionLimits()
+    {
+        CollisionLimits limits{};
+        limits.fill(foc::NewtonMeter{ 20.0f });
+        return limits;
+    }
 
     class SafetySupervisor
         : public JointBus
@@ -24,7 +32,7 @@ namespace arm
     public:
         virtual bool Tripped() const = 0;
         virtual bool Rearm() = 0;
-        virtual void Supervise(const std::optional<JointPositions>& reference) = 0;
+        virtual void Supervise(const std::optional<JointPositions>& reference, const std::optional<JointTorques>& externalTorques) = 0;
 
     protected:
         ~SafetySupervisor() = default;
