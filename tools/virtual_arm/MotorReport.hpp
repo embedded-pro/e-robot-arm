@@ -27,6 +27,14 @@ namespace virtual_arm
     };
 
     using MotorReports = std::array<MotorReport, arm::jointCount>;
+
+    struct MotorTiming
+    {
+        float realTimeFactor{ 0.0f };
+        uint32_t overruns{ 0 };
+    };
+
+    using MotorTimings = std::array<std::optional<MotorTiming>, arm::jointCount>;
 }
 
 #endif

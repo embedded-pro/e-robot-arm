@@ -180,6 +180,23 @@ TEST_F(ArmSessionTest, refuses_to_rearm_while_a_joint_is_in_fault_and_rearms_onc
     EXPECT_EQ(arm::ArmState::ready, sink.snapshot.state);
 }
 
+TEST_F(ArmSessionTest, an_enable_whose_mode_a_joint_never_confirms_reports_the_failed_joint_command)
+{
+    Execute(1, arm_host::BringUp{});
+    simulatedArm.Joint(2).Silence();
+
+    Execute(2, arm_host::Enable{});
+    ForwardTime(1s);
+
+    EXPECT_EQ(arm::ArmState::tripped, sink.snapshot.state);
+    const auto failed = std::ranges::find_if(sink.events, [](const arm_host::ArmEvent& event)
+        {
+            return event.kind == ArmEventKind::refused && event.commandName == "select mode";
+        });
+    ASSERT_NE(sink.events.end(), failed);
+    EXPECT_EQ("not delivered to every joint in time", failed->reason);
+}
+
 TEST_F(ArmSessionTest, bring_up_and_enable_walk_the_lifecycle_and_report_each_state)
 {
     Execute(1, arm_host::BringUp{});

@@ -60,6 +60,27 @@ namespace arm_host
             return std::nullopt;
         }
 
+        std::string_view JointCommandName(arm::JointCommand command)
+        {
+            switch (command)
+            {
+                case arm::JointCommand::queryContracts:
+                    return "check contracts";
+                case arm::JointCommand::selectMode:
+                    return "select mode";
+                case arm::JointCommand::start:
+                    return "start";
+                case arm::JointCommand::stop:
+                    return "stop";
+                case arm::JointCommand::clearFault:
+                    return "clear faults";
+                case arm::JointCommand::align:
+                    return "align";
+            }
+
+            return "joint command";
+        }
+
         std::string_view FailureReason(arm::CommandFailure failure)
         {
             switch (failure)
@@ -136,7 +157,10 @@ namespace arm_host
     void ArmSession::Failed(arm::JointCommand command, arm::CommandFailure failure)
     {
         if (!held.has_value() || JointCommandOf(held->command) != command)
+        {
+            Emit({ .kind = ArmEventKind::refused, .commandName = JointCommandName(command), .reason = std::string{ FailureReason(failure) } });
             return;
+        }
 
         Emit({ .kind = ArmEventKind::refused, .command = held->id, .commandName = CommandName(held->command), .reason = std::string{ FailureReason(failure) } });
         held.reset();

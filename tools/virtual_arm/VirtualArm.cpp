@@ -232,6 +232,12 @@ namespace virtual_arm
         return reports;
     }
 
+    MotorTimings VirtualArm::Timings() const
+    {
+        std::scoped_lock lock{ mutex };
+        return timings;
+    }
+
     void VirtualArm::Silence(std::size_t joint, bool silent)
     {
         Post([this, joint, silent]()
@@ -483,6 +489,8 @@ namespace virtual_arm
             report.exitCode = report.phase == MotorPhase::ended ? motor.process.Ended() : std::nullopt;
             if (report.plant != motor.start.plant.name)
                 report.plant = motor.start.plant.name;
+            const auto& status = motor.connection.LastStatus();
+            timings[joint] = status.has_value() ? std::optional{ MotorTiming{ status->realTimeFactor, status->overruns } } : std::nullopt;
         }
 
         if (!up && AllIntroduced())

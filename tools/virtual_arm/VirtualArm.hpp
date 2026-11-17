@@ -45,6 +45,7 @@ namespace virtual_arm
         const std::string& Bus() const;
         std::optional<std::string> Problem() const;
         MotorReports Motors() const;
+        MotorTimings Timings() const;
 
         void Silence(std::size_t joint, bool silent);
         void Collide(std::size_t joint, foc::NewtonMeter torque);
@@ -101,6 +102,7 @@ namespace virtual_arm
         std::condition_variable changed;
         bool up{ false };
         MotorReports reports{};
+        MotorTimings timings{};
         std::optional<std::string> problem;
         std::vector<std::function<void()>> requests;
         std::jthread worker;

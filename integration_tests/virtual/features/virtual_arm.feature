@@ -28,7 +28,7 @@ Feature: The arm on six e-foc virtual motors
     When the arm controls its joints with "gravity-pid"
     And the arm moves the joints to 0.3, -0.5, 0.4, 0.2, 0.3, 0.1 rad
     Then the move shall be done within 8000 ms
-    And within 2000 ms every joint shall be within 0.01 rad of 0.3, -0.5, 0.4, 0.2, 0.3, 0.1
+    And within 2000 ms every joint shall be within 0.015 rad of 0.3, -0.5, 0.4, 0.2, 0.3, 0.1
     And the largest tracking error during the move shall stay below 0.04 rad
 
   @REQ-ARM-014

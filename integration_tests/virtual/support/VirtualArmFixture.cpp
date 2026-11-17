@@ -15,6 +15,7 @@ namespace integration
     {
         constexpr auto pollPeriod{ std::chrono::milliseconds{ 20 } };
         constexpr uint32_t bitrate{ 1000000 };
+        int scenariosStarted{ 0 };
 
         std::filesystem::path Engine()
         {
@@ -34,7 +35,7 @@ namespace integration
     {
         virtual_arm::VirtualArmOptions options;
         options.engine = Engine();
-        options.workDirectory = std::filesystem::temp_directory_path() / "e-robot-arm-virtual-scenarios";
+        options.workDirectory = std::filesystem::temp_directory_path() / "e-robot-arm-virtual-scenarios" / std::format("scenario{}", ++scenariosStarted);
         virtualArm.emplace(profile.config, options);
         if (auto problem = virtualArm->Start(); problem.has_value())
             return problem;
@@ -120,6 +121,10 @@ namespace integration
         for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
             history += std::format("  J{} state {} fault {} silent {}\n", joint + 1, static_cast<int>(snapshot.readings[joint].state),
                 static_cast<int>(snapshot.readings[joint].fault), snapshot.readings[joint].silent);
+        const auto timings = virtualArm->Timings();
+        for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+            if (timings[joint].has_value())
+                history += std::format("  motor {} real-time factor {:.3f} overruns {}\n", joint + 1, timings[joint]->realTimeFactor, timings[joint]->overruns);
         return history;
     }
 
