@@ -6,6 +6,7 @@ target_include_directories(e_robot_arm.tool.arm_console.logic PUBLIC
 
 target_link_libraries(e_robot_arm.tool.arm_console.logic PUBLIC
     e_robot_arm.tool.arm_host
+    e_robot_arm.tool.tuning
 )
 
 target_sources(e_robot_arm.tool.arm_console.logic PRIVATE

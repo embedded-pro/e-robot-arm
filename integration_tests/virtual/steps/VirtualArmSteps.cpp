@@ -185,3 +185,29 @@ THEN(R"(within {int} ms the arm shall trip with joint {int} on a collision)", (s
         },
         1s));
 }
+
+namespace
+{
+    std::optional<tuning::TuningRun> tuningRun;
+}
+
+WHEN(R"(a step test of {float} rad runs on joint {int})", (float amplitude, std::int32_t joint))
+{
+    auto& fixture = context.Get<VirtualArmFixture>();
+    tuningRun.emplace(*fixture.host, tuning::TuningTest{ .kind = tuning::TestKind::step, .joint = static_cast<std::size_t>(joint - 1), .amplitude = amplitude });
+    EXPECT_TRUE(fixture.Run(*tuningRun, 5s)) << tuningRun->Failure() << "\n"
+                                             << fixture.History();
+}
+
+THEN(R"(the step shall rise within {float} s and overshoot by less than {float} %)", (float riseLimit, float overshootLimit))
+{
+    ASSERT_TRUE(tuningRun.has_value());
+    const auto step = tuningRun->Step();
+    ASSERT_TRUE(step.has_value());
+    std::cout << "[METRIC] virtual_arm.step_rise_s=" << step->riseTime.value_or(-1.0f) << " limit=" << riseLimit << std::endl;
+    std::cout << "[METRIC] virtual_arm.step_overshoot_percent=" << step->overshootPercent << " limit=" << overshootLimit << std::endl;
+    std::cout << "[METRIC] virtual_arm.step_settling_s=" << step->settlingTime.value_or(-1.0f) << std::endl;
+    ASSERT_TRUE(step->riseTime.has_value());
+    EXPECT_LT(*step->riseTime, riseLimit);
+    EXPECT_LT(step->overshootPercent, overshootLimit);
+}

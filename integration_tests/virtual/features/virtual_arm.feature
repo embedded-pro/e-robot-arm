@@ -33,6 +33,11 @@ Feature: The arm on six e-foc virtual motors
     And within 2000 ms every joint shall be within 0.015 rad of 0.3, -0.5, 0.4, 0.2, 0.3, 0.1
     And the largest tracking error during the move shall stay below 0.04 rad
 
+  Scenario: A step test on the elbow measures how gravity-pid answers a reference step
+    When the arm controls its joints with "gravity-pid"
+    And a step test of 0.05 rad runs on joint 3
+    Then the step shall rise within 0.15 s and overshoot by less than 65 %
+
   @REQ-ARM-016
   Scenario: A collision trips the arm on the external torque its momentum observer estimates
     When the arm moves the joints to 0.3, -0.5, 0.4, 0.2, 0.3, 0.1 rad

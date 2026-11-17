@@ -69,6 +69,9 @@ simulator runs the same core against e-foc virtual motors or the real arm.
   - `tools/arm_host/` — `arm_host::ArmHost`: the arm on its own thread with its
     target (simulated, `virtual:` or a real adapter); commands in, snapshot,
     events and traces out. Design: `documentation/design/simulator.md`.
+  - `tools/tuning/` — `tuning::TuningRun`: a step or out-and-back test on one
+    joint through the arm host, its metrics (numerical-toolbox step-response
+    metrics, RMS tracking error) and CSV. Design: `documentation/design/tuning.md`.
   - `tools/simulator/` — the e-robot-arm Simulator: `view_models/` (no Qt,
     tested with ui-cpp's recording backend) and `app/` (Qt Widgets on ui-cpp,
     the Qt Quick 3D scene as the `Simulator` QML module, built with the

@@ -1,9 +1,11 @@
 #include "tools/arm_console/ArmConsole.hpp"
+#include "numerical/math/Math.hpp"
 #include "tools/arm_host/ProfileFile.hpp"
 #include <algorithm>
 #include <array>
 #include <filesystem>
 #include <format>
+#include <fstream>
 #include <iomanip>
 
 namespace arm_console
@@ -54,6 +56,9 @@ namespace arm_console
 
         if (command == "controller")
             return ArmController(arguments);
+
+        if (command == "tune")
+            return Tune(arguments);
 
         if (command == "pose" || command == "fk" || command == "ik" || command == "gravity")
         {
@@ -287,10 +292,89 @@ namespace arm_console
 
     void ArmConsole::Usage()
     {
-        output << "usage: bringup | enable | disable | move q1 q2 q3 q4 q5 q6 | step q1 q2 q3 q4 q5 q6 | rearm | contracts | mode torque|speed|position | start | stop | estop | clear | align | abort | load <file> | save <file> | controllers | controller enable|disable|select <name> | pose | gravity | fk q1..q6 | ik x y z roll pitch yaw | status | quit\n";
+        output << "usage: bringup | enable | disable | move q1 q2 q3 q4 q5 q6 | step q1 q2 q3 q4 q5 q6 | tune step|move <joint> <rad> [csv] | rearm | contracts | mode torque|speed|position | start | stop | estop | clear | align | abort | load <file> | save <file> | controllers | controller enable|disable|select <name> | pose | gravity | fk q1..q6 | ik x y z roll pitch yaw | status | quit\n";
+    }
+
+    ExecuteResult ArmConsole::Tune(std::istringstream& arguments)
+    {
+        std::string kind;
+        std::size_t joint{ 0 };
+        float amplitude{ 0.0f };
+        std::filesystem::path csv;
+        if (!(arguments >> kind >> joint >> amplitude) || (kind != "step" && kind != "move") || joint == 0)
+        {
+            Usage();
+            return { Outcome::done };
+        }
+        arguments >> csv;
+
+        std::scoped_lock lock{ tuningMutex };
+        const tuning::TuningTest test{ .kind = kind == "step" ? tuning::TestKind::step : tuning::TestKind::outAndBack, .joint = joint - 1, .amplitude = amplitude };
+        tuningRun.emplace(arm, test);
+        if (const auto refusal = tuningRun->Start())
+        {
+            output << "tune refused: " << *refusal << "\n";
+            tuningRun.reset();
+            return { Outcome::done };
+        }
+
+        tuningCsv = csv;
+        return { Outcome::posted, tuningRun->Command() };
+    }
+
+    void ArmConsole::Trace(const arm_host::TraceSample& sample)
+    {
+        std::scoped_lock lock{ tuningMutex };
+        if (!tuningRun)
+            return;
+        tuningRun->OnTrace(sample);
+        ReportTuning();
+    }
+
+    void ArmConsole::ReportTuning()
+    {
+        if (tuningRun->State() == tuning::RunState::failed)
+            output << "tune failed: " << tuningRun->Failure() << "\n";
+        if (tuningRun->State() != tuning::RunState::done)
+        {
+            if (tuningRun->State() == tuning::RunState::failed)
+                tuningRun.reset();
+            return;
+        }
+
+        const auto& test = tuningRun->Test();
+        const auto tracking = tuningRun->Tracking();
+        const auto seconds = [](const std::optional<float>& value)
+        {
+            return value.has_value() ? std::format("{:.3f} s", *value) : std::string{ "none" };
+        };
+        if (const auto step = tuningRun->Step())
+            output << std::format("tune step joint {} by {:.3f} rad: rise {}, overshoot {:.1f} %, settling {}, steady-state error {:.4f} rad, ", test.joint + 1,
+                test.amplitude, seconds(step->riseTime), step->overshootPercent, seconds(step->settlingTime), math::Abs(step->steadyStateError) < 5.0e-5f ? 0.0f : step->steadyStateError);
+        else
+            output << std::format("tune move joint {} by {:.3f} rad and back: ", test.joint + 1, test.amplitude);
+        output << std::format("tracking RMS {:.4f} rad, peak {:.4f} rad\n", tracking.rms, tracking.peak);
+
+        if (!tuningCsv.empty())
+        {
+            std::ofstream file{ tuningCsv };
+            tuning::WriteCsv(tuningRun->Samples(), file);
+            output << (file ? "tune samples written to " : "tune: cannot write ") << tuningCsv.string() << "\n";
+        }
+        tuningRun.reset();
     }
 
     void ArmConsole::Print(const arm_host::ArmEvent& event)
+    {
+        PrintEvent(event);
+        std::scoped_lock lock{ tuningMutex };
+        if (!tuningRun)
+            return;
+        tuningRun->OnEvent(event);
+        ReportTuning();
+    }
+
+    void ArmConsole::PrintEvent(const arm_host::ArmEvent& event)
     {
         using enum arm_host::ArmEventKind;
 

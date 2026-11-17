@@ -122,6 +122,27 @@ namespace integration
         return largest;
     }
 
+    bool VirtualArmFixture::Run(tuning::TuningRun& run, std::chrono::milliseconds timeout)
+    {
+        Collect();
+        auto eventsSeen = events.size();
+        auto traceSeen = trace.size();
+        if (run.Start().has_value())
+            return false;
+
+        const auto deadline = std::chrono::steady_clock::now() + timeout;
+        while (run.State() != tuning::RunState::done && run.State() != tuning::RunState::failed && std::chrono::steady_clock::now() < deadline)
+        {
+            std::this_thread::sleep_for(pollPeriod);
+            Collect();
+            for (; eventsSeen != events.size(); ++eventsSeen)
+                run.OnEvent(events[eventsSeen]);
+            for (; traceSeen != trace.size(); ++traceSeen)
+                run.OnTrace(trace[traceSeen]);
+        }
+        return run.State() == tuning::RunState::done;
+    }
+
     std::string VirtualArmFixture::History()
     {
         Collect();

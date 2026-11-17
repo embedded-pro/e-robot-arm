@@ -62,6 +62,8 @@ namespace
     private:
         void Print()
         {
+            for (const auto& sample : host.TakeTrace())
+                console.Trace(sample);
             for (const auto& event : host.TakeEvents())
             {
                 std::scoped_lock lock{ mutex };

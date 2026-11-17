@@ -2,7 +2,7 @@
 title: "Collision Observer Design"
 type: design
 status: draft
-version: 0.1.0
+version: 0.2.0
 component: "collision"
 date: 2026-11-17
 ---
@@ -12,7 +12,7 @@ date: 2026-11-17
 | Title     | Collision Observer Design |
 | Type      | design                    |
 | Status    | draft                     |
-| Version   | 0.1.0                     |
+| Version   | 0.2.0                     |
 | Component | collision                 |
 | Date      | 2026-11-17                |
 
@@ -112,6 +112,10 @@ snapshot and trace.
   collision limit sits above that.
 - A reading that arrives a period late shows the joints where they were, so that step's estimate is off by about
   the gain times one period's momentum change; the next fresh reading corrects it.
+- The observer takes the commanded torque as applied. A drive that cannot deliver it, at its current limit or
+  behind its current loop, leaves the difference in the estimate: a 0.1 rad reference step on the virtual arm's
+  elbow reads 11 N·m on the shoulder and trips it. Step tests keep their steps small (0.05 rad in the scenarios)
+  until the observer knows the drives' limits (open question 2).
 - The observer is heap-free and runs once per control step; a mass matrix, a Coriolis matrix and a gravity vector
   per step.
 
@@ -119,6 +123,7 @@ snapshot and trace.
 
 ## Open Questions
 
-| # | Question                                                                      | Options                                          | Status |
-|---|-------------------------------------------------------------------------------|--------------------------------------------------|--------|
-| 1 | Whether the observer models the drives' friction, so the limits can come down | No friction model, Coulomb and viscous per joint | open   |
+| # | Question                                                                       | Options                                                                              | Status |
+|---|--------------------------------------------------------------------------------|--------------------------------------------------------------------------------------|--------|
+| 1 | Whether the observer models the drives' friction, so the limits can come down  | No friction model, Coulomb and viscous per joint                                     | open   |
+| 2 | Whether the observer clamps the commanded torque to what the drive can deliver | Commanded torque, clamped to the motor's current limit, the drive's measured current | open   |
