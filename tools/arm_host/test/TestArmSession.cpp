@@ -300,8 +300,10 @@ TEST_F(ArmSessionConfiguringTest, names_the_joint_whose_motor_controller_reads_b
 TEST_F(ArmSessionTest, lists_the_arm_controllers_and_reports_each_change_of_the_active_one)
 {
     Execute(1, arm_host::CheckContracts{});
-    ASSERT_EQ(1u, sink.snapshot.armControllers.size());
+    ASSERT_EQ(2u, sink.snapshot.armControllers.size());
     EXPECT_EQ("gravity-pd", sink.snapshot.armControllers[0].name);
+    EXPECT_EQ("computed-torque", sink.snapshot.armControllers[1].name);
+    EXPECT_TRUE(sink.snapshot.armControllers[1].enabled);
     EXPECT_TRUE(sink.snapshot.armControllers[0].active);
     EXPECT_TRUE(sink.snapshot.armControllers[0].enabled);
 
@@ -401,6 +403,24 @@ namespace
             : TorqueArmSessionTest(SoftTorqueConfig())
         {}
     };
+}
+
+TEST_F(TorqueArmSessionTest, computed_torque_takes_over_mid_move_and_tracks_the_simulated_arm_onto_its_target)
+{
+    Execute(1, arm_host::BringUp{});
+    Execute(2, arm_host::Enable{});
+    const arm::JointPositions goal{ foc::Radians{ 0.3f }, foc::Radians{ -0.5f }, foc::Radians{ 0.4f }, foc::Radians{ 0.2f }, foc::Radians{ 0.3f },
+        foc::Radians{ 0.1f } };
+    Execute(3, arm_host::MoveTo{ goal });
+
+    Execute(4, arm_host::SelectArmController{ 1 });
+    EXPECT_EQ("computed-torque", sink.Find(ArmEventKind::armControllerChanged)->armController);
+    ForwardTime(6s);
+
+    ASSERT_NE(nullptr, sink.Find(ArmEventKind::moveDone));
+    EXPECT_FALSE(sink.snapshot.tripped);
+    for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+        EXPECT_NEAR(goal[joint].Value(), sink.snapshot.readings[joint].position.Value(), 0.01f) << "joint " << joint;
 }
 
 TEST_F(TorqueArmSessionTest, the_gravity_compensated_pd_moves_the_simulated_arm_onto_its_target)

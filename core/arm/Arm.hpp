@@ -4,6 +4,7 @@
 #include "core/arm/ArmConfig.hpp"
 #include "core/arm/ArmControllerEngagement.hpp"
 #include "core/arm_controllers/implementations/ArmControllersImpl.hpp"
+#include "core/arm_controllers/implementations/ComputedTorque.hpp"
 #include "core/arm_controllers/implementations/GravityCompensatedPd.hpp"
 #include "core/control_loop/implementations/ControlLoopImpl.hpp"
 #include "core/joint_bus/implementations/JointBusImpl.hpp"
@@ -17,6 +18,7 @@
 
 namespace arm
 {
+    JointInertias ReflectedRotors(const ArmConfig& config);
     PdGainMatrices GravityPdGains(const ArmModel& model, const ArmConfig& config);
 
     class Arm
@@ -48,6 +50,7 @@ namespace arm
         ArmLifecycleImpl lifecycle;
         ArmModel model;
         GravityCompensatedPd gravityPd;
+        ComputedTorque computedTorque;
         ArmControllersImpl controllers;
         ArmControllerEngagement engagement;
         ControlLoopImpl loop;

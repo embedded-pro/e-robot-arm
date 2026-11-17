@@ -69,7 +69,7 @@ namespace
         {
             for (std::size_t period = 0; period != periods; ++period)
                 if (const auto reference = motion.Step())
-                    sent.push_back(*reference);
+                    sent.push_back(reference->positions);
         }
 
         StrictMock<arm::JointBusMock> bus;

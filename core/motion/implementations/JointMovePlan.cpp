@@ -18,12 +18,17 @@ namespace arm
                 profiles[joint] = *stretched;
     }
 
-    JointPositions JointMovePlan::Sample(float time) const
+    JointReference JointMovePlan::Sample(float time) const
     {
-        JointPositions positions{};
+        JointReference reference{};
         for (std::size_t joint = 0; joint != jointCount; ++joint)
-            positions[joint] = foc::Radians{ profiles[joint]->Sample(time).position };
-        return positions;
+        {
+            const auto state = profiles[joint]->Sample(time);
+            reference.positions[joint] = foc::Radians{ state.position };
+            reference.speeds[joint] = foc::RadiansPerSecond{ state.velocity };
+            reference.accelerations[joint] = foc::RadiansPerSecondSquared{ state.acceleration };
+        }
+        return reference;
     }
 
     float JointMovePlan::Duration() const

@@ -24,14 +24,14 @@ namespace arm
         PdGainMatrix kd;
     };
 
-    struct GravityPdTuning
+    struct BandwidthTuning
     {
         float bandwidth{ 30.0f };
         float dampingRatio{ 0.7f };
     };
 
     PdGainMatrices DiagonalGains(const JointPdGains& gains);
-    PdGainMatrices PlacedGains(const ArmModel& model, const JointInertias& rotors, const GravityPdTuning& tuning);
+    PdGainMatrices PlacedGains(const ArmModel& model, const JointInertias& rotors, const BandwidthTuning& tuning);
 
     class GravityCompensatedPd
         : public ArmController
@@ -41,7 +41,7 @@ namespace arm
 
         bool BumplessTransfer() const override;
         void Reset(const MeasuredJoints& measured) override;
-        JointSetpoints Step(const MeasuredJoints& measured, const JointPositions& reference) override;
+        JointSetpoints Step(const MeasuredJoints& measured, const JointReference& reference) override;
 
     private:
         using Law = controllers::PdGravityCompensation<float, jointCount>;

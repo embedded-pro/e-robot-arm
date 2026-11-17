@@ -133,25 +133,25 @@ TEST_F(ArmControllersImplTest, while_a_move_runs_only_a_bumpless_controller_take
 
 TEST_F(ArmControllersImplTest, streams_the_active_controllers_set_each_step_holding_the_last_reference)
 {
-    EXPECT_TRUE(controllers.Step(Uniform(1.0f)));
+    EXPECT_TRUE(controllers.Step(arm::AtRest(Uniform(1.0f))));
 
     EngageStateless();
     EXPECT_TRUE(controllers.Streaming());
 
-    EXPECT_CALL(stateless, Step(MeasuredAt(Uniform(0.25f)), Uniform(0.25f))).WillOnce(Return(arm::JointSetpoints{ Uniform(0.25f), Torques(0.3f) }));
+    EXPECT_CALL(stateless, Step(MeasuredAt(Uniform(0.25f)), arm::AtRest(Uniform(0.25f)))).WillOnce(Return(arm::JointSetpoints{ Uniform(0.25f), Torques(0.3f) }));
     EXPECT_CALL(bus, SendTorques(Torques(0.3f))).WillOnce(Return(true));
     EXPECT_TRUE(controllers.Step(std::nullopt));
 
-    EXPECT_CALL(stateless, Step(_, Uniform(1.0f))).Times(2).WillRepeatedly(Return(arm::JointSetpoints{ Uniform(1.0f), Torques(0.9f) }));
+    EXPECT_CALL(stateless, Step(_, arm::AtRest(Uniform(1.0f)))).Times(2).WillRepeatedly(Return(arm::JointSetpoints{ Uniform(1.0f), Torques(0.9f) }));
     EXPECT_CALL(bus, SendTorques(Torques(0.9f))).Times(2).WillRepeatedly(Return(true));
-    EXPECT_TRUE(controllers.Step(Uniform(1.0f)));
+    EXPECT_TRUE(controllers.Step(arm::AtRest(Uniform(1.0f))));
     EXPECT_TRUE(controllers.Step(std::nullopt));
     ASSERT_TRUE(controllers.LastSetpoints().has_value());
     EXPECT_EQ(Torques(0.9f), controllers.LastSetpoints()->torques);
     EXPECT_EQ(std::optional<arm::JointPositions>{ Uniform(1.0f) }, controllers.Reference());
 
     controllers.Disengage();
-    EXPECT_TRUE(controllers.Step(Uniform(1.0f)));
+    EXPECT_TRUE(controllers.Step(arm::AtRest(Uniform(1.0f))));
     EXPECT_EQ(std::nullopt, controllers.Reference());
 }
 
@@ -174,7 +174,7 @@ TEST_F(ArmControllersImplTest, streaming_without_an_active_controller_stops_at_o
 {
     controllers.Engage();
 
-    EXPECT_FALSE(controllers.Step(Uniform(1.0f)));
+    EXPECT_FALSE(controllers.Step(arm::AtRest(Uniform(1.0f))));
     EXPECT_FALSE(controllers.Streaming());
 }
 
@@ -184,7 +184,7 @@ TEST_F(ArmControllersImplTest, a_set_the_supervisor_refuses_stops_the_streaming)
 
     EXPECT_CALL(stateless, Step(_, _)).WillOnce(Return(arm::JointSetpoints{ Uniform(3.0f), Torques(3.0f) }));
     EXPECT_CALL(bus, SendTorques(_)).WillOnce(Return(false));
-    EXPECT_FALSE(controllers.Step(Uniform(3.0f)));
+    EXPECT_FALSE(controllers.Step(arm::AtRest(Uniform(3.0f))));
 
     EXPECT_FALSE(controllers.Streaming());
     EXPECT_FALSE(controllers.LastSetpoints().has_value());

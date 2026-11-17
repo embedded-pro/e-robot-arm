@@ -250,11 +250,13 @@ namespace arm
                 if (key == "meshes")
                     return ReadMeshes(path, value, profile.meshes);
                 if (key == "gravityPd")
-                    return ReadGravityPd(path, value, profile.config.gravityPd);
+                    return ReadTuning(path, value, profile.config.gravityPd);
+                if (key == "computedTorque")
+                    return ReadTuning(path, value, profile.config.computedTorque);
                 return Unknown(path);
             }
 
-            bool ReadGravityPd(const Path& path, const Value& value, GravityPdTuning& tuning)
+            bool ReadTuning(const Path& path, const Value& value, BandwidthTuning& tuning)
             {
                 return ReadMembers(path, value, [this, &tuning](const Path& item, infra::JsonString key, const Value& member)
                     {
@@ -875,11 +877,11 @@ namespace arm
                 stream << ",\n  \"controlPeriodMs\": " << static_cast<int64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(config.controlPeriod).count())
                        << ",\n  \"missedRequestsBeforeSilent\": " << static_cast<uint32_t>(config.missedRequestsBeforeSilent)
                        << ",\n  \"commandTimeoutPeriods\": " << static_cast<uint32_t>(config.commandTimeoutPeriods)
-                       << ",\n  \"gravityPd\": { \"bandwidthRadPerS\": ";
-                Number(config.gravityPd.bandwidth);
-                stream << ", \"dampingRatio\": ";
-                Number(config.gravityPd.dampingRatio);
-                stream << " },\n  \"joints\": [";
+                       << ",\n  \"gravityPd\": ";
+                Tuning(config.gravityPd);
+                stream << ",\n  \"computedTorque\": ";
+                Tuning(config.computedTorque);
+                stream << ",\n  \"joints\": [";
 
                 for (std::size_t joint = 0; joint != jointCount; ++joint)
                 {
@@ -928,6 +930,15 @@ namespace arm
                     stream << (index == 0 ? "{ \"" : ", \"") << names[index] << "\": ";
                     Number(values[index]);
                 }
+                stream << " }";
+            }
+
+            void Tuning(const BandwidthTuning& tuning)
+            {
+                stream << "{ \"bandwidthRadPerS\": ";
+                Number(tuning.bandwidth);
+                stream << ", \"dampingRatio\": ";
+                Number(tuning.dampingRatio);
                 stream << " }";
             }
 

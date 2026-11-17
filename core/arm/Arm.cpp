@@ -2,7 +2,7 @@
 
 namespace arm
 {
-    PdGainMatrices GravityPdGains(const ArmModel& model, const ArmConfig& config)
+    JointInertias ReflectedRotors(const ArmConfig& config)
     {
         JointInertias rotors{};
         for (std::size_t joint = 0; joint != jointCount; ++joint)
@@ -11,7 +11,12 @@ namespace arm
             const auto ratio = config.transmissions[joint].ratio;
             rotors[joint] = motor[MotorParameter::inertia] * ratio * ratio;
         }
-        return PlacedGains(model, rotors, config.gravityPd);
+        return rotors;
+    }
+
+    PdGainMatrices GravityPdGains(const ArmModel& model, const ArmConfig& config)
+    {
+        return PlacedGains(model, ReflectedRotors(config), config.gravityPd);
     }
 
     Arm::Arm(can::FocMotorCategoryClient& client, const ArmConfig& config)
@@ -22,6 +27,7 @@ namespace arm
         , lifecycle(safety, motion, configurator, config.controllers, config.motors)
         , model(config.geometry, config.mass, config.positionLimits)
         , gravityPd(model, GravityPdGains(model, config))
+        , computedTorque(model, ReflectedRotors(config), config.computedTorque)
         , controllers(safety, motion)
         , engagement(lifecycle, controllers)
         , loop(safety, config.controlPeriod, [this]()
@@ -31,6 +37,7 @@ namespace arm
     {
         const auto gravityPdId = controllers.Register("gravity-pd", gravityPd);
         controllers.Enable(gravityPdId);
+        controllers.Enable(controllers.Register("computed-torque", computedTorque));
         controllers.Select(gravityPdId);
     }
 

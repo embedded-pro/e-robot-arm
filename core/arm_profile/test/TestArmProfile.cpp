@@ -153,7 +153,8 @@ TEST_F(ArmProfileTest, reads_the_link_meshes_and_leaves_the_others_out)
 TEST_F(ArmProfileTest, a_written_profile_reads_back_to_the_same_configuration)
 {
     const auto original = Read(Profile(configuredJoint, geometry + Mass(Link("1.25")) + R"( "meshes": { "link6": "flange \"v2\".glb" },)" +
-                                                            R"( "gravityPd": { "bandwidthRadPerS": 22.5, "dampingRatio": 0.9 },)"));
+                                                            R"( "gravityPd": { "bandwidthRadPerS": 22.5, "dampingRatio": 0.9 },)" +
+                                                            R"( "computedTorque": { "bandwidthRadPerS": 40, "dampingRatio": 1.2 },)"));
     ASSERT_TRUE(original.has_value()) << Problem();
 
     infra::StringOutputStream::WithStorage<16384> stream;
@@ -168,6 +169,8 @@ TEST_F(ArmProfileTest, a_written_profile_reads_back_to_the_same_configuration)
     EXPECT_EQ(original->config.missedRequestsBeforeSilent, copy->config.missedRequestsBeforeSilent);
     EXPECT_EQ(original->config.gravityPd.bandwidth, copy->config.gravityPd.bandwidth);
     EXPECT_EQ(original->config.gravityPd.dampingRatio, copy->config.gravityPd.dampingRatio);
+    EXPECT_EQ(original->config.computedTorque.bandwidth, copy->config.computedTorque.bandwidth);
+    EXPECT_EQ(original->config.computedTorque.dampingRatio, copy->config.computedTorque.dampingRatio);
     EXPECT_EQ(original->config.nodes, copy->config.nodes);
     for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
     {
@@ -240,14 +243,16 @@ TEST_F(ArmProfileTest, reads_the_tracking_error_supervision_and_defaults_it_to_0
     EXPECT_EQ(std::chrono::milliseconds{ 200 }, profile->config.tracking[1].time);
 }
 
-TEST_F(ArmProfileTest, reads_the_gravity_pd_bandwidth_and_damping_and_defaults_them_to_30_and_0_7)
+TEST_F(ArmProfileTest, reads_the_controllers_bandwidth_and_damping_and_defaults_them_to_30_and_0_7)
 {
-    const auto tuned = Read(Profile(Joint(1), R"( "gravityPd": { "bandwidthRadPerS": 45, "dampingRatio": 1 },)"));
+    const auto tuned = Read(Profile(Joint(1), R"( "gravityPd": { "bandwidthRadPerS": 45, "dampingRatio": 1 }, "computedTorque": { "dampingRatio": 0.9 },)"));
     const auto plain = Read(Profile(Joint(1)));
 
     ASSERT_TRUE(tuned.has_value()) << Problem();
     EXPECT_NEAR(45.0f, tuned->config.gravityPd.bandwidth, 1.0e-6f);
     EXPECT_NEAR(1.0f, tuned->config.gravityPd.dampingRatio, 1.0e-6f);
+    EXPECT_NEAR(30.0f, tuned->config.computedTorque.bandwidth, 1.0e-6f);
+    EXPECT_NEAR(0.9f, tuned->config.computedTorque.dampingRatio, 1.0e-6f);
     ASSERT_TRUE(plain.has_value()) << Problem();
     EXPECT_NEAR(30.0f, plain->config.gravityPd.bandwidth, 1.0e-6f);
     EXPECT_NEAR(0.7f, plain->config.gravityPd.dampingRatio, 1.0e-6f);

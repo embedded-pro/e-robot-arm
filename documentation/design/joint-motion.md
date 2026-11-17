@@ -2,7 +2,7 @@
 title: "Joint Motion Design"
 type: design
 status: draft
-version: 0.6.0
+version: 0.7.0
 component: "motion"
 date: 2026-11-14
 ---
@@ -12,7 +12,7 @@ date: 2026-11-14
 | Title     | Joint Motion Design |
 | Type      | design              |
 | Status    | draft               |
-| Version   | 0.6.0               |
+| Version   | 0.7.0               |
 | Component | motion              |
 | Date      | 2026-11-14          |
 
@@ -28,8 +28,8 @@ date: 2026-11-14
 - Planning a point-to-point move of all six joints that starts and ends at rest, within each joint's speed and
   acceleration limits.
 - Synchronising the joints so that they start together and arrive together.
-- Sampling the planned positions once per control period, and the target last, as the reference the arm
-  controllers follow ([arm-controllers.md](arm-controllers.md)).
+- Sampling the planned positions, speeds and accelerations once per control period, and the target at rest last,
+  as the reference the arm controllers follow ([arm-controllers.md](arm-controllers.md)).
 - Reporting when the move is done, or when it was aborted.
 
 **Is NOT responsible for:**
@@ -62,11 +62,12 @@ whole move within them; the safety supervisor still checks every setpoint set.
 ### Part B — Sampling
 
 Joint motion has no clock of its own: the control loop runs its step once per control period, in the setpoint
-phase. While a move is running, each step advances the move by one period and samples the joint positions at that
-time, measured from the start of the move: that is the period's reference, which the arm controllers turn into a
+phase. While a move is running, each step advances the move by one period and samples each joint's position, speed
+and acceleration at that time, measured from the start of the move, from the same trapezoid the move was planned
+with: that is the period's reference, which the arm controllers turn into a
 setpoint set right after. With no move running a step has no reference. The first sample is taken at the first
-step after the start. The sample at or after the move's end is the target itself; it is given once and the move
-is done.
+step after the start. The sample at or after the move's end is the target itself, at rest (zero speed and
+acceleration); it is given once and the move is done.
 
 If the arm cannot send the period's set (the safety supervisor refuses it, or no arm controller is active), the
 arm aborts the move. Aborting a move, by request or so, stops the sampling; the arm controllers hold the last
@@ -78,11 +79,11 @@ reference, so the joints stay where the move left them.
 
 ### Provided
 
-| Interface           | Purpose                                 | Contract                                           |
-|---------------------|-----------------------------------------|----------------------------------------------------|
-| Joint motion        | Move to a target, abort, whether moving | One move at a time; refused targets send nothing   |
-| Joint motion events | Move done, move aborted                 | Exactly one of the two per accepted move           |
-| Reference           | One sample per step while a move runs   | None without a move; the target is the last sample |
+| Interface           | Purpose                                                     | Contract                                            |
+|---------------------|-------------------------------------------------------------|-----------------------------------------------------|
+| Joint motion        | Move to a target, abort, whether moving                     | One move at a time; refused targets send nothing    |
+| Joint motion events | Move done, move aborted                                     | Exactly one of the two per accepted move            |
+| Reference           | Position, speed and acceleration per step while a move runs | None without a move; the target at rest is the last |
 
 ### Required
 
@@ -101,6 +102,9 @@ reference, so the joints stay where the move left them.
 | Joint limits | maximum speed    | radians/second  | > 0           | One per joint                            |
 | Joint limits | max acceleration | radians/second² | > 0           | One per joint                            |
 | Motion       | control period   | duration        | > 0           | Time between two setpoint sets           |
+| Reference    | position         | radians         | joint limits  | Per joint, from the move's trapezoid     |
+| Reference    | speed            | radians/second  | finite        | Per joint; zero at rest                  |
+| Reference    | acceleration     | radians/second² | finite        | Per joint; zero at rest                  |
 
 ---
 

@@ -11,7 +11,6 @@
 
 namespace arm
 {
-    using JointAccelerations = std::array<foc::RadiansPerSecondSquared, jointCount>;
 
     struct Singularities
     {
@@ -68,10 +67,12 @@ namespace arm
         using DynamicLinks = std::array<dynamics::JointLink<float>, jointCount>;
 
         const dynamics::EulerLagrangeDynamics<float, jointCount>& Dynamics() const;
+        const dynamics::InverseDynamicsModel<float, jointCount>& InverseModel() const;
         const DynamicLinks& Links() const;
         const math::Vector3<float>& Gravity() const;
         JointVector ModelVector(const JointPositions& joints) const;
         JointVector ModelSpeeds(const JointSpeeds& speeds) const;
+        JointVector ModelAccelerations(const JointAccelerations& accelerations) const;
         JointVector ModelTorques(const JointTorques& torques) const;
         JointPositions ToJointPositions(const JointVector& angles) const;
         JointSpeeds ToJointSpeeds(const JointVector& speeds) const;

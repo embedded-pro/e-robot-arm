@@ -282,6 +282,11 @@ namespace arm
         return dynamics;
     }
 
+    const dynamics::InverseDynamicsModel<float, jointCount>& ArmModel::InverseModel() const
+    {
+        return dynamics;
+    }
+
     const ArmModel::DynamicLinks& ArmModel::Links() const
     {
         return links;
@@ -321,6 +326,14 @@ namespace arm
         JointVector vector{};
         for (std::size_t joint = 0; joint != jointCount; ++joint)
             vector.at(joint, 0) = static_cast<float>(geometry.opw.signs[joint]) * speeds[joint].Value();
+        return vector;
+    }
+
+    ArmModel::JointVector ArmModel::ModelAccelerations(const JointAccelerations& accelerations) const
+    {
+        JointVector vector{};
+        for (std::size_t joint = 0; joint != jointCount; ++joint)
+            vector.at(joint, 0) = static_cast<float>(geometry.opw.signs[joint]) * accelerations[joint].Value();
         return vector;
     }
 

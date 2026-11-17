@@ -84,7 +84,7 @@ namespace arm
     void ArmControllersImpl::Engage()
     {
         const auto measured = Measured();
-        heldReference = measured.positions;
+        heldReference = AtRest(measured.positions);
         if (active.has_value())
             entries[*active].controller->Reset(measured);
         streaming = true;
@@ -100,13 +100,15 @@ namespace arm
         return streaming;
     }
 
-    bool ArmControllersImpl::Step(const std::optional<JointPositions>& reference)
+    bool ArmControllersImpl::Step(const std::optional<JointReference>& reference)
     {
         if (!streaming)
             return true;
 
         if (reference.has_value())
             heldReference = *reference;
+        else
+            heldReference = AtRest(heldReference.positions);
 
         if (!active.has_value())
         {
@@ -134,7 +136,7 @@ namespace arm
     {
         if (!streaming)
             return std::nullopt;
-        return heldReference;
+        return heldReference.positions;
     }
 
     bool ArmControllersImpl::Registered(ArmControllerId id) const

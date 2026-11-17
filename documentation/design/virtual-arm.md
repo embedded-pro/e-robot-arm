@@ -2,7 +2,7 @@
 title: "Virtual Arm Design"
 type: design
 status: draft
-version: 0.11.0
+version: 0.12.0
 component: "virtual-arm"
 date: 2026-11-16
 ---
@@ -12,7 +12,7 @@ date: 2026-11-16
 | Title     | Virtual Arm Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.11.0             |
+| Version   | 0.12.0             |
 | Component | virtual-arm        |
 | Date      | 2026-11-16         |
 
@@ -251,6 +251,7 @@ calibrated but not aligned.
 | Scenario               | Checks                                                                                                                                                                                                                        |
 |------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Tracking under gravity | The largest difference between commanded and measured position while the shoulder lifts, as a `[METRIC]` line held to a limit pinned from it                                                                                  |
+| Computed torque        | The same move under `computed-torque`, with the reference speed and acceleration: a tighter tracking limit, pinned from its own `[METRIC]` line                                                                               |
 | Collision              | A 30 N·m torque against the shoulder while it moves, about the drive's peak torque through the gear, trips the arm on that joint's tracking error (REQ-ARM-014); without the supervision the drive holds on and nothing trips |
 | Silent joint           | A paused motor trips the arm as a silent joint (REQ-ARM-005)                                                                                                                                                                  |
 
