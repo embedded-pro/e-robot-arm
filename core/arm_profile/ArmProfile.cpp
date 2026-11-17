@@ -569,6 +569,8 @@ namespace arm
                     return Mark(seen.limits, ReadLimits(path, value, config.positionLimits[joint]));
                 if (key == "motionLimits")
                     return Mark(seen.motion, ReadMotion(path, value, config.motionLimits[joint]));
+                if (key == "trackingError")
+                    return ReadTracking(path, value, config.tracking[joint]);
                 if (key == "motorController")
                     return ReadController(path, value, config.controllers[joint]);
                 if (key == "motor")
@@ -726,6 +728,37 @@ namespace arm
                 if (!seen[1])
                     return Missing(path, "accelerationRadPerS2");
                 limit = { foc::RadiansPerSecond{ values[0] }, foc::RadiansPerSecondSquared{ values[1] } };
+                return true;
+            }
+
+            bool ReadTracking(const Path& path, const Value& value, TrackingLimit& limit)
+            {
+                return ReadMembers(path, value, [this, &limit](const Path& item, infra::JsonString key, const Value& member)
+                    {
+                        float number{ 0.0f };
+                        if (key == "windowRad")
+                            return ReadPositive(item, member, number) && Store(limit.window, foc::Radians{ number });
+                        if (key == "timeS")
+                            return ReadTrackingTime(item, member, limit.time);
+                        return Unknown(item);
+                    });
+            }
+
+            bool ReadTrackingTime(const Path& path, const Value& value, infra::Duration& time)
+            {
+                float seconds{ 0.0f };
+                if (!ReadReal(path, value, seconds))
+                    return false;
+                if (!(seconds > 0.0f && seconds <= 10.0f))
+                    return Fail(path, "must be above 0 and at most 10");
+                time = std::chrono::round<infra::Duration>(std::chrono::duration<float>{ seconds });
+                return true;
+            }
+
+            template<class T>
+            static bool Store(T& target, const T& value)
+            {
+                target = value;
                 return true;
             }
 
@@ -925,6 +958,10 @@ namespace arm
                 Number(config.motionLimits[joint].maxSpeed.Value());
                 stream << ", \"accelerationRadPerS2\": ";
                 Number(config.motionLimits[joint].maxAcceleration.Value());
+                stream << " },\n      \"trackingError\": { \"windowRad\": ";
+                Number(config.tracking[joint].window.Value());
+                stream << ", \"timeS\": ";
+                Number(std::chrono::duration<float>{ config.tracking[joint].time }.count());
                 stream << " }";
                 if (config.controllers[joint].has_value())
                     Controller(*config.controllers[joint]);

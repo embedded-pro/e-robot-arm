@@ -27,6 +27,7 @@ namespace arm
         bool FitsJointMode(ArmControllerId id) const override;
         std::optional<ArmControllerId> Active() const override;
         std::optional<JointSetpoints> LastSetpoints() const override;
+        std::optional<JointPositions> Reference() const override;
 
         bool Enable(ArmControllerId id) override;
         bool Disable(ArmControllerId id) override;

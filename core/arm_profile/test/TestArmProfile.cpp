@@ -1,6 +1,7 @@
 #include "core/arm_profile/ArmProfile.hpp"
 #include "infra/stream/StringOutputStream.hpp"
 #include "gmock/gmock.h"
+#include <chrono>
 #include <string>
 #include <utility>
 #include <vector>
@@ -42,7 +43,7 @@ namespace
     const std::string configuredJoint{ Joint(1,
         R"(, "transmission": { "ratio": 50, "direction": "negative", "offsetRad": -0.125 },)"
         R"( "motorController": { "current": "slidingMode", "speed": "adrc", "position": "lqr", "gains": { "positionBandwidth": 25, "speedErrorWeight": 1.5 } },)"
-        R"( "motor": { "preset": "teknic-m2310p-ln-04k", "inertiaGramCm2": 120.5 })") };
+        R"( "motor": { "preset": "teknic-m2310p-ln-04k", "inertiaGramCm2": 120.5 }, "trackingError": { "windowRad": 0.1, "timeS": 0.35 })") };
 
     class ArmProfileTest
         : public testing::Test
@@ -175,6 +176,8 @@ TEST_F(ArmProfileTest, a_written_profile_reads_back_to_the_same_configuration)
         EXPECT_EQ(original->config.positionLimits[joint].lower, copy->config.positionLimits[joint].lower);
         EXPECT_EQ(original->config.positionLimits[joint].upper, copy->config.positionLimits[joint].upper);
         EXPECT_EQ(original->config.motionLimits[joint].maxSpeed, copy->config.motionLimits[joint].maxSpeed);
+        EXPECT_EQ(original->config.tracking[joint].window, copy->config.tracking[joint].window);
+        EXPECT_EQ(original->config.tracking[joint].time, copy->config.tracking[joint].time);
         EXPECT_EQ(original->config.controllers[joint].has_value(), copy->config.controllers[joint].has_value());
     }
 
@@ -225,6 +228,17 @@ TEST_F(ArmProfileTest, reads_the_following_error_supervision_and_leaves_it_off_w
     EXPECT_NEAR(0.1f, (*unsupervised->config.motors[0]).settings[arm::MotorParameter::followingErrorTime], 1.0e-6f);
 }
 
+TEST_F(ArmProfileTest, reads_the_tracking_error_supervision_and_defaults_it_to_0_2_rad_for_0_2_s)
+{
+    const auto profile = Read(Profile(Joint(1, R"(, "trackingError": { "windowRad": 0.05, "timeS": 0.5 })")));
+
+    ASSERT_TRUE(profile.has_value()) << Problem();
+    EXPECT_NEAR(0.05f, profile->config.tracking[0].window.Value(), 1.0e-6f);
+    EXPECT_EQ(std::chrono::milliseconds{ 500 }, profile->config.tracking[0].time);
+    EXPECT_NEAR(0.2f, profile->config.tracking[1].window.Value(), 1.0e-6f);
+    EXPECT_EQ(std::chrono::milliseconds{ 200 }, profile->config.tracking[1].time);
+}
+
 TEST_F(ArmProfileTest, reads_a_version_1_profile_and_writes_version_2)
 {
     const auto version1 = Read(Profile(Joint(1)));
@@ -254,6 +268,9 @@ TEST_F(ArmProfileTest, refuses_a_profile_and_names_the_first_problem)
         { Profile(Joint(1, R"(, "motorController": { "current": "pid", "speed": "fuzzy", "position": "pid" })")),
             "joints[0].motorController.speed: must be pid, lqi, adrc or twoDof" },
         { Profile(Joint(1, R"(, "motorController": { "current": "pid", "speed": "pid" })")), "joints[0].motorController.position: is missing" },
+        { Profile(Joint(1, R"(, "trackingError": { "windowRad": 0 })")), "joints[0].trackingError.windowRad: must be above 0" },
+        { Profile(Joint(1, R"(, "trackingError": { "timeS": 11 })")), "joints[0].trackingError.timeS: must be above 0 and at most 10" },
+        { Profile(Joint(1, R"(, "trackingError": { "gain": 1 })")), "joints[0].trackingError.gain: is not a profile item" },
         { Profile(Joint(1, R"(, "motor": { "preset": "maxon-ec45" })")),
             "joints[0].motor.preset: must be teknic-m2310p-ln-04k or anaheim-bly172s-24v-4000" },
         { Profile(Joint(1, R"(, "motor": { "resistanceOhm": 0.4 })")), "joints[0].motor.inductanceMilliHenry: is missing" },

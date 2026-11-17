@@ -4,7 +4,7 @@ namespace arm
 {
     Arm::Arm(can::FocMotorCategoryClient& client, const ArmConfig& config)
         : jointBus(client, config.nodes, config.transmissions, config.missedRequestsBeforeSilent, config.controlPeriod * config.commandTimeoutPeriods)
-        , safety(jointBus, config.positionLimits)
+        , safety(jointBus, config.positionLimits, config.tracking, config.controlPeriod)
         , motion(safety, config.positionLimits, config.motionLimits, config.controlPeriod)
         , configurator(safety, lifecycle, SilenceWindow(config))
         , lifecycle(safety, motion, configurator, config.enableMode, config.controllers, config.motors)
@@ -86,6 +86,7 @@ namespace arm
         const auto reference = motion.Step();
         if (!controllers.Step(reference))
             motion.Abort();
+        safety.Supervise(controllers.Reference());
         lifecycle.Step();
     }
 }

@@ -2,7 +2,7 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.18.0
+version: 0.19.0
 component: "tool-simulator"
 date: 2026-11-16
 ---
@@ -12,7 +12,7 @@ date: 2026-11-16
 | Title     | Simulator Screen Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.18.0                  |
+| Version   | 0.19.0                  |
 | Component | tool-simulator          |
 | Date      | 2026-11-16              |
 
@@ -146,7 +146,8 @@ targets → Move. A motor controller that cannot be applied or reads back differ
 `<reason>`** in `Fault`, and Bring Up starts again. The ghost shows the commanded arm while moving; the scope
 shows the selected joint. Disable stops the joints and returns the arm to Ready.
 
-**Trip and recover.** On a trip the status strip shows **Tripped — `<source>`** in `Fault`, the joint table marks
+**Trip and recover.** On a trip the status strip shows **Tripped — `<source>`** in `Fault`: the joint and its fault,
+silence, or the supervisor's reason, such as **Joint 2 (tracking error 0.214 rad)** ([safety.md](safety.md) Part F). The joint table marks
 the joint, the log records it, and the scope triggers. Clear Faults, then Re-arm…, whose confirmation names the
 source. Re-arm returns the arm to Waiting for calibration, then (configuring the joints again) Ready; Enable starts it
 again.

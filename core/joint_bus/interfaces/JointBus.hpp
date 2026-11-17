@@ -71,6 +71,12 @@ namespace arm
 
     class JointBus;
 
+    enum class SupervisionTrip : uint8_t
+    {
+        positionLimit,
+        trackingError
+    };
+
     class JointBusObserver
         : public infra::Observer<JointBusObserver, JointBus>
     {
@@ -87,6 +93,9 @@ namespace arm
         {}
 
         virtual void OnParameter(std::size_t, can::FocParameter, can::FocParameterValue)
+        {}
+
+        virtual void OnSupervisionTrip(std::size_t, SupervisionTrip, foc::Radians)
         {}
 
     protected:

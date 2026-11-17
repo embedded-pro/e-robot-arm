@@ -304,6 +304,9 @@ namespace arm_console
             case jointSilent:
                 output << "joint " << event.joint + 1 << " silent\n";
                 break;
+            case supervisionTrip:
+                output << "joint " << event.joint + 1 << " " << event.reason << "\n";
+                break;
             case tripped:
                 output << "tripped by joint " << event.joint + 1 << "\n";
                 break;

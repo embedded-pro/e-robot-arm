@@ -368,22 +368,42 @@ namespace
         return config;
     }
 
+    arm::ArmConfig SoftTorqueConfig()
+    {
+        auto config = TorqueConfig();
+        config.gravityGains.fill(arm::PdGain{ 0.5f, 0.05f });
+        return config;
+    }
+
     class TorqueArmSessionTest
         : public testing::Test
         , public infra::ClockFixture
     {
     public:
+        explicit TorqueArmSessionTest(const arm::ArmConfig& config = TorqueConfig())
+            : config(config)
+        {}
+
         void Execute(uint32_t id, const arm_host::ArmCommand& command)
         {
             session.Execute(id, command);
             ForwardTime(30ms);
         }
 
-        arm::ArmConfig config{ TorqueConfig() };
+        arm::ArmConfig config;
         arm_host::ArmTarget target{ arm_host::TargetKind::simulated, "" };
         simulation::SimulatedArm simulatedArm{ arm_host::test::nodes, 50ms, arm_host::PlantFor(config) };
         arm_host::test::RecordingSink sink;
         arm_host::ArmSession session{ simulatedArm.ArmSide(), arm_host::test::Profile(config), target, sink, &simulatedArm };
+    };
+
+    class SoftTorqueArmSessionTest
+        : public TorqueArmSessionTest
+    {
+    public:
+        SoftTorqueArmSessionTest()
+            : TorqueArmSessionTest(SoftTorqueConfig())
+        {}
     };
 }
 
@@ -403,4 +423,23 @@ TEST_F(TorqueArmSessionTest, the_gravity_compensated_pd_moves_the_simulated_arm_
     EXPECT_FALSE(sink.snapshot.tripped);
     for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
         EXPECT_NEAR(goal[joint].Value(), sink.snapshot.readings[joint].position.Value(), 0.02f) << "joint " << joint;
+}
+
+TEST_F(SoftTorqueArmSessionTest, a_joint_that_lags_its_reference_too_long_trips_the_arm_and_names_its_tracking_error)
+{
+    Execute(1, arm_host::BringUp{});
+    Execute(2, arm_host::Enable{});
+    ASSERT_EQ(arm::ArmState::enabled, sink.snapshot.state);
+
+    Execute(3, arm_host::MoveTo{ { foc::Radians{ 1.0f }, foc::Radians{ 0.0f }, foc::Radians{ 0.0f }, foc::Radians{ 0.0f }, foc::Radians{ 0.0f },
+                   foc::Radians{ 0.0f } } });
+    ForwardTime(3s);
+
+    const auto* trip = sink.Find(ArmEventKind::supervisionTrip);
+    ASSERT_NE(nullptr, trip);
+    EXPECT_EQ(0u, trip->joint);
+    EXPECT_THAT(trip->reason, testing::StartsWith("tracking error 0.2"));
+    ASSERT_NE(nullptr, sink.Find(ArmEventKind::tripped));
+    EXPECT_EQ(trip->reason, sink.Find(ArmEventKind::tripped)->reason);
+    EXPECT_TRUE(sink.snapshot.tripped);
 }

@@ -11,14 +11,25 @@ namespace arm
         {
             return math::IsFinite(limit.lower.Value()) && math::IsFinite(limit.upper.Value()) && limit.lower < limit.upper;
         }
+
+        bool ValidTracking(const TrackingLimit& limit)
+        {
+            return math::IsFinite(limit.window.Value()) && limit.window.Value() > 0.0f && limit.time > infra::Duration::zero();
+        }
     }
 
-    SafetySupervisorImpl::SafetySupervisorImpl(JointBus& bus, const JointLimits& limits)
+    SafetySupervisorImpl::SafetySupervisorImpl(JointBus& bus, const JointLimits& limits, const TrackingLimits& tracking, infra::Duration period)
         : JointBusObserver(bus)
         , bus(bus)
         , limits(limits)
+        , tracking(tracking)
     {
         really_assert(std::ranges::all_of(limits, ValidLimit));
+        really_assert(std::ranges::all_of(tracking, ValidTracking));
+        really_assert(period > infra::Duration::zero());
+
+        for (std::size_t joint = 0; joint != jointCount; ++joint)
+            stepsToTrip[joint] = static_cast<uint32_t>((tracking[joint].time + period - infra::Duration{ 1 }) / period);
     }
 
     bool SafetySupervisorImpl::QueryContracts()
@@ -194,6 +205,51 @@ namespace arm
                 return true;
 
         return false;
+    }
+
+    void SafetySupervisorImpl::Supervise(const std::optional<JointPositions>& reference)
+    {
+        if (!reference.has_value() || tripped)
+        {
+            stepsOutside.fill(0);
+            return;
+        }
+
+        for (std::size_t joint = 0; joint != jointCount; ++joint)
+            if (!SuperviseJoint(joint, (*reference)[joint]))
+                return;
+    }
+
+    bool SafetySupervisorImpl::SuperviseJoint(std::size_t joint, foc::Radians reference)
+    {
+        const auto& reading = bus.Reading(joint);
+        if (Stale(reading, bus.Period()))
+            return true;
+
+        const auto measured = reading.position;
+        if (measured < limits[joint].lower || limits[joint].upper < measured)
+        {
+            TripOnSupervision(joint, SupervisionTrip::positionLimit, measured);
+            return false;
+        }
+
+        const foc::Radians error{ math::Abs(reference.Value() - measured.Value()) };
+        stepsOutside[joint] = tracking[joint].window < error ? stepsOutside[joint] + 1 : 0;
+        if (stepsOutside[joint] < stepsToTrip[joint])
+            return true;
+
+        TripOnSupervision(joint, SupervisionTrip::trackingError, error);
+        return false;
+    }
+
+    void SafetySupervisorImpl::TripOnSupervision(std::size_t joint, SupervisionTrip cause, foc::Radians value)
+    {
+        Trip();
+        stepsOutside.fill(0);
+        NotifyObservers([joint, cause, value](auto& observer)
+            {
+                observer.OnSupervisionTrip(joint, cause, value);
+            });
     }
 
     void SafetySupervisorImpl::Trip()

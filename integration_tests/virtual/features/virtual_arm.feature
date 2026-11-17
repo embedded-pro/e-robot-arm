@@ -1,8 +1,8 @@
 @virtual
 Feature: The arm on six e-foc virtual motors
   The arm runs on six e-foc virtual motors, one per joint, each through a 50:1 gear and each carrying the load the
-  arm's links put on its shaft. The motors run the e-foc firmware against a motor model in real time, and each drive supervises its following
-  error: a shaft that lags its setpoint by more than 3 rad for 0.1 s faults.
+  arm's links put on its shaft. The motors run the e-foc firmware against a motor model in real time, and the arm
+  supervises each joint's tracking error: a joint that lags its reference by more than 0.2 rad for 0.2 s trips the arm.
 
   Background:
     Given the arm on six e-foc virtual motors
@@ -14,11 +14,11 @@ Feature: The arm on six e-foc virtual motors
     And within 2000 ms every joint shall be within 0.01 rad of 0.3, -0.5, 0.4, 0.2, 0.3, 0.1
     And the largest tracking error during the move shall stay below 0.1 rad
 
-  @REQ-ARM-004
-  Scenario: A collision that holds a joint back trips the arm on the drive's following error
+  @REQ-ARM-014
+  Scenario: A collision that holds a joint back trips the arm on its tracking error
     When the arm moves the joints to 0.3, -0.5, 0.4, 0.2, 0.3, 0.1 rad
     And a collision pushes joint 2 with 30 N·m
-    Then within 1000 ms the arm shall trip with joint 2 faulted on a following error
+    Then within 1000 ms the arm shall trip with joint 2 on its tracking error
 
   @REQ-ARM-005
   Scenario: A motor that stops answering trips the arm

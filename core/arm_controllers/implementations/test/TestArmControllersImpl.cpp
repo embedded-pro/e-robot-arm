@@ -146,9 +146,11 @@ TEST_F(ArmControllersImplTest, streams_the_active_controllers_set_each_step_hold
     EXPECT_TRUE(controllers.Step(std::nullopt));
     ASSERT_TRUE(controllers.LastSetpoints().has_value());
     EXPECT_EQ(Uniform(0.9f), controllers.LastSetpoints()->positions);
+    EXPECT_EQ(std::optional<arm::JointPositions>{ Uniform(1.0f) }, controllers.Reference());
 
     controllers.Disengage();
     EXPECT_TRUE(controllers.Step(Uniform(1.0f)));
+    EXPECT_EQ(std::nullopt, controllers.Reference());
 }
 
 TEST_F(ArmControllersImplTest, disabling_the_active_controller_stops_the_streaming)

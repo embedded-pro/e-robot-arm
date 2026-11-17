@@ -254,6 +254,11 @@ namespace arm
         fsm.Dispatch(Trip{});
     }
 
+    void ArmLifecycleImpl::OnSupervisionTrip(std::size_t, SupervisionTrip, foc::Radians)
+    {
+        fsm.Dispatch(Trip{});
+    }
+
     void ArmLifecycleImpl::OnCommandDelivered(JointCommand command)
     {
         fsm.Dispatch(Delivered{ command });

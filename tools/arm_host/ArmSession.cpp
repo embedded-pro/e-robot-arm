@@ -436,6 +436,14 @@ namespace arm_host
         session.ReportTrip(joint, can::FocFaultCode::none);
     }
 
+    void ArmSession::Events::OnSupervisionTrip(std::size_t joint, arm::SupervisionTrip trip, foc::Radians value)
+    {
+        auto reason = trip == arm::SupervisionTrip::trackingError ? std::format("tracking error {:.3f} rad", value.Value())
+                                                                  : std::format("position {:.3f} rad outside its limits", value.Value());
+        session.Emit({ .kind = ArmEventKind::supervisionTrip, .reason = reason, .joint = joint });
+        session.ReportTrip(joint, can::FocFaultCode::none, std::move(reason));
+    }
+
     void ArmSession::Events::OnCommandDelivered(arm::JointCommand command)
     {
         session.Delivered(command);
@@ -500,13 +508,13 @@ namespace arm_host
         session.Emit({ .kind = ArmEventKind::moveAborted });
     }
 
-    void ArmSession::ReportTrip(std::size_t joint, can::FocFaultCode fault)
+    void ArmSession::ReportTrip(std::size_t joint, can::FocFaultCode fault, std::string reason)
     {
         if (tripReported || !arm.Safety().Tripped())
             return;
 
         tripReported = true;
-        Emit({ .kind = ArmEventKind::tripped, .joint = joint, .fault = fault });
+        Emit({ .kind = ArmEventKind::tripped, .reason = std::move(reason), .joint = joint, .fault = fault });
     }
 
     void ArmSession::Emit(ArmEvent event)

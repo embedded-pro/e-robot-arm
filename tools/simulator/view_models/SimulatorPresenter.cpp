@@ -383,12 +383,21 @@ namespace simulator
         moveView.Build(forms.moveModel);
     }
 
+    std::string_view SimulatorPresenter::TripCause(const arm_host::ArmEvent& event)
+    {
+        if (!event.reason.empty())
+            return event.reason;
+        if (event.fault == can::FocFaultCode::none)
+            return "silent";
+        return FaultName(event.fault);
+    }
+
     void SimulatorPresenter::Handle(const arm_host::ArmEvent& event)
     {
         log.Add(event);
 
         if (event.kind == arm_host::ArmEventKind::tripped)
-            tripSource = std::format("Joint {} ({})", event.joint + 1, event.fault == can::FocFaultCode::none ? std::string_view{ "silent" } : FaultName(event.fault));
+            tripSource = std::format("Joint {} ({})", event.joint + 1, TripCause(event));
 
         using enum arm_host::ArmEventKind;
         const auto request = pending.find(event.command);

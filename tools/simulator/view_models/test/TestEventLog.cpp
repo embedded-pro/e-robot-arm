@@ -28,6 +28,9 @@ TEST_F(EventLogTest, describes_events_in_plain_language_with_joints_from_one)
     EXPECT_EQ("Tripped by Joint 6", simulator::Describe({ .kind = ArmEventKind::tripped, .joint = 5 }, start).message);
     EXPECT_EQ("Start refused: tripped", simulator::Describe({ .kind = ArmEventKind::refused, .commandName = "start", .reason = "tripped" }, start).message);
     EXPECT_EQ(simulator::LogLevel::fault, simulator::Describe({ .kind = ArmEventKind::jointSilent, .joint = 0 }, start).level);
+    const auto tracking = simulator::Describe({ .kind = ArmEventKind::supervisionTrip, .reason = "tracking error 0.312 rad", .joint = 1 }, start);
+    EXPECT_EQ("Joint 2 tracking error 0.312 rad", tracking.message);
+    EXPECT_EQ(simulator::LogLevel::fault, tracking.level);
     EXPECT_EQ(simulator::LogLevel::warning, simulator::Describe({ .kind = ArmEventKind::moveAborted }, start).level);
 
     const auto misconfigured = simulator::Describe(

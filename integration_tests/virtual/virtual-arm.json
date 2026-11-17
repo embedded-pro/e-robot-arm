@@ -11,67 +11,61 @@
       "node": 1,
       "transmission": { "ratio": 50, "direction": "positive", "offsetRad": 0 },
       "motor": {
-        "preset": "teknic-m2310p-ln-04k",
-        "followingErrorWindowRad": 3.0,
-        "followingErrorTimeS": 0.1
+        "preset": "teknic-m2310p-ln-04k"
       },
       "positionLimitsRad": { "lower": -3.1415927, "upper": 3.1415927 },
-      "motionLimits": { "speedRadPerS": 1, "accelerationRadPerS2": 2 }
+      "motionLimits": { "speedRadPerS": 1, "accelerationRadPerS2": 2 },
+      "trackingError": { "windowRad": 0.1, "timeS": 0.1 }
     },
     {
       "node": 2,
       "transmission": { "ratio": 50, "direction": "positive", "offsetRad": 0 },
       "motor": {
-        "preset": "teknic-m2310p-ln-04k",
-        "followingErrorWindowRad": 3.0,
-        "followingErrorTimeS": 0.1
+        "preset": "teknic-m2310p-ln-04k"
       },
       "positionLimitsRad": { "lower": -3.1415927, "upper": 3.1415927 },
-      "motionLimits": { "speedRadPerS": 1, "accelerationRadPerS2": 2 }
+      "motionLimits": { "speedRadPerS": 1, "accelerationRadPerS2": 2 },
+      "trackingError": { "windowRad": 0.1, "timeS": 0.1 }
     },
     {
       "node": 3,
       "transmission": { "ratio": 50, "direction": "positive", "offsetRad": 0 },
       "motor": {
-        "preset": "teknic-m2310p-ln-04k",
-        "followingErrorWindowRad": 3.0,
-        "followingErrorTimeS": 0.1
+        "preset": "teknic-m2310p-ln-04k"
       },
       "positionLimitsRad": { "lower": -3.1415927, "upper": 3.1415927 },
-      "motionLimits": { "speedRadPerS": 1, "accelerationRadPerS2": 2 }
+      "motionLimits": { "speedRadPerS": 1, "accelerationRadPerS2": 2 },
+      "trackingError": { "windowRad": 0.1, "timeS": 0.1 }
     },
     {
       "node": 4,
       "transmission": { "ratio": 50, "direction": "positive", "offsetRad": 0 },
       "motor": {
-        "preset": "teknic-m2310p-ln-04k",
-        "followingErrorWindowRad": 3.0,
-        "followingErrorTimeS": 0.1
+        "preset": "teknic-m2310p-ln-04k"
       },
       "positionLimitsRad": { "lower": -3.1415927, "upper": 3.1415927 },
-      "motionLimits": { "speedRadPerS": 1, "accelerationRadPerS2": 2 }
+      "motionLimits": { "speedRadPerS": 1, "accelerationRadPerS2": 2 },
+      "trackingError": { "windowRad": 0.1, "timeS": 0.1 }
     },
     {
       "node": 5,
       "transmission": { "ratio": 50, "direction": "positive", "offsetRad": 0 },
       "motor": {
-        "preset": "teknic-m2310p-ln-04k",
-        "followingErrorWindowRad": 3.0,
-        "followingErrorTimeS": 0.1
+        "preset": "teknic-m2310p-ln-04k"
       },
       "positionLimitsRad": { "lower": -3.1415927, "upper": 3.1415927 },
-      "motionLimits": { "speedRadPerS": 1, "accelerationRadPerS2": 2 }
+      "motionLimits": { "speedRadPerS": 1, "accelerationRadPerS2": 2 },
+      "trackingError": { "windowRad": 0.1, "timeS": 0.1 }
     },
     {
       "node": 6,
       "transmission": { "ratio": 50, "direction": "positive", "offsetRad": 0 },
       "motor": {
-        "preset": "teknic-m2310p-ln-04k",
-        "followingErrorWindowRad": 3.0,
-        "followingErrorTimeS": 0.1
+        "preset": "teknic-m2310p-ln-04k"
       },
       "positionLimitsRad": { "lower": -3.1415927, "upper": 3.1415927 },
-      "motionLimits": { "speedRadPerS": 1, "accelerationRadPerS2": 2 }
+      "motionLimits": { "speedRadPerS": 1, "accelerationRadPerS2": 2 },
+      "trackingError": { "windowRad": 0.1, "timeS": 0.1 }
     }
   ],
   "geometry": {

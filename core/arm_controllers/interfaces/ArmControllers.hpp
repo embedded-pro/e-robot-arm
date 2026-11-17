@@ -41,6 +41,7 @@ namespace arm
         virtual bool FitsJointMode(ArmControllerId id) const = 0;
         virtual std::optional<ArmControllerId> Active() const = 0;
         virtual std::optional<JointSetpoints> LastSetpoints() const = 0;
+        virtual std::optional<JointPositions> Reference() const = 0;
 
         virtual bool Enable(ArmControllerId id) = 0;
         virtual bool Disable(ArmControllerId id) = 0;

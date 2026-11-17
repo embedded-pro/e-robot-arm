@@ -11,7 +11,7 @@ namespace arm
         , private JointBusObserver
     {
     public:
-        SafetySupervisorImpl(JointBus& bus, const JointLimits& limits);
+        SafetySupervisorImpl(JointBus& bus, const JointLimits& limits, const TrackingLimits& tracking, infra::Duration period);
 
         bool QueryContracts() override;
         can::ContractCompatibility Contracts() const override;
@@ -35,6 +35,7 @@ namespace arm
 
         bool Tripped() const override;
         bool Rearm() override;
+        void Supervise(const std::optional<JointPositions>& reference) override;
 
     private:
         void OnContractsResolved(can::ContractCompatibility compatibility) override;
@@ -48,9 +49,14 @@ namespace arm
         bool MayCommandMotion() const;
         bool AnyJointFaulted() const;
         void Trip();
+        bool SuperviseJoint(std::size_t joint, foc::Radians reference);
+        void TripOnSupervision(std::size_t joint, SupervisionTrip cause, foc::Radians value);
 
         JointBus& bus;
         JointLimits limits;
+        TrackingLimits tracking;
+        std::array<uint32_t, jointCount> stepsToTrip{};
+        std::array<uint32_t, jointCount> stepsOutside{};
         bool tripped{ false };
     };
 }

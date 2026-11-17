@@ -1,11 +1,13 @@
 #include "core/joint_bus/test_doubles/JointBusMock.hpp"
 #include "core/safety/implementations/SafetySupervisorImpl.hpp"
 #include "gmock/gmock.h"
+#include <chrono>
 #include <limits>
 
 namespace
 {
     using namespace testing;
+    using namespace std::chrono_literals;
 
     const arm::JointLimits limits{ { { foc::Radians{ -1.0f }, foc::Radians{ 1.0f } },
         { foc::Radians{ -2.0f }, foc::Radians{ 2.0f } },
@@ -16,6 +18,13 @@ namespace
 
     const arm::JointPositions withinLimits{ foc::Radians{ -1.0f }, foc::Radians{ 0.0f }, foc::Radians{ 0.5f },
         foc::Radians{ 1.0f }, foc::Radians{ -1.0f }, foc::Radians{ 3.0f } };
+
+    arm::TrackingLimits Tracking()
+    {
+        arm::TrackingLimits tracking{};
+        tracking.fill({ foc::Radians{ 0.2f }, 30ms });
+        return tracking;
+    }
 
     class SafetySupervisorImplTest
         : public Test
@@ -45,8 +54,19 @@ namespace
             }
         }
 
+        void Measured(const arm::JointPositions& positions, uint32_t period = 7)
+        {
+            EXPECT_CALL(bus, Period()).WillRepeatedly(Return(7));
+            for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+            {
+                readings[joint].position = positions[joint];
+                readings[joint].period = period;
+                EXPECT_CALL(bus, Reading(joint)).WillRepeatedly(ReturnRef(readings[joint]));
+            }
+        }
+
         StrictMock<arm::JointBusMock> bus;
-        arm::SafetySupervisorImpl supervisor{ bus, limits };
+        arm::SafetySupervisorImpl supervisor{ bus, limits, Tracking(), 10ms };
         StrictMock<arm::JointBusObserverMock> observer{ supervisor };
         std::array<arm::JointReading, arm::jointCount> readings{};
     };
@@ -252,4 +272,106 @@ TEST_F(SafetySupervisorImplTest, passes_per_joint_configuration_through_and_its_
         {
             joints.OnParameter(5, can::FocParameter::speedBandwidth, can::FocParameterValue{ 80.0f, true });
         });
+}
+
+TEST_F(SafetySupervisorImplTest, a_measured_position_on_its_limits_keeps_the_arm_armed)
+{
+    Measured(withinLimits);
+
+    supervisor.Supervise(withinLimits);
+
+    EXPECT_FALSE(supervisor.Tripped());
+}
+
+TEST_F(SafetySupervisorImplTest, a_measured_position_outside_its_limits_trips_the_arm)
+{
+    auto beyond = withinLimits;
+    beyond[2] = foc::Radians{ 0.55f };
+    Measured(beyond);
+
+    EXPECT_CALL(bus, EmergencyStop()).WillOnce(Return(true));
+    EXPECT_CALL(observer, OnSupervisionTrip(2, arm::SupervisionTrip::positionLimit, foc::Radians{ 0.55f }));
+    supervisor.Supervise(withinLimits);
+
+    EXPECT_TRUE(supervisor.Tripped());
+}
+
+TEST_F(SafetySupervisorImplTest, a_tracking_error_held_above_its_window_for_its_time_trips_the_arm)
+{
+    Measured(withinLimits);
+    auto reference = withinLimits;
+    reference[1] = foc::Radians{ 0.25f };
+
+    supervisor.Supervise(reference);
+    supervisor.Supervise(reference);
+    EXPECT_FALSE(supervisor.Tripped());
+
+    EXPECT_CALL(bus, EmergencyStop()).WillOnce(Return(true));
+    EXPECT_CALL(observer, OnSupervisionTrip(1, arm::SupervisionTrip::trackingError, foc::Radians{ 0.25f }));
+    supervisor.Supervise(reference);
+
+    EXPECT_TRUE(supervisor.Tripped());
+}
+
+TEST_F(SafetySupervisorImplTest, a_step_within_the_window_or_without_streaming_starts_the_count_again)
+{
+    Measured(withinLimits);
+    auto reference = withinLimits;
+    reference[1] = foc::Radians{ -0.25f };
+
+    supervisor.Supervise(reference);
+    supervisor.Supervise(reference);
+    supervisor.Supervise(withinLimits);
+    supervisor.Supervise(reference);
+    supervisor.Supervise(reference);
+    supervisor.Supervise(std::nullopt);
+    supervisor.Supervise(reference);
+    supervisor.Supervise(reference);
+
+    EXPECT_FALSE(supervisor.Tripped());
+}
+
+TEST_F(SafetySupervisorImplTest, a_stale_reading_is_neither_checked_nor_counted_nor_starts_the_count_again)
+{
+    auto beyond = withinLimits;
+    beyond[0] = foc::Radians{ -1.5f };
+    Measured(beyond, 5);
+    auto reference = withinLimits;
+    reference[1] = foc::Radians{ 0.25f };
+
+    supervisor.Supervise(reference);
+    supervisor.Supervise(reference);
+    supervisor.Supervise(reference);
+    EXPECT_FALSE(supervisor.Tripped());
+
+    Measured(withinLimits);
+    supervisor.Supervise(reference);
+    supervisor.Supervise(reference);
+    Measured(withinLimits, 5);
+    supervisor.Supervise(reference);
+    Measured(withinLimits);
+    EXPECT_CALL(bus, EmergencyStop()).WillOnce(Return(true));
+    EXPECT_CALL(observer, OnSupervisionTrip(1, arm::SupervisionTrip::trackingError, foc::Radians{ 0.25f }));
+    supervisor.Supervise(reference);
+}
+
+TEST_F(SafetySupervisorImplTest, without_streaming_a_position_outside_its_limits_is_not_checked)
+{
+    auto beyond = withinLimits;
+    beyond[0] = foc::Radians{ -1.5f };
+    Measured(beyond);
+
+    supervisor.Supervise(std::nullopt);
+
+    EXPECT_FALSE(supervisor.Tripped());
+}
+
+TEST_F(SafetySupervisorImplTest, a_tripped_arm_is_not_supervised_again)
+{
+    Trip();
+    auto beyond = withinLimits;
+    beyond[0] = foc::Radians{ -1.5f };
+    Measured(beyond);
+
+    supervisor.Supervise(withinLimits);
 }
