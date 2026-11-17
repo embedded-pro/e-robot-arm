@@ -2,7 +2,7 @@
 title: "Simulator Design"
 type: design
 status: draft
-version: 0.11.0
+version: 0.12.0
 component: "simulator"
 date: 2026-11-16
 ---
@@ -12,7 +12,7 @@ date: 2026-11-16
 | Title     | Simulator Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.11.0           |
+| Version   | 0.12.0           |
 | Component | simulator        |
 | Date      | 2026-11-16       |
 
@@ -171,7 +171,10 @@ Every command answers with exactly one event, `accepted` or `refused` with a rea
 returned. Check contracts, select mode, start, stop, clear faults and align are delivered by the joint bus
 ([joint-bus.md](joint-bus.md) Part B): the session answers `accepted` once all six joints have the command, and
 `refused` when the joint bus reports it failed, with the reason "replaced by a newer command", "emergency stop" or
-"not delivered to every joint in time". The other commands are answered as soon as they run.
+"not delivered to every joint in time". The other commands are answered as soon as they run. A joint command the
+lifecycle sends on its own, select mode and start while enabling, is reported the same way when it fails, as a
+`refused` event with no command id, so an enable that falls back to *Ready* says which joint command did not get
+through.
 
 **Disturbances** are commands as well, each answered `accepted` or `refused`. What a target offers:
 

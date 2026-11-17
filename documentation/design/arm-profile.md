@@ -2,7 +2,7 @@
 title: "Arm Profile Design"
 type: design
 status: draft
-version: 0.10.0
+version: 0.11.0
 component: "arm_profile"
 date: 2026-11-13
 ---
@@ -12,7 +12,7 @@ date: 2026-11-13
 | Title     | Arm Profile Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.10.0             |
+| Version   | 0.11.0             |
 | Component | arm_profile        |
 | Date      | 2026-11-13         |
 
@@ -58,6 +58,8 @@ A profile holds what `ArmConfig` holds:
 | `gravity-pd` damping        | `gravityPd.dampingRatio`          | above 0, at most 5          | 0.7                 |
 | `computed-torque` bandwidth | `computedTorque.bandwidthRadPerS` | rad/s, above 0, at most 500 | 30                  |
 | `computed-torque` damping   | `computedTorque.dampingRatio`     | above 0, at most 5          | 0.7                 |
+| `gravity-pid` bandwidth     | `gravityPid.bandwidthRadPerS`     | rad/s, above 0, at most 500 | 20                  |
+| `gravity-pid` damping       | `gravityPid.dampingRatio`         | above 0, at most 5          | 0.7                 |
 | Joints                      | `joints`                          | exactly six, in order       | required            |
 | Geometry                    | `geometry`                        | see below                   | the reference arm   |
 | Mass properties             | `massProperties`                  | see below                   | the reference arm   |
@@ -67,8 +69,8 @@ The arm runs its joints in torque mode only ([arm-controllers.md](arm-controller
 read for older profiles and must be `torque`; a profile that names another mode is refused, and a written profile
 leaves it out.
 
-The two `gravityPd` items set the gains of the `gravity-pd` arm controller, and the two `computedTorque` items those
-of `computed-torque`, for every joint at once ([arm-controllers.md](arm-controllers.md) Part A).
+The two `gravityPd` items set the gains of the `gravity-pd` arm controller, the two `computedTorque` items those of
+`computed-torque` and the two `gravityPid` items those of `gravity-pid`, for every joint at once ([arm-controllers.md](arm-controllers.md) Part A).
 
 The geometry is the arm model's ([arm-model.md](arm-model.md) Part A):
 

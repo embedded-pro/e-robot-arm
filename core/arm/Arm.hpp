@@ -6,6 +6,7 @@
 #include "core/arm_controllers/implementations/ArmControllersImpl.hpp"
 #include "core/arm_controllers/implementations/ComputedTorque.hpp"
 #include "core/arm_controllers/implementations/GravityCompensatedPd.hpp"
+#include "core/arm_controllers/implementations/GravityPid.hpp"
 #include "core/control_loop/implementations/ControlLoopImpl.hpp"
 #include "core/joint_bus/implementations/JointBusImpl.hpp"
 #include "core/joint_configurator/implementations/JointConfiguratorImpl.hpp"
@@ -51,6 +52,7 @@ namespace arm
         ArmModel model;
         GravityCompensatedPd gravityPd;
         ComputedTorque computedTorque;
+        GravityPid gravityPid;
         ArmControllersImpl controllers;
         ArmControllerEngagement engagement;
         ControlLoopImpl loop;

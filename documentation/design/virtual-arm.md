@@ -2,7 +2,7 @@
 title: "Virtual Arm Design"
 type: design
 status: draft
-version: 0.12.0
+version: 0.13.0
 component: "virtual-arm"
 date: 2026-11-16
 ---
@@ -12,7 +12,7 @@ date: 2026-11-16
 | Title     | Virtual Arm Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.12.0             |
+| Version   | 0.13.0             |
 | Component | virtual-arm        |
 | Date      | 2026-11-16         |
 
@@ -243,15 +243,18 @@ preset with the drive's following-error supervision off: the arm's own tracking-
 Part F, 0.1 rad for 0.1 s in this profile) watches every joint instead. The drives run in torque mode and the arm
 closes position with `gravity-pd` at the profile's default bandwidth ([arm-controllers.md](arm-controllers.md)
 Part A). Without integral action the joints settle short of the target by the drives' Coulomb friction over the
-controller's stiffness, about 0.04 rad on the elbow, so the settling check is pinned at 0.06 rad until a PID with
-gravity feed-forward closes that gap. It then brings the arm up through the
-arm host on `virtual:arm` as the console does: contract check, align, bring-up and enable. The motors start
-calibrated but not aligned.
+controller's stiffness, about 0.04 rad on the elbow, so the settling check is pinned at 0.06 rad for `gravity-pd` and
+`computed-torque`; under `gravity-pid` the integral closes most of that gap within the two seconds the check allows,
+and the check is 0.015 rad. It then brings the arm up through the arm host on `virtual:arm` as the console does:
+contract check, align, bring-up and enable. The motors start calibrated but not aligned. Each scenario runs its motors
+in a working directory of its own (`scenario<n>` under the fixture's directory), so the logs CI uploads keep every
+scenario, and a failed step prints each motor's real-time factor and overrun count from its last status report.
 
 | Scenario               | Checks                                                                                                                                                                                                                        |
 |------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Tracking under gravity | The largest difference between commanded and measured position while the shoulder lifts, as a `[METRIC]` line held to a limit pinned from it                                                                                  |
 | Computed torque        | The same move under `computed-torque`, with the reference speed and acceleration: a tighter tracking limit, pinned from its own `[METRIC]` line                                                                               |
+| PID with gravity       | The same move under `gravity-pid`: every joint settles within 0.015 rad despite the drives' friction, and a tracking limit pinned from its `[METRIC]` line                                                                    |
 | Collision              | A 30 N·m torque against the shoulder while it moves, about the drive's peak torque through the gear, trips the arm on that joint's tracking error (REQ-ARM-014); without the supervision the drive holds on and nothing trips |
 | Silent joint           | A paused motor trips the arm as a silent joint (REQ-ARM-005)                                                                                                                                                                  |
 

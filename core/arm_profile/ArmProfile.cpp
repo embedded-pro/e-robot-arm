@@ -253,6 +253,8 @@ namespace arm
                     return ReadTuning(path, value, profile.config.gravityPd);
                 if (key == "computedTorque")
                     return ReadTuning(path, value, profile.config.computedTorque);
+                if (key == "gravityPid")
+                    return ReadTuning(path, value, profile.config.gravityPid);
                 return Unknown(path);
             }
 
@@ -881,6 +883,8 @@ namespace arm
                 Tuning(config.gravityPd);
                 stream << ",\n  \"computedTorque\": ";
                 Tuning(config.computedTorque);
+                stream << ",\n  \"gravityPid\": ";
+                Tuning(config.gravityPid);
                 stream << ",\n  \"joints\": [";
 
                 for (std::size_t joint = 0; joint != jointCount; ++joint)

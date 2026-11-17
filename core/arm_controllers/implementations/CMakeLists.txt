@@ -9,6 +9,7 @@ target_link_libraries(e_robot_arm.arm_controllers.implementations PUBLIC
     e_robot_arm.arm_controllers.interfaces
     e_robot_arm.arm_model
     robotics.controllers.manipulator
+    numerical.controllers.implementations
     e_robot_arm.motion.interfaces
     infra.timer
 )
@@ -20,6 +21,8 @@ target_sources(e_robot_arm.arm_controllers.implementations PRIVATE
     ComputedTorque.hpp
     GravityCompensatedPd.cpp
     GravityCompensatedPd.hpp
+    GravityPid.cpp
+    GravityPid.hpp
 )
 
 add_subdirectory(test)

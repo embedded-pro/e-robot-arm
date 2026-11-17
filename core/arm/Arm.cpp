@@ -28,6 +28,7 @@ namespace arm
         , model(config.geometry, config.mass, config.positionLimits)
         , gravityPd(model, GravityPdGains(model, config))
         , computedTorque(model, ReflectedRotors(config), config.computedTorque)
+        , gravityPid(model, ReflectedRotors(config), config.gravityPid, config.controlPeriod)
         , controllers(safety, motion)
         , engagement(lifecycle, controllers)
         , loop(safety, config.controlPeriod, [this]()
@@ -38,6 +39,7 @@ namespace arm
         const auto gravityPdId = controllers.Register("gravity-pd", gravityPd);
         controllers.Enable(gravityPdId);
         controllers.Enable(controllers.Register("computed-torque", computedTorque));
+        controllers.Enable(controllers.Register("gravity-pid", gravityPid));
         controllers.Select(gravityPdId);
     }
 

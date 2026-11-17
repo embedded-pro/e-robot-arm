@@ -14,4 +14,5 @@ target_sources(e_robot_arm.arm_controllers_test PRIVATE
     TestArmControllersImpl.cpp
     TestComputedTorque.cpp
     TestGravityCompensatedPd.cpp
+    TestGravityPid.cpp
 )
