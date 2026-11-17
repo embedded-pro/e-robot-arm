@@ -2,7 +2,7 @@
 title: "Collision Observer Design"
 type: design
 status: draft
-version: 0.2.0
+version: 0.3.0
 component: "collision"
 date: 2026-11-17
 ---
@@ -12,7 +12,7 @@ date: 2026-11-17
 | Title     | Collision Observer Design |
 | Type      | design                    |
 | Status    | draft                     |
-| Version   | 0.2.0                     |
+| Version   | 0.3.0                     |
 | Component | collision                 |
 | Date      | 2026-11-17                |
 
@@ -46,9 +46,12 @@ The arm's generalised momentum is its inertia matrix times the joint speeds. Wit
 only by the commanded torque, gravity and the Coriolis terms the dynamics give. The observer is robotics-toolbox's
 momentum observer: it integrates that expected change, compares the integral with the momentum measured now, and
 the difference, scaled by a gain, is the external torque. The estimate follows the true external torque as a
-first-order lag with the gain as its bandwidth: 50 /s by default. Over a 10 ms period each step closes half the
-gap, so a step of external torque shows at 50 % after one period and at 94 % after four. It needs no joint accelerations, so measured speeds are enough, and no
-differentiation, so it does not amplify noise.
+first-order lag with the gain as its bandwidth: 25 /s by default. Over a 10 ms period each step closes a quarter of
+the gap, so a step of external torque shows at 25 % after one period and at 68 % after four: a 30 N·m collision
+crosses a 10 N·m limit in two periods. It needs no joint accelerations, so measured speeds are enough, and no
+differentiation, so it does not amplify noise. The gain also scales every timing error in the torque the observer
+integrates: at 50 /s a reading that arrives a few milliseconds off made the reference step of a tuning run read
+10 N·m on the shoulder of the virtual arm, at 25 /s it reads below 2 N·m.
 
 The dynamics are the arm model's ([arm-model.md](arm-model.md)): its links' mass, centre of mass and inertia,
 gravity, and each joint's reflected rotor inertia, the motor's inertia times the gear ratio squared, as the link's
@@ -59,8 +62,10 @@ without it reads every acceleration as an external torque.
 
 The arm steps the observer after the arm controllers, once per control step:
 
-- While the controllers stream setpoints, it updates with the latest measured positions and speeds and the torques
-  commanded the step before: those are the torques that moved the joints to where they are now measured.
+- While the controllers stream setpoints, it updates with the latest measured positions and speeds and the torque
+  that acted since the previous reading. The control loop requests telemetry half a period before it sends the
+  setpoints ([control-loop.md](control-loop.md)), so between two readings the set commanded two steps before acted
+  for the first half and the set commanded the step before for the second: the observer integrates their mean.
 - The first streaming step after any step without streaming resets it to the momentum measured then, and reports no
   estimate for that step.
 - A step without streaming reports no estimate.
@@ -100,7 +105,7 @@ snapshot and trace.
 
 | Entity   | Field | Type / Unit | Range   | Notes                                      |
 |----------|-------|-------------|---------|--------------------------------------------|
-| Observer | gain  | 1/s         | above 0 | The estimate's bandwidth; 50 /s by default |
+| Observer | gain  | 1/s         | above 0 | The estimate's bandwidth; 25 /s by default |
 | Estimate | joint | N·m         | finite  | One per joint, joint space                 |
 
 ---
@@ -114,8 +119,8 @@ snapshot and trace.
   the gain times one period's momentum change; the next fresh reading corrects it.
 - The observer takes the commanded torque as applied. A drive that cannot deliver it, at its current limit or
   behind its current loop, leaves the difference in the estimate: a 0.1 rad reference step on the virtual arm's
-  elbow reads 11 N·m on the shoulder and trips it. Step tests keep their steps small (0.05 rad in the scenarios)
-  until the observer knows the drives' limits (open question 2).
+  elbow reads up to 5.6 N·m on the shoulder. The scenarios step 0.05 rad, below 2 N·m, to keep a margin to the
+  limit until the observer knows the drives' limits (open question 2).
 - The observer is heap-free and runs once per control step; a mass matrix, a Coriolis matrix and a gravity vector
   per step.
 

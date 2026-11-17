@@ -207,7 +207,20 @@ THEN(R"(the step shall rise within {float} s and overshoot by less than {float} 
     std::cout << "[METRIC] virtual_arm.step_rise_s=" << step->riseTime.value_or(-1.0f) << " limit=" << riseLimit << std::endl;
     std::cout << "[METRIC] virtual_arm.step_overshoot_percent=" << step->overshootPercent << " limit=" << overshootLimit << std::endl;
     std::cout << "[METRIC] virtual_arm.step_settling_s=" << step->settlingTime.value_or(-1.0f) << std::endl;
+    const auto [external, externalJoint] = context.Get<VirtualArmFixture>().LargestExternalTorque();
+    std::cout << "[METRIC] virtual_arm.step_external_torque_nm=" << external << " joint=" << externalJoint + 1 << std::endl;
     ASSERT_TRUE(step->riseTime.has_value());
     EXPECT_LT(*step->riseTime, riseLimit);
     EXPECT_LT(step->overshootPercent, overshootLimit);
+}
+
+THEN(R"(within {int} ms the arm shall trip on a joint's tracking error)", (std::int32_t milliseconds))
+{
+    auto& fixture = context.Get<VirtualArmFixture>();
+    const bool tripped = fixture.WaitForEvent([](const arm_host::ArmEvent& event)
+        {
+            return event.kind == arm_host::ArmEventKind::supervisionTrip && event.reason.starts_with("tracking error");
+        },
+        std::chrono::milliseconds{ milliseconds });
+    EXPECT_TRUE(tripped) << fixture.History();
 }

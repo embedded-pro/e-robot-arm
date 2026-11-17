@@ -260,7 +260,7 @@ scenario, and a failed step prints each motor's real-time factor and overrun cou
 | PID with gravity       | The same move under `gravity-pid`: every joint settles within 0.015 rad despite the drives' friction, and a tracking limit pinned from its `[METRIC]` line                                                                       |
 | Step test              | A 0.05 rad reference step on the elbow under `gravity-pid` through the tuning runner ([tuning.md](tuning.md)): rise time and overshoot as `[METRIC]` lines held to limits pinned from them                                       |
 | Collision              | A 30 N·m torque against the shoulder while it moves, about the drive's peak torque through the gear, trips the arm on that joint's collision within 300 ms (REQ-ARM-016)                                                         |
-| Held back              | The same collision with every joint's collision limit at 1000 N·m, out of reach, trips the arm on that joint's tracking error instead (REQ-ARM-014); without either supervision the drive holds on and nothing trips             |
+| Held back              | The same collision with every joint's collision limit at 1000 N·m, out of reach, trips the arm on a joint's tracking error instead (REQ-ARM-014); without either supervision the drive holds on and nothing trips                |
 | Silent joint           | A paused motor trips the arm as a silent joint (REQ-ARM-005)                                                                                                                                                                     |
 
 CI runs them in a job of its own after building the engine (Part F). A torque well beyond the drive's peak is no

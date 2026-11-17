@@ -2,7 +2,7 @@
 title: "Arm Profile Design"
 type: design
 status: draft
-version: 0.12.0
+version: 0.13.0
 component: "arm_profile"
 date: 2026-11-13
 ---
@@ -12,7 +12,7 @@ date: 2026-11-13
 | Title     | Arm Profile Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.12.0             |
+| Version   | 0.13.0             |
 | Component | arm_profile        |
 | Date      | 2026-11-13         |
 
@@ -60,7 +60,7 @@ A profile holds what `ArmConfig` holds:
 | `computed-torque` damping   | `computedTorque.dampingRatio`     | above 0, at most 5          | 0.7                 |
 | `gravity-pid` bandwidth     | `gravityPid.bandwidthRadPerS`     | rad/s, above 0, at most 500 | 20                  |
 | `gravity-pid` damping       | `gravityPid.dampingRatio`         | above 0, at most 5          | 0.7                 |
-| Collision observer gain     | `collisionObserverGainPerS`       | 1/s, above 0, at most 1000  | 50                  |
+| Collision observer gain     | `collisionObserverGainPerS`       | 1/s, above 0, at most 1000  | 25                  |
 | Joints                      | `joints`                          | exactly six, in order       | required            |
 | Geometry                    | `geometry`                        | see below                   | the reference arm   |
 | Mass properties             | `massProperties`                  | see below                   | the reference arm   |

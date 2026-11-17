@@ -249,7 +249,7 @@ TEST_F(ArmProfileTest, reads_the_tracking_error_supervision_and_defaults_it_to_0
     EXPECT_EQ(std::chrono::milliseconds{ 200 }, profile->config.tracking[1].time);
 }
 
-TEST_F(ArmProfileTest, reads_the_collision_supervision_and_defaults_it_to_20_n_m_with_a_gain_of_50_per_s)
+TEST_F(ArmProfileTest, reads_the_collision_supervision_and_defaults_it_to_20_n_m_with_a_gain_of_25_per_s)
 {
     const auto tuned = Read(Profile(Joint(1, R"(, "collisionTorqueNm": 12.5)"), R"( "collisionObserverGainPerS": 80,)"));
     const auto plain = Read(Profile(Joint(1)));
@@ -259,7 +259,7 @@ TEST_F(ArmProfileTest, reads_the_collision_supervision_and_defaults_it_to_20_n_m
     EXPECT_NEAR(20.0f, tuned->config.collision[1].Value(), 1.0e-6f);
     EXPECT_NEAR(80.0f, tuned->config.collisionObserverGain, 1.0e-6f);
     ASSERT_TRUE(plain.has_value()) << Problem();
-    EXPECT_NEAR(50.0f, plain->config.collisionObserverGain, 1.0e-6f);
+    EXPECT_NEAR(25.0f, plain->config.collisionObserverGain, 1.0e-6f);
 }
 
 TEST_F(ArmProfileTest, reads_the_controllers_bandwidth_and_damping_and_defaults_them_to_30_and_0_7)

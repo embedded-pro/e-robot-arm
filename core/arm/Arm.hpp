@@ -59,6 +59,7 @@ namespace arm
         CollisionObserver collision;
         infra::Duration period;
         bool observing{ false };
+        JointTorques previousApplied{};
         std::optional<JointTorques> externalTorques;
         ArmControllersImpl controllers;
         ArmControllerEngagement engagement;

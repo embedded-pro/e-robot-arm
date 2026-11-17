@@ -136,10 +136,15 @@ namespace arm
         if (!observing)
         {
             collision.Reset(positions, speeds);
+            previousApplied = applied->torques;
             observing = true;
             return std::nullopt;
         }
 
-        return collision.Update(positions, speeds, applied->torques, period);
+        JointTorques acting{};
+        for (std::size_t joint = 0; joint != jointCount; ++joint)
+            acting[joint] = foc::NewtonMeter{ 0.5f * (applied->torques[joint].Value() + previousApplied[joint].Value()) };
+        previousApplied = applied->torques;
+        return collision.Update(positions, speeds, acting, period);
     }
 }
