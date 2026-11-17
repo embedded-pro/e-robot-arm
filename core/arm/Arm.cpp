@@ -21,7 +21,7 @@ namespace arm
 
     Arm::Arm(can::FocMotorCategoryClient& client, const ArmConfig& config)
         : jointBus(client, config.nodes, config.transmissions, config.missedRequestsBeforeSilent, config.controlPeriod * config.commandTimeoutPeriods)
-        , safety(jointBus, config.positionLimits, config.tracking, config.controlPeriod)
+        , safety(jointBus, config.positionLimits, config.tracking, config.collision, config.controlPeriod)
         , motion(safety, config.positionLimits, config.motionLimits, config.controlPeriod)
         , configurator(safety, lifecycle, SilenceWindow(config))
         , lifecycle(safety, motion, configurator, config.controllers, config.motors)
@@ -29,6 +29,8 @@ namespace arm
         , gravityPd(model, GravityPdGains(model, config))
         , computedTorque(model, ReflectedRotors(config), config.computedTorque)
         , gravityPid(model, ReflectedRotors(config), config.gravityPid, config.controlPeriod)
+        , collision(model, ReflectedRotors(config), config.collisionObserverGain)
+        , period(config.controlPeriod)
         , controllers(safety, motion)
         , engagement(lifecycle, controllers)
         , loop(safety, config.controlPeriod, [this]()
@@ -93,6 +95,11 @@ namespace arm
         return controllers;
     }
 
+    const std::optional<JointTorques>& Arm::EstimatedExternalTorques() const
+    {
+        return externalTorques;
+    }
+
     ControlLoop& Arm::Loop()
     {
         return loop;
@@ -100,10 +107,39 @@ namespace arm
 
     void Arm::Step()
     {
+        const auto applied = controllers.LastSetpoints();
         const auto reference = motion.Step();
         if (!controllers.Step(reference))
             motion.Abort();
-        safety.Supervise(controllers.Reference());
+        const auto tracked = controllers.Reference();
+        externalTorques = ExternalTorques(applied, tracked.has_value());
+        safety.Supervise(tracked, externalTorques);
         lifecycle.Step();
+    }
+
+    std::optional<JointTorques> Arm::ExternalTorques(const std::optional<JointSetpoints>& applied, bool streaming)
+    {
+        if (!streaming || !applied.has_value())
+        {
+            observing = false;
+            return std::nullopt;
+        }
+
+        JointPositions positions{};
+        JointSpeeds speeds{};
+        for (std::size_t joint = 0; joint != jointCount; ++joint)
+        {
+            positions[joint] = safety.Reading(joint).position;
+            speeds[joint] = safety.Reading(joint).speed;
+        }
+
+        if (!observing)
+        {
+            collision.Reset(positions, speeds);
+            observing = true;
+            return std::nullopt;
+        }
+
+        return collision.Update(positions, speeds, applied->torques, period);
     }
 }

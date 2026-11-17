@@ -255,6 +255,8 @@ namespace arm
                     return ReadTuning(path, value, profile.config.computedTorque);
                 if (key == "gravityPid")
                     return ReadTuning(path, value, profile.config.gravityPid);
+                if (key == "collisionObserverGainPerS")
+                    return ReadBounded(path, value, 1000.0f, "must be above 0 and at most 1000", profile.config.collisionObserverGain);
                 return Unknown(path);
             }
 
@@ -597,6 +599,8 @@ namespace arm
                     return Mark(seen.motion, ReadMotion(path, value, config.motionLimits[joint]));
                 if (key == "trackingError")
                     return ReadTracking(path, value, config.tracking[joint]);
+                if (key == "collisionTorqueNm")
+                    return ReadCollision(path, value, config.collision[joint]);
                 if (key == "motorController")
                     return ReadController(path, value, config.controllers[joint]);
                 if (key == "motor")
@@ -770,6 +774,12 @@ namespace arm
                     });
             }
 
+            bool ReadCollision(const Path& path, const Value& value, foc::NewtonMeter& limit)
+            {
+                float torque{ 0.0f };
+                return ReadBounded(path, value, 1000.0f, "must be above 0 and at most 1000", torque) && Store(limit, foc::NewtonMeter{ torque });
+            }
+
             bool ReadTrackingTime(const Path& path, const Value& value, infra::Duration& time)
             {
                 float seconds{ 0.0f };
@@ -885,6 +895,8 @@ namespace arm
                 Tuning(config.computedTorque);
                 stream << ",\n  \"gravityPid\": ";
                 Tuning(config.gravityPid);
+                stream << ",\n  \"collisionObserverGainPerS\": ";
+                Number(config.collisionObserverGain);
                 stream << ",\n  \"joints\": [";
 
                 for (std::size_t joint = 0; joint != jointCount; ++joint)
@@ -1003,7 +1015,8 @@ namespace arm
                 Number(config.tracking[joint].window.Value());
                 stream << ", \"timeS\": ";
                 Number(std::chrono::duration<float>{ config.tracking[joint].time }.count());
-                stream << " }";
+                stream << " },\n      \"collisionTorqueNm\": ";
+                Number(config.collision[joint].Value());
                 if (config.controllers[joint].has_value())
                     Controller(*config.controllers[joint]);
                 if (config.motors[joint].has_value())

@@ -32,6 +32,14 @@ GIVEN(R"(the arm on six e-foc virtual motors)")
     ASSERT_EQ(std::nullopt, fixture.Start());
 }
 
+GIVEN(R"(the arm on six e-foc virtual motors with every joint's collision limit at {float} N·m)", (float limit))
+{
+    context.Emplace<VirtualArmFixture>();
+    auto& fixture = context.Get<VirtualArmFixture>();
+    fixture.profile.config.collision.fill(foc::NewtonMeter{ limit });
+    ASSERT_EQ(std::nullopt, fixture.Start());
+}
+
 WHEN(R"(the arm is brought up and enabled)")
 {
     auto& fixture = context.Get<VirtualArmFixture>();
@@ -109,6 +117,15 @@ THEN(R"(the largest tracking error during the move shall stay below {float} rad)
     EXPECT_LT(largest, limit);
 }
 
+THEN(R"(the largest external torque estimated during the move shall stay below {float} N·m)", (float limit))
+{
+    auto& fixture = context.Get<VirtualArmFixture>();
+    const auto [largest, joint] = fixture.LargestExternalTorque();
+    std::cout << "[METRIC] virtual_arm.external_torque_nm=" << largest << " joint=" << joint + 1 << " limit=" << limit << std::endl;
+    EXPECT_FALSE(fixture.trace.empty());
+    EXPECT_LT(largest, limit);
+}
+
 WHEN(R"(motor {int} stops answering)", (std::int32_t motor))
 {
     context.Get<VirtualArmFixture>().virtualArm->Silence(static_cast<std::size_t>(motor - 1), true);
@@ -142,6 +159,23 @@ THEN(R"(within {int} ms the arm shall trip with joint {int} on its tracking erro
     const bool tripped = fixture.WaitForEvent([heldJoint](const arm_host::ArmEvent& event)
         {
             return event.kind == arm_host::ArmEventKind::supervisionTrip && event.joint == heldJoint && event.reason.starts_with("tracking error");
+        },
+        std::chrono::milliseconds{ milliseconds });
+    EXPECT_TRUE(tripped) << fixture.History();
+    EXPECT_TRUE(fixture.WaitFor([](const arm_host::ArmSnapshot& snapshot)
+        {
+            return snapshot.tripped && snapshot.state == arm::ArmState::tripped;
+        },
+        1s));
+}
+
+THEN(R"(within {int} ms the arm shall trip with joint {int} on a collision)", (std::int32_t milliseconds, std::int32_t joint))
+{
+    auto& fixture = context.Get<VirtualArmFixture>();
+    const auto heldJoint = static_cast<std::size_t>(joint - 1);
+    const bool tripped = fixture.WaitForEvent([heldJoint](const arm_host::ArmEvent& event)
+        {
+            return event.kind == arm_host::ArmEventKind::supervisionTrip && event.joint == heldJoint && event.reason.starts_with("collision");
         },
         std::chrono::milliseconds{ milliseconds });
     EXPECT_TRUE(tripped) << fixture.History();

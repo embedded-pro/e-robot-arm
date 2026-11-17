@@ -2,7 +2,7 @@
 title: "Arm Profile Design"
 type: design
 status: draft
-version: 0.11.0
+version: 0.12.0
 component: "arm_profile"
 date: 2026-11-13
 ---
@@ -12,7 +12,7 @@ date: 2026-11-13
 | Title     | Arm Profile Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.11.0             |
+| Version   | 0.12.0             |
 | Component | arm_profile        |
 | Date      | 2026-11-13         |
 
@@ -60,6 +60,7 @@ A profile holds what `ArmConfig` holds:
 | `computed-torque` damping   | `computedTorque.dampingRatio`     | above 0, at most 5          | 0.7                 |
 | `gravity-pid` bandwidth     | `gravityPid.bandwidthRadPerS`     | rad/s, above 0, at most 500 | 20                  |
 | `gravity-pid` damping       | `gravityPid.dampingRatio`         | above 0, at most 5          | 0.7                 |
+| Collision observer gain     | `collisionObserverGainPerS`       | 1/s, above 0, at most 1000  | 50                  |
 | Joints                      | `joints`                          | exactly six, in order       | required            |
 | Geometry                    | `geometry`                        | see below                   | the reference arm   |
 | Mass properties             | `massProperties`                  | see below                   | the reference arm   |
@@ -112,11 +113,15 @@ Each joint:
 | Acceleration limit | `motionLimits.accelerationRadPerS2` | rad/s², joint space, above 0                | required            |
 | Tracking window    | `trackingError.windowRad`           | rad, joint space, above 0                   | 0.2                 |
 | Tracking time      | `trackingError.timeS`               | s, above 0, at most 10                      | 0.2                 |
+| Collision limit    | `collisionTorqueNm`                 | N·m, joint side, above 0, at most 1000      | 20                  |
 | Motor controller   | `motorController`                   | see below                                   | not configured      |
 | Motor              | `motor`                             | see below                                   | not configured      |
 
 The tracking window and time are the safety supervisor's ([safety.md](safety.md) Part F): a joint whose tracking
-error stays above its window for its time trips the arm. They have defaults, so the check is on in every profile.
+error stays above its window for its time trips the arm. So is the collision limit: an external torque on the joint,
+as the collision observer estimates it ([collision.md](collision.md)), above the limit trips the arm. The observer's
+gain, the bandwidth of its estimate, is the arm's `collisionObserverGainPerS`. All have defaults, so both checks are
+on in every profile.
 
 A joint's motor controller names one algorithm per loop and any of its fourteen gains:
 

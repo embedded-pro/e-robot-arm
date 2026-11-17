@@ -181,7 +181,7 @@ namespace arm
         void OnContractsResolved(can::ContractCompatibility compatibility) override;
         void OnJointFault(std::size_t joint, can::FocFaultCode fault) override;
         void OnJointSilent(std::size_t joint) override;
-        void OnSupervisionTrip(std::size_t joint, SupervisionTrip trip, foc::Radians value) override;
+        void OnSupervisionTrip(std::size_t joint, SupervisionTrip trip, float value) override;
         void OnCommandDelivered(JointCommand command) override;
         void OnCommandFailed(JointCommand command, CommandFailure failure) override;
         void OnMoveDone() override;

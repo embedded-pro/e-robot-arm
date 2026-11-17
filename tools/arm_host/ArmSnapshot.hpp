@@ -48,6 +48,7 @@ namespace arm_host
         arm::Placement toolPose{};
         arm::Singularities singularities{};
         arm::JointTorques gravityTorque{};
+        std::optional<arm::JointTorques> externalTorques{};
         float manipulability{ 0.0f };
         std::string profileName{};
         arm::ArmConfig config{};
@@ -61,6 +62,7 @@ namespace arm_host
         infra::TimePoint time{};
         arm::JointPositions commanded{};
         arm::JointPositions measured{};
+        std::optional<arm::JointTorques> externalTorques{};
     };
 
     class ArmSessionSink

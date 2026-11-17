@@ -2,7 +2,7 @@
 title: "Simulator Design"
 type: design
 status: draft
-version: 0.12.0
+version: 0.13.0
 component: "simulator"
 date: 2026-11-16
 ---
@@ -12,7 +12,7 @@ date: 2026-11-16
 | Title     | Simulator Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.12.0           |
+| Version   | 0.13.0           |
 | Component | simulator        |
 | Date      | 2026-11-16       |
 
@@ -202,12 +202,14 @@ The snapshot is what the screen shows; events are what the log shows; traces are
 
 - **Snapshot** — published once per control period, with a sequence number so the GUI can tell a stale copy. On
   the virtual arm it carries each motor's plant and process state (stopped, starting, up, or ended with its exit
-  code) and the working directory, also while the target connects.
+  code) and the working directory, also while the target connects. While the arm drives its joints it carries the
+  external torque the collision observer estimates on each joint ([collision.md](collision.md)), and none otherwise.
 - **Events** — command accepted or refused (with its id, its name and the reason), contracts resolved, joint fault,
   joint silent, tripped (with the joint and the fault that caused it, once per trip), move done, move aborted, target
   ready, target failed, lifecycle state changed; each with the arm-thread time. The snapshot carries the lifecycle
   state as well.
-- **Trace samples** — one per control period: the time, the six commanded positions and the six measured positions.
+- **Trace samples** — one per control period: the time, the six commanded positions, the six measured positions and,
+  while the arm drives its joints, the six estimated external torques.
 
 The commanded positions are the last setpoint set the active arm controller sent (`ArmControllers::LastSetpoints()`,
 empty until the arm has been enabled); nothing else in `core/` changes for the simulator.

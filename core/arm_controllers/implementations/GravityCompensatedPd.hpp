@@ -15,7 +15,6 @@ namespace arm
     };
 
     using JointPdGains = std::array<PdGain, jointCount>;
-    using JointInertias = std::array<float, jointCount>;
     using PdGainMatrix = controllers::PdGravityCompensation<float, jointCount>::GainMatrix;
 
     struct PdGainMatrices

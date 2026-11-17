@@ -38,6 +38,8 @@ namespace arm
         IkFailure failure{ IkFailure::unreachable };
     };
 
+    using JointInertias = std::array<float, jointCount>;
+
     class ArmModel
     {
     public:

@@ -113,3 +113,10 @@
   shall: >
     While the arm drives its joints, when any joint's measured position leaves that joint's position limits, the
     arm shall emergency-stop all six joints and report the joint and its position.
+
+- id: REQ-ARM-016
+  title: Stop on a collision
+  shall: >
+    While the arm drives its joints, when the external torque the arm estimates on a joint from its dynamics, the
+    measured joints and the commanded torques exceeds that joint's configured collision limit, the arm shall
+    emergency-stop all six joints and report the joint and the torque.

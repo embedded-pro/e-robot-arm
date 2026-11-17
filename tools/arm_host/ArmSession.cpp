@@ -60,6 +60,21 @@ namespace arm_host
             return std::nullopt;
         }
 
+        std::string SupervisionReason(arm::SupervisionTrip trip, float value)
+        {
+            switch (trip)
+            {
+                case arm::SupervisionTrip::trackingError:
+                    return std::format("tracking error {:.3f} rad", value);
+                case arm::SupervisionTrip::collision:
+                    return std::format("collision {:.1f} N·m", value);
+                case arm::SupervisionTrip::positionLimit:
+                    break;
+            }
+
+            return std::format("position {:.3f} rad outside its limits", value);
+        }
+
         std::string_view JointCommandName(arm::JointCommand command)
         {
             switch (command)
@@ -460,10 +475,9 @@ namespace arm_host
         session.ReportTrip(joint, can::FocFaultCode::none);
     }
 
-    void ArmSession::Events::OnSupervisionTrip(std::size_t joint, arm::SupervisionTrip trip, foc::Radians value)
+    void ArmSession::Events::OnSupervisionTrip(std::size_t joint, arm::SupervisionTrip trip, float value)
     {
-        auto reason = trip == arm::SupervisionTrip::trackingError ? std::format("tracking error {:.3f} rad", value.Value())
-                                                                  : std::format("position {:.3f} rad outside its limits", value.Value());
+        auto reason = SupervisionReason(trip, value);
         session.Emit({ .kind = ArmEventKind::supervisionTrip, .reason = reason, .joint = joint });
         session.ReportTrip(joint, can::FocFaultCode::none, std::move(reason));
     }
@@ -580,6 +594,8 @@ namespace arm_host
             snapshot.commanded = setpoints->positions;
         else
             snapshot.commanded.reset();
+        snapshot.externalTorques = arm.EstimatedExternalTorques();
+        sample.externalTorques = snapshot.externalTorques;
         snapshot.contracts = safety.Contracts();
         snapshot.tripped = safety.Tripped();
         snapshot.moving = arm.Motion().Moving();

@@ -89,7 +89,8 @@ namespace arm
     enum class SupervisionTrip : uint8_t
     {
         positionLimit,
-        trackingError
+        trackingError,
+        collision
     };
 
     class JointBusObserver
@@ -110,7 +111,7 @@ namespace arm
         virtual void OnParameter(std::size_t, can::FocParameter, can::FocParameterValue)
         {}
 
-        virtual void OnSupervisionTrip(std::size_t, SupervisionTrip, foc::Radians)
+        virtual void OnSupervisionTrip(std::size_t, SupervisionTrip, float)
         {}
 
     protected:

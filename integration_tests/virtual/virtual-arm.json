@@ -14,7 +14,8 @@
       },
       "positionLimitsRad": { "lower": -3.1415927, "upper": 3.1415927 },
       "motionLimits": { "speedRadPerS": 1, "accelerationRadPerS2": 2 },
-      "trackingError": { "windowRad": 0.1, "timeS": 0.1 }
+      "trackingError": { "windowRad": 0.1, "timeS": 0.1 },
+      "collisionTorqueNm": 10
     },
     {
       "node": 2,
@@ -24,7 +25,8 @@
       },
       "positionLimitsRad": { "lower": -3.1415927, "upper": 3.1415927 },
       "motionLimits": { "speedRadPerS": 1, "accelerationRadPerS2": 2 },
-      "trackingError": { "windowRad": 0.1, "timeS": 0.1 }
+      "trackingError": { "windowRad": 0.1, "timeS": 0.1 },
+      "collisionTorqueNm": 10
     },
     {
       "node": 3,
@@ -34,7 +36,8 @@
       },
       "positionLimitsRad": { "lower": -3.1415927, "upper": 3.1415927 },
       "motionLimits": { "speedRadPerS": 1, "accelerationRadPerS2": 2 },
-      "trackingError": { "windowRad": 0.1, "timeS": 0.1 }
+      "trackingError": { "windowRad": 0.1, "timeS": 0.1 },
+      "collisionTorqueNm": 10
     },
     {
       "node": 4,
@@ -44,7 +47,8 @@
       },
       "positionLimitsRad": { "lower": -3.1415927, "upper": 3.1415927 },
       "motionLimits": { "speedRadPerS": 1, "accelerationRadPerS2": 2 },
-      "trackingError": { "windowRad": 0.1, "timeS": 0.1 }
+      "trackingError": { "windowRad": 0.1, "timeS": 0.1 },
+      "collisionTorqueNm": 2
     },
     {
       "node": 5,
@@ -54,7 +58,8 @@
       },
       "positionLimitsRad": { "lower": -3.1415927, "upper": 3.1415927 },
       "motionLimits": { "speedRadPerS": 1, "accelerationRadPerS2": 2 },
-      "trackingError": { "windowRad": 0.1, "timeS": 0.1 }
+      "trackingError": { "windowRad": 0.1, "timeS": 0.1 },
+      "collisionTorqueNm": 2
     },
     {
       "node": 6,
@@ -64,7 +69,8 @@
       },
       "positionLimitsRad": { "lower": -3.1415927, "upper": 3.1415927 },
       "motionLimits": { "speedRadPerS": 1, "accelerationRadPerS2": 2 },
-      "trackingError": { "windowRad": 0.1, "timeS": 0.1 }
+      "trackingError": { "windowRad": 0.1, "timeS": 0.1 },
+      "collisionTorqueNm": 2
     }
   ],
   "geometry": {

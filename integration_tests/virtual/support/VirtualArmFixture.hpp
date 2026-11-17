@@ -22,6 +22,7 @@ namespace integration
         bool WaitForEvent(const std::function<bool(const arm_host::ArmEvent&)>& condition, std::chrono::milliseconds timeout);
         void ForgetTrace();
         float LargestTrackingError();
+        std::pair<float, std::size_t> LargestExternalTorque();
         std::string History();
 
         arm::ArmProfile profile;

@@ -2,9 +2,9 @@
 title: "Safety Supervisor Design"
 type: design
 status: draft
-version: 0.4.0
+version: 0.5.0
 component: "safety"
-date: 2026-11-16
+date: 2026-11-17
 ---
 
 | Field     | Value                    |
@@ -12,9 +12,9 @@ date: 2026-11-16
 | Title     | Safety Supervisor Design |
 | Type      | design                   |
 | Status    | draft                    |
-| Version   | 0.4.0                    |
+| Version   | 0.5.0                    |
 | Component | safety                   |
-| Date      | 2026-11-16               |
+| Date      | 2026-11-17               |
 
 > The guard between the arm controller and the joint bus. Behaviour only; diagrams are Mermaid.
 
@@ -29,15 +29,16 @@ date: 2026-11-16
 - Refusing to start or move the joints before every node has a compatible contract.
 - Stopping all six joints at once, with an emergency stop, when any joint faults or goes silent.
 - Stopping them the same way, while the arm drives the joints, when a joint's measured position leaves its limits
-  or its tracking error stays above its window for longer than its time.
+  or its tracking error stays above its window for longer than its time, or the external torque estimated on a joint
+  ([collision.md](collision.md)) exceeds its collision limit.
 - Holding the arm stopped after such a trip until it is re-armed, and re-arming only when no joint is faulted.
 
 **Is NOT responsible for:**
 
 - Detecting faults and silence: the joint bus reports them.
 - Clearing a node's fault: the caller clears faults through the supervisor, which passes the command on.
-- Limits on speed, acceleration or torque, collision detection beyond the tracking error, and workspace limits:
-  planned with the motion and arm model components.
+- Estimating the external torque: the collision observer does ([collision.md](collision.md)).
+- Limits on speed, acceleration or torque, and workspace limits: planned with the motion and arm model components.
 - Choosing the reference: the arm controllers report the reference they track.
 
 ---
@@ -83,9 +84,13 @@ Re-arming does not start the joints.
 ### Part F — Supervision while the arm drives the joints
 
 Every control step in which the arm controllers stream setpoints, they hand the supervisor the joint reference they
-track. Against the latest reading of each joint the supervisor checks:
+track, and the arm hands it the external torque its collision observer estimates on each joint, when it has one.
+The supervisor checks:
 
-- **Position limits.** A measured position outside the joint's limits, ends included as inside, trips at once.
+- **Collision.** An estimated external torque, either sign, above the joint's collision limit trips at once, before
+  the position checks: the observer already filters its estimate, so one step above the limit is a collision.
+- **Position limits.** Against the latest reading of each joint: a measured position outside the joint's limits,
+  ends included as inside, trips at once.
 - **Tracking error.** The difference between the reference and the measured position, in joint space, above the
   joint's window counts one step; the steps are consecutive, and once they cover the joint's time the arm trips.
   A step within the window starts the count again.
@@ -93,14 +98,16 @@ track. Against the latest reading of each joint the supervisor checks:
 A step without streaming starts every count again and checks nothing: a joint the arm does not drive is not held
 to a reference. A joint whose latest reading is stale, not refreshed in the last control period, is skipped for that
 step: its count neither grows nor starts again, since a position the arm has not heard is no measure of tracking, and
-a joint that stays unheard is the joint bus's to report as silent. A supervision trip is a trip like a fault's (Part D), and the event passed on names the joint, the
-cause (position limit or tracking error) and the value that tripped: the measured position or the tracking error,
-in radians.
+a joint that stays unheard is the joint bus's to report as silent. A supervision trip is a trip like a fault's
+(Part D), and the event passed on names the joint, the cause (collision, position limit or tracking error) and the
+value that tripped: the estimated torque in N·m, or the measured position or the tracking error in radians.
 
 Each joint's window and time come from the arm profile; a profile that names none gets 0.2 rad for 0.2 s, so the
-check is never off by omission. Torque control relies on it: in torque mode the drive has no position reference of
-its own, so a joint held back by an obstacle or driven away by a wrong gain is caught here, not by the drive's
-following-error supervision.
+check is never off by omission, and the same holds for each joint's collision limit, 20 N·m when the profile names
+none. Torque control relies on both: in torque mode the drive has no position reference of its own, so a joint held
+back by an obstacle or driven away by a wrong gain is caught here, not by the drive's following-error supervision.
+The collision check is the faster of the two: a torque that holds a joint back shows in its estimate within a few
+periods, long before the tracking error has lasted its time.
 
 ---
 
@@ -108,13 +115,13 @@ following-error supervision.
 
 ### Provided
 
-| Interface          | Purpose                                   | Contract                                                          |
-|--------------------|-------------------------------------------|-------------------------------------------------------------------|
-| Joint bus          | The joint bus, guarded                    | A refused call sends nothing and reports failure                  |
-| Joint bus events   | Contract outcome, joint faulted or silent | Passed on unchanged; a fault or silence also trips the supervisor |
-| Supervise          | The reference the controllers track       | Once per streaming step; nothing while not streaming              |
-| Supervision trip   | Joint, cause and value                    | Sent once, with the trip                                          |
-| Trip state, re-arm | Whether the supervisor is tripped; re-arm | Re-arm refused while any joint is faulted                         |
+| Interface          | Purpose                                                                | Contract                                                          |
+|--------------------|------------------------------------------------------------------------|-------------------------------------------------------------------|
+| Joint bus          | The joint bus, guarded                                                 | A refused call sends nothing and reports failure                  |
+| Joint bus events   | Contract outcome, joint faulted or silent                              | Passed on unchanged; a fault or silence also trips the supervisor |
+| Supervise          | The reference the controllers track and the estimated external torques | Once per streaming step; nothing while not streaming              |
+| Supervision trip   | Joint, cause and value                                                 | Sent once, with the trip                                          |
+| Trip state, re-arm | Whether the supervisor is tripped; re-arm                              | Re-arm refused while any joint is faulted                         |
 
 ### Required
 
@@ -133,6 +140,7 @@ following-error supervision.
 | Supervisor  | trip   | flag        | armed or tripped | Armed at start                                     |
 | Tracking    | window | radians     | above 0          | One per joint; 0.2 rad when the profile names none |
 | Tracking    | time   | duration    | above 0          | One per joint; 0.2 s when the profile names none   |
+| Collision   | limit  | N·m         | above 0          | One per joint; 20 N·m when the profile names none  |
 
 ---
 
@@ -185,11 +193,11 @@ sequenceDiagram
 
 ## Constraints & Limitations
 
-| Constraint      | Value / Description                                                                   |
-|-----------------|---------------------------------------------------------------------------------------|
-| Single observer | The supervisor observes the joint bus; the controller observes the supervisor         |
-| Limits          | Position and tracking error; speed, acceleration and torque come with motion planning |
-| Memory          | No heap; all state is fixed-size                                                      |
+| Constraint      | Value / Description                                                                              |
+|-----------------|--------------------------------------------------------------------------------------------------|
+| Single observer | The supervisor observes the joint bus; the controller observes the supervisor                    |
+| Limits          | Position, tracking error and collision; speed, acceleration and torque come with motion planning |
+| Memory          | No heap; all state is fixed-size                                                                 |
 
 ---
 
