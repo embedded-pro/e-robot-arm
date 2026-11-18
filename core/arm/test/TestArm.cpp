@@ -215,3 +215,32 @@ TEST_F(ArmTest, gravity_pd_gains_follow_the_arms_inertia_with_each_rotor_through
     EXPECT_NEAR(mass.at(1, 2) * 400.0f, gains.kp.at(1, 2), 1.0e-3f);
     EXPECT_NEAR((mass.at(2, 2) + anaheim) * 20.0f, gains.kd.at(2, 2), 1.0e-4f);
 }
+
+TEST_F(ArmTest, the_collision_observer_waits_until_every_joint_has_reported_again)
+{
+    EnableArm();
+    arm::JointPositions target{};
+    target[1] = foc::Radians{ 0.5f };
+    ASSERT_TRUE(arm.Lifecycle().MoveTo(target));
+    for (int period = 0; period != 3; ++period)
+    {
+        ReportMotionFromEveryJoint();
+        ForwardTime(10ms);
+    }
+    ASSERT_TRUE(arm.EstimatedExternalTorques().has_value());
+    const auto held = *arm.EstimatedExternalTorques();
+
+    for (const auto node : nodes)
+        if (node != nodes[1])
+            Receive(node, can::focTelemetryMotionId, services::CanPayloadWriter{}.WriteFloat32(0.0f).WriteFloat32(0.0f));
+    ForwardTime(10ms);
+
+    ASSERT_TRUE(arm.EstimatedExternalTorques().has_value());
+    for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+        EXPECT_EQ(held[joint].Value(), (*arm.EstimatedExternalTorques())[joint].Value()) << joint;
+
+    ReportMotionFromEveryJoint();
+    ForwardTime(10ms);
+
+    EXPECT_NE(held[1].Value(), (*arm.EstimatedExternalTorques())[1].Value());
+}

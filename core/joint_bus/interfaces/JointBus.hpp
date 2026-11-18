@@ -5,6 +5,7 @@
 #include "e-foc-protocol/client/FocMotorCategoryClient.hpp"
 #include "e-foc-protocol/contract/FocMotorMessages.hpp"
 #include "e-foc-protocol/foc/Units.hpp"
+#include "infra/timer/Timer.hpp"
 #include "infra/util/Observer.hpp"
 #include <array>
 #include <cstddef>
@@ -60,6 +61,7 @@ namespace arm
         can::FocFaultCode fault{ can::FocFaultCode::none };
         bool silent{ false };
         uint32_t period{ 0 };
+        infra::TimePoint requested{};
     };
 
     inline bool Stale(const JointReading& reading, uint32_t currentPeriod)

@@ -3,6 +3,7 @@
 #include "tools/arm_host/DefaultArmConfig.hpp"
 #include "tools/arm_host/ProfileFile.hpp"
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstdlib>
 #include <filesystem>
@@ -154,6 +155,22 @@ namespace integration
         for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
             history += std::format("  J{} state {} fault {} silent {}\n", joint + 1, static_cast<int>(snapshot.readings[joint].state),
                 static_cast<int>(snapshot.readings[joint].fault), snapshot.readings[joint].silent);
+        history += std::format("  host control loop overruns {}\n", snapshot.overruns);
+        for (std::size_t sample = trace.size() > 15 ? trace.size() - 15 : 1; sample < trace.size(); ++sample)
+        {
+            const auto gap = std::chrono::duration<double, std::milli>(trace[sample].time - trace[sample - 1].time).count();
+            std::size_t joint{ 0 };
+            float external{ 0.0f };
+            if (trace[sample].externalTorques.has_value())
+                for (std::size_t candidate = 0; candidate != arm::jointCount; ++candidate)
+                    if (std::abs((*trace[sample].externalTorques)[candidate].Value()) > std::abs(external))
+                    {
+                        joint = candidate;
+                        external = (*trace[sample].externalTorques)[candidate].Value();
+                    }
+            const auto commanded = trace[sample].torques.has_value() ? (*trace[sample].torques)[joint].Value() : 0.0f;
+            history += std::format("  trace +{:.1f} ms external J{} {:.2f} N·m commanded {:.2f} N·m\n", gap, joint + 1, external, commanded);
+        }
         const auto timings = virtualArm->Timings();
         for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
             if (timings[joint].has_value())

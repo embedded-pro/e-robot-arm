@@ -1,4 +1,5 @@
 #include "core/arm/Arm.hpp"
+#include <algorithm>
 
 namespace arm
 {
@@ -127,24 +128,45 @@ namespace arm
 
         JointPositions positions{};
         JointSpeeds speeds{};
+        std::array<uint32_t, jointCount> readings{};
+        infra::TimePoint request{};
         for (std::size_t joint = 0; joint != jointCount; ++joint)
         {
             positions[joint] = safety.Reading(joint).position;
             speeds[joint] = safety.Reading(joint).speed;
+            readings[joint] = safety.Reading(joint).period;
+            request = std::max(request, safety.Reading(joint).requested);
         }
 
         if (!observing)
         {
             collision.Reset(positions, speeds);
             previousApplied = applied->torques;
+            actingSum = {};
+            actingPeriods = 0;
+            observedReadings = readings;
+            observedRequest = request;
             observing = true;
             return std::nullopt;
         }
 
+        for (std::size_t joint = 0; joint != jointCount; ++joint)
+            actingSum[joint] = foc::NewtonMeter{ actingSum[joint].Value() + 0.5f * (applied->torques[joint].Value() + previousApplied[joint].Value()) };
+        previousApplied = applied->torques;
+        ++actingPeriods;
+
+        for (std::size_t joint = 0; joint != jointCount; ++joint)
+            if (readings[joint] == observedReadings[joint])
+                return externalTorques;
+
         JointTorques acting{};
         for (std::size_t joint = 0; joint != jointCount; ++joint)
-            acting[joint] = foc::NewtonMeter{ 0.5f * (applied->torques[joint].Value() + previousApplied[joint].Value()) };
-        previousApplied = applied->torques;
-        return collision.Update(positions, speeds, acting, period);
+            acting[joint] = foc::NewtonMeter{ actingSum[joint].Value() / static_cast<float>(actingPeriods) };
+        const auto elapsed = request > observedRequest ? request - observedRequest : period * actingPeriods;
+        actingSum = {};
+        actingPeriods = 0;
+        observedReadings = readings;
+        observedRequest = request;
+        return collision.Update(positions, speeds, acting, elapsed);
     }
 }

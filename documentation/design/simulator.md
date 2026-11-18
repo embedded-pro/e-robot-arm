@@ -2,9 +2,9 @@
 title: "Simulator Design"
 type: design
 status: draft
-version: 0.14.0
+version: 0.15.0
 component: "simulator"
-date: 2026-11-16
+date: 2026-11-17
 ---
 
 | Field     | Value            |
@@ -12,9 +12,9 @@ date: 2026-11-16
 | Title     | Simulator Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.14.0           |
+| Version   | 0.15.0           |
 | Component | simulator        |
-| Date      | 2026-11-16       |
+| Date      | 2026-11-17       |
 
 > The e-robot-arm Simulator's components, threads, targets and data flow (phase 8a,
 > [#28](https://github.com/embedded-pro/e-robot-arm/issues/28)). The screen itself — layout, controls, flows,
@@ -236,7 +236,9 @@ empty until the arm has been enabled); nothing else in `core/` changes for the s
     `ArmSceneState` therefore has no default constructor.
 - **Window test.** `e_robot_arm.tool.simulator_window_test` opens the window on simulated joints, brings the arm up,
   moves it, captures a frame mid-move (`SIMULATOR_FRAME_CAPTURE=<path>.png` saves it and the whole window), prints
-  the frame rate while moving as `[METRIC]` lines, and checks that an injected fault trips the arm with its source.
+  the frame statistics of a move and a tuning step ([tool-simulator.md](tool-simulator.md) Part O) as `[METRIC]`
+  lines, on six e-foc virtual motors when `E_FOC_VIRTUAL_MOTOR` names the engine, and checks that an injected fault
+  trips the arm with its source.
   It needs a display: `xvfb-run` with Mesa in CI. It carries the `display` label, which the `host-qt` test preset
   leaves out.
 

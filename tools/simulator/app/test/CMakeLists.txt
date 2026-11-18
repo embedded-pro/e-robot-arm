@@ -10,6 +10,14 @@ target_link_libraries(e_robot_arm.tool.simulator_window_test PUBLIC
     e_robot_arm.tool.simulator.app
 )
 
+if (TARGET e_robot_arm.tool.arm_host.virtual_arm)
+    target_link_libraries(e_robot_arm.tool.simulator_window_test PRIVATE e_robot_arm.tool.arm_host.virtual_arm)
+    target_compile_definitions(e_robot_arm.tool.simulator_window_test PRIVATE
+        E_ROBOT_ARM_VIRTUAL_ARM
+        VIRTUAL_ARM_PROFILE="${e_robot_arm_SOURCE_DIR}/integration_tests/virtual/virtual-arm.json"
+    )
+endif()
+
 target_sources(e_robot_arm.tool.simulator_window_test PRIVATE
     TestSimulatorWindow.cpp
 )

@@ -38,6 +38,8 @@ target_sources(e_robot_arm.tool.simulator.app PRIVATE
     SimulatorWindow.hpp
     StatusStripBar.cpp
     StatusStripBar.hpp
+    TimedQuickWidget.cpp
+    TimedQuickWidget.hpp
 )
 
 target_link_libraries(e_robot_arm.tool.simulator.app PUBLIC

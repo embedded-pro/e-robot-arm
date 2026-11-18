@@ -318,12 +318,16 @@ TEST_F(JointBusImplTest, a_reading_records_the_telemetry_request_it_answered)
 {
     EXPECT_EQ(0u, bus.Period());
     EXPECT_TRUE(bus.RequestTelemetry());
+    ForwardTime(std::chrono::milliseconds{ 7 });
+    const auto requested = infra::Now();
     EXPECT_TRUE(bus.RequestTelemetry());
     EXPECT_EQ(2u, bus.Period());
+    ForwardTime(std::chrono::milliseconds{ 2 });
 
     ReportMotion(nodes[1], 0.0f, 0.1f);
 
     EXPECT_EQ(2u, bus.Reading(1).period);
+    EXPECT_EQ(requested, bus.Reading(1).requested);
     EXPECT_EQ(0u, bus.Reading(0).period);
     EXPECT_FALSE(arm::Stale(bus.Reading(1), bus.Period()));
     EXPECT_TRUE(arm::Stale(bus.Reading(0), bus.Period()));

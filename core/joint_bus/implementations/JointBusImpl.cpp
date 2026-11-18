@@ -119,6 +119,7 @@ namespace arm
 
         telemetryRequested = true;
         ++period;
+        requested = infra::Now();
         for (auto& joint : liveness)
             joint.answered = false;
 
@@ -204,6 +205,7 @@ namespace arm
         readings[*joint].position = transmissions[*joint].JointPosition(position);
         readings[*joint].silent = false;
         readings[*joint].period = period;
+        readings[*joint].requested = requested;
         liveness[*joint] = Liveness{ true, 0, false };
     }
 

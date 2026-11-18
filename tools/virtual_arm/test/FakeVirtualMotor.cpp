@@ -165,6 +165,7 @@ int main(int count, char** arguments)
     FrameAssembler assembler;
     bool streaming{ false };
     uint32_t sequence{ 0 };
+    std::string torque;
     while (true)
     {
         if (exitAfter != nullptr && std::chrono::steady_clock::now() - start > std::chrono::milliseconds{ std::atoi(exitAfter) })
@@ -189,9 +190,16 @@ int main(int count, char** arguments)
                     streaming = reader.U8() != 0;
                     break;
                 case MessageType::externalTorque:
+                {
                     reader.U8();
-                    Record(options.memory + ".torque", std::to_string(reader.F32()));
+                    auto value = std::to_string(reader.F32());
+                    if (value != torque)
+                    {
+                        torque = std::move(value);
+                        Record(options.memory + ".torque", torque);
+                    }
                     break;
+                }
                 case MessageType::pause:
                     Record(options.memory + ".paused", "paused");
                     break;

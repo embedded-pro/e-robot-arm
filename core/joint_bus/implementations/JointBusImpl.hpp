@@ -91,6 +91,7 @@ namespace arm
         std::array<Liveness, jointCount> liveness{};
         bool telemetryRequested{ false };
         uint32_t period{ 0 };
+        infra::TimePoint requested{};
 
         infra::Duration commandTimeout;
         std::optional<HeldCommand> held;
