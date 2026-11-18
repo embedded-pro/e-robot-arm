@@ -6,6 +6,8 @@
 #include "tools/arm_host/ArmTargetLink.hpp"
 #include <cstdint>
 #include <memory>
+#include <string>
+#include <vector>
 
 namespace arm_host
 {
@@ -30,6 +32,7 @@ namespace arm_host
     };
 
     TargetOpener HostTargetOpener(infra::Duration simulatedTimeConstant, uint32_t bitrate);
+    std::vector<std::string> DetectedAdapters();
 }
 
 #endif

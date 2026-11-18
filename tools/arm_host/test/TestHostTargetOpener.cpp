@@ -38,3 +38,19 @@ TEST_F(HostTargetOpenerTest, an_adapter_that_cannot_be_opened_gives_no_link)
 {
     EXPECT_EQ(nullptr, opener({ arm_host::TargetKind::real, "socketcan:no-such-interface" }, arm_host::test::Config()));
 }
+
+TEST_F(HostTargetOpenerTest, detects_adapters_without_the_virtual_buses)
+{
+    services::VirtualCanHub hub;
+    ASSERT_TRUE(hub.Listen());
+    services::PlatformCanAdapter platform;
+    bool virtualBusListed{ false };
+    platform.Adapter().EnumerateInterfaces([&virtualBusListed](infra::BoundedConstString name)
+        {
+            virtualBusListed = virtualBusListed || std::string{ name.begin(), name.end() }.starts_with("virtual:");
+        });
+    ASSERT_TRUE(virtualBusListed);
+
+    for (const auto& adapter : arm_host::DetectedAdapters())
+        EXPECT_FALSE(adapter.starts_with("virtual:")) << adapter;
+}

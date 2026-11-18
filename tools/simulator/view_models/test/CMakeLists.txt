@@ -11,6 +11,7 @@ target_link_libraries(e_robot_arm.tool.simulator.view_models_test PUBLIC
 
 target_sources(e_robot_arm.tool.simulator.view_models_test PRIVATE
     SnapshotBuilder.hpp
+    TestAdapterChoices.cpp
     TestArmSceneModel.cpp
     TestControlRules.cpp
     TestDesktopArm.cpp

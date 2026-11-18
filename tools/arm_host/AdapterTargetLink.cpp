@@ -45,6 +45,19 @@ namespace arm_host
         return nullptr;
     }
 
+    std::vector<std::string> DetectedAdapters()
+    {
+        services::PlatformCanAdapter platform;
+        std::vector<std::string> adapters;
+        platform.Adapter().EnumerateInterfaces([&adapters](infra::BoundedConstString name)
+            {
+                std::string adapter{ name.begin(), name.end() };
+                if (!adapter.starts_with("virtual:"))
+                    adapters.push_back(std::move(adapter));
+            });
+        return adapters;
+    }
+
     TargetOpener HostTargetOpener(infra::Duration simulatedTimeConstant, uint32_t bitrate)
     {
         return [simulatedTimeConstant, bitrate](const ArmTarget& target, const arm::ArmConfig& config) -> std::unique_ptr<ArmTargetLink>
