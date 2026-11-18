@@ -23,10 +23,11 @@ namespace simulator
         target,
         bringUp,
         enable,
-        disable
+        disable,
+        commissioning
     };
 
-    inline constexpr std::size_t controlCount{ 13 };
+    inline constexpr std::size_t controlCount{ 14 };
 
     struct ControlState
     {

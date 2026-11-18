@@ -2,9 +2,9 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.22.0
+version: 0.23.0
 component: "tool-simulator"
-date: 2026-11-17
+date: 2026-11-18
 ---
 
 | Field     | Value                   |
@@ -12,9 +12,9 @@ date: 2026-11-17
 | Title     | Simulator Screen Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.22.0                  |
+| Version   | 0.23.0                  |
 | Component | tool-simulator          |
-| Date      | 2026-11-17              |
+| Date      | 2026-11-18              |
 
 > What the e-robot-arm Simulator shows, what each control does and when, and how it looks (phase 8a,
 > [#28](https://github.com/embedded-pro/e-robot-arm/issues/28)). Components and threads are in
@@ -81,7 +81,8 @@ Layout** restores this one.
 ```
 
 - **Status strip** (top, not a dock, cannot be hidden): target selector, connection, the arm's state, contracts,
-  the last trip with its source, the overrun count, and the emergency stop at the far right, apart from every other button.
+  the last trip with its source, the overrun count, on the real arm the limits in effect (Part P), and the emergency
+  stop at the far right, apart from every other button.
   - **Connection** reads Connected, Disconnected, or **No data from the arm** (`Warning`) when the snapshot has not
     changed for 30 frames (half a second): a stalled arm thread is never shown as live.
   - **Arm state** is the lifecycle's state ([arm-lifecycle.md](arm-lifecycle.md)) as the snapshot reports it:
@@ -105,19 +106,20 @@ Every disabled control carries its reason: in a hint under its group, one line p
 tooltip on the status strip's controls. "Connected" means
 the target is built and at least one joint has answered. Joints are numbered 1–6, base first.
 
-| Control          | Enabled when                                                                     | Disabled reason shown                                                                                                                                                                                      | Action                                                                   |
-|------------------|----------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------|
-| Emergency stop   | A target is built                                                                | "No target"                                                                                                                                                                                                | Emergency stop to all joints, ahead of all else                          |
-| Bring Up         | Connected; the arm is Unpowered, Misconfigured or its contracts are incompatible | "Not connected", "Checking contracts", "Tripped: re-arm first", "Already brought up"                                                                                                                       | Lifecycle: check the contracts, wait for calibration                     |
-| Enable           | The arm is Ready                                                                 | "Bring the arm up first", "Checking contracts", "Waiting for calibration", "Configuring motor controllers", "Misconfigured: bring the arm up again", "Enabling", "Already enabled", "Disabling", "Tripped" | Lifecycle: select torque mode, start the joints                          |
-| Disable          | The arm is Enabled                                                               | "Moving: abort first", "Not enabled"                                                                                                                                                                       | Lifecycle: stop the joints                                               |
-| Clear Faults     | Any joint in fault                                                               | "No joint in fault"                                                                                                                                                                                        | Clear faults on all joints                                               |
-| Re-arm…          | The arm is Tripped, no joint in fault                                            | "Not tripped", "Joint N in fault: clear it first"                                                                                                                                                          | Confirmation naming the trip's source, then re-arm through the lifecycle |
-| Move target J1–6 | Always editable                                                                  | —                                                                                                                                                                                                          | Validated as typed against the joint limits                              |
-| Move             | The arm is Enabled, all targets valid                                            | "Not connected", "Tripped", "Moving", "Enable the arm first", "J N outside limits"                                                                                                                         | Move to the six targets through the lifecycle                            |
-| Abort            | A move running                                                                   | "No move running"                                                                                                                                                                                          | Abort the move                                                           |
-| Target selector  | No move running                                                                  | "Moving"                                                                                                                                                                                                   | Part C                                                                   |
-| Restart (motor)  | Virtual arm, arm not enabling, enabled, moving or disabling, motor not starting  | "Disable the arm first", "Starting"                                                                                                                                                                        | Restart that joint's virtual motor (Part L)                              |
+| Control              | Enabled when                                                                     | Disabled reason shown                                                                                                                                                                                      | Action                                                                   |
+|----------------------|----------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------|
+| Emergency stop       | A target is built                                                                | "No target"                                                                                                                                                                                                | Emergency stop to all joints, ahead of all else                          |
+| Bring Up             | Connected; the arm is Unpowered, Misconfigured or its contracts are incompatible | "Not connected", "Checking contracts", "Tripped: re-arm first", "Already brought up"                                                                                                                       | Lifecycle: check the contracts, wait for calibration                     |
+| Enable               | The arm is Ready                                                                 | "Bring the arm up first", "Checking contracts", "Waiting for calibration", "Configuring motor controllers", "Misconfigured: bring the arm up again", "Enabling", "Already enabled", "Disabling", "Tripped" | Lifecycle: select torque mode, start the joints                          |
+| Disable              | The arm is Enabled                                                               | "Moving: abort first", "Not enabled"                                                                                                                                                                       | Lifecycle: stop the joints                                               |
+| Clear Faults         | Any joint in fault                                                               | "No joint in fault"                                                                                                                                                                                        | Clear faults on all joints                                               |
+| Re-arm…              | The arm is Tripped, no joint in fault                                            | "Not tripped", "Joint N in fault: clear it first"                                                                                                                                                          | Confirmation naming the trip's source, then re-arm through the lifecycle |
+| Move target J1–6     | Always editable                                                                  | —                                                                                                                                                                                                          | Validated as typed against the joint limits                              |
+| Move                 | The arm is Enabled, all targets valid                                            | "Not connected", "Tripped", "Moving", "Enable the arm first", "J N outside limits"                                                                                                                         | Move to the six targets through the lifecycle                            |
+| Abort                | A move running                                                                   | "No move running"                                                                                                                                                                                          | Abort the move                                                           |
+| Target selector      | No move running                                                                  | "Moving"                                                                                                                                                                                                   | Part C                                                                   |
+| Restart (motor)      | Virtual arm, arm not enabling, enabled, moving or disabling, motor not starting  | "Disable the arm first", "Starting"                                                                                                                                                                        | Restart that joint's virtual motor (Part L)                              |
+| Commissioning Limits | Real arm, arm not enabling, enabled, moving or disabling                         | "Not the real arm", "Disable the arm first"                                                                                                                                                                | Arm menu toggle; off asks first (Part P)                                 |
 
 - **Arm → Single Step** holds the joints' own commands for debugging: Check Contracts (connected, no move
   running), Torque Mode and Start (contracts compatible, not tripped), Stop (any joint running). A disabled item
@@ -535,6 +537,24 @@ little about a desktop GPU. The status bar's right end always shows one line, up
   filling the event log.
 - The control loop's overruns stay in the status strip (Part B): the arm runs on its own thread and is never
   timed here.
+
+
+### Part P — Commissioning limits on the real arm (phase 8d)
+
+The first runs of a real arm happen under commissioning limits ([simulator.md](simulator.md) Part E): speed and
+acceleration at 25 % of the profile's, collision limits and the tracking-error trip at half. They are on at every
+connection to the real arm.
+
+- **Status strip:** on the real arm a label reads **Limits: commissioning (25 % speed, ½ trips)** at `Warning`, or
+  **Limits: profile** at `Fault` once they are off, so running a real arm at full limits is never quiet. The label
+  is absent on every other target.
+- **Arm → Commissioning Limits** is a checked item, enabled on the real arm while the arm is not enabling, enabled,
+  moving or disabling; otherwise its reason shows in the status bar when hovered (Part B).
+- **Turning them off** asks first: "Run the real arm on `<adapter>` at the profile's full speed and trip limits? The
+  arm is rebuilt and must be brought up again." with **Use Profile Limits** and **Cancel** (default). Turning them
+  on again needs no confirmation. Either way the item shows "requested…" until the arm host answers, and a refusal
+  goes to the status bar and the log with its reason.
+- The Profile panel and **File → Save Profile…** show and write the profile as loaded, never the reduced copy.
 
 ---
 

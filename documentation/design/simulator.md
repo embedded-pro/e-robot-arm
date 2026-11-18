@@ -2,9 +2,9 @@
 title: "Simulator Design"
 type: design
 status: draft
-version: 0.15.0
+version: 0.16.0
 component: "simulator"
-date: 2026-11-17
+date: 2026-11-18
 ---
 
 | Field     | Value            |
@@ -12,9 +12,9 @@ date: 2026-11-17
 | Title     | Simulator Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.15.0           |
+| Version   | 0.16.0           |
 | Component | simulator        |
-| Date      | 2026-11-17       |
+| Date      | 2026-11-18       |
 
 > The e-robot-arm Simulator's components, threads, targets and data flow (phase 8a,
 > [#28](https://github.com/embedded-pro/e-robot-arm/issues/28)). The screen itself — layout, controls, flows,
@@ -153,6 +153,7 @@ A `SimulatedJoint` is an e-foc node on the in-process bus (a `FocMotorCategorySe
 | `Post(command)`        | One of: bring up, enable, disable, check contracts, select a control mode, start, stop, clear faults, align, emergency stop, re-arm, move, step, abort, inject fault, silence joint. Answered by an event. Bring up, enable, disable, re-arm, move and step go through the arm's lifecycle ([arm-lifecycle.md](arm-lifecycle.md)), so a move is refused unless the arm is enabled |
 | `SwitchTarget(target)` | Part C; its result arrives as an event                                                                                                                                                                                                                                                                                                                                            |
 | `LoadProfile(profile)` | Rebuilds the arm from the profile on the current target, as a target switch does; refused while the arm is enabling, enabled, moving or disabling, or while a target switch runs. Answered `profileLoaded` or `refused` with the reason ([arm-profile.md](arm-profile.md))                                                                                                        |
+| `SetCommissioning(on)` | Turns the commissioning limits on or off (below); answered `accepted` or `refused` with the reason                                                                                                                                                                                                                                                                                |
 | `Snapshot()`           | A copy of the latest snapshot                                                                                                                                                                                                                                                                                                                                                     |
 | `TakeEvents()`         | Every event since the last call, in order                                                                                                                                                                                                                                                                                                                                         |
 | `TakeTrace()`          | Every trace sample since the last call, in order                                                                                                                                                                                                                                                                                                                                  |
@@ -175,6 +176,16 @@ returned. Check contracts, select mode, start, stop, clear faults and align are 
 lifecycle sends on its own, select mode and start while enabling, is reported the same way when it fails, as a
 `refused` event with no command id, so an enable that falls back to *Ready* says which joint command did not get
 through.
+
+**Commissioning limits** guard the first runs of a real arm. On the real target the host builds the arm from a copy
+of the profile with every joint's speed and acceleration at 25 % of the profile's and its collision limit and
+tracking-error window and time at half of them, so a mistake moves slowly and trips early. They are on whenever the
+host connects to the real arm, including after a target switch away and back, and they stay as they are when a
+profile is loaded on the same connection. `SetCommissioning(false)` is refused unless the target is the real arm
+("not the real arm") and while the arm is enabling, enabled, moving or disabling ("the arm is enabled: disable it
+first"); otherwise the arm is rebuilt, as a profile load does, and starts again unpowered. Turning them on again
+follows the same rules. The snapshot keeps reporting the profile as loaded, never the reduced copy, so saving the
+profile never saves commissioning limits; it carries whether they are on.
 
 **Disturbances** are commands as well, each answered `accepted` or `refused`. What a target offers:
 
@@ -276,7 +287,8 @@ empty until the arm has been enabled); nothing else in `core/` changes for the s
 | Snapshot        | joint liveness        | 6 × answered, silent                | —                     | From the joint bus                                      |
 | Snapshot        | contracts             | unchecked, compatible, incompatible | —                     | Per joint                                               |
 | Snapshot        | tripped, moving, loop | bool                                | —                     |                                                         |
-| Snapshot        | profile               | name and arm configuration          | —                     | The profile in effect                                   |
+| Snapshot        | profile               | name and arm configuration          | —                     | The profile loaded, never the commissioning copy        |
+| Snapshot        | commissioning         | bool                                | —                     | Real arm only; on at every connection                   |
 | Snapshot        | tool pose             | m, rad; singularity flags           | —                     | From the measured joints ([arm-model.md](arm-model.md)) |
 | Snapshot        | virtual motors        | 6 × (plant, process state), folder  | —                     | Virtual arm only                                        |
 | Snapshot        | disturbances          | offered kinds; 6 × (silent, N·m)    | ±200 N·m              | Simulated joints and virtual arm only                   |

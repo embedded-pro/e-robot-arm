@@ -43,6 +43,7 @@ namespace simulator
         , contracts{ StatusLabel(this, "Contracts") }
         , trip{ StatusLabel(this, "Trip") }
         , overruns{ StatusLabel(this, "Overruns") }
+        , limits{ StatusLabel(this, "Limits") }
         , emergencyStop{ new QPushButton{ "EMERGENCY STOP\nEsc", this } }
     {
         setObjectName("statusStrip");
@@ -73,6 +74,9 @@ namespace simulator
         addWidget(contracts);
         addWidget(trip);
         addWidget(overruns);
+        limitsItem = addWidget(limits);
+        limits->setToolTip("The limits the real arm runs under: Arm → Commissioning Limits");
+        limitsItem->setVisible(false);
         addWidget(spacer);
         addWidget(emergencyStop);
 
@@ -100,6 +104,9 @@ namespace simulator
         StyleStatusLabel(*trip, status.tripLevel);
         overruns->setText(ToQt(status.overruns));
         StyleStatusLabel(*overruns, status.overrunLevel);
+        limits->setText(ToQt(status.limits));
+        StyleStatusLabel(*limits, status.limitsLevel);
+        limitsItem->setVisible(!status.limits.empty());
 
         emergencyStop->setEnabled(emergency.enabled);
         emergencyStop->setToolTip(emergency.enabled ? "Emergency stop to every joint (Esc)" : ToQt(emergency.reason));

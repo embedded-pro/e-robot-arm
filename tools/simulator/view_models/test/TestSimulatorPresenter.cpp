@@ -414,3 +414,29 @@ TEST_F(SimulatorPresenterTest, shows_the_virtual_arm_starting_and_restarts_a_mot
     EXPECT_EQ("Restart motor requested…", shell.Statuses().back());
     EXPECT_FALSE(presenter.RestartMotor(6));
 }
+
+TEST_F(SimulatorPresenterTest, the_real_arm_shows_which_limits_it_runs_under_and_asks_the_host_to_change_them)
+{
+    auto real = simulator::test::Compatible();
+    real.target = { arm_host::TargetKind::real, "can0" };
+    real.commissioning = true;
+    presenter.Refresh(real, {});
+    EXPECT_EQ("Limits: commissioning (25 % speed, ½ trips)", presenter.Status().limits);
+    EXPECT_EQ(ui::theme::StatusLevel::Warning, presenter.Status().limitsLevel);
+    EXPECT_TRUE(presenter.Commissioning());
+
+    EXPECT_CALL(arm, SetCommissioning(false)).WillOnce(Return(14));
+    presenter.SetCommissioning(false);
+    EXPECT_EQ("Use profile limits requested…", shell.Statuses().back());
+
+    real.commissioning = false;
+    real.sequence += 1;
+    const std::array events{ arm_host::ArmEvent{ .kind = ArmEventKind::accepted, .command = 14, .commandName = "commissioning limits" } };
+    presenter.Refresh(real, events);
+    EXPECT_EQ("Limits: profile", presenter.Status().limits);
+    EXPECT_EQ(ui::theme::StatusLevel::Fault, presenter.Status().limitsLevel);
+    EXPECT_FALSE(presenter.Commissioning());
+
+    presenter.Refresh(simulator::test::Compatible(), {});
+    EXPECT_EQ("", presenter.Status().limits);
+}

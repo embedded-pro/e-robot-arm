@@ -14,6 +14,7 @@ target_sources(e_robot_arm.tool.arm_host_test PRIVATE
     TestArmRequestQueue.cpp
     TestArmRuntime.cpp
     TestArmSession.cpp
+    TestCommissioning.cpp
     TestProfileFile.cpp
 )
 

@@ -133,7 +133,7 @@ namespace
                     return link;
                 }
                 if (target.kind == TargetKind::real)
-                    return nullptr;
+                    return realOpens ? std::make_unique<arm_host::SimulatedTargetLink>(nodes, 20ms) : nullptr;
                 if (target.kind == TargetKind::virtualBus)
                     return std::make_unique<LateLink>(nodes, adapterConnected);
                 return std::make_unique<arm_host::SimulatedTargetLink>(nodes, 20ms);
@@ -162,6 +162,7 @@ namespace
         const ArmTarget virtualArmTarget{ TargetKind::virtualArm, "virtual:arm", "e-foc-virtual-motor" };
         FakeVirtualArmLink* virtualArm{ nullptr };
         bool adapterConnected{ true };
+        bool realOpens{ false };
         std::vector<ArmTarget> opened;
         std::vector<arm::JointNodeIds> openedNodes;
         arm_host::test::RecordingSink sink;
@@ -461,4 +462,49 @@ TEST_F(ArmRuntimeTest, offers_no_disturbance_on_a_bus_that_is_not_a_simulation)
         Execute(5, command);
         EXPECT_EQ("not a simulation", sink.Last()->reason);
     }
+}
+
+TEST_F(ArmRuntimeTest, the_real_arm_starts_under_commissioning_limits_and_leaves_them_only_when_asked)
+{
+    realOpens = true;
+    runtime.emplace(arm_host::test::Profile(), Opener(), sink, realArm);
+    ForwardTime(2ms);
+    EXPECT_TRUE(sink.snapshot.commissioning);
+    EXPECT_EQ(arm_host::test::Config().motionLimits[0].maxSpeed.Value(), sink.snapshot.config.motionLimits[0].maxSpeed.Value());
+
+    runtime->SetCommissioning(5, false);
+    ForwardTime(2ms);
+    EXPECT_EQ(ArmEventKind::accepted, sink.Last()->kind);
+    EXPECT_EQ("commissioning limits", sink.Last()->commandName);
+    EXPECT_FALSE(sink.snapshot.commissioning);
+    EXPECT_EQ(arm::ArmState::unpowered, sink.snapshot.state);
+
+    runtime->LoadProfile(6, arm_host::test::Profile());
+    ForwardTime(2ms);
+    EXPECT_FALSE(sink.snapshot.commissioning);
+
+    runtime->SwitchTarget(7, simulated);
+    ForwardTime(1s);
+    EXPECT_FALSE(sink.snapshot.commissioning);
+    runtime->SwitchTarget(8, realArm);
+    ForwardTime(1s);
+    EXPECT_TRUE(sink.snapshot.commissioning);
+}
+
+TEST_F(ArmRuntimeTest, refuses_to_change_the_commissioning_limits_off_the_real_arm_or_while_it_runs)
+{
+    runtime.emplace(arm_host::test::Profile(), Opener(), sink, simulated);
+    runtime->SetCommissioning(5, false);
+    EXPECT_EQ(ArmEventKind::refused, sink.Last()->kind);
+    EXPECT_EQ("not the real arm", sink.Last()->reason);
+
+    runtime.reset();
+    realOpens = true;
+    runtime.emplace(arm_host::test::Profile(), Opener(), sink, realArm);
+    ForwardTime(2ms);
+    StartMoving();
+    runtime->SetCommissioning(9, false);
+    EXPECT_EQ(ArmEventKind::refused, sink.Last()->kind);
+    EXPECT_EQ("the arm is enabled: disable it first", sink.Last()->reason);
+    EXPECT_TRUE(sink.snapshot.commissioning);
 }

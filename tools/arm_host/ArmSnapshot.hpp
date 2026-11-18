@@ -45,6 +45,7 @@ namespace arm_host
         arm::ArmState state{ arm::ArmState::unpowered };
         std::optional<arm::Misconfiguration> misconfiguration{};
         uint32_t overruns{ 0 };
+        bool commissioning{ false };
         arm::Placement toolPose{};
         arm::Singularities singularities{};
         arm::JointTorques gravityTorque{};

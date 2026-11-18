@@ -31,6 +31,8 @@ namespace simulator
         ui::theme::StatusLevel tripLevel{ ui::theme::StatusLevel::Neutral };
         std::string overruns;
         ui::theme::StatusLevel overrunLevel{ ui::theme::StatusLevel::Neutral };
+        std::string limits;
+        ui::theme::StatusLevel limitsLevel{ ui::theme::StatusLevel::Neutral };
         bool realArm{ false };
     };
 
@@ -76,6 +78,8 @@ namespace simulator
         void EmergencyStop();
         void SwitchTarget(const arm_host::ArmTarget& target);
         void LoadProfile(const arm::ArmProfile& profile);
+        void SetCommissioning(bool on);
+        bool Commissioning() const;
         void Note(LogLevel level, std::size_t joint, std::string message);
         void ConfirmRearm();
         bool InjectFault(std::size_t joint);

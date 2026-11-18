@@ -64,6 +64,8 @@ namespace simulator
         void BuildArmMenu();
         void BuildSingleStepMenu(QMenu& menu);
         void UpdateSingleStepMenu();
+        void UpdateCommissioningItem();
+        void ChooseCommissioning(bool on);
         void BuildSimulationMenu();
         void BuildViewMenu();
         void ConnectSignals();
@@ -126,6 +128,7 @@ namespace simulator
         EmergencyStopKey emergencyStopKey;
         QMenu* simulationMenu{ nullptr };
         std::vector<std::pair<QAction*, Control>> singleStepActions;
+        QAction* commissioningAction{ nullptr };
         QTimer frameTimer;
         QByteArray defaultLayout;
     };

@@ -41,6 +41,40 @@ namespace
         arm_host::test::RecordingSink sink;
         arm_host::ArmSession session{ simulatedArm.ArmSide(), arm_host::test::Profile(), target, sink, &simulatedArm };
     };
+
+    class CommissioningSessionTest
+        : public testing::Test
+        , public infra::ClockFixture
+    {
+    public:
+        void Execute(uint32_t id, const arm_host::ArmCommand& command)
+        {
+            session.Execute(id, command);
+            ForwardTime(30ms);
+        }
+
+        arm_host::ArmTarget target{ arm_host::TargetKind::real, "can0" };
+        simulation::SimulatedArm simulatedArm{ arm_host::test::nodes, 50ms, arm_host::PlantFor(arm_host::test::Config()) };
+        arm_host::test::RecordingSink sink;
+        arm_host::ArmSession session{ simulatedArm.ArmSide(), arm_host::test::Profile(), target, sink, &simulatedArm, nullptr, true };
+    };
+}
+
+TEST_F(CommissioningSessionTest, moves_at_a_quarter_of_the_profiles_speed_and_reports_the_profile_as_loaded)
+{
+    Execute(1, arm_host::CheckContracts{});
+    Execute(2, arm_host::SelectMode{ can::FocMotorMode::torque });
+    Execute(3, arm_host::StartJoints{});
+    arm::JointPositions target{};
+    target[0] = foc::Radians{ 0.5f };
+    Execute(4, arm_host::MoveTo{ target });
+    ForwardTime(1200ms);
+
+    ASSERT_TRUE(sink.snapshot.commanded.has_value());
+    EXPECT_LT(sink.snapshot.commanded->at(0).Value(), 0.3f);
+    EXPECT_EQ(nullptr, sink.Find(ArmEventKind::moveDone));
+    EXPECT_TRUE(sink.snapshot.commissioning);
+    EXPECT_EQ(1.0f, sink.snapshot.config.motionLimits[0].maxSpeed.Value());
 }
 
 TEST_F(ArmSessionTest, publishes_a_ready_snapshot_of_its_target_at_once)

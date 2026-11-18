@@ -15,10 +15,17 @@
 
 namespace arm_host
 {
+    struct CommissioningRequest
+    {
+        bool on;
+    };
+
+    using ArmRequestKind = std::variant<ArmCommand, ArmTarget, arm::ArmProfile, CommissioningRequest>;
+
     struct ArmRequest
     {
         uint32_t id;
-        std::variant<ArmCommand, ArmTarget, arm::ArmProfile> what;
+        ArmRequestKind what;
     };
 
     class ArmRequestQueue
@@ -47,13 +54,14 @@ namespace arm_host
         uint32_t Post(const ArmCommand& command) override;
         uint32_t SwitchTarget(const ArmTarget& target) override;
         uint32_t LoadProfile(const arm::ArmProfile& profile) override;
+        uint32_t SetCommissioning(bool on) override;
 
         ArmSnapshot Snapshot() const override;
         std::vector<ArmEvent> TakeEvents();
         std::vector<TraceSample> TakeTrace();
 
     private:
-        uint32_t Enqueue(std::variant<ArmCommand, ArmTarget, arm::ArmProfile> what);
+        uint32_t Enqueue(ArmRequestKind what);
         void RunOne();
 
         infra::EventDispatcherThreadAware::WithSize<256> dispatcher;
