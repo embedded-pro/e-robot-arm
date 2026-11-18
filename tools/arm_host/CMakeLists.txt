@@ -28,6 +28,8 @@ target_sources(e_robot_arm.tool.arm_host PRIVATE
     ArmRuntime.hpp
     ArmSession.cpp
     ArmSession.hpp
+    Commissioning.cpp
+    Commissioning.hpp
     ArmSnapshot.hpp
     ArmTarget.hpp
     ArmTargetLink.cpp

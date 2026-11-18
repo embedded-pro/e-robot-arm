@@ -1,4 +1,5 @@
 #include "tools/arm_host/ArmSession.hpp"
+#include "tools/arm_host/Commissioning.hpp"
 #include <cmath>
 #include <format>
 
@@ -113,10 +114,11 @@ namespace arm_host
     }
 
     ArmSession::ArmSession(hal::Can& can, const arm::ArmProfile& profile, const ArmTarget& target, ArmSessionSink& sink, simulation::SimulatedArm* simulation,
-        VirtualMotors* virtualMotors)
+        VirtualMotors* virtualMotors, bool commissioning)
         : profile(profile)
+        , commissioning(commissioning)
         , client(can)
-        , arm(client.CategoryClient(), profile.config)
+        , arm(client.CategoryClient(), commissioning ? CommissioningConfig(profile.config) : profile.config)
         , model(profile.config.geometry, profile.config.mass, profile.config.positionLimits)
         , target(target)
         , sink(sink)
@@ -621,6 +623,7 @@ namespace arm_host
         snapshot.manipulability = model.Manipulability(measured);
         snapshot.profileName.assign(profile.name.begin(), profile.name.end());
         snapshot.config = profile.config;
+        snapshot.commissioning = commissioning;
         const auto& controllers = arm.Controllers();
         for (arm::ArmControllerId id = 0; id != controllers.Count(); ++id)
         {

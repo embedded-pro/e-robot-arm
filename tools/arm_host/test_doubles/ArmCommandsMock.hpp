@@ -13,6 +13,7 @@ namespace arm_host
         MOCK_METHOD(uint32_t, Post, (const ArmCommand& command), (override));
         MOCK_METHOD(uint32_t, SwitchTarget, (const ArmTarget& target), (override));
         MOCK_METHOD(uint32_t, LoadProfile, (const arm::ArmProfile& profile), (override));
+        MOCK_METHOD(uint32_t, SetCommissioning, (bool on), (override));
         MOCK_METHOD(ArmSnapshot, Snapshot, (), (const, override));
     };
 }

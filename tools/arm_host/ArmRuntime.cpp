@@ -14,6 +14,7 @@ namespace arm_host
                   ProceedConnecting();
               })
     {
+        commissioning = initial.kind == TargetKind::real;
         if (!Open(initial, 0))
             Report(ArmEventKind::targetFailed, 0);
     }
@@ -79,6 +80,26 @@ namespace arm_host
         sink.OnEvent({ .kind = ArmEventKind::profileLoaded, .time = infra::Now(), .command = id, .commandName = "load profile" });
     }
 
+    void ArmRuntime::SetCommissioning(uint32_t id, bool on)
+    {
+        const auto answer = [this, id](ArmEventKind kind, std::string_view reason)
+        {
+            sink.OnEvent({ .kind = kind, .time = infra::Now(), .command = id, .commandName = "commissioning limits", .reason = std::string{ reason } });
+        };
+
+        if (switching)
+            return answer(ArmEventKind::refused, "switching target");
+        if (current.kind != TargetKind::real || !session)
+            return answer(ArmEventKind::refused, "not the real arm");
+        if (session->Running())
+            return answer(ArmEventKind::refused, "the arm is enabled: disable it first");
+
+        commissioning = on;
+        session.reset();
+        Build();
+        answer(ArmEventKind::accepted, "");
+    }
+
     bool ArmRuntime::Open(const ArmTarget& target, std::optional<uint32_t> announce)
     {
         current = target;
@@ -122,7 +143,7 @@ namespace arm_host
 
     void ArmRuntime::Build()
     {
-        session.emplace(link->Can(), profile, current, sink, link->Simulation(), link->Motors());
+        session.emplace(link->Can(), profile, current, sink, link->Simulation(), link->Motors(), commissioning && current.kind == TargetKind::real);
     }
 
     void ArmRuntime::PublishConnecting()
@@ -151,10 +172,12 @@ namespace arm_host
         Close();
         switching = false;
 
+        commissioning = switchTarget.kind == TargetKind::real;
         if (Open(switchTarget, switchId))
             return;
 
         Report(ArmEventKind::targetFailed, switchId, "the adapter could not be opened");
+        commissioning = previousTarget.kind == TargetKind::real;
         Open(previousTarget, 0);
     }
 

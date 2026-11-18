@@ -21,6 +21,7 @@ namespace arm_host
         void Execute(uint32_t id, const ArmCommand& command);
         void SwitchTarget(uint32_t id, const ArmTarget& target);
         void LoadProfile(uint32_t id, const arm::ArmProfile& profile);
+        void SetCommissioning(uint32_t id, bool on);
 
     private:
         struct Connecting
@@ -46,6 +47,7 @@ namespace arm_host
         std::optional<Connecting> connecting;
         std::optional<VirtualMotorsStatus> connectingMotors;
         bool switching{ false };
+        bool commissioning{ false };
         uint32_t switchId{ 0 };
         ArmTarget switchTarget;
         ArmTarget previousTarget;

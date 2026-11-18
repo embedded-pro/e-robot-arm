@@ -62,6 +62,11 @@ namespace arm_host
         return Enqueue(profile);
     }
 
+    uint32_t ArmHost::SetCommissioning(bool on)
+    {
+        return Enqueue(CommissioningRequest{ on });
+    }
+
     ArmSnapshot ArmHost::Snapshot() const
     {
         return mailbox.Snapshot();
@@ -77,7 +82,7 @@ namespace arm_host
         return mailbox.TakeTrace();
     }
 
-    uint32_t ArmHost::Enqueue(std::variant<ArmCommand, ArmTarget, arm::ArmProfile> what)
+    uint32_t ArmHost::Enqueue(ArmRequestKind what)
     {
         const auto id = nextId++;
         requests.Push({ id, std::move(what) });
@@ -99,7 +104,9 @@ namespace arm_host
             runtime->Execute(request->id, *command);
         else if (const auto* target = std::get_if<ArmTarget>(&request->what))
             runtime->SwitchTarget(request->id, *target);
+        else if (const auto* profile = std::get_if<arm::ArmProfile>(&request->what))
+            runtime->LoadProfile(request->id, *profile);
         else
-            runtime->LoadProfile(request->id, std::get<arm::ArmProfile>(request->what));
+            runtime->SetCommissioning(request->id, std::get<CommissioningRequest>(request->what).on);
     }
 }

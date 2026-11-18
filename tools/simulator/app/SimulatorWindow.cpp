@@ -419,7 +419,44 @@ namespace simulator
         abortAction->setShortcut(QKeySequence{ "Ctrl+." });
 
         armMenu->addSeparator();
+        commissioningAction = armMenu->addAction("Commissioning &Limits");
+        commissioningAction->setCheckable(true);
+        connect(commissioningAction, &QAction::triggered, this, &SimulatorWindow::ChooseCommissioning);
+        connect(armMenu, &QMenu::aboutToShow, this, &SimulatorWindow::UpdateCommissioningItem);
+        armMenu->setToolTipsVisible(true);
+
+        armMenu->addSeparator();
         BuildSingleStepMenu(*armMenu->addMenu("Single &Step"));
+    }
+
+    void SimulatorWindow::UpdateCommissioningItem()
+    {
+        const auto& state = presenter.State(Control::commissioning);
+        commissioningAction->setChecked(presenter.Commissioning());
+        commissioningAction->setEnabled(state.enabled);
+        commissioningAction->setToolTip(ui::backend::qt::ToQt(state.reason));
+        commissioningAction->setStatusTip(ui::backend::qt::ToQt(state.reason));
+    }
+
+    void SimulatorWindow::ChooseCommissioning(bool on)
+    {
+        if (on)
+        {
+            presenter.SetCommissioning(true);
+            return;
+        }
+
+        const auto adapter = QString::fromStdString(host.Snapshot().target.bus);
+        QMessageBox confirm{ QMessageBox::Warning, "Use Profile Limits",
+            QString{ "Run the real arm on %1 at the profile's full speed and trip limits?\n\nThe arm is rebuilt and must be brought up again." }.arg(adapter),
+            QMessageBox::NoButton, this };
+        auto* useProfile = confirm.addButton("Use Profile Limits", QMessageBox::AcceptRole);
+        confirm.setDefaultButton(confirm.addButton(QMessageBox::Cancel));
+        confirm.exec();
+        if (confirm.clickedButton() == useProfile)
+            presenter.SetCommissioning(false);
+        else
+            commissioningAction->setChecked(true);
     }
 
     void SimulatorWindow::BuildSingleStepMenu(QMenu& menu)

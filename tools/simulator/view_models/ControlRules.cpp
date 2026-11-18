@@ -134,6 +134,16 @@ namespace simulator
             return Disabled("Not enabled");
         }
 
+        ControlState Commissioning(const arm_host::ArmSnapshot& snapshot)
+        {
+            if (snapshot.target.kind != arm_host::TargetKind::real)
+                return Disabled("Not the real arm");
+            const auto state = snapshot.state;
+            if (state == arm::ArmState::enabling || state == arm::ArmState::enabled || state == arm::ArmState::moving || state == arm::ArmState::disabling)
+                return Disabled("Disable the arm first");
+            return Enabled();
+        }
+
         ControlState Rearm(const arm_host::ArmSnapshot& snapshot)
         {
             if (snapshot.state != arm::ArmState::tripped)
@@ -183,6 +193,8 @@ namespace simulator
                 return Enable(snapshot);
             case Control::disable:
                 return Disable(snapshot);
+            case Control::commissioning:
+                return Commissioning(snapshot);
         }
         return Disabled("Unknown control");
     }

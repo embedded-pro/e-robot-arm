@@ -361,6 +361,18 @@ namespace simulator
         shell.SetStatus(std::format("{} requested…", name));
     }
 
+    void SimulatorPresenter::SetCommissioning(bool on)
+    {
+        const std::string name{ on ? "Use commissioning limits" : "Use profile limits" };
+        pending[arm.SetCommissioning(on)] = name;
+        shell.SetStatus(std::format("{} requested…", name));
+    }
+
+    bool SimulatorPresenter::Commissioning() const
+    {
+        return snapshot.commissioning;
+    }
+
     void SimulatorPresenter::FollowLimits()
     {
         if (!snapshot.targetReady || snapshot.profileName.empty())
@@ -442,6 +454,18 @@ namespace simulator
         status.tripLevel = snapshot.tripped ? ui::theme::StatusLevel::Fault : ui::theme::StatusLevel::Neutral;
         status.overruns = std::format("Overruns: {}", snapshot.overruns);
         status.overrunLevel = snapshot.overruns == 0 ? ui::theme::StatusLevel::Neutral : ui::theme::StatusLevel::Warning;
+        status.limits.clear();
+        status.limitsLevel = ui::theme::StatusLevel::Neutral;
+        if (status.realArm && snapshot.commissioning)
+        {
+            status.limits = "Limits: commissioning (25 % speed, ½ trips)";
+            status.limitsLevel = ui::theme::StatusLevel::Warning;
+        }
+        else if (status.realArm)
+        {
+            status.limits = "Limits: profile";
+            status.limitsLevel = ui::theme::StatusLevel::Fault;
+        }
     }
 
     void SimulatorPresenter::UpdateControls()

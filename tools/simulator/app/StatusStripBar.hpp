@@ -41,6 +41,8 @@ namespace simulator
         QLabel* contracts;
         QLabel* trip;
         QLabel* overruns;
+        QLabel* limits;
+        QAction* limitsItem{ nullptr };
         QPushButton* emergencyStop;
     };
 }

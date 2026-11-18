@@ -18,7 +18,7 @@ namespace arm_host
     {
     public:
         ArmSession(hal::Can& can, const arm::ArmProfile& profile, const ArmTarget& target, ArmSessionSink& sink, simulation::SimulatedArm* simulation,
-            VirtualMotors* virtualMotors = nullptr);
+            VirtualMotors* virtualMotors = nullptr, bool commissioning = false);
         ArmSession(const ArmSession& other) = delete;
         ArmSession& operator=(const ArmSession& other) = delete;
         ~ArmSession();
@@ -90,6 +90,7 @@ namespace arm_host
         void Publish();
 
         arm::ArmProfile profile;
+        bool commissioning;
         can::FocMotorCanClient client;
         arm::Arm arm;
         arm::ArmModel model;

@@ -14,6 +14,7 @@ namespace arm_host
         virtual uint32_t Post(const ArmCommand& command) = 0;
         virtual uint32_t SwitchTarget(const ArmTarget& target) = 0;
         virtual uint32_t LoadProfile(const arm::ArmProfile& profile) = 0;
+        virtual uint32_t SetCommissioning(bool on) = 0;
         virtual ArmSnapshot Snapshot() const = 0;
 
     protected:

@@ -157,3 +157,18 @@ TEST_F(ControlRulesTest, disable_is_offered_while_enabled_and_asks_to_abort_a_mo
     moving.state = arm::ArmState::moving;
     ExpectDisabled(Control::disable, moving, "Moving: abort first");
 }
+
+TEST_F(ControlRulesTest, the_commissioning_limits_change_only_on_the_real_arm_while_it_is_not_enabled)
+{
+    ExpectDisabled(Control::commissioning, simulator::test::Compatible(), "Not the real arm");
+
+    auto real = simulator::test::Compatible();
+    real.target = { arm_host::TargetKind::real, "can0" };
+    ExpectEnabled(Control::commissioning, real);
+
+    for (const auto state : { arm::ArmState::enabling, arm::ArmState::enabled, arm::ArmState::moving, arm::ArmState::disabling })
+    {
+        real.state = state;
+        ExpectDisabled(Control::commissioning, real, "Disable the arm first");
+    }
+}
