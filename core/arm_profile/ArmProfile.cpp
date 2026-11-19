@@ -601,6 +601,10 @@ namespace arm
                     return ReadTracking(path, value, config.tracking[joint]);
                 if (key == "collisionTorqueNm")
                     return ReadCollision(path, value, config.collision[joint]);
+                if (key == "speedLimitRadPerS")
+                    return ReadSpeedTrip(path, value, config.speedTrips[joint]);
+                if (key == "torqueLimitNm")
+                    return ReadTorqueLimit(path, value, config.torqueLimits[joint]);
                 if (key == "motorController")
                     return ReadController(path, value, config.controllers[joint]);
                 if (key == "motor")
@@ -778,6 +782,18 @@ namespace arm
             {
                 float torque{ 0.0f };
                 return ReadBounded(path, value, 1000.0f, "must be above 0 and at most 1000", torque) && Store(limit, foc::NewtonMeter{ torque });
+            }
+
+            bool ReadSpeedTrip(const Path& path, const Value& value, std::optional<foc::RadiansPerSecond>& limit)
+            {
+                float speed{ 0.0f };
+                return ReadPositive(path, value, speed) && Store(limit, std::optional{ foc::RadiansPerSecond{ speed } });
+            }
+
+            bool ReadTorqueLimit(const Path& path, const Value& value, std::optional<foc::NewtonMeter>& limit)
+            {
+                float torque{ 0.0f };
+                return ReadBounded(path, value, 1000.0f, "must be above 0 and at most 1000", torque) && Store(limit, std::optional{ foc::NewtonMeter{ torque } });
             }
 
             bool ReadTrackingTime(const Path& path, const Value& value, infra::Duration& time)
@@ -1017,6 +1033,16 @@ namespace arm
                 Number(std::chrono::duration<float>{ config.tracking[joint].time }.count());
                 stream << " },\n      \"collisionTorqueNm\": ";
                 Number(config.collision[joint].Value());
+                if (config.speedTrips[joint].has_value())
+                {
+                    stream << ",\n      \"speedLimitRadPerS\": ";
+                    Number(config.speedTrips[joint]->Value());
+                }
+                if (config.torqueLimits[joint].has_value())
+                {
+                    stream << ",\n      \"torqueLimitNm\": ";
+                    Number(config.torqueLimits[joint]->Value());
+                }
                 if (config.controllers[joint].has_value())
                     Controller(*config.controllers[joint]);
                 if (config.motors[joint].has_value())

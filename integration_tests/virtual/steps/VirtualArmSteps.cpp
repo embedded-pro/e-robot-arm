@@ -32,11 +32,12 @@ GIVEN(R"(the arm on six e-foc virtual motors)")
     ASSERT_EQ(std::nullopt, fixture.Start());
 }
 
-GIVEN(R"(the arm on six e-foc virtual motors with every joint's collision limit at {float} N·m)", (float limit))
+GIVEN(R"(the arm on six e-foc virtual motors with every joint's collision limit at {float} N·m and speed limit at {float} rad\/s)", (float limit, float speed))
 {
     context.Emplace<VirtualArmFixture>();
     auto& fixture = context.Get<VirtualArmFixture>();
     fixture.profile.config.collision.fill(foc::NewtonMeter{ limit });
+    fixture.profile.config.speedTrips.fill(foc::RadiansPerSecond{ speed });
     ASSERT_EQ(std::nullopt, fixture.Start());
 }
 

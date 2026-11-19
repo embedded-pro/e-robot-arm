@@ -39,6 +39,8 @@ namespace arm
         bool operator==(const JointReference& other) const = default;
     };
 
+    inline constexpr float maxReferenceStep{ 0.2f };
+
     inline JointReference AtRest(const JointPositions& positions)
     {
         return JointReference{ positions, {}, {} };
@@ -93,7 +95,11 @@ namespace arm
         positionLimit,
         trackingError,
         collision,
-        holdLost
+        holdLost,
+        speedLimit,
+        referenceSpeed,
+        referenceAcceleration,
+        referenceStep
     };
 
     class JointBusObserver

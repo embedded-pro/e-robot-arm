@@ -10,7 +10,9 @@ TEST(CommissioningTest, runs_every_joint_at_a_quarter_of_its_speed_and_accelerat
         profile.motionLimits[joint] = { foc::RadiansPerSecond{ 2.0f + joint }, foc::RadiansPerSecondSquared{ 8.0f + joint } };
         profile.collision[joint] = foc::NewtonMeter{ 10.0f + joint };
         profile.tracking[joint] = { foc::Radians{ 0.2f }, std::chrono::milliseconds{ 200 } };
+        profile.torqueLimits[joint] = foc::NewtonMeter{ 30.0f };
     }
+    profile.speedTrips[2] = foc::RadiansPerSecond{ 6.0f };
 
     const auto commissioning = arm_host::CommissioningConfig(profile);
 
@@ -25,4 +27,8 @@ TEST(CommissioningTest, runs_every_joint_at_a_quarter_of_its_speed_and_accelerat
         EXPECT_EQ(profile.positionLimits[joint].upper.Value(), commissioning.positionLimits[joint].upper.Value());
     }
     EXPECT_EQ(profile.nodes, commissioning.nodes);
+    ASSERT_TRUE(commissioning.speedTrips[2].has_value());
+    EXPECT_FLOAT_EQ(1.5f, commissioning.speedTrips[2]->Value());
+    EXPECT_FALSE(commissioning.speedTrips[0].has_value());
+    EXPECT_FLOAT_EQ(30.0f, commissioning.torqueLimits[0]->Value());
 }

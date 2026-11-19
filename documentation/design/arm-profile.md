@@ -2,7 +2,7 @@
 title: "Arm Profile Design"
 type: design
 status: draft
-version: 0.14.0
+version: 0.15.0
 component: "arm_profile"
 date: 2026-11-19
 ---
@@ -12,7 +12,7 @@ date: 2026-11-19
 | Title     | Arm Profile Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.14.0             |
+| Version   | 0.15.0             |
 | Component | arm_profile        |
 | Date      | 2026-11-19         |
 
@@ -116,7 +116,7 @@ Each joint:
 | Tracking window    | `trackingError.windowRad`           | rad, joint space, above 0                   | 0.2                 |
 | Tracking time      | `trackingError.timeS`               | s, above 0, at most 10                      | 0.2                 |
 | Collision limit    | `collisionTorqueNm`                 | N·m, joint side, above 0, at most 1000      | 20                  |
-| Speed trip         | `speedLimitRadPerS`                 | rad/s, joint space, above 0                 | 1.25 × speed limit  |
+| Speed trip         | `speedLimitRadPerS`                 | rad/s, joint space, above 0                 | 4 × speed limit     |
 | Torque limit       | `torqueLimitNm`                     | N·m, joint side, above 0, at most 1000      | from the motor      |
 | Motor controller   | `motorController`                   | see below                                   | not configured      |
 | Motor              | `motor`                             | see below                                   | not configured      |

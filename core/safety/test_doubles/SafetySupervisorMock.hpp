@@ -30,7 +30,8 @@ namespace arm
         MOCK_METHOD(bool, Tripped, (), (const, override));
         MOCK_METHOD(bool, Holding, (), (const, override));
         MOCK_METHOD(bool, Rearm, (), (override));
-        MOCK_METHOD(void, Supervise, (const std::optional<JointPositions>& reference, const std::optional<JointTorques>& externalTorques), (override));
+        MOCK_METHOD(void, Supervise, (const std::optional<JointReference>& reference, const std::optional<JointTorques>& externalTorques), (override));
+        MOCK_METHOD(const JointFlags&, TorqueClamped, (), (const, override));
     };
 }
 

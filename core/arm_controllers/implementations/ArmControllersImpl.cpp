@@ -137,6 +137,13 @@ namespace arm
         return lastSetpoints;
     }
 
+    std::optional<JointReference> ArmControllersImpl::TrackedReference() const
+    {
+        if (!streaming)
+            return std::nullopt;
+        return heldReference;
+    }
+
     std::optional<JointPositions> ArmControllersImpl::Reference() const
     {
         if (!streaming)

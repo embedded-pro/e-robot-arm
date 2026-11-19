@@ -2,7 +2,7 @@
 title: "Safety Supervisor Design"
 type: design
 status: draft
-version: 0.6.0
+version: 0.7.0
 component: "safety"
 date: 2026-11-19
 ---
@@ -12,7 +12,7 @@ date: 2026-11-19
 | Title     | Safety Supervisor Design |
 | Type      | design                   |
 | Status    | draft                    |
-| Version   | 0.6.0                    |
+| Version   | 0.7.0                    |
 | Component | safety                   |
 | Date      | 2026-11-19               |
 
@@ -136,10 +136,15 @@ Every limit has a default, so no rule is off by omission:
 |-----------------|----------------------------------------------------------|
 | Tracking window | 0.2 rad, for 0.2 s                                       |
 | Collision       | 20 N·m                                                   |
-| Speed           | 1.25 × the joint's motion speed limit                    |
+| Speed           | 4 × the joint's motion speed limit                       |
 | Torque          | From the joint's motor (Part B)                          |
 | Workspace       | From the arm's geometry and a floor at the base (Part H) |
 | Self-collision  | Every link 0.04 m in radius, a 0.01 m margin (Part H)    |
+
+The speed default is four times the motion speed limit, not just above it: a reference step of the tuning views
+(at most 0.2 rad) answers faster than any planned move, and a 0.1 rad step already peaks near twice the reference
+arm's 1 rad/s; at four times the rule still catches a joint running away. A profile sets it tighter where a joint
+needs it. The commissioning limits scale a speed limit the profile names with the motion limits.
 
 Torque control relies on these: in torque mode the drive has no position reference of its own, so a joint held back
 by an obstacle or driven away by a wrong gain is caught here, not by the drive's following-error supervision. The
@@ -238,21 +243,21 @@ tests drive it through its mock.
 
 ## Data Model
 
-| Entity         | Field         | Type / Unit     | Range                           | Notes                                                  |
-|----------------|---------------|-----------------|---------------------------------|--------------------------------------------------------|
-| Joint limit    | lower, upper  | radians         | finite, lower < upper           | One per joint                                          |
-| Supervisor     | stop          | state           | armed, protective stop, tripped | Armed at start                                         |
-| Tracking       | window        | radians         | above 0                         | One per joint; 0.2 rad when the profile names none     |
-| Tracking       | time          | duration        | above 0                         | One per joint; 0.2 s when the profile names none       |
-| Collision      | limit         | N·m             | above 0                         | One per joint; 20 N·m when the profile names none      |
-| Speed          | limit         | rad/s           | above 0                         | One per joint; 1.25 × the motion speed limit when none |
-| Torque         | limit         | N·m             | above 0                         | One per joint; from the motor when none (Part B)       |
-| Workspace      | box           | m, base frame   | min below max on each axis      | From the geometry when none (Part H)                   |
-| Forbidden zone | box           | m, base frame   | min below max on each axis      | At most eight; none by default                         |
-| Self-collision | link radii    | m               | above 0                         | Six links and the tool; 0.04 m when none               |
-| Self-collision | margin        | m               | 0 or above                      | 0.01 m when none                                       |
-| Self-collision | allowed pairs | pairs of links  | not adjacent                    | Adjacent links are always allowed                      |
-| Drive watchdog | timeout       | control periods | 2 to 255                        | 10 when the profile names none                         |
+| Entity         | Field         | Type / Unit     | Range                           | Notes                                               |
+|----------------|---------------|-----------------|---------------------------------|-----------------------------------------------------|
+| Joint limit    | lower, upper  | radians         | finite, lower < upper           | One per joint                                       |
+| Supervisor     | stop          | state           | armed, protective stop, tripped | Armed at start                                      |
+| Tracking       | window        | radians         | above 0                         | One per joint; 0.2 rad when the profile names none  |
+| Tracking       | time          | duration        | above 0                         | One per joint; 0.2 s when the profile names none    |
+| Collision      | limit         | N·m             | above 0                         | One per joint; 20 N·m when the profile names none   |
+| Speed          | limit         | rad/s           | above 0                         | One per joint; 4 × the motion speed limit when none |
+| Torque         | limit         | N·m             | above 0                         | One per joint; from the motor when none (Part B)    |
+| Workspace      | box           | m, base frame   | min below max on each axis      | From the geometry when none (Part H)                |
+| Forbidden zone | box           | m, base frame   | min below max on each axis      | At most eight; none by default                      |
+| Self-collision | link radii    | m               | above 0                         | Six links and the tool; 0.04 m when none            |
+| Self-collision | margin        | m               | 0 or above                      | 0.01 m when none                                    |
+| Self-collision | allowed pairs | pairs of links  | not adjacent                    | Adjacent links are always allowed                   |
+| Drive watchdog | timeout       | control periods | 2 to 255                        | 10 when the profile names none                      |
 
 ---
 

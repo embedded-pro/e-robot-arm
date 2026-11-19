@@ -1,5 +1,6 @@
 #include "core/arm/Arm.hpp"
 #include <algorithm>
+#include <limits>
 
 namespace arm
 {
@@ -15,6 +16,30 @@ namespace arm
         return rotors;
     }
 
+    foc::NewtonMeter TorqueLimit(const ArmConfig& config, std::size_t joint)
+    {
+        if (config.torqueLimits[joint].has_value())
+            return *config.torqueLimits[joint];
+        if (!config.motors[joint].has_value())
+            return foc::NewtonMeter{ std::numeric_limits<float>::infinity() };
+        const auto& motor = config.motors[joint]->settings;
+        const auto torqueConstant = 1.5f * motor[MotorParameter::polePairs] * motor[MotorParameter::fluxLinkage];
+        return foc::NewtonMeter{ motor[MotorParameter::peakCurrent] * torqueConstant * config.transmissions[joint].ratio };
+    }
+
+    MotionSupervision Supervision(const ArmConfig& config)
+    {
+        MotionSupervision supervision{};
+        for (std::size_t joint = 0; joint != jointCount; ++joint)
+        {
+            const auto& motion = config.motionLimits[joint];
+            supervision.reference[joint] = { motion.maxSpeed, motion.maxAcceleration };
+            supervision.speed[joint] = config.speedTrips[joint].value_or(foc::RadiansPerSecond{ defaultSpeedTripShare * motion.maxSpeed.Value() });
+            supervision.torque[joint] = TorqueLimit(config, joint);
+        }
+        return supervision;
+    }
+
     PdGainMatrices GravityPdGains(const ArmModel& model, const ArmConfig& config)
     {
         return PlacedGains(model, ReflectedRotors(config), config.gravityPd);
@@ -22,7 +47,7 @@ namespace arm
 
     Arm::Arm(can::FocMotorCategoryClient& client, const ArmConfig& config)
         : jointBus(client, config.nodes, config.transmissions, config.missedRequestsBeforeSilent, config.controlPeriod * config.commandTimeoutPeriods)
-        , safety(jointBus, config.positionLimits, config.tracking, config.collision, config.controlPeriod)
+        , safety(jointBus, config.positionLimits, config.tracking, config.collision, config.controlPeriod, Supervision(config))
         , motion(safety, config.positionLimits, config.motionLimits, config.controlPeriod)
         , configurator(safety, lifecycle, SilenceWindow(config))
         , lifecycle(safety, motion, configurator, config.controllers, config.motors)
@@ -112,7 +137,7 @@ namespace arm
         const auto reference = motion.Step();
         if (!controllers.Step(reference))
             motion.Abort();
-        const auto tracked = controllers.Reference();
+        const auto tracked = controllers.TrackedReference();
         externalTorques = ExternalTorques(applied, tracked.has_value());
         safety.Supervise(tracked, externalTorques);
         lifecycle.Step();

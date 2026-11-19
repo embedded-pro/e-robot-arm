@@ -2,7 +2,7 @@
 title: "Simulator Design"
 type: design
 status: draft
-version: 0.18.0
+version: 0.19.0
 component: "simulator"
 date: 2026-11-19
 ---
@@ -12,7 +12,7 @@ date: 2026-11-19
 | Title     | Simulator Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.18.0           |
+| Version   | 0.19.0           |
 | Component | simulator        |
 | Date      | 2026-11-19       |
 
@@ -290,6 +290,7 @@ empty until the arm has been enabled); nothing else in `core/` changes for the s
 | Snapshot        | contracts             | unchecked, compatible, incompatible | —                     | Per joint                                               |
 | Snapshot        | tripped, moving, loop | bool                                | —                     |                                                         |
 | Snapshot        | holding               | bool                                | —                     | A protective stop holds the arm (safety.md Part G)      |
+| Snapshot        | torque clamped        | 6 × bool                            | —                     | The last torque sent was clamped (safety.md Part B)     |
 | Snapshot        | profile               | name and arm configuration          | —                     | The profile loaded, never the commissioning copy        |
 | Snapshot        | commissioning         | bool                                | —                     | Real arm only; on at every connection                   |
 | Snapshot        | tool pose             | m, rad; singularity flags           | —                     | From the measured joints ([arm-model.md](arm-model.md)) |

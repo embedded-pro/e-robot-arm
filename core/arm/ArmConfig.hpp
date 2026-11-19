@@ -11,8 +11,10 @@
 #include "core/safety/interfaces/SafetySupervisor.hpp"
 #include "e-foc-protocol/contract/FocMotorMessages.hpp"
 #include "infra/timer/Timer.hpp"
+#include <array>
 #include <chrono>
 #include <cstdint>
+#include <optional>
 
 namespace arm
 {
@@ -34,8 +36,12 @@ namespace arm
         BandwidthTuning gravityPid{ 20.0f, 0.7f };
         TrackingLimits tracking{};
         CollisionLimits collision{ DefaultCollisionLimits() };
+        std::array<std::optional<foc::RadiansPerSecond>, jointCount> speedTrips{};
+        std::array<std::optional<foc::NewtonMeter>, jointCount> torqueLimits{};
         float collisionObserverGain{ 25.0f };
     };
+
+    inline constexpr float defaultSpeedTripShare{ 4.0f };
 
     inline infra::Duration SilenceWindow(const ArmConfig& config)
     {
