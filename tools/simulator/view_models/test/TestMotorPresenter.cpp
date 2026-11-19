@@ -110,6 +110,40 @@ TEST_F(MotorPresenterTest, apply_then_verify_lists_every_parameter_the_joint_rep
     EXPECT_THAT(presenter.Hint(), HasSubstr("Peak current: applied 20 A, joint reports 15 A"));
 }
 
+TEST_F(MotorPresenterTest, a_custom_motor_marks_each_field_that_differs_from_its_preset)
+{
+    const auto resistance = MotorField::Parameter(MotorParameter::resistance);
+    view.TypeNumber(resistance, 0.5);
+
+    EXPECT_EQ(ui::theme::StatusLevel::Warning, view.FieldStatus(resistance));
+    EXPECT_EQ("Teknic M-2310P-LN-04K: 0.36 Ω", view.FieldNote(resistance));
+    EXPECT_EQ(ui::theme::StatusLevel::Neutral, view.FieldStatus(MotorField::Parameter(MotorParameter::inertia)));
+
+    view.TypeNumber(resistance, 0.36);
+    EXPECT_EQ(ui::theme::StatusLevel::Neutral, view.FieldStatus(resistance));
+}
+
+TEST_F(MotorPresenterTest, verify_marks_each_parameter_the_joint_reports_differently_until_the_form_is_edited)
+{
+    EXPECT_CALL(arm, Post(AppliesMotorTo(0))).WillOnce(Return(5));
+    view.PressAction(ConfigurationAction::apply);
+    Answer({ .kind = ArmEventKind::motorApplied, .joint = 0 });
+
+    auto reported = arm::motorPresets[0].settings;
+    reported[MotorParameter::peakCurrent] = 15.0f;
+    EXPECT_CALL(arm, Post(ReadsMotorOf(0))).WillOnce(Return(6));
+    view.PressAction(ConfigurationAction::verify);
+    Answer(ReadEvent(0, reported));
+
+    const auto peakCurrent = MotorField::Parameter(MotorParameter::peakCurrent);
+    EXPECT_EQ(ui::theme::StatusLevel::Fault, view.FieldStatus(peakCurrent));
+    EXPECT_EQ("applied 20 A, joint reports 15 A", view.FieldNote(peakCurrent));
+    EXPECT_EQ(ui::theme::StatusLevel::Neutral, view.FieldStatus(MotorField::Parameter(MotorParameter::resistance)));
+
+    view.TypeNumber(MotorField::Parameter(MotorParameter::resistance), 0.36);
+    EXPECT_EQ(ui::theme::StatusLevel::Neutral, view.FieldStatus(peakCurrent));
+}
+
 TEST_F(MotorPresenterTest, a_hidden_panel_reads_its_joint_only_once_it_is_shown)
 {
     presenter.SetShown(false);

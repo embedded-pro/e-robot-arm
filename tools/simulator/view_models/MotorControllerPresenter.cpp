@@ -241,11 +241,13 @@ namespace simulator
     void MotorControllerPresenter::Applied(std::size_t joint)
     {
         applied[joint] = FormSettings();
+        ClearMarks();
     }
 
     std::string MotorControllerPresenter::Read(const arm_host::ArmEvent& event, bool verifying)
     {
         flow.SetNote(std::format("mode {} (reported)", modeNames[static_cast<std::size_t>(event.controller.mode)]));
+        ClearMarks();
         if (verifying)
             return Mismatches(applied[event.joint], event.controller.settings);
 
@@ -258,6 +260,7 @@ namespace simulator
         if (loading)
             return;
 
+        ClearMarks();
         if (field == MotorControllerField::joint)
         {
             const auto joint = form.model.Selection(MotorControllerField::joint);
@@ -288,27 +291,42 @@ namespace simulator
         view.Refresh();
     }
 
-    std::string MotorControllerPresenter::Mismatches(const arm::ControllerSettings& expected, const arm::ControllerSettings& actual) const
+    std::string MotorControllerPresenter::Mismatches(const arm::ControllerSettings& expected, const arm::ControllerSettings& actual)
     {
         const auto mismatches = arm::Compare(expected, actual);
         std::string text;
-        const auto add = [&text](std::string_view line)
+        const auto add = [this, &text](ui::model::FieldId field, std::string_view name, std::string_view applied, std::string_view reported)
         {
-            text += std::format("{}{}", text.empty() ? "" : "\n", line);
+            const auto note = std::format("applied {}, joint reports {}", applied, reported);
+            text += std::format("{}{}: {}", text.empty() ? "" : "\n", name, note);
+            Mark(field, note);
         };
 
         if (mismatches.current)
-            add(std::format("Current algorithm: applied {}, joint reports {}", currentOptions[static_cast<std::size_t>(expected.current)].label,
-                currentOptions[static_cast<std::size_t>(actual.current)].label));
+            add(MotorControllerField::current, "Current algorithm", currentOptions[static_cast<std::size_t>(expected.current)].label,
+                currentOptions[static_cast<std::size_t>(actual.current)].label);
         if (mismatches.speed)
-            add(std::format("Speed algorithm: applied {}, joint reports {}", speedOptions[static_cast<std::size_t>(expected.speed)].label,
-                speedOptions[static_cast<std::size_t>(actual.speed)].label));
+            add(MotorControllerField::speed, "Speed algorithm", speedOptions[static_cast<std::size_t>(expected.speed)].label,
+                speedOptions[static_cast<std::size_t>(actual.speed)].label);
         if (mismatches.position)
-            add(std::format("Position algorithm: applied {}, joint reports {}", positionOptions[static_cast<std::size_t>(expected.position)].label,
-                positionOptions[static_cast<std::size_t>(actual.position)].label));
+            add(MotorControllerField::position, "Position algorithm", positionOptions[static_cast<std::size_t>(expected.position)].label,
+                positionOptions[static_cast<std::size_t>(actual.position)].label);
         for (std::size_t gain = 0; gain != arm::gainCount; ++gain)
             if (mismatches.gains[gain])
-                add(std::format("{}: applied {}, joint reports {}", gainNames[gain], Format(expected.gains[gain]), Format(actual.gains[gain])));
+                add(MotorControllerField::Gain(static_cast<arm::Gain>(gain)), gainNames[gain], Format(expected.gains[gain]), Format(actual.gains[gain]));
         return text;
+    }
+
+    void MotorControllerPresenter::Mark(ui::model::FieldId field, std::string_view note)
+    {
+        view.SetFieldStatus(field, ui::theme::StatusLevel::Fault, note);
+        marked.push_back(field);
+    }
+
+    void MotorControllerPresenter::ClearMarks()
+    {
+        for (const auto field : marked)
+            view.SetFieldStatus(field, ui::theme::StatusLevel::Neutral, {});
+        marked.clear();
     }
 }
