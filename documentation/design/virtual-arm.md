@@ -2,7 +2,7 @@
 title: "Virtual Arm Design"
 type: design
 status: draft
-version: 0.18.0
+version: 0.19.0
 component: "virtual-arm"
 date: 2026-11-19
 ---
@@ -12,7 +12,7 @@ date: 2026-11-19
 | Title     | Virtual Arm Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.18.0             |
+| Version   | 0.19.0             |
 | Component | virtual-arm        |
 | Date      | 2026-11-19         |
 
@@ -253,10 +253,13 @@ closes position with `gravity-pd` at the profile's default bandwidth ([arm-contr
 Part A). Without integral action the joints settle short of the target by the drives' Coulomb friction over the
 controller's stiffness, about 0.04 rad on the elbow, so the settling check is pinned at 0.06 rad for `gravity-pd` and
 `computed-torque`; under `gravity-pid` the integral closes most of that gap within the two seconds the check allows,
-and the check is 0.015 rad. It then brings the arm up through the arm host on `virtual:arm` as the console does:
-contract check, align, bring-up and enable. The motors start calibrated but not aligned. Each scenario runs its motors
-in a working directory of its own (`scenario<n>` under the fixture's directory), so the logs CI uploads keep every
-scenario, and a failed step prints each motor's real-time factor and overrun count from its last status report.
+and the check is 0.015 rad. The profile runs `gravity-pid` at 15 rad/s, not its default 20: under CI load a reading
+arrives a period late, which brings the delay close to the 24 ms the default tolerates
+([arm-controllers.md](arm-controllers.md) Part A), and the step test then rang until the collision observer stopped the
+arm. The fixture then brings the arm up through the arm host on `virtual:arm` as the console does: contract check,
+align, bring-up and enable. The motors start calibrated but not aligned. Each scenario runs its motors in a working
+directory of its own (`scenario<n>` under the fixture's directory), so the logs CI uploads keep every scenario, and a
+failed step prints each motor's real-time factor and overrun count from its last status report.
 
 | Scenario               | Checks                                                                                                                                                                                                                                                                                          |
 |------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|

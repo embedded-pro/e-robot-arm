@@ -83,8 +83,10 @@ the arm's inertia matrix scaled: Kp = ω²·J, Kd = 2·ζ·ω·J, with J the arm
 plus, on its diagonal, each motor's rotor inertia times its gear ratio squared (Teknic's when the profile names no
 motor). Near home every mode of the arm then has its poles at ω with damping ζ; away from home the mass matrix
 drifts from J, and the poles with it. Each joint lags a move by about 2·ζ/ω times its speed, and the damping per
-control period, 2·ζ·ω·T, does not depend on any inertia. The bandwidth is bounded by the control period and the
-telemetry's age: 30 rad/s at 10 ms leaves a wide margin.
+control period, 2·ζ·ω·T, does not depend on any inertia. The bandwidth is bounded by the loop's delay: the
+telemetry's age, half a control period for the held torque, and a reading that arrives a period late under host load.
+`gravity-pd` at 30 rad/s and `gravity-pid` at 20 rad/s, both at ζ = 0.7, cross over near 47 rad/s and lose stability
+at about 24 ms of delay; `gravity-pid` at 15 rad/s crosses over at 37 rad/s and holds to 32 ms.
 
 **Computed torque.** `computed-torque` is robotics-toolbox's `ComputedTorqueControl`: it asks the arm's inverse
 dynamics for the torque that gives each joint the acceleration `a = q̈* + Kd·(q̇* − q̇) + Kp·(q* − q)`, so the arm's
