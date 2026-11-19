@@ -2,7 +2,7 @@
 title: "Simulator Design"
 type: design
 status: draft
-version: 0.22.0
+version: 0.23.0
 component: "simulator"
 date: 2026-11-19
 ---
@@ -12,7 +12,7 @@ date: 2026-11-19
 | Title     | Simulator Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.22.0           |
+| Version   | 0.23.0           |
 | Component | simulator        |
 | Date      | 2026-11-19       |
 
@@ -86,8 +86,10 @@ They meet in `ArmHost` only:
 
 A target switch builds everything anew; nothing carries over:
 
-1. It is refused while a move is running, with that reason. During the switch every command is refused with
-   "switching target", except the emergency stop, which still reaches the old target.
+1. It is refused while the arm drives its joints (enabling, enabled, moving, disabling or holding after a protective
+   stop) with "the arm drives its joints: disable it first": the switch stops every joint, and an arm without brakes
+   falls when its joints stop. A tripped, ready or unpowered arm switches. During the switch every command is refused
+   with "switching target", except the emergency stop, which still reaches the old target.
 2. The control loop stops, every joint of the old target is sent Stop, and the host waits until the transmit queue
    drains or 100 ms pass.
 3. The arm, its client and the adapter are destroyed; the new target, client and arm are built.
@@ -317,7 +319,7 @@ stateDiagram-v2
     [*] --> Building
     Building --> Running : target and arm built
     Building --> Failed : adapter could not open
-    Running --> Switching : switch target, no move running
+    Running --> Switching : switch target, joints not driven
     Switching --> Building : old target stopped and destroyed
     Failed --> Building : switch target
     Running --> Building : load profile, arm not enabled

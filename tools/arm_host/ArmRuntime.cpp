@@ -37,8 +37,8 @@ namespace arm_host
     {
         if (switching)
             return Report(ArmEventKind::targetFailed, id, "switching target");
-        if (session && session->Moving())
-            return Report(ArmEventKind::targetFailed, id, "moving");
+        if (session && session->DrivesJoints())
+            return Report(ArmEventKind::targetFailed, id, "the arm drives its joints: disable it first");
 
         switching = true;
         switchId = id;

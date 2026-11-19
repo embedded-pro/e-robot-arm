@@ -233,7 +233,20 @@ TEST_F(ArmRuntimeTest, refuses_to_switch_while_a_move_is_running)
 
     EXPECT_EQ(ArmEventKind::targetFailed, sink.Last()->kind);
     EXPECT_EQ(9u, sink.Last()->command);
-    EXPECT_EQ("moving", sink.Last()->reason);
+    EXPECT_EQ("the arm drives its joints: disable it first", sink.Last()->reason);
+    EXPECT_EQ(1u, opened.size());
+}
+
+TEST_F(ArmRuntimeTest, refuses_to_switch_while_the_joints_run_without_a_move)
+{
+    runtime.emplace(arm_host::test::Profile(), Opener(), sink, simulated);
+    Execute(1, arm_host::CheckContracts{});
+    Execute(2, arm_host::SelectMode{ can::FocMotorMode::position });
+    Execute(3, arm_host::StartJoints{});
+    runtime->SwitchTarget(9, virtualBus);
+
+    EXPECT_EQ(ArmEventKind::targetFailed, sink.Last()->kind);
+    EXPECT_EQ("the arm drives its joints: disable it first", sink.Last()->reason);
     EXPECT_EQ(1u, opened.size());
 }
 

@@ -118,8 +118,23 @@ TEST_F(ControlRulesTest, a_running_move_allows_abort_and_blocks_what_would_distu
     ExpectDisabled(Control::move, moving, "Moving");
     ExpectDisabled(Control::checkContracts, moving, "Moving");
     ExpectDisabled(Control::torqueMode, moving, "Moving");
-    ExpectDisabled(Control::target, moving, "Moving");
+    ExpectDisabled(Control::target, moving, "Disable the arm first");
     ExpectDisabled(Control::abort, simulator::test::Running(), "No move running");
+}
+
+TEST_F(ControlRulesTest, the_target_switches_only_while_the_arm_does_not_drive_its_joints)
+{
+    auto holding = simulator::test::Running();
+    holding.state = arm::ArmState::holding;
+    auto tripped = simulator::test::Running();
+    tripped.state = arm::ArmState::tripped;
+    auto ready = simulator::test::Compatible();
+    ready.state = arm::ArmState::ready;
+
+    ExpectDisabled(Control::target, simulator::test::Running(), "Disable the arm first");
+    ExpectDisabled(Control::target, holding, "Disable the arm first");
+    ExpectEnabled(Control::target, tripped);
+    ExpectEnabled(Control::target, ready);
 }
 
 TEST_F(ControlRulesTest, stop_and_clear_faults_need_something_to_act_on)

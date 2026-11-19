@@ -142,13 +142,18 @@ namespace simulator
             return Disabled("Not enabled");
         }
 
+        bool DrivesJoints(const arm_host::ArmSnapshot& snapshot)
+        {
+            const auto state = snapshot.state;
+            return snapshot.moving || state == arm::ArmState::enabling || state == arm::ArmState::enabled || state == arm::ArmState::moving ||
+                   state == arm::ArmState::disabling || state == arm::ArmState::holding;
+        }
+
         ControlState Commissioning(const arm_host::ArmSnapshot& snapshot)
         {
             if (snapshot.target.kind != arm_host::TargetKind::real)
                 return Disabled("Not the real arm");
-            const auto state = snapshot.state;
-            if (state == arm::ArmState::enabling || state == arm::ArmState::enabled || state == arm::ArmState::moving || state == arm::ArmState::disabling ||
-                state == arm::ArmState::holding)
+            if (DrivesJoints(snapshot))
                 return Disabled("Disable the arm first");
             return Enabled();
         }
@@ -197,7 +202,7 @@ namespace simulator
             case Control::abort:
                 return snapshot.moving ? Enabled() : Disabled("No move running");
             case Control::target:
-                return snapshot.moving ? Disabled("Moving") : Enabled();
+                return DrivesJoints(snapshot) ? Disabled("Disable the arm first") : Enabled();
             case Control::bringUp:
                 return BringUp(snapshot);
             case Control::enable:

@@ -27,6 +27,7 @@ namespace arm_host
         void StopAll();
         bool Moving() const;
         bool Running() const;
+        bool DrivesJoints() const;
 
     private:
         class Events
