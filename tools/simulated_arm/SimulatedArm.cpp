@@ -33,4 +33,9 @@ namespace simulation
     {
         return bus.Idle();
     }
+
+    SimulatedHardwareStop& SimulatedArm::HardwareStop()
+    {
+        return hardwareStop;
+    }
 }

@@ -2,9 +2,9 @@
 title: "Arm Controllers Design"
 type: design
 status: draft
-version: 0.9.0
+version: 0.10.0
 component: "arm-controllers"
-date: 2026-11-17
+date: 2026-11-19
 ---
 
 | Field     | Value                  |
@@ -12,9 +12,9 @@ date: 2026-11-17
 | Title     | Arm Controllers Design |
 | Type      | design                 |
 | Status    | draft                  |
-| Version   | 0.9.0                  |
+| Version   | 0.10.0                 |
 | Component | arm-controllers        |
-| Date      | 2026-11-17             |
+| Date      | 2026-11-19             |
 
 > Which controller turns the motion's reference into the joints' setpoints, and how one is enabled, disabled and
 > switched at run time without a setpoint step (phase 2, [#18](https://github.com/embedded-pro/e-robot-arm/issues/18)
@@ -50,7 +50,9 @@ date: 2026-11-17
 
 ### Part A — The controller
 
-A controller takes the measured joints (positions and speeds from the latest telemetry) and the reference (the joint
+A controller takes the measured joints (positions and speeds from the latest telemetry; a reading from an earlier
+period, answered too late for this step's setpoints, is advanced by its speed for each period it missed, at most two,
+so a late answer does not add a period of delay to the loop) and the reference (the joint
 positions, speeds and accelerations the motion wants now, [joint-motion.md](joint-motion.md) Part B) and returns a
 setpoint set: six joint torques, with the reference positions alongside for the trace and for the safety
 supervisor's tracking check.
@@ -81,8 +83,10 @@ the arm's inertia matrix scaled: Kp = ω²·J, Kd = 2·ζ·ω·J, with J the arm
 plus, on its diagonal, each motor's rotor inertia times its gear ratio squared (Teknic's when the profile names no
 motor). Near home every mode of the arm then has its poles at ω with damping ζ; away from home the mass matrix
 drifts from J, and the poles with it. Each joint lags a move by about 2·ζ/ω times its speed, and the damping per
-control period, 2·ζ·ω·T, does not depend on any inertia. The bandwidth is bounded by the control period and the
-telemetry's age: 30 rad/s at 10 ms leaves a wide margin.
+control period, 2·ζ·ω·T, does not depend on any inertia. The bandwidth is bounded by the loop's delay: the
+telemetry's age, half a control period for the held torque, and a reading that arrives a period late under host load.
+`gravity-pd` at 30 rad/s and `gravity-pid` at 20 rad/s, both at ζ = 0.7, cross over near 47 rad/s and lose stability
+at about 24 ms of delay; `gravity-pid` at 15 rad/s crosses over at 37 rad/s and holds to 32 ms.
 
 **Computed torque.** `computed-torque` is robotics-toolbox's `ComputedTorqueControl`: it asks the arm's inverse
 dynamics for the torque that gives each joint the acceleration `a = q̈* + Kd·(q̇* − q̇) + Kp·(q* − q)`, so the arm's

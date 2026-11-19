@@ -431,7 +431,7 @@ namespace simulator
         log.Add(event);
 
         if (event.kind == arm_host::ArmEventKind::tripped)
-            tripSource = std::format("Joint {} ({})", event.joint + 1, TripCause(event));
+            tripSource = event.joint == arm_host::noJoint ? SentenceCase(event.reason) : std::format("Joint {} ({})", event.joint + 1, TripCause(event));
         if (event.kind == arm_host::ArmEventKind::protectiveStop)
             holdSource = std::format("Joint {} ({})", event.joint + 1, event.reason);
 

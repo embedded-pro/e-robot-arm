@@ -2,7 +2,7 @@
 title: "Collision Observer Design"
 type: design
 status: draft
-version: 0.4.0
+version: 0.5.0
 component: "collision"
 date: 2026-11-17
 ---
@@ -12,7 +12,7 @@ date: 2026-11-17
 | Title     | Collision Observer Design |
 | Type      | design                    |
 | Status    | draft                     |
-| Version   | 0.4.0                     |
+| Version   | 0.5.0                     |
 | Component | collision                 |
 | Date      | 2026-11-17                |
 
@@ -123,7 +123,8 @@ snapshot and trace.
   collision limit sits above that.
 - A reading that arrives within the period but late in it still shows the joints a little earlier than the torque
   assumes; the error is a fraction of the gain times one period's momentum change and the next reading corrects it.
-- The observer takes the commanded torque as applied. A drive that cannot deliver it, at its current limit or
+- The observer takes the commanded torque as applied, after the safety supervisor's torque limit ([safety.md](safety.md)
+  Part B): a clamped torque is what the drive was asked for. A drive that cannot deliver it, at its current limit or
   behind its current loop, leaves the difference in the estimate: a 0.1 rad reference step on the virtual arm's
   elbow reads up to 5.6 N·m on the shoulder. The scenarios step 0.05 rad, below 2 N·m, to keep a margin to the
   limit until the observer knows the drives' limits (open question 2).
@@ -134,7 +135,7 @@ snapshot and trace.
 
 ## Open Questions
 
-| # | Question                                                                       | Options                                                                              | Status |
-|---|--------------------------------------------------------------------------------|--------------------------------------------------------------------------------------|--------|
-| 1 | Whether the observer models the drives' friction, so the limits can come down  | No friction model, Coulomb and viscous per joint                                     | open   |
-| 2 | Whether the observer clamps the commanded torque to what the drive can deliver | Commanded torque, clamped to the motor's current limit, the drive's measured current | open   |
+| # | Question                                                                       | Options                                                                                                | Status |
+|---|--------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------|--------|
+| 1 | Whether the observer models the drives' friction, so the limits can come down  | No friction model, Coulomb and viscous per joint                                                       | open   |
+| 2 | Whether the observer clamps the commanded torque to what the drive can deliver | Decided: the torque as clamped to the joint's torque limit, from the motor when the profile names none | closed |

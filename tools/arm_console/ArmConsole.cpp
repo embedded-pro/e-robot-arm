@@ -410,8 +410,14 @@ namespace arm_console
             case protectiveStop:
                 output << "protective stop, holding: joint " << event.joint + 1 << " " << event.reason << "\n";
                 break;
+            case hardwareStop:
+                output << event.reason << "\n";
+                break;
             case tripped:
-                output << "tripped by joint " << event.joint + 1 << "\n";
+                if (event.joint == arm_host::noJoint)
+                    output << "tripped by the " << event.reason << "\n";
+                else
+                    output << "tripped by joint " << event.joint + 1 << "\n";
                 break;
             case moveDone:
                 output << "move done\n";

@@ -44,6 +44,7 @@ namespace arm
         MOCK_METHOD(void, OnParameter, (std::size_t joint, can::FocParameter parameter, can::FocParameterValue value), (override));
         MOCK_METHOD(void, OnSupervisionTrip, (std::size_t joint, arm::SupervisionTrip trip, float value), (override));
         MOCK_METHOD(void, OnProtectiveStop, (std::size_t joint, arm::SupervisionTrip trip, float value), (override));
+        MOCK_METHOD(void, OnHardwareStop, (bool open), (override));
     };
 }
 

@@ -33,6 +33,7 @@ namespace arm
         MOCK_METHOD(void, Supervise, (const std::optional<JointReference>& reference, const std::optional<JointTorques>& externalTorques), (override));
         MOCK_METHOD(const JointFlags&, TorqueClamped, (), (const, override));
         MOCK_METHOD(std::optional<WorkspaceViolation>, LastWorkspaceViolation, (), (const, override));
+        MOCK_METHOD(bool, HardwareStopOpen, (), (const, override));
     };
 }
 

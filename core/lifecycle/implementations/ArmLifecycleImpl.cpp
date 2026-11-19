@@ -285,6 +285,12 @@ namespace arm
         fsm.Dispatch(Trip{});
     }
 
+    void ArmLifecycleImpl::OnHardwareStop(bool open)
+    {
+        if (open)
+            fsm.Dispatch(Trip{});
+    }
+
     void ArmLifecycleImpl::OnProtectiveStop(std::size_t, SupervisionTrip, float)
     {
         fsm.Dispatch(ProtectiveStop{});

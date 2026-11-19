@@ -3,6 +3,7 @@
   "version": 3,
   "name": "virtual reference arm",
   "controlPeriodMs": 10,
+  "gravityPid": { "bandwidthRadPerS": 15, "dampingRatio": 0.7 },
   "missedRequestsBeforeSilent": 50,
   "commandTimeoutPeriods": 50,
   "driveWatchdogPeriods": 50,

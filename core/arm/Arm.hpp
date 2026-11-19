@@ -28,7 +28,7 @@ namespace arm
     class Arm
     {
     public:
-        Arm(can::FocMotorCategoryClient& client, const ArmConfig& config);
+        Arm(can::FocMotorCategoryClient& client, const ArmConfig& config, HardwareStop* hardwareStop = nullptr);
         Arm(const Arm& other) = delete;
         Arm& operator=(const Arm& other) = delete;
 
@@ -62,6 +62,7 @@ namespace arm
         GravityPid gravityPid;
         CollisionObserver collision;
         infra::Duration period;
+        std::array<foc::NewtonMeter, jointCount> torqueLimits;
         bool observing{ false };
         JointTorques previousApplied{};
         JointTorques actingSum{};

@@ -54,3 +54,13 @@ Feature: Arm on six e-foc joints
     When the arm requests telemetry and starts the joints in the same turn
     Then every joint shall be running within 20 ms
     And the start shall be reported delivered and no command shall have failed
+
+  @REQ-SAF-010
+  Scenario: The hardware stop stops every joint, and the arm re-arms only once it has closed
+    Given the joints are started in torque mode
+    When the hardware stop opens
+    Then every joint shall have been emergency stopped
+    And the arm shall refuse to move
+    And the arm shall refuse to re-arm
+    When the hardware stop closes
+    Then the arm shall re-arm

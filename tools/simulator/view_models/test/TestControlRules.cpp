@@ -78,6 +78,16 @@ TEST_F(ControlRulesTest, a_trip_blocks_motion_and_allows_rearm_once_no_joint_is_
     ExpectDisabled(Control::rearm, simulator::test::Running(), "Not tripped or holding");
 }
 
+TEST_F(ControlRulesTest, rearm_waits_until_the_hardware_stop_is_closed)
+{
+    auto tripped = simulator::test::Running();
+    tripped.tripped = true;
+    tripped.state = arm::ArmState::tripped;
+    tripped.hardwareStopOpen = true;
+
+    ExpectDisabled(Control::rearm, tripped, "Hardware stop open: close it first");
+}
+
 TEST_F(ControlRulesTest, holding_blocks_motion_and_allows_rearm_and_disable)
 {
     auto holding = simulator::test::Running();

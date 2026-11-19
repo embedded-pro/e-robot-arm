@@ -339,6 +339,26 @@ TEST_F(ArmLifecycleImplTest, a_lost_hold_trips_the_arm)
     EXPECT_EQ(ArmState::tripped, lifecycle.State());
 }
 
+TEST_F(ArmLifecycleImplTest, the_hardware_stop_opening_trips_a_moving_arm_and_closing_it_changes_nothing)
+{
+    BringToEnabled();
+    EXPECT_CALL(motion, MoveTo(_)).WillOnce(Return(true));
+    EXPECT_TRUE(lifecycle.MoveTo(target));
+
+    EXPECT_CALL(motion, Abort());
+    safety.NotifyObservers([](auto& joints)
+        {
+            joints.OnHardwareStop(true);
+        });
+    EXPECT_EQ(ArmState::tripped, lifecycle.State());
+
+    safety.NotifyObservers([](auto& joints)
+        {
+            joints.OnHardwareStop(false);
+        });
+    EXPECT_EQ(ArmState::tripped, lifecycle.State());
+}
+
 TEST_F(ArmLifecycleImplTest, a_protective_stop_holds_a_moving_arm_aborts_the_move_and_refuses_another)
 {
     BringToEnabled();

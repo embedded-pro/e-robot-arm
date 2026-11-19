@@ -156,7 +156,8 @@ namespace arm_host
         : profile(profile)
         , commissioning(commissioning)
         , client(can)
-        , arm(client.CategoryClient(), commissioning ? CommissioningConfig(profile.config) : profile.config)
+        , arm(client.CategoryClient(), commissioning ? CommissioningConfig(profile.config) : profile.config,
+              simulation != nullptr ? &simulation->HardwareStop() : nullptr)
         , model(profile.config.geometry, profile.config.mass, profile.config.positionLimits)
         , target(target)
         , sink(sink)
@@ -556,6 +557,13 @@ namespace arm_host
         session.ReportTrip(joint, can::FocFaultCode::none, std::move(reason));
     }
 
+    void ArmSession::Events::OnHardwareStop(bool open)
+    {
+        session.Emit({ .kind = ArmEventKind::hardwareStop, .reason = open ? "hardware stop open" : "hardware stop closed" });
+        if (open)
+            session.ReportTrip(arm_host::noJoint, can::FocFaultCode::none, "hardware stop open");
+    }
+
     void ArmSession::Events::OnProtectiveStop(std::size_t joint, arm::SupervisionTrip trip, float value)
     {
         const auto workspace = session.arm.Safety().LastWorkspaceViolation();
@@ -689,6 +697,7 @@ namespace arm_host
         snapshot.contracts = safety.Contracts();
         snapshot.tripped = safety.Tripped();
         snapshot.holding = safety.Holding();
+        snapshot.hardwareStopOpen = safety.HardwareStopOpen();
         snapshot.torqueClamped = safety.TorqueClamped();
         snapshot.moving = arm.Motion().Moving();
         snapshot.state = arm.Lifecycle().State();

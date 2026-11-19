@@ -10,6 +10,7 @@ target_link_libraries(e_robot_arm.safety.test_doubles INTERFACE
 )
 
 target_sources(e_robot_arm.safety.test_doubles INTERFACE
+    HardwareStopMock.hpp
     PoseGuardMock.hpp
     SafetySupervisorMock.hpp
 )

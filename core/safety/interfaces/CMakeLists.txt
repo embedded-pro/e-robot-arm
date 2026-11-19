@@ -10,6 +10,7 @@ target_link_libraries(e_robot_arm.safety.interfaces INTERFACE
 )
 
 target_sources(e_robot_arm.safety.interfaces PRIVATE
+    HardwareStop.hpp
     PoseGuard.hpp
     SafetySupervisor.hpp
 )
