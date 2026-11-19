@@ -2,7 +2,7 @@
 title: "Simulator Design"
 type: design
 status: draft
-version: 0.20.0
+version: 0.21.0
 component: "simulator"
 date: 2026-11-19
 ---
@@ -12,7 +12,7 @@ date: 2026-11-19
 | Title     | Simulator Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.20.0           |
+| Version   | 0.21.0           |
 | Component | simulator        |
 | Date      | 2026-11-19       |
 
@@ -221,7 +221,10 @@ The snapshot is what the screen shows; events are what the log shows; traces are
   and the rule, as "collision 12.0 N·m"), hardware stop open or closed (a trip by it names no joint and the reason
   "hardware stop open"), move done, move aborted, target
   ready, target failed, lifecycle state changed; each with the arm-thread time. The snapshot carries the lifecycle
-  state as well.
+  state as well, and the stop in effect: its category (protective, category 2, or emergency, category 0), the joint
+  or none, the rule or reason and the fault. The first stop sets it, an emergency stop replaces a protective one (a
+  lost hold names its joint and "hold lost"), and it clears once the arm is neither holding nor tripped. A view that
+  opens after the stop, or misses its event, still names it.
 - **Trace samples** — one per control period: the time, the six commanded positions, the six measured positions and,
   while the arm drives its joints, the six commanded torques and the six estimated external torques.
 
@@ -293,6 +296,7 @@ empty until the arm has been enabled); nothing else in `core/` changes for the s
 | Snapshot        | holding               | bool                                | —                     | A protective stop holds the arm (safety.md Part G)      |
 | Snapshot        | hardware stop open    | bool                                | —                     | The stop circuit is open (safety.md Part J)             |
 | Snapshot        | torque clamped        | 6 × bool                            | —                     | The last torque sent was clamped (safety.md Part B)     |
+| Snapshot        | stop                  | category, joint, rule, fault; opt.  | —                     | The stop in effect; cleared once re-armed (Part F)      |
 | Snapshot        | profile               | name and arm configuration          | —                     | The profile loaded, never the commissioning copy        |
 | Snapshot        | commissioning         | bool                                | —                     | Real arm only; on at every connection                   |
 | Snapshot        | tool pose             | m, rad; singularity flags           | —                     | From the measured joints ([arm-model.md](arm-model.md)) |

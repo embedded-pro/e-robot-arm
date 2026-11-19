@@ -2,7 +2,7 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.27.0
+version: 0.28.0
 component: "tool-simulator"
 date: 2026-11-19
 ---
@@ -12,7 +12,7 @@ date: 2026-11-19
 | Title     | Simulator Screen Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.27.0                  |
+| Version   | 0.28.0                  |
 | Component | tool-simulator          |
 | Date      | 2026-11-19              |
 
@@ -52,7 +52,7 @@ Layout** restores this one.
 ┌ e-robot-arm Simulator — Simulated joints ────────────────────────────────────────────────────────────┐
 │ File  Arm  Simulation  View  Help                                                                     │
 ├───────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ Target [Simulated joints ▾]  ● Enabled   Contracts: compatible   Trip: —          ┌────────────────┐ │
+│ Target [Simulated joints ▾]  ● Enabled   Contracts: compatible   Stop: —          ┌────────────────┐ │
 │                                                                                    │ EMERGENCY STOP │ │
 │                                                                                    │      Esc       │ │
 ├──────────────────────────────────────────────────────────────┬─────────────────────┴────────────────┤
@@ -81,16 +81,25 @@ Layout** restores this one.
 ```
 
 - **Status strip** (top, not a dock, cannot be hidden): target selector, connection, the arm's state, contracts,
-  the last trip with its source, the overrun count, on the real arm the limits in effect (Part P), and the emergency
-  stop at the far right, apart from every other button.
+  the stop in effect with its category and source, the torque-limited joints, the overrun count, on the real arm the
+  limits in effect (Part P), and the emergency stop at the far right, apart from every other button.
   - **Connection** reads Connected, Disconnected, or **No data from the arm** (`Warning`) when the snapshot has not
     changed for 30 frames (half a second): a stalled arm thread is never shown as live.
   - **Arm state** is the lifecycle's state ([arm-lifecycle.md](arm-lifecycle.md)) as the snapshot reports it:
     Disconnected and Unpowered (`Neutral`), Checking contracts…, Contracts incompatible (`Fault`), **Waiting for
     calibration: J2, J5** (`Warning`, naming every joint not yet ready), Ready, Enabling…, Enabled (`Ok`), Moving
     (`Ok`), Disabling…, Tripped (`Fault`).
+  - **Stop** names the stop in effect, from the snapshot ([simulator.md](simulator.md) Part F), with its category:
+    **Protective stop (category 2) — `<source>`: re-arm or disable** at `Warning` while the arm holds, **Emergency
+    stop (category 0) — `<source>`** at `Fault` once tripped, and **Stop: —** (`Neutral`) otherwise. Its tooltip
+    says what the category means: the joints stay powered and hold the pose, or every drive's power stage is off.
+  - **Torque limited: J2, J3** (`Warning`) names the joints whose last torque was clamped to its limit
+    ([safety.md](safety.md) Part B), held for half a second after the last clamped period so a clamp that comes and
+    goes does not flicker; hidden otherwise.
   - **Overruns** shows the control loop's count of late phases ([control-loop.md](control-loop.md) Part C):
     `Neutral` at 0, `Warning` from the first one, with a tooltip saying what it counts.
+- **Torque-limited joints:** a joint whose torque is clamped reads **Running · torque limit** at `Warning` in the
+  joint table, for as long as the status strip names it.
 - **Silent joints:** a joint that stopped answering shows **Silent** at `Fault` level, with position and speed as
   "—", until it answers again; its last values are never shown as live.
 - **Real-arm banner:** on the real target a full-width strip under the menu reads **REAL ARM — `<adapter>`** in the
@@ -152,19 +161,20 @@ cannot be applied or reads back different shows **Misconfigured: `<joint>` `<rea
 "drive watchdog reads back different", and Bring Up starts again. The ghost shows the commanded arm while moving; the scope
 shows the selected joint. Disable stops the joints and returns the arm to Ready.
 
-**Trip and recover.** On a trip the status strip shows **Tripped — `<source>`** in `Fault`: the joint and its fault,
-silence, or the supervisor's reason, such as **Joint 2 (tracking error 0.214 rad)** ([safety.md](safety.md) Part F). The joint table marks
-the joint, the log records it, and the scope triggers. Clear Faults, then Re-arm…, whose confirmation names the
-source. Re-arm returns the arm to Waiting for calibration, then (configuring the joints again) Ready; Enable starts it
-again.
+**Trip and recover.** On a trip the status strip shows **Emergency stop (category 0) — `<source>`** in `Fault`: the
+joint and its fault, silence, or the supervisor's reason, such as **Joint 2 (tracking error 0.214 rad)**
+([safety.md](safety.md) Part F). The joint table marks the joint, the log records it, and the scope triggers. Clear
+Faults, then Re-arm…, whose confirmation names the source. Re-arm returns the arm to Waiting for calibration, then
+(configuring the joints again) Ready; Enable starts it again.
 
 **Protective stop and recover.** A supervision rule ([safety.md](safety.md) Parts F and G) does not trip the arm: the
 joints stay powered and hold the pose the arm had when it stopped. The stage reads **Holding** and the status strip
-**Holding — `<source>`: re-arm or disable** in `Warning`, for example **Joint 2 (collision 12.0 N·m)**; the log records
-it and the scope triggers. Moves, Enable and Bring Up are disabled with "Holding: re-arm first". Re-arm… asks "Re-arm
-after the protective stop by `<source>`? The arm resumes from the held pose." and returns the arm to Enabled. Disable is
-offered too, behind a warning: "Disabling stops the joints: an arm without brakes falls", with Cancel the default. A
-hold that drifts out of its tracking window becomes a trip ("hold lost").
+**Protective stop (category 2) — `<source>`: re-arm or disable** in `Warning`, for example **Joint 2 (collision 12.0
+N·m)**, or the link and the zone for a workspace rule; the log records it and the scope triggers. Moves, Enable and
+Bring Up are disabled with "Holding: re-arm first". Re-arm… asks "Re-arm after the protective stop by `<source>`? The
+arm resumes from the held pose." and returns the arm to Enabled. Disable is offered too, behind a warning: "Disabling
+stops the joints: an arm without brakes falls", with Cancel the default. A hold that drifts out of its tracking window
+becomes a trip ("hold lost").
 
 **Inject a failure** (simulated joints and virtual arm only). The Disturbances dock (Part M), or **Simulation →
 Inject Fault → Joint N** and **Silence Joint N**.

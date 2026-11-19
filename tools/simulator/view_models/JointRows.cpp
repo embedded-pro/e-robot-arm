@@ -67,7 +67,7 @@ namespace simulator
                                            });
     }
 
-    std::array<JointRow, arm::jointCount> JointRows(const arm_host::ArmSnapshot& snapshot, const arm::JointLimits& limits)
+    std::array<JointRow, arm::jointCount> JointRows(const arm_host::ArmSnapshot& snapshot, const arm::JointLimits& limits, const arm::JointFlags& torqueLimited)
     {
         std::array<JointRow, arm::jointCount> rows{};
         const auto live = ModelIsLive(snapshot);
@@ -101,6 +101,11 @@ namespace simulator
             row.state = StateName(reading.state);
             row.fault = FaultName(reading.fault);
             row.level = LevelOf(reading);
+            if (torqueLimited[joint] && reading.state == can::FocMotorState::running)
+            {
+                row.state = "Running · torque limit";
+                row.level = ui::theme::StatusLevel::Warning;
+            }
             row.limitFraction = LimitFraction(reading.position, limits[joint]);
         }
         return rows;

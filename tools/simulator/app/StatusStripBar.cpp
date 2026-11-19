@@ -41,7 +41,8 @@ namespace simulator
         , connection{ StatusLabel(this, "Connection") }
         , stage{ StatusLabel(this, "Arm state") }
         , contracts{ StatusLabel(this, "Contracts") }
-        , trip{ StatusLabel(this, "Trip") }
+        , stop{ StatusLabel(this, "Stop") }
+        , torqueLimited{ StatusLabel(this, "Torque limited") }
         , overruns{ StatusLabel(this, "Overruns") }
         , limits{ StatusLabel(this, "Limits") }
         , emergencyStop{ new QPushButton{ "EMERGENCY STOP\nEsc", this } }
@@ -72,7 +73,10 @@ namespace simulator
         addWidget(connection);
         addWidget(stage);
         addWidget(contracts);
-        addWidget(trip);
+        addWidget(stop);
+        torqueLimitedItem = addWidget(torqueLimited);
+        torqueLimited->setToolTip("Joints whose torque was clamped to its limit in the last half second");
+        torqueLimitedItem->setVisible(false);
         addWidget(overruns);
         limitsItem = addWidget(limits);
         limits->setToolTip("The limits the real arm runs under: Arm → Commissioning Limits");
@@ -100,8 +104,12 @@ namespace simulator
         stage->setText(ToQt("Arm: " + status.stage));
         StyleStatusLabel(*stage, status.stageLevel);
         contracts->setText(ToQt(status.contracts));
-        trip->setText(ToQt(status.trip));
-        StyleStatusLabel(*trip, status.tripLevel);
+        stop->setText(ToQt(status.stop));
+        stop->setToolTip(ToQt(status.stopDetail));
+        StyleStatusLabel(*stop, status.stopLevel);
+        torqueLimited->setText(ToQt(status.torqueLimited));
+        StyleStatusLabel(*torqueLimited, status.torqueLimitedLevel);
+        torqueLimitedItem->setVisible(!status.torqueLimited.empty());
         overruns->setText(ToQt(status.overruns));
         StyleStatusLabel(*overruns, status.overrunLevel);
         limits->setText(ToQt(status.limits));

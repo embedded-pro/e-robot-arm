@@ -31,6 +31,28 @@ namespace arm_console
             const auto index = static_cast<std::size_t>(value);
             return index < names.size() ? names[index] : "unknown";
         }
+
+        std::string StopText(const std::optional<arm_host::StopReport>& stop)
+        {
+            if (!stop.has_value())
+                return {};
+            std::string cause{ stop->reason };
+            if (cause.empty())
+                cause = stop->fault == can::FocFaultCode::none ? "silent" : Name(faultNames, stop->fault);
+            const auto* category = stop->category == arm_host::StopCategory::emergency ? ", emergency stop (category 0): " : ", protective stop (category 2): ";
+            if (stop->joint == arm_host::noJoint)
+                return category + cause;
+            return std::format("{}joint {} {}", category, stop->joint + 1, cause);
+        }
+
+        std::string JointList(const arm::JointFlags& joints)
+        {
+            std::string list;
+            for (std::size_t joint = 0; joint != joints.size(); ++joint)
+                if (joints[joint])
+                    list += std::format("{}{}", list.empty() ? "" : ", ", joint + 1);
+            return list;
+        }
     }
 
     ArmConsole::ArmConsole(arm_host::ArmCommands& arm, std::ostream& output)
@@ -294,7 +316,9 @@ namespace arm_console
                    << " rad/s, state " << Name(stateNames, reading.state) << ", fault " << Name(faultNames, reading.fault) << (reading.silent ? ", silent" : "") << "\n";
         }
         output << "arm: " << arm_host::StateName(snapshot.state) << "\n";
-        output << "safety: " << SafetyText(snapshot) << "\n";
+        output << "safety: " << SafetyText(snapshot) << StopText(snapshot.stop) << "\n";
+        if (const auto joints = JointList(snapshot.torqueClamped); !joints.empty())
+            output << "torque limited: joints " << joints << "\n";
         output << "motion: " << (snapshot.moving ? "moving" : "idle") << "\n";
         output << "overruns: " << snapshot.overruns << "\n";
     }

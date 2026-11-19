@@ -196,9 +196,9 @@ TEST_F(SimulatorWindowTest, an_injected_fault_trips_the_arm_and_names_its_source
 
     EXPECT_TRUE(Eventually([this]()
         {
-            return window.Presenter().Status().trip.find("Joint 3") != std::string::npos;
+            return window.Presenter().Status().stop.find("Joint 3") != std::string::npos;
         }));
-    EXPECT_EQ(ui::theme::StatusLevel::Fault, window.Presenter().Status().tripLevel);
+    EXPECT_EQ(ui::theme::StatusLevel::Fault, window.Presenter().Status().stopLevel);
     EXPECT_FALSE(window.Presenter().State(simulator::Control::move).enabled);
     EXPECT_TRUE(window.Presenter().State(simulator::Control::emergencyStop).enabled);
 }

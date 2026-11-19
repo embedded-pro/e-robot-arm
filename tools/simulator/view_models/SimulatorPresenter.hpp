@@ -27,8 +27,11 @@ namespace simulator
         ui::theme::StatusLevel stageLevel{ ui::theme::StatusLevel::Neutral };
         ui::theme::StatusLevel connectionLevel{ ui::theme::StatusLevel::Neutral };
         std::string contracts;
-        std::string trip;
-        ui::theme::StatusLevel tripLevel{ ui::theme::StatusLevel::Neutral };
+        std::string stop;
+        std::string stopDetail;
+        ui::theme::StatusLevel stopLevel{ ui::theme::StatusLevel::Neutral };
+        std::string torqueLimited;
+        ui::theme::StatusLevel torqueLimitedLevel{ ui::theme::StatusLevel::Neutral };
         std::string overruns;
         ui::theme::StatusLevel overrunLevel{ ui::theme::StatusLevel::Neutral };
         std::string limits;
@@ -121,10 +124,11 @@ namespace simulator
         void OnMoveAction(ui::model::ActionId action);
         void Post(const arm_host::ArmCommand& command);
         void Handle(const arm_host::ArmEvent& event);
-        static std::string_view TripCause(const arm_host::ArmEvent& event);
+
         void UpdateControls();
         void UpdateStatus();
-        void UpdateStop(std::string_view tripSource);
+        void UpdateStop();
+        void UpdateTorqueLimits();
         void TrackSequence();
         void FollowLimits();
         std::string TargetProblem() const;
@@ -143,8 +147,8 @@ namespace simulator
         StatusStrip status;
         ArmSceneModel scene;
         EventLog log;
-        std::string tripSource;
-        std::string holdSource;
+        arm::JointFlags torqueLimited{};
+        std::array<uint32_t, arm::jointCount> torqueLimitFrames{};
         std::string operateHint;
         std::string moveHint;
         std::map<uint32_t, std::string> pending;

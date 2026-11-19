@@ -2,9 +2,9 @@
 title: "Arm Composition and Console Design"
 type: design
 status: draft
-version: 0.9.0
+version: 0.10.0
 component: "arm"
-date: 2026-11-12
+date: 2026-11-19
 ---
 
 | Field     | Value                              |
@@ -12,9 +12,9 @@ date: 2026-11-12
 | Title     | Arm Composition and Console Design |
 | Type      | design                             |
 | Status    | draft                              |
-| Version   | 0.9.0                              |
+| Version   | 0.10.0                             |
 | Component | arm                                |
-| Date      | 2026-11-12                         |
+| Date      | 2026-11-19                         |
 
 > How the arm's components are put together, and the host console that drives them over a CAN adapter. Behaviour
 > only; diagrams are Mermaid.
@@ -82,14 +82,17 @@ control loop and reads one command per line from standard input:
 | `gravity`                                   | Print the gravity torque each joint holds at the measured joints, N·m ([arm-model.md](arm-model.md) Part F)               |
 | `fk q1 q2 q3 q4 q5 q6`                      | Print the tool pose of the given joint positions, in radians; moves nothing                                               |
 | `ik x y z roll pitch yaw`                   | Print the joint positions of the given tool pose (m, rad), or why there are none; moves nothing                           |
-| `status`                                    | Print each joint's position, speed, state and fault, the arm's lifecycle state, the trip, the move and the overrun count  |
+| `status`                                    | Print each joint's position, speed, state and fault, the arm's lifecycle state, the stop, the move and the overrun count  |
 | `quit`                                      | Stop the control loop and leave                                                                                           |
 
 `bringup`, `enable`, `disable`, `rearm` and `move` go through the arm's lifecycle; `contracts`, `mode`, `start`,
 `stop`, `clear`, `align` and `estop` reach the joints directly, for debugging, and the lifecycle follows where they leave the
 arm. Every command prints whether it was accepted. Events print as they happen: each lifecycle state (`arm: ready`, or
 `arm: misconfigured (joint 5 reads back different)` naming the joint),
-the contract outcome, a joint that faulted or went silent, a move done or aborted. An unknown command or a malformed one prints a usage line and
+the contract outcome, a joint that faulted or went silent, a move done or aborted. `status` prints the stop in effect
+with its category, as `safety: holding, protective stop (category 2): joint 2 collision 12.0 N·m` or `safety: tripped,
+emergency stop (category 0): hardware stop open`, and `torque limited: joints 2, 3` while the last torques sent to
+those joints were clamped ([safety.md](safety.md) Part B). An unknown command or a malformed one prints a usage line and
 sends nothing.
 
 The console runs on the arm host shared with the simulator ([simulator.md](simulator.md) Parts B and E): the arm

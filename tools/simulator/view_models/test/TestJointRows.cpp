@@ -54,6 +54,18 @@ TEST_F(JointRowsTest, a_faulted_joint_names_its_fault_at_fault_level)
     EXPECT_EQ(ui::theme::StatusLevel::Fault, rows[3].level);
 }
 
+TEST_F(JointRowsTest, a_torque_limited_running_joint_says_so_as_a_warning)
+{
+    arm::JointFlags torqueLimited{};
+    torqueLimited[2] = true;
+
+    const auto rows = simulator::JointRows(simulator::test::Running(), simulator::test::Limits(), torqueLimited);
+
+    EXPECT_EQ("Running · torque limit", rows[2].state);
+    EXPECT_EQ(ui::theme::StatusLevel::Warning, rows[2].level);
+    EXPECT_EQ("Running", rows[1].state);
+}
+
 TEST_F(JointRowsTest, the_limit_bar_stays_within_its_ends)
 {
     auto snapshot = simulator::test::Running();
