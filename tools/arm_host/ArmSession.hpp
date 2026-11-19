@@ -86,6 +86,8 @@ namespace arm_host
         void PublishDisturbances(ArmSnapshot& snapshot) const;
         std::string_view RefusalReason(const ArmCommand& command) const;
         std::string_view ArmControllerRefusal(arm::ArmControllerId id) const;
+        std::optional<std::string_view> MotionPermissionRefusal() const;
+        std::string_view MoveRefusal(const ArmCommand& command) const;
         void ReportTrip(std::size_t joint, can::FocFaultCode fault, std::string reason = {});
         void Emit(ArmEvent event);
         void Publish();

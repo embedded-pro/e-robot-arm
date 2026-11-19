@@ -440,24 +440,35 @@ namespace arm_host
         if (std::holds_alternative<ApplyController>(command) || std::holds_alternative<ReadController>(command) || std::holds_alternative<ApplyMotor>(command) ||
             std::holds_alternative<ReadMotor>(command))
             return arm.Configurator().Busy() ? "busy" : "the arm is not ready";
-        if (NeedsMotionPermission(command) && arm.Safety().Tripped())
-            return "tripped";
-        if (NeedsMotionPermission(command) && arm.Safety().Holding())
-            return "holding after a protective stop: re-arm first";
-        if (NeedsMotionPermission(command) && arm.Safety().Contracts() != can::ContractCompatibility::compatible)
-            return "contracts not compatible";
-        const bool motion = std::holds_alternative<MoveTo>(command) || std::holds_alternative<StepTo>(command);
-        if (motion && arm.Lifecycle().State() == arm::ArmState::holding)
-            return "holding after a protective stop: re-arm first";
-        if (motion && arm.Lifecycle().State() != arm::ArmState::enabled)
-            return Moving() ? "moving" : "the arm is not enabled";
-        if (std::holds_alternative<MoveTo>(command))
-            return "target outside the joint limits";
-        if (std::holds_alternative<StepTo>(command))
-            return "a step is at most 0.2 rad from where the joints are, within the joint limits";
+        if (const auto reason = MotionPermissionRefusal(); NeedsMotionPermission(command) && reason.has_value())
+            return *reason;
+        if (std::holds_alternative<MoveTo>(command) || std::holds_alternative<StepTo>(command))
+            return MoveRefusal(command);
         if (DeliveredByTheJoints(command))
             return "a joint's contract is incompatible";
         return "CAN transmit queue full";
+    }
+
+    std::optional<std::string_view> ArmSession::MotionPermissionRefusal() const
+    {
+        if (arm.Safety().Tripped())
+            return "tripped";
+        if (arm.Safety().Holding())
+            return "holding after a protective stop: re-arm first";
+        if (arm.Safety().Contracts() != can::ContractCompatibility::compatible)
+            return "contracts not compatible";
+        return std::nullopt;
+    }
+
+    std::string_view ArmSession::MoveRefusal(const ArmCommand& command) const
+    {
+        if (arm.Lifecycle().State() == arm::ArmState::holding)
+            return "holding after a protective stop: re-arm first";
+        if (arm.Lifecycle().State() != arm::ArmState::enabled)
+            return Moving() ? "moving" : "the arm is not enabled";
+        if (std::holds_alternative<MoveTo>(command))
+            return "target outside the joint limits";
+        return "a step is at most 0.2 rad from where the joints are, within the joint limits";
     }
 
     std::string_view ArmSession::ArmControllerRefusal(arm::ArmControllerId id) const

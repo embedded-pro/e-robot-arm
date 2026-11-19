@@ -288,7 +288,7 @@ namespace arm
             if (Stale(bus.Reading(joint), bus.Period()))
                 continue;
 
-            if (const auto error = TrackingErrorHeld(joint, held[joint]))
+            if (const auto error = TrackingErrorHeld(joint, held[joint]); error.has_value())
             {
                 const auto value = *error;
                 Trip();
