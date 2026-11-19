@@ -39,7 +39,7 @@ namespace
 
 TEST_F(GravityCompensatedPdTest, holds_a_joint_at_rest_on_its_reference_with_the_gravity_torque_alone)
 {
-    controller.Reset(measured);
+    controller.Reset(measured, arm::AtRest(measured.positions));
     const auto setpoints = controller.Step(measured, arm::AtRest(measured.positions));
     const auto gravity = model.GravityTorque(measured.positions);
 

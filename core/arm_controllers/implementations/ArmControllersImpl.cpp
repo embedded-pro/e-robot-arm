@@ -79,7 +79,7 @@ namespace arm
             return false;
 
         if (streaming)
-            controller.Reset(Measured());
+            controller.Reset(Measured(), heldReference);
         Activate(id);
         return true;
     }
@@ -95,7 +95,7 @@ namespace arm
         const auto measured = Measured();
         heldReference = AtRest(measured.positions);
         if (active.has_value())
-            entries[*active].controller->Reset(measured);
+            entries[*active].controller->Reset(measured, heldReference);
     }
 
     void ArmControllersImpl::Disengage()

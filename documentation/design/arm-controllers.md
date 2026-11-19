@@ -2,7 +2,7 @@
 title: "Arm Controllers Design"
 type: design
 status: draft
-version: 0.11.0
+version: 0.12.0
 component: "arm-controllers"
 date: 2026-11-19
 ---
@@ -12,7 +12,7 @@ date: 2026-11-19
 | Title     | Arm Controllers Design |
 | Type      | design                 |
 | Status    | draft                  |
-| Version   | 0.11.0                 |
+| Version   | 0.12.0                 |
 | Component | arm-controllers        |
 | Date      | 2026-11-19             |
 
@@ -57,7 +57,8 @@ positions, speeds and accelerations the motion wants now, [joint-motion.md](join
 setpoint set: six joint torques, with the reference positions alongside for the trace and for the safety
 supervisor's tracking check.
 
-A controller may keep state between periods. `Reset` gives it the measured joints to start from. A controller
+A controller may keep state between periods. `Reset` gives it the measured joints to start from and the reference
+held at that moment: the last one the old controller followed, or the measured pose at rest when streaming starts. A controller
 declares whether it supports **bumpless transfer**: after a `Reset` its torques continue from the measured state,
 so taking over mid-move does not make them jump.
 
@@ -109,9 +110,11 @@ measured positions: a reading that arrives a period late repeats one position an
 derivative turns that into a kick of Kd over the period; on a loaded host it tripped the virtual arm on its tracking
 error. Each joint's correction is clamped to ±200 rad/s², far beyond any move's need, and the PI is clamped to the same
 range: in the velocity form that clamp is the anti-windup, so a joint held against an obstacle does not wind its
-integral up. `Reset` clears the six PIDs, and the first step after it primes each one's error history with the error
-at that moment: the proportional term sees no step, only the integral starts, so it takes over a running move without
-a torque kick.
+integral up. `Reset` clears the six PIDs and primes each one's error history with the error at the switch, between the
+reference held then and the measured joints: the proportional term sees no step, only the integral starts, so it takes
+over a running move without a torque kick, and a reference step that arrives in the first period after the switch still
+gets its proportional kick. Priming against the first step's own reference instead swallowed such a step: a step test
+started in the period that selected `gravity-pid` rose in twice the time, on the integral alone.
 
 The position path, where the drive closed the position loop and `pass-through` and `smoothed` shaped its setpoints,
 is gone.

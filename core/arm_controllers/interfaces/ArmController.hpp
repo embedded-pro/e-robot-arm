@@ -25,7 +25,7 @@ namespace arm
         ArmController& operator=(const ArmController& other) = delete;
 
         virtual bool BumplessTransfer() const = 0;
-        virtual void Reset(const MeasuredJoints& measured) = 0;
+        virtual void Reset(const MeasuredJoints& measured, const JointReference& held) = 0;
         virtual JointSetpoints Step(const MeasuredJoints& measured, const JointReference& reference) = 0;
 
     protected:

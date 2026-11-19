@@ -29,7 +29,7 @@ namespace arm
         ComputedTorque(const ArmModel& model, const JointInertias& rotors, const BandwidthTuning& tuning);
 
         bool BumplessTransfer() const override;
-        void Reset(const MeasuredJoints& measured) override;
+        void Reset(const MeasuredJoints& measured, const JointReference& held) override;
         JointSetpoints Step(const MeasuredJoints& measured, const JointReference& reference) override;
 
     private:

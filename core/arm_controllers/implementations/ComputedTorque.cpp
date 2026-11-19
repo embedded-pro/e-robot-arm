@@ -39,7 +39,7 @@ namespace arm
         return true;
     }
 
-    void ComputedTorque::Reset(const MeasuredJoints&)
+    void ComputedTorque::Reset(const MeasuredJoints&, const JointReference&)
     {}
 
     JointSetpoints ComputedTorque::Step(const MeasuredJoints& measured, const JointReference& reference)
