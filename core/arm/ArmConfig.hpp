@@ -9,6 +9,7 @@
 #include "core/joint_configurator/interfaces/MotorSettings.hpp"
 #include "core/motion/interfaces/JointMotion.hpp"
 #include "core/safety/interfaces/SafetySupervisor.hpp"
+#include "core/workspace/WorkspaceConfig.hpp"
 #include "e-foc-protocol/contract/FocMotorMessages.hpp"
 #include "infra/timer/Timer.hpp"
 #include <array>
@@ -39,6 +40,7 @@ namespace arm
         CollisionLimits collision{ DefaultCollisionLimits() };
         std::array<std::optional<foc::RadiansPerSecond>, jointCount> speedTrips{};
         std::array<std::optional<foc::NewtonMeter>, jointCount> torqueLimits{};
+        WorkspaceConfig workspace{};
         float collisionObserverGain{ 25.0f };
     };
 

@@ -14,6 +14,7 @@
 #include "core/lifecycle/implementations/ArmLifecycleImpl.hpp"
 #include "core/motion/implementations/JointMotionImpl.hpp"
 #include "core/safety/implementations/SafetySupervisorImpl.hpp"
+#include "core/workspace/WorkspaceCheck.hpp"
 #include "e-foc-protocol/client/FocMotorCategoryClient.hpp"
 #include "infra/timer/Timer.hpp"
 #include <cstdint>
@@ -42,6 +43,7 @@ namespace arm
         ArmControllers& Controllers();
         const ArmControllers& Controllers() const;
         const std::optional<JointTorques>& EstimatedExternalTorques() const;
+        const WorkspaceCheck& Workspace() const;
         ControlLoop& Loop();
 
     private:
@@ -54,6 +56,7 @@ namespace arm
         JointConfiguratorImpl configurator;
         ArmLifecycleImpl lifecycle;
         ArmModel model;
+        WorkspaceCheck workspace;
         GravityCompensatedPd gravityPd;
         ComputedTorque computedTorque;
         GravityPid gravityPid;

@@ -7,6 +7,7 @@ target_include_directories(e_robot_arm.motion.implementations PUBLIC
 
 target_link_libraries(e_robot_arm.motion.implementations PUBLIC
     e_robot_arm.motion.interfaces
+    e_robot_arm.safety.interfaces
     infra.timer
     numerical.math
     numerical.motion_profiles

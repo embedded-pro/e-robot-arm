@@ -20,6 +20,19 @@ namespace arm
 
         constexpr float limitTolerance{ 1.0e-3f };
 
+        SupervisionTrip CauseOf(WorkspaceRule rule)
+        {
+            switch (rule)
+            {
+                case WorkspaceRule::workspace:
+                    return SupervisionTrip::workspace;
+                case WorkspaceRule::forbiddenZone:
+                    return SupervisionTrip::forbiddenZone;
+                default:
+                    return SupervisionTrip::selfCollision;
+            }
+        }
+
         bool Above(float value, float limit)
         {
             return math::Abs(value) > limit * (1.0f + limitTolerance) + 1.0e-6f;
@@ -27,7 +40,7 @@ namespace arm
     }
 
     SafetySupervisorImpl::SafetySupervisorImpl(JointBus& bus, const JointLimits& limits, const TrackingLimits& tracking, const CollisionLimits& collision,
-        infra::Duration period, const MotionSupervision& motion)
+        infra::Duration period, const MotionSupervision& motion, const PoseGuard* guard)
         : JointBusObserver(bus)
         , bus(bus)
         , limits(limits)
@@ -35,6 +48,7 @@ namespace arm
         , collision(collision)
         , motion(motion)
         , periodSeconds(std::chrono::duration<float>{ period }.count())
+        , guard(guard)
     {
         really_assert(std::ranges::all_of(limits, ValidLimit));
         really_assert(std::ranges::all_of(tracking, ValidTracking));
@@ -117,6 +131,11 @@ namespace arm
     const JointFlags& SafetySupervisorImpl::TorqueClamped() const
     {
         return torqueClamped;
+    }
+
+    std::optional<WorkspaceViolation> SafetySupervisorImpl::LastWorkspaceViolation() const
+    {
+        return lastWorkspaceViolation;
     }
 
     bool SafetySupervisorImpl::RequestTelemetry()
@@ -271,7 +290,7 @@ namespace arm
         if (externalTorques.has_value() && !SuperviseCollision(*externalTorques))
             return;
 
-        if (!SuperviseReference(*reference))
+        if (!SuperviseReference(*reference) || !SuperviseWorkspace(reference->positions))
             return;
 
         for (std::size_t joint = 0; joint != jointCount; ++joint)
@@ -303,6 +322,35 @@ namespace arm
             }
         }
         return true;
+    }
+
+    bool SafetySupervisorImpl::SuperviseWorkspace(const JointPositions& reference)
+    {
+        if (guard == nullptr)
+            return true;
+
+        auto violation = guard->Check(reference);
+        if (const auto measured = FreshMeasuredPose(); !violation.has_value() && measured.has_value())
+            violation = guard->Check(*measured);
+        if (!violation.has_value())
+            return true;
+
+        lastWorkspaceViolation = violation;
+        Protect(violation->link, CauseOf(violation->rule), violation->distance);
+        return false;
+    }
+
+    std::optional<JointPositions> SafetySupervisorImpl::FreshMeasuredPose() const
+    {
+        JointPositions measured{};
+        for (std::size_t joint = 0; joint != jointCount; ++joint)
+        {
+            const auto& reading = bus.Reading(joint);
+            if (Stale(reading, bus.Period()))
+                return std::nullopt;
+            measured[joint] = reading.position;
+        }
+        return measured;
     }
 
     bool SafetySupervisorImpl::SuperviseSpeed(std::size_t joint)

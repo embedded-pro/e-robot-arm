@@ -19,11 +19,12 @@ namespace arm
         }
     }
 
-    JointMotionImpl::JointMotionImpl(JointBus& bus, const JointLimits& positionLimits, const JointMotionLimits& limits, infra::Duration period)
+    JointMotionImpl::JointMotionImpl(JointBus& bus, const JointLimits& positionLimits, const JointMotionLimits& limits, infra::Duration period, const PoseGuard* guard)
         : bus(bus)
         , positionLimits(positionLimits)
         , limits(limits)
         , period(period)
+        , guard(guard)
     {
         really_assert(std::ranges::all_of(limits, ValidLimit));
         really_assert(period > infra::Duration::zero());
@@ -31,7 +32,7 @@ namespace arm
 
     bool JointMotionImpl::MoveTo(const JointPositions& newTarget)
     {
-        if (!Accepts(newTarget))
+        if (!Accepts(newTarget) || !PathClear(LatestPositions(), newTarget))
             return false;
 
         target = newTarget;
@@ -44,7 +45,7 @@ namespace arm
 
     bool JointMotionImpl::StepTo(const JointPositions& newTarget)
     {
-        if (!Accepts(newTarget) || !WithinStep(newTarget))
+        if (!Accepts(newTarget) || !WithinStep(newTarget) || !PathClear(newTarget, newTarget))
             return false;
 
         target = newTarget;
@@ -56,6 +57,28 @@ namespace arm
     bool JointMotionImpl::Accepts(const JointPositions& newTarget) const
     {
         return !Moving() && std::ranges::all_of(newTarget, Finite) && WithinLimits(positionLimits, newTarget) && !AnyReadingStale();
+    }
+
+    bool JointMotionImpl::PathClear(const JointPositions& from, const JointPositions& to) const
+    {
+        if (guard == nullptr)
+            return true;
+
+        float travel{ 0.0f };
+        for (std::size_t joint = 0; joint != jointCount; ++joint)
+            travel = std::max(travel, math::Abs(to[joint].Value() - from[joint].Value()));
+        const auto samples = std::clamp<std::size_t>(static_cast<std::size_t>(math::Ceil(travel / pathSampleSpacing)), 1, maxPathSamples);
+
+        for (std::size_t sample = 1; sample <= samples; ++sample)
+        {
+            const auto fraction = static_cast<float>(sample) / static_cast<float>(samples);
+            JointPositions pose{};
+            for (std::size_t joint = 0; joint != jointCount; ++joint)
+                pose[joint] = foc::Radians{ from[joint].Value() + (to[joint].Value() - from[joint].Value()) * fraction };
+            if (guard->Check(pose).has_value())
+                return false;
+        }
+        return true;
     }
 
     bool JointMotionImpl::WithinStep(const JointPositions& newTarget) const

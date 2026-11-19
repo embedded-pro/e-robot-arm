@@ -4,6 +4,7 @@
 #include "core/joint_bus/interfaces/JointBus.hpp"
 #include "core/motion/implementations/JointMovePlan.hpp"
 #include "core/motion/interfaces/JointMotion.hpp"
+#include "core/safety/interfaces/PoseGuard.hpp"
 #include "infra/timer/Timer.hpp"
 #include <cstdint>
 #include <optional>
@@ -14,7 +15,10 @@ namespace arm
         : public JointMotion
     {
     public:
-        JointMotionImpl(JointBus& bus, const JointLimits& positionLimits, const JointMotionLimits& limits, infra::Duration period);
+        static constexpr float pathSampleSpacing{ 0.05f };
+        static constexpr std::size_t maxPathSamples{ 64 };
+
+        JointMotionImpl(JointBus& bus, const JointLimits& positionLimits, const JointMotionLimits& limits, infra::Duration period, const PoseGuard* guard = nullptr);
 
         bool MoveTo(const JointPositions& target) override;
         bool StepTo(const JointPositions& target) override;
@@ -25,6 +29,7 @@ namespace arm
 
     private:
         bool Accepts(const JointPositions& target) const;
+        bool PathClear(const JointPositions& from, const JointPositions& to) const;
         bool WithinStep(const JointPositions& target) const;
         bool AnyReadingStale() const;
         JointPositions LatestPositions() const;
@@ -34,6 +39,7 @@ namespace arm
         JointLimits positionLimits;
         JointMotionLimits limits;
         infra::Duration period;
+        const PoseGuard* guard;
         JointMovePlan plan;
         JointPositions target{};
         uint32_t periodsElapsed{ 0 };

@@ -1,5 +1,6 @@
 #include "core/joint_bus/test_doubles/JointBusMock.hpp"
 #include "core/motion/implementations/JointMotionImpl.hpp"
+#include "core/safety/test_doubles/PoseGuardMock.hpp"
 #include "gmock/gmock.h"
 #include <chrono>
 #include <limits>
@@ -227,4 +228,45 @@ TEST_F(JointMotionImplTest, refuses_a_step_outside_the_joint_limits_from_a_stale
     readings[3].period = currentPeriod;
     EXPECT_TRUE(motion.MoveTo(Target(1.0f)));
     EXPECT_FALSE(motion.StepTo(Target(0.1f)));
+}
+
+namespace
+{
+    class JointMotionGuardedTest
+        : public JointMotionImplTest
+    {
+    public:
+        StrictMock<arm::PoseGuardMock> guard;
+        arm::JointMotionImpl guarded{ bus, PositionLimits(), UniformLimits(), 100ms, &guard };
+    };
+}
+
+TEST_F(JointMotionGuardedTest, checks_the_path_every_0_05_rad_of_the_largest_travel_up_to_the_target)
+{
+    EXPECT_CALL(guard, Check(_)).Times(10).WillRepeatedly(Return(std::nullopt));
+
+    EXPECT_TRUE(guarded.MoveTo(Target(0.5f)));
+}
+
+TEST_F(JointMotionGuardedTest, refuses_a_move_whose_path_fails_the_guard_and_never_starts_it)
+{
+    EXPECT_CALL(guard, Check(_)).WillOnce(Return(std::nullopt)).WillOnce(Return(std::nullopt)).WillOnce(Return(arm::WorkspaceViolation{ arm::WorkspaceRule::forbiddenZone, 3, 0, 0.01f }));
+
+    EXPECT_FALSE(guarded.MoveTo(Target(0.5f)));
+    EXPECT_FALSE(guarded.Moving());
+}
+
+TEST_F(JointMotionGuardedTest, checks_at_most_64_samples_on_a_long_move)
+{
+    readings[0].position = foc::Radians{ 2.0f };
+    EXPECT_CALL(guard, Check(_)).Times(64).WillRepeatedly(Return(std::nullopt));
+
+    EXPECT_TRUE(guarded.MoveTo(Target(-2.0f)));
+}
+
+TEST_F(JointMotionGuardedTest, refuses_a_step_whose_target_fails_the_guard)
+{
+    EXPECT_CALL(guard, Check(_)).WillOnce(Return(arm::WorkspaceViolation{ arm::WorkspaceRule::selfCollision, 0, 2, 0.0f }));
+
+    EXPECT_FALSE(guarded.StepTo(Target(0.1f)));
 }

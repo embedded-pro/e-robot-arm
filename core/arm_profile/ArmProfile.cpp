@@ -259,6 +259,8 @@ namespace arm
                     return ReadTuning(path, value, profile.config.gravityPid);
                 if (key == "collisionObserverGainPerS")
                     return ReadBounded(path, value, 1000.0f, "must be above 0 and at most 1000", profile.config.collisionObserverGain);
+                if (key == "safety")
+                    return ReadSafety(path, value, profile.config.workspace);
                 return Unknown(path);
             }
 
@@ -481,6 +483,121 @@ namespace arm
                                 return ReadReal(item, member, *fields[index]);
                         return Unknown(item);
                     });
+            }
+
+            template<class ReadItem>
+            bool ReadList(const Path& path, const Value& value, std::size_t minimum, std::size_t maximum, infra::BoundedConstString shape, std::size_t& count,
+                ReadItem readItem)
+            {
+                const auto* found = std::get_if<infra::JsonArray>(&value);
+                if (found == nullptr)
+                    return Fail(path, shape);
+
+                auto list = *found;
+                count = 0;
+                for (const auto& element : list)
+                {
+                    if (count == maximum)
+                        return Fail(path, shape);
+                    if (!readItem(Element(path, count), element, count))
+                        return false;
+                    ++count;
+                }
+
+                if (list.Error())
+                    return Fail(path, "is not valid JSON");
+                if (count < minimum)
+                    return Fail(path, shape);
+                return true;
+            }
+
+            bool ReadSafety(const Path& path, const Value& value, WorkspaceConfig& workspace)
+            {
+                return ReadMembers(path, value, [this, &workspace](const Path& item, infra::JsonString key, const Value& member)
+                    {
+                        return ReadSafetyItem(item, key, member, workspace);
+                    });
+            }
+
+            bool ReadSafetyItem(const Path& path, infra::JsonString key, const Value& value, WorkspaceConfig& workspace)
+            {
+                std::size_t count{ 0 };
+                if (key == "workspaceM")
+                {
+                    WorkspaceBox box{};
+                    return ReadBox(path, value, box) && Store(workspace.workspace, std::optional{ box });
+                }
+                if (key == "forbiddenZonesM")
+                    return ReadList(path, value, 0, maxForbiddenZones, "must be a list of at most eight boxes", count,
+                               [this, &workspace](const Path& item, const Value& element, std::size_t index)
+                               {
+                                   return ReadBox(item, element, workspace.forbiddenZones[index]);
+                               }) &&
+                           Store(workspace.forbiddenZoneCount, static_cast<uint8_t>(count));
+                if (key == "linkRadiiM")
+                    return ReadList(path, value, workspaceCapsules, workspaceCapsules, "must be a list of seven radii", count,
+                        [this, &workspace](const Path& item, const Value& element, std::size_t index)
+                        {
+                            return ReadPositive(item, element, workspace.linkRadii[index]);
+                        });
+                if (key == "selfCollisionMarginM")
+                    return ReadMargin(path, value, workspace.selfCollisionMargin);
+                if (key == "allowedLinkPairs")
+                    return ReadList(path, value, 0, maxAllowedLinkPairs, "must be a list of at most sixteen pairs", count,
+                               [this, &workspace](const Path& item, const Value& element, std::size_t index)
+                               {
+                                   return ReadLinkPair(item, element, workspace.allowedLinkPairs[index]);
+                               }) &&
+                           Store(workspace.allowedLinkPairCount, static_cast<uint8_t>(count));
+                return Unknown(path);
+            }
+
+            bool ReadBox(const Path& path, const Value& value, WorkspaceBox& box)
+            {
+                static constexpr std::array<const char*, 3> axes{ "x", "y", "z" };
+                std::array<float, 3> low{};
+                std::array<float, 3> high{};
+                if (!ReadMembers(path, value, [this, &low, &high](const Path& item, infra::JsonString key, const Value& member)
+                        {
+                            if (key == "min")
+                                return ReadNamed(item, member, axes, low);
+                            if (key == "max")
+                                return ReadNamed(item, member, axes, high);
+                            return Unknown(item);
+                        }))
+                    return false;
+
+                for (std::size_t axis = 0; axis != 3; ++axis)
+                    if (!(low[axis] < high[axis]))
+                        return Fail(path, "min must be below max on every axis");
+                box = { math::Vector3<float>{ low[0], low[1], low[2] }, math::Vector3<float>{ high[0], high[1], high[2] } };
+                return true;
+            }
+
+            bool ReadMargin(const Path& path, const Value& value, float& margin)
+            {
+                float number{ 0.0f };
+                if (!ReadReal(path, value, number))
+                    return false;
+                if (!(number >= 0.0f && number <= 0.5f))
+                    return Fail(path, "must be from 0 to 0.5");
+                margin = number;
+                return true;
+            }
+
+            bool ReadLinkPair(const Path& path, const Value& value, LinkPair& pair)
+            {
+                std::array<int32_t, 2> links{};
+                std::size_t count{ 0 };
+                if (!ReadList(path, value, 2, 2, "must be a pair of links", count, [this, &links](const Path& item, const Value& element, std::size_t index)
+                        {
+                            return ReadInteger(item, element, 1, static_cast<int32_t>(workspaceCapsules), "must be a link from 1 to 7", links[index]);
+                        }))
+                    return false;
+                if (links[0] - links[1] >= -1 && links[0] - links[1] <= 1)
+                    return Fail(path, "must name two links that are not adjacent");
+                pair = { static_cast<uint8_t>(links[0] - 1), static_cast<uint8_t>(links[1] - 1) };
+                return true;
             }
 
             bool ReadFormat(const Path& path, const Value& value, bool& seen)
@@ -952,7 +1069,47 @@ namespace arm
                         Text(profile.meshes[index]);
                         separator = ", ";
                     }
-                stream << " }\n}\n";
+                stream << " },\n  \"safety\": {";
+                Safety(config.workspace);
+                stream << "\n  }\n}\n";
+            }
+
+            void Safety(const WorkspaceConfig& workspace)
+            {
+                if (workspace.workspace.has_value())
+                {
+                    stream << "\n    \"workspaceM\": ";
+                    Box(*workspace.workspace);
+                    stream << ",";
+                }
+                stream << "\n    \"forbiddenZonesM\": [";
+                for (std::size_t zone = 0; zone != workspace.forbiddenZoneCount; ++zone)
+                {
+                    stream << (zone == 0 ? " " : ", ");
+                    Box(workspace.forbiddenZones[zone]);
+                }
+                stream << " ],\n    \"linkRadiiM\": [ ";
+                for (std::size_t link = 0; link != workspaceCapsules; ++link)
+                {
+                    stream << (link == 0 ? "" : ", ");
+                    Number(workspace.linkRadii[link]);
+                }
+                stream << " ],\n    \"selfCollisionMarginM\": ";
+                Number(workspace.selfCollisionMargin);
+                stream << ",\n    \"allowedLinkPairs\": [";
+                for (std::size_t pair = 0; pair != workspace.allowedLinkPairCount; ++pair)
+                    stream << (pair == 0 ? " [ " : ", [ ") << workspace.allowedLinkPairs[pair][0] + 1 << ", " << workspace.allowedLinkPairs[pair][1] + 1 << " ]";
+                stream << " ]";
+            }
+
+            void Box(const WorkspaceBox& box)
+            {
+                static constexpr std::array<const char*, 3> axes{ "x", "y", "z" };
+                stream << "{ \"min\": ";
+                Named(axes, std::array<float, 3>{ box.min[0], box.min[1], box.min[2] });
+                stream << ", \"max\": ";
+                Named(axes, std::array<float, 3>{ box.max[0], box.max[1], box.max[2] });
+                stream << " }";
             }
 
             void Mass(const MassProperties& properties)

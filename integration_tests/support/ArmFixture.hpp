@@ -51,7 +51,8 @@ namespace integration
     struct ArmFixture
         : infra::ClockFixture
     {
-        explicit ArmFixture(const arm::JointTransmissions& transmissions = {}, const arm::JointControllers& controllers = {}, const arm::JointMotors& motors = {});
+        explicit ArmFixture(const arm::JointTransmissions& transmissions = {}, const arm::JointControllers& controllers = {}, const arm::JointMotors& motors = {},
+            const arm::WorkspaceConfig& workspace = {});
 
         simulation::SimulatedJoint& Joint(std::size_t number);
         void StartInTorqueMode();

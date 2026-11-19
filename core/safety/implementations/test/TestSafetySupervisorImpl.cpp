@@ -1,5 +1,6 @@
 #include "core/joint_bus/test_doubles/JointBusMock.hpp"
 #include "core/safety/implementations/SafetySupervisorImpl.hpp"
+#include "core/safety/test_doubles/PoseGuardMock.hpp"
 #include "gmock/gmock.h"
 #include <chrono>
 #include <limits>
@@ -51,6 +52,11 @@ namespace
         : public Test
     {
     public:
+        SafetySupervisorImplTest()
+        {
+            EXPECT_CALL(guard, Check(_)).WillRepeatedly(Return(std::nullopt));
+        }
+
         void CompatibleContracts()
         {
             EXPECT_CALL(bus, Contracts()).WillRepeatedly(Return(can::ContractCompatibility::compatible));
@@ -96,7 +102,8 @@ namespace
         }
 
         StrictMock<arm::JointBusMock> bus;
-        arm::SafetySupervisorImpl supervisor{ bus, limits, Tracking(), Collision(), 10ms, Motion() };
+        StrictMock<arm::PoseGuardMock> guard;
+        arm::SafetySupervisorImpl supervisor{ bus, limits, Tracking(), Collision(), 10ms, Motion(), &guard };
         StrictMock<arm::JointBusObserverMock> observer{ supervisor };
         std::array<arm::JointReading, arm::jointCount> readings{};
     };
@@ -583,6 +590,44 @@ TEST_F(SafetySupervisorImplTest, the_reference_jump_counts_from_the_last_streami
     supervisor.Supervise(arm::AtRest(withinLimits), std::nullopt);
     supervisor.Supervise(std::nullopt, std::nullopt);
     supervisor.Supervise(arm::AtRest(jump), std::nullopt);
+
+    EXPECT_FALSE(supervisor.Holding());
+}
+
+TEST_F(SafetySupervisorImplTest, a_reference_pose_the_workspace_check_fails_stops_the_arm_protectively_and_is_kept)
+{
+    Measured(withinLimits);
+    auto reference = withinLimits;
+    reference[1] = foc::Radians{ 0.1f };
+    const arm::WorkspaceViolation violation{ arm::WorkspaceRule::forbiddenZone, 4, 1, 0.02f };
+    EXPECT_CALL(guard, Check(reference)).WillOnce(Return(violation));
+
+    EXPECT_CALL(observer, OnProtectiveStop(4, arm::SupervisionTrip::forbiddenZone, 0.02f));
+    supervisor.Supervise(arm::AtRest(reference), std::nullopt);
+
+    EXPECT_EQ(std::optional{ violation }, supervisor.LastWorkspaceViolation());
+}
+
+TEST_F(SafetySupervisorImplTest, a_measured_pose_the_workspace_check_fails_stops_the_arm_protectively)
+{
+    auto measured = withinLimits;
+    measured[2] = foc::Radians{ 0.4f };
+    Measured(measured);
+    const arm::WorkspaceViolation violation{ arm::WorkspaceRule::selfCollision, 0, 2, 0.001f };
+    EXPECT_CALL(guard, Check(measured)).WillOnce(Return(violation));
+
+    EXPECT_CALL(observer, OnProtectiveStop(0, arm::SupervisionTrip::selfCollision, 0.001f));
+    supervisor.Supervise(arm::AtRest(withinLimits), std::nullopt);
+}
+
+TEST_F(SafetySupervisorImplTest, a_measured_pose_with_a_stale_joint_is_not_checked_against_the_workspace)
+{
+    auto measured = withinLimits;
+    measured[2] = foc::Radians{ 0.4f };
+    Measured(measured, 5);
+    EXPECT_CALL(guard, Check(measured)).Times(0);
+
+    supervisor.Supervise(arm::AtRest(withinLimits), std::nullopt);
 
     EXPECT_FALSE(supervisor.Holding());
 }

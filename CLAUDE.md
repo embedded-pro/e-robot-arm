@@ -41,6 +41,10 @@ simulator runs the same core against e-foc virtual motors or the real arm.
     tool pose, Jacobian, singularities, inverse kinematics within the joint limits,
     gravity torque, inverse dynamics and the mass matrix, on robotics-toolbox.
     Design: `documentation/design/arm-model.md`.
+  - `core/workspace/` — `arm::WorkspaceCheck`: a capsule on each link over the arm
+    model, checked against the workspace box, forbidden zones and itself (robotics-toolbox
+    `ConvexCollision`, `SelfCollision`); joint motion refuses moves that fail it and the safety
+    supervisor stops on it. Design: `documentation/design/safety.md` Part H.
   - `core/collision/` — `arm::CollisionObserver`: robotics-toolbox's momentum
     observer over the arm model and the reflected rotor inertia; estimates each
     joint's external torque for the safety supervisor's collision check.

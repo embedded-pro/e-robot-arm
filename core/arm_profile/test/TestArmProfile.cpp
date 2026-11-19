@@ -319,6 +319,48 @@ TEST_F(ArmProfileTest, reads_and_writes_the_drive_watchdog_in_control_periods)
     EXPECT_EQ(1u, Count(written, R"("driveWatchdogPeriods": 25,)"));
 }
 
+TEST_F(ArmProfileTest, reads_the_workspace_and_self_collision_and_writes_them_back)
+{
+    const std::string safety{ R"( "safety": { "workspaceM": { "min": { "x": -0.8, "y": -0.8, "z": 0.05 }, "max": { "x": 0.8, "y": 0.8, "z": 1 } },)"
+                              R"( "forbiddenZonesM": [ { "min": { "x": 0.3, "y": -0.1, "z": 0 }, "max": { "x": 0.5, "y": 0.1, "z": 0.4 } } ],)"
+                              R"( "linkRadiiM": [ 0.06, 0.05, 0.05, 0.04, 0.04, 0.03, 0.02 ], "selfCollisionMarginM": 0.02, "allowedLinkPairs": [ [ 3, 6 ] ] },)" };
+    const auto profile = Read(Profile(Joint(1), safety));
+    ASSERT_TRUE(profile.has_value()) << Problem();
+    const auto& workspace = profile->config.workspace;
+
+    ASSERT_TRUE(workspace.workspace.has_value());
+    EXPECT_NEAR(0.05f, workspace.workspace->min[2], 1.0e-6f);
+    EXPECT_NEAR(1.0f, workspace.workspace->max[2], 1.0e-6f);
+    ASSERT_EQ(1, workspace.forbiddenZoneCount);
+    EXPECT_NEAR(0.3f, workspace.forbiddenZones[0].min[0], 1.0e-6f);
+    EXPECT_NEAR(0.06f, workspace.linkRadii[0], 1.0e-6f);
+    EXPECT_NEAR(0.02f, workspace.linkRadii[6], 1.0e-6f);
+    EXPECT_NEAR(0.02f, workspace.selfCollisionMargin, 1.0e-6f);
+    ASSERT_EQ(1, workspace.allowedLinkPairCount);
+    EXPECT_EQ((arm::LinkPair{ 2, 5 }), workspace.allowedLinkPairs[0]);
+
+    infra::StringOutputStream::WithStorage<16384> stream;
+    arm::WriteArmProfile(*profile, stream);
+    const auto again = Read(std::string{ stream.Storage().begin(), stream.Storage().end() });
+    ASSERT_TRUE(again.has_value()) << Problem();
+    EXPECT_EQ(1, again->config.workspace.forbiddenZoneCount);
+    EXPECT_EQ((arm::LinkPair{ 2, 5 }), again->config.workspace.allowedLinkPairs[0]);
+    EXPECT_NEAR(0.05f, again->config.workspace.workspace->min[2], 1.0e-6f);
+}
+
+TEST_F(ArmProfileTest, a_profile_without_a_workspace_leaves_it_to_the_geometry_and_writes_none)
+{
+    const auto profile = Read(Profile(Joint(1)));
+    ASSERT_TRUE(profile.has_value()) << Problem();
+    EXPECT_FALSE(profile->config.workspace.workspace.has_value());
+
+    infra::StringOutputStream::WithStorage<16384> stream;
+    arm::WriteArmProfile(*profile, stream);
+    const std::string written{ stream.Storage().begin(), stream.Storage().end() };
+    EXPECT_EQ(0u, Count(written, "workspaceM"));
+    EXPECT_EQ(1u, Count(written, R"("linkRadiiM": [ 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04 ])"));
+}
+
 TEST_F(ArmProfileTest, reads_a_version_1_profile_and_writes_version_3)
 {
     const auto version1 = Read(Profile(Joint(1)));
@@ -388,6 +430,10 @@ TEST_F(ArmProfileTest, refuses_a_profile_and_names_the_first_problem)
         { Profile(Joint(1), R"( "meshes": { "base": 3 },)"), "meshes.base: must be a path of 1 to 96 characters" },
         { R"({ "format": "e-robot-arm profile", "version": 4 })", "version: is not a version this reader knows" },
         { Profile(Joint(1), R"( "driveWatchdogPeriods": 1,)"), "driveWatchdogPeriods: must be a whole number from 2 to 255" },
+        { Profile(Joint(1), R"( "safety": { "workspaceM": { "min": { "x": 1 }, "max": { "x": 0.5, "y": 1, "z": 1 } } },)"), "safety.workspaceM: min must be below max on every axis" },
+        { Profile(Joint(1), R"( "safety": { "linkRadiiM": [ 0.1, 0.1 ] },)"), "safety.linkRadiiM: must be a list of seven radii" },
+        { Profile(Joint(1), R"( "safety": { "allowedLinkPairs": [ [ 2, 3 ] ] },)"), "safety.allowedLinkPairs[0]: must name two links that are not adjacent" },
+        { Profile(Joint(1), R"( "safety": { "selfCollisionMarginM": 0.6 },)"), "safety.selfCollisionMarginM: must be from 0 to 0.5" },
         { Profile(Joint(1, R"(, "speedLimitRadPerS": 0)")), "joints[0].speedLimitRadPerS: must be above 0" },
         { Profile(Joint(1, R"(, "torqueLimitNm": 1001)")), "joints[0].torqueLimitNm: must be above 0 and at most 1000" },
         { R"({ "format": "something else" })", "format: must be \"e-robot-arm profile\"" },

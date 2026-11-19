@@ -99,7 +99,10 @@ namespace arm
         speedLimit,
         referenceSpeed,
         referenceAcceleration,
-        referenceStep
+        referenceStep,
+        workspace,
+        forbiddenZone,
+        selfCollision
     };
 
     class JointBusObserver

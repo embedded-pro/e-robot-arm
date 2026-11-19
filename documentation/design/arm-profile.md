@@ -2,7 +2,7 @@
 title: "Arm Profile Design"
 type: design
 status: draft
-version: 0.15.0
+version: 0.16.0
 component: "arm_profile"
 date: 2026-11-19
 ---
@@ -12,7 +12,7 @@ date: 2026-11-19
 | Title     | Arm Profile Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.15.0             |
+| Version   | 0.16.0             |
 | Component | arm_profile        |
 | Date      | 2026-11-19         |
 
@@ -134,16 +134,17 @@ drive that hears no setpoint for that long stops and faults ([safety.md](safety.
 
 `safety` holds the workspace and self-collision check ([safety.md](safety.md) Part H), in the base frame:
 
-| Item                  | JSON key                 | Unit, range                                | Default when absent                                 |
-|-----------------------|--------------------------|--------------------------------------------|-----------------------------------------------------|
-| Workspace             | `workspaceM.min`, `.max` | m, each `{ "x", "y", "z" }`, min below max | the reach in x and y, base plane to base plus reach |
-| Forbidden zones       | `forbiddenZonesM`        | at most eight boxes, as `workspaceM`       | none                                                |
-| Link radii            | `linkRadiiM`             | seven, m, above 0: links 1 to 6, then tool | all 0.04                                            |
-| Self-collision margin | `selfCollisionMarginM`   | m, 0 or above, at most 0.5                 | 0.01                                                |
-| Allowed link pairs    | `allowedLinkPairs`       | pairs of 1 to 7, not adjacent, at most 16  | none                                                |
+| Item                  | JSON key                 | Unit, range                                | Default when absent                                    |
+|-----------------------|--------------------------|--------------------------------------------|--------------------------------------------------------|
+| Workspace             | `workspaceM.min`, `.max` | m, each `{ "x", "y", "z" }`, min below max | the reach plus the largest radius, from the base plane |
+| Forbidden zones       | `forbiddenZonesM`        | at most eight boxes, as `workspaceM`       | none                                                   |
+| Link radii            | `linkRadiiM`             | seven, m, above 0: links 1 to 6, then tool | all 0.04                                               |
+| Self-collision margin | `selfCollisionMarginM`   | m, 0 or above, at most 0.5                 | 0.01                                                   |
+| Allowed link pairs    | `allowedLinkPairs`       | pairs of 1 to 7, not adjacent, at most 16  | none                                                   |
 
-An allowed pair is never checked against each other, for links whose capsules touch by construction, a wrist for
-example. The workspace's default follows the geometry, so a profile that names no workspace keeps following its
+An allowed pair is never checked against each other. Adjacent links and the pairs that touch with every joint at zero,
+the spherical wrist's, are allowed without being listed ([safety.md](safety.md) Part H); a profile lists any other pair
+whose capsules touch by construction. The workspace's default follows the geometry, so a profile that names no workspace keeps following its
 geometry when that changes.
 
 A joint's motor controller names one algorithm per loop and any of its fourteen gains:

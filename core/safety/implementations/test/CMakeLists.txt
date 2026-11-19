@@ -6,6 +6,7 @@ target_link_libraries(e_robot_arm.safety_test PUBLIC
     gmock_main
     e_robot_arm.safety.implementations
     e_robot_arm.joint_bus.test_doubles
+    e_robot_arm.safety.test_doubles
 )
 
 target_sources(e_robot_arm.safety_test PRIVATE

@@ -47,11 +47,12 @@ namespace arm
 
     Arm::Arm(can::FocMotorCategoryClient& client, const ArmConfig& config)
         : jointBus(client, config.nodes, config.transmissions, config.missedRequestsBeforeSilent, config.controlPeriod * config.commandTimeoutPeriods)
-        , safety(jointBus, config.positionLimits, config.tracking, config.collision, config.controlPeriod, Supervision(config))
-        , motion(safety, config.positionLimits, config.motionLimits, config.controlPeriod)
+        , safety(jointBus, config.positionLimits, config.tracking, config.collision, config.controlPeriod, Supervision(config), &workspace)
+        , motion(safety, config.positionLimits, config.motionLimits, config.controlPeriod, &workspace)
         , configurator(safety, lifecycle, SilenceWindow(config))
         , lifecycle(safety, motion, configurator, config.controllers, config.motors, DriveWatchdogSeconds(config))
         , model(config.geometry, config.mass, config.positionLimits)
+        , workspace(model, config.geometry, config.workspace)
         , gravityPd(model, GravityPdGains(model, config))
         , computedTorque(model, ReflectedRotors(config), config.computedTorque)
         , gravityPid(model, ReflectedRotors(config), config.gravityPid, config.controlPeriod)
@@ -124,6 +125,11 @@ namespace arm
     const std::optional<JointTorques>& Arm::EstimatedExternalTorques() const
     {
         return externalTorques;
+    }
+
+    const WorkspaceCheck& Arm::Workspace() const
+    {
+        return workspace;
     }
 
     ControlLoop& Arm::Loop()

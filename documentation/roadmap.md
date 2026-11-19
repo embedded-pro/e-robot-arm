@@ -11,6 +11,7 @@ request as the work it describes. The tracking issue is
 |--------------------|----------------------------|-------------------------------------------------------|
 | Joint bus          | `core/joint_bus/`          | [joint-bus.md](design/joint-bus.md)                   |
 | Safety supervisor  | `core/safety/`             | [safety.md](design/safety.md)                         |
+| Workspace check    | `core/workspace/`          | [safety.md](design/safety.md) Part H                  |
 | Joint motion       | `core/motion/`             | [joint-motion.md](design/joint-motion.md)             |
 | Control loop       | `core/control_loop/`       | [control-loop.md](design/control-loop.md)             |
 | Arm lifecycle      | `core/lifecycle/`          | [arm-lifecycle.md](design/arm-lifecycle.md)           |
@@ -129,8 +130,8 @@ designed in [safety.md](design/safety.md) 0.6.0:
    lifecycle's Holding state; a lost hold emergency-stops.
 3. Done: torque limits (clamp, reported) and the speed rule; the reference rule.
 4. Done: drive watchdog: e-foc's command timeout written and verified on every node while configuring.
-5. Workspace and self-collision: the workspace check over the arm model, move targets and paths refused, every step
-   supervised; a capsule-box distance in robotics-toolbox if it lacks one.
+5. Done: workspace and self-collision: the workspace check over the arm model, move targets and paths refused, every
+   step supervised; robotics-toolbox's `ConvexCollision` already measures a capsule against a box.
 6. Hardware stop input: interface, mock, trip and re-arm rules; the circuit itself waits for phase 9.
 7. Simulator and console: the stop's rule and category in the status strip, the Holding state, the torque clamps,
    the workspace and zones drawn in the 3-D view; a scenario per rule, including a collision on the virtual arm.
