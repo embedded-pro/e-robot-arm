@@ -56,7 +56,7 @@ namespace simulator
     private:
         void Update();
         ControlState Evaluate(ArmControllerAction action) const;
-        void Post(const arm_host::ArmCommand& command);
+        void Post(const arm_host::ArmCommand& command) const;
 
         ui::Callback<void(const arm_host::ArmCommand& command)> post;
         ui::Callback<void(std::string_view prompt)> disablePrompt;

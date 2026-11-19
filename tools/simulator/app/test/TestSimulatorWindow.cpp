@@ -353,6 +353,18 @@ TEST_F(SimulatorWindowTest, a_loaded_profile_rebuilds_the_arm_and_bring_up_confi
         {
             return table->item(1, 1) != nullptr && table->item(1, 1)->text() == "42" && table->item(1, 9)->text() == "PID / PID / LQR";
         }));
+    EXPECT_TRUE(Eventually([this]()
+        {
+            return window.windowTitle().contains("window test arm");
+        }))
+        << window.windowTitle().toStdString();
+    const auto actions = window.findChildren<QAction*>();
+    const auto recent = std::ranges::find_if(actions, [](const QAction* action)
+        {
+            return action->text() == "e-robot-arm-window-test.json";
+        });
+    ASSERT_NE(actions.end(), recent);
+    EXPECT_TRUE((*recent)->isEnabled());
 
     host.Post(arm_host::BringUp{});
     EXPECT_TRUE(Eventually([this]()
@@ -371,6 +383,7 @@ TEST_F(SimulatorWindowTest, a_loaded_profile_rebuilds_the_arm_and_bring_up_confi
 
     std::filesystem::remove(path);
     QSettings{ "embedded-pro", "e-robot-arm Simulator" }.remove("profile");
+    QSettings{ "embedded-pro", "e-robot-arm Simulator" }.remove("recentProfiles");
 }
 
 TEST_F(SimulatorWindowTest, a_profile_draws_its_link_meshes_and_names_a_mesh_it_cannot_load)

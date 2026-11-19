@@ -13,6 +13,7 @@
 #include "tools/simulator/view_models/FrameStatistics.hpp"
 #include "tools/simulator/view_models/MotorControllerPresenter.hpp"
 #include "tools/simulator/view_models/MotorPresenter.hpp"
+#include "tools/simulator/view_models/RecentProfiles.hpp"
 #include "tools/simulator/view_models/SimulatorPresenter.hpp"
 #include "tools/simulator/view_models/TuningPresenter.hpp"
 #include "ui/backend/qt/QtAppShell.hpp"
@@ -79,6 +80,8 @@ namespace simulator
         void ConfirmControllerDisable(std::string_view prompt);
         void SaveLog();
         void OpenProfile();
+        void RememberProfile(const QString& path);
+        void BuildRecentMenu();
         void SaveProfile();
         void CaptureDefaultLayout();
         void ResetLayout();
@@ -125,6 +128,8 @@ namespace simulator
         QDockWidget* virtualMotorsDock{ nullptr };
         std::optional<bool> virtualMotorsShown;
         QString profilePath;
+        RecentProfiles recentProfiles;
+        QMenu* recentMenu{ nullptr };
         MeshNames meshNames{};
         QString meshDirectory;
         std::optional<std::pair<MeshNames, QString>> pendingMeshes;

@@ -94,6 +94,10 @@ namespace simulator
         , tuningPanel{ new TuningPanel{ this } }
         , tuning{ tuningPanel->Form(), host }
         , frameReadout{ new QLabel{ this } }
+        , recentProfiles{ [](const std::string& path)
+            {
+                return QFileInfo::exists(QString::fromStdString(path));
+            } }
         , logPanel{ new EventLogPanel{ presenter.Log(), this } }
         , emergencyStopKey{ *QCoreApplication::instance(), [this]()
             {
@@ -311,7 +315,7 @@ namespace simulator
     {
         banner->parentWidget()->setVisible(status.realArm);
         banner->setText(ui::backend::qt::ToQt("  " + status.target + " — commands move real hardware"));
-        setWindowTitle(ui::backend::qt::ToQt("e-robot-arm Simulator — " + status.target));
+        setWindowTitle(ui::backend::qt::ToQt(WindowTitle(host.Snapshot().profileName, status.target)));
     }
 
     void SimulatorWindow::BuildDocks()
@@ -394,6 +398,9 @@ namespace simulator
     {
         auto* file = menuBar()->addMenu("&File");
         file->addAction("&Open Profile…", QKeySequence::Open, this, &SimulatorWindow::OpenProfile);
+        recentMenu = file->addMenu("Open &Recent");
+        recentMenu->setToolTipsVisible(true);
+        BuildRecentMenu();
         file->addAction("Save &Profile…", QKeySequence{ "Ctrl+Shift+S" }, this, &SimulatorWindow::SaveProfile);
         file->addSeparator();
         file->addAction("&Save Log…", QKeySequence::Save, this, &SimulatorWindow::SaveLog);
@@ -734,8 +741,44 @@ namespace simulator
         for (std::size_t node = 0; node != names.size(); ++node)
             names[node].assign(profile.meshes[node].begin(), profile.meshes[node].end());
         pendingMeshes.emplace(names, QFileInfo{ path }.absolutePath());
+        RememberProfile(path);
+    }
+
+    void SimulatorWindow::RememberProfile(const QString& path)
+    {
         profilePath = path;
-        Settings().setValue("profile", path);
+        recentProfiles.Add(path.toStdString());
+        QStringList stored;
+        for (const auto& recent : recentProfiles.Paths())
+            stored.append(QString::fromStdString(recent));
+        auto settings = Settings();
+        settings.setValue("profile", path);
+        settings.setValue("recentProfiles", stored);
+        BuildRecentMenu();
+    }
+
+    void SimulatorWindow::BuildRecentMenu()
+    {
+        recentMenu->clear();
+        for (const auto& entry : recentProfiles.Entries())
+        {
+            auto* action = recentMenu->addAction(QString::fromStdString(entry.label));
+            action->setToolTip(QString::fromStdString(entry.tooltip));
+            action->setEnabled(entry.available);
+            const auto path = QString::fromStdString(entry.path);
+            connect(action, &QAction::triggered, this, [this, path]()
+                {
+                    LoadProfileFrom(path);
+                });
+        }
+        recentMenu->addSeparator();
+        auto* clear = recentMenu->addAction("&Clear Recent", this, [this]()
+            {
+                recentProfiles.Clear();
+                Settings().remove("recentProfiles");
+                BuildRecentMenu();
+            });
+        clear->setEnabled(!recentProfiles.Paths().empty());
     }
 
     void SimulatorWindow::SaveProfile()
@@ -758,8 +801,7 @@ namespace simulator
         if (!problem.empty())
             return shell.ShowAlert("Save Profile", "The profile was not saved.\n\n" + problem);
 
-        profilePath = path;
-        Settings().setValue("profile", path);
+        RememberProfile(path);
         shell.SetStatus("Profile saved to " + path.toStdString());
     }
 
@@ -810,6 +852,12 @@ namespace simulator
         UseTheme(settings.value("lightTheme", false).toBool());
         restoreGeometry(settings.value("geometry").toByteArray());
         restoreState(settings.value("layout").toByteArray());
+
+        std::vector<std::string> stored;
+        for (const auto& recent : settings.value("recentProfiles").toStringList())
+            stored.push_back(recent.toStdString());
+        recentProfiles.Restore(stored);
+        BuildRecentMenu();
 
         const auto profile = settings.value("profile").toString();
         if (!profile.isEmpty() && QFileInfo::exists(profile))
