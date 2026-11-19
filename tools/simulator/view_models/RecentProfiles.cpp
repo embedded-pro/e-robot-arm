@@ -1,10 +1,18 @@
 #include "tools/simulator/view_models/RecentProfiles.hpp"
 #include <algorithm>
-#include <filesystem>
 #include <format>
 
 namespace simulator
 {
+    namespace
+    {
+        std::string FileName(std::string_view path)
+        {
+            const auto separator = path.find_last_of("/\\");
+            return std::string{ separator == std::string_view::npos ? path : path.substr(separator + 1) };
+        }
+    }
+
     RecentProfiles::RecentProfiles(std::function<bool(const std::string& path)> exists)
         : exists(std::move(exists))
     {}
@@ -43,7 +51,7 @@ namespace simulator
         for (const auto& path : paths)
         {
             const bool available = exists && exists(path);
-            entries.push_back({ path, std::filesystem::path{ path }.filename().string(), available ? path : "File not found: " + path, available });
+            entries.emplace_back(path, FileName(path), available ? path : "File not found: " + path, available);
         }
         return entries;
     }
