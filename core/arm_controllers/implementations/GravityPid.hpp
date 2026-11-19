@@ -19,7 +19,7 @@ namespace arm
         GravityPid(const ArmModel& model, const JointInertias& rotors, const BandwidthTuning& tuning, infra::Duration period);
 
         bool BumplessTransfer() const override;
-        void Reset(const MeasuredJoints& measured) override;
+        void Reset(const MeasuredJoints& measured, const JointReference& held) override;
         JointSetpoints Step(const MeasuredJoints& measured, const JointReference& reference) override;
 
     private:
@@ -31,7 +31,6 @@ namespace arm
         ArmModel::MassMatrix inertia;
         float derivativeGain;
         std::array<Pid, jointCount> pids;
-        bool primed{ false };
     };
 }
 

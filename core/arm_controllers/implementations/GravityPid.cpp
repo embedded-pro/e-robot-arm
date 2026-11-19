@@ -48,11 +48,16 @@ namespace arm
         return true;
     }
 
-    void GravityPid::Reset(const MeasuredJoints&)
+    void GravityPid::Reset(const MeasuredJoints& measured, const JointReference& held)
     {
-        for (auto& pid : pids)
+        for (std::size_t joint = 0; joint != jointCount; ++joint)
+        {
+            auto& pid = pids[joint];
             pid.Reset();
-        primed = false;
+            pid.SetPoint(held.positions[joint].Value());
+            pid.Process(measured.positions[joint].Value());
+            pid.SetPreviousOutput(0.0f);
+        }
     }
 
     JointSetpoints GravityPid::Step(const MeasuredJoints& measured, const JointReference& reference)
@@ -73,15 +78,9 @@ namespace arm
         {
             auto& pid = pids[joint];
             pid.SetPoint(reference.positions[joint].Value());
-            if (!primed)
-            {
-                pid.Process(measured.positions[joint].Value());
-                pid.SetPreviousOutput(0.0f);
-            }
             const auto damping = derivativeGain * (reference.speeds[joint].Value() - measured.speeds[joint].Value());
             corrections[joint] = foc::RadiansPerSecondSquared{ std::clamp(pid.Process(measured.positions[joint].Value()) + damping, -correctionLimit, correctionLimit) };
         }
-        primed = true;
         return corrections;
     }
 }

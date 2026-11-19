@@ -24,7 +24,7 @@ namespace
         {
             for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
                 measured.positions[joint] = foc::Radians{ 0.1f * static_cast<float>(joint) };
-            controller.Reset(measured);
+            controller.Reset(measured, arm::AtRest(measured.positions));
         }
 
         arm::JointTorques Expected(const arm::JointAccelerations& accelerations) const
@@ -68,7 +68,7 @@ TEST_F(GravityPidTest, feeds_the_reference_acceleration_forward_through_the_arms
     ExpectTorques(Expected(reference.accelerations), controller.Step(measured, reference).torques);
 }
 
-TEST_F(GravityPidTest, integrates_a_held_position_error_period_after_period)
+TEST_F(GravityPidTest, integrates_a_held_position_error_period_after_period_on_top_of_its_proportional_kick)
 {
     auto reference = arm::AtRest(measured.positions);
     reference.positions[2] = foc::Radians{ reference.positions[2].Value() + 0.01f };
@@ -76,11 +76,11 @@ TEST_F(GravityPidTest, integrates_a_held_position_error_period_after_period)
     const auto first = controller.Step(measured, reference).torques;
     const auto second = controller.Step(measured, reference).torques;
 
-    arm::JointAccelerations integral{};
-    integral[2] = foc::RadiansPerSecondSquared{ 1000.0f * 0.01f * 0.01f };
-    ExpectTorques(Expected(integral), first);
-    integral[2] = foc::RadiansPerSecondSquared{ 2.0f * 1000.0f * 0.01f * 0.01f };
-    ExpectTorques(Expected(integral), second);
+    arm::JointAccelerations correction{};
+    correction[2] = foc::RadiansPerSecondSquared{ (200.0f + 1000.0f * 0.01f) * 0.01f };
+    ExpectTorques(Expected(correction), first);
+    correction[2] = foc::RadiansPerSecondSquared{ (200.0f + 2.0f * 1000.0f * 0.01f) * 0.01f };
+    ExpectTorques(Expected(correction), second);
 }
 
 TEST_F(GravityPidTest, a_new_position_error_acts_through_the_proportional_gain_alone_while_the_speed_holds)
@@ -125,10 +125,20 @@ TEST_F(GravityPidTest, takes_over_an_error_without_a_step_from_a_fresh_integral)
     controller.Step(measured, reference);
     controller.Step(measured, reference);
 
-    controller.Reset(measured);
+    controller.Reset(measured, reference);
 
     EXPECT_TRUE(controller.BumplessTransfer());
     arm::JointAccelerations integral{};
     integral[2] = foc::RadiansPerSecondSquared{ 1000.0f * 0.01f * 0.01f };
     ExpectTorques(Expected(integral), controller.Step(measured, reference).torques);
+}
+
+TEST_F(GravityPidTest, a_reference_step_in_the_first_period_after_a_switch_keeps_its_proportional_kick)
+{
+    auto reference = arm::AtRest(measured.positions);
+    reference.positions[2] = foc::Radians{ reference.positions[2].Value() + 0.05f };
+
+    arm::JointAccelerations kick{};
+    kick[2] = foc::RadiansPerSecondSquared{ (200.0f + 1000.0f * 0.01f) * 0.05f };
+    ExpectTorques(Expected(kick), controller.Step(measured, reference).torques);
 }

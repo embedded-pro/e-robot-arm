@@ -39,7 +39,7 @@ namespace arm
         GravityCompensatedPd(const ArmModel& model, const PdGainMatrices& gains);
 
         bool BumplessTransfer() const override;
-        void Reset(const MeasuredJoints& measured) override;
+        void Reset(const MeasuredJoints& measured, const JointReference& held) override;
         JointSetpoints Step(const MeasuredJoints& measured, const JointReference& reference) override;
 
     private:

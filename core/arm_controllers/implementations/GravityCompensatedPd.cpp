@@ -32,7 +32,7 @@ namespace arm
         return true;
     }
 
-    void GravityCompensatedPd::Reset(const MeasuredJoints&)
+    void GravityCompensatedPd::Reset(const MeasuredJoints&, const JointReference&)
     {}
 
     JointSetpoints GravityCompensatedPd::Step(const MeasuredJoints& measured, const JointReference& reference)
