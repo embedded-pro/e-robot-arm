@@ -67,6 +67,8 @@ namespace tuning
             Fail("move aborted");
         else if (event.kind == arm_host::ArmEventKind::tripped)
             Fail("tripped: " + event.reason);
+        else if (event.kind == arm_host::ArmEventKind::protectiveStop)
+            Fail("protective stop: " + event.reason);
         else if (event.kind == arm_host::ArmEventKind::moveDone)
             OnMoveDone();
     }

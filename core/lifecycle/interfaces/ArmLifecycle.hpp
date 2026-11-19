@@ -22,6 +22,7 @@ namespace arm
         enabled,
         moving,
         disabling,
+        holding,
         tripped
     };
 

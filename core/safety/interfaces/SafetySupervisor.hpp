@@ -31,6 +31,7 @@ namespace arm
     {
     public:
         virtual bool Tripped() const = 0;
+        virtual bool Holding() const = 0;
         virtual bool Rearm() = 0;
         virtual void Supervise(const std::optional<JointPositions>& reference, const std::optional<JointTorques>& externalTorques) = 0;
 

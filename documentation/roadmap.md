@@ -125,7 +125,7 @@ designed in [safety.md](design/safety.md) 0.6.0:
 
 1. Design: stop categories, torque and speed limits, the reference rule, workspace and self-collision, the drive
    watchdog and the hardware stop input; requirements REQ-SAF-001 to 010.
-2. Protective stop: a supervision rule holds the measured pose (category 2) instead of an emergency stop; the
+2. Done: protective stop: a supervision rule holds the measured pose (category 2) instead of an emergency stop; the
    lifecycle's Holding state; a lost hold emergency-stops.
 3. Torque limits (clamp, reported) and the speed rule; the reference rule.
 4. Drive watchdog: e-foc's command timeout written and verified on every node while configuring.

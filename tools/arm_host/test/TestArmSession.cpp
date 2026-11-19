@@ -548,7 +548,7 @@ TEST_F(TorqueArmSessionTest, the_gravity_compensated_pd_moves_the_simulated_arm_
         EXPECT_NEAR(goal[joint].Value(), sink.snapshot.readings[joint].position.Value(), 0.02f) << "joint " << joint;
 }
 
-TEST_F(SoftTorqueArmSessionTest, a_joint_that_lags_its_reference_too_long_trips_the_arm_and_names_its_tracking_error)
+TEST_F(SoftTorqueArmSessionTest, a_joint_that_lags_its_reference_too_long_stops_the_arm_holding_and_names_its_tracking_error)
 {
     Execute(1, arm_host::BringUp{});
     Execute(2, arm_host::Enable{});
@@ -558,11 +558,38 @@ TEST_F(SoftTorqueArmSessionTest, a_joint_that_lags_its_reference_too_long_trips_
                    foc::Radians{ 0.0f } } });
     ForwardTime(3s);
 
-    const auto* trip = sink.Find(ArmEventKind::supervisionTrip);
-    ASSERT_NE(nullptr, trip);
-    EXPECT_EQ(0u, trip->joint);
-    EXPECT_THAT(trip->reason, testing::StartsWith("tracking error "));
-    ASSERT_NE(nullptr, sink.Find(ArmEventKind::tripped));
-    EXPECT_EQ(trip->reason, sink.Find(ArmEventKind::tripped)->reason);
-    EXPECT_TRUE(sink.snapshot.tripped);
+    const auto* stop = sink.Find(ArmEventKind::protectiveStop);
+    ASSERT_NE(nullptr, stop);
+    EXPECT_EQ(0u, stop->joint);
+    EXPECT_THAT(stop->reason, testing::StartsWith("tracking error "));
+    EXPECT_EQ(nullptr, sink.Find(ArmEventKind::tripped));
+    EXPECT_TRUE(sink.snapshot.holding);
+    EXPECT_FALSE(sink.snapshot.tripped);
+    EXPECT_EQ(arm::ArmState::holding, sink.snapshot.state);
+}
+
+TEST_F(SoftTorqueArmSessionTest, a_held_arm_keeps_its_pose_refuses_moves_and_drives_again_once_rearmed)
+{
+    Execute(1, arm_host::BringUp{});
+    Execute(2, arm_host::Enable{});
+    Execute(3, arm_host::MoveTo{ { foc::Radians{ 1.0f }, foc::Radians{ 0.0f }, foc::Radians{ 0.0f }, foc::Radians{ 0.0f }, foc::Radians{ 0.0f },
+                   foc::Radians{ 0.0f } } });
+    ForwardTime(3s);
+    ASSERT_EQ(arm::ArmState::holding, sink.snapshot.state);
+    const auto held = sink.snapshot.readings[0].position;
+
+    ForwardTime(2s);
+    EXPECT_EQ(arm::ArmState::holding, sink.snapshot.state);
+    EXPECT_NEAR(held.Value(), sink.snapshot.readings[0].position.Value(), 0.05f);
+    Execute(4, arm_host::MoveTo{ {} });
+    EXPECT_EQ(ArmEventKind::refused, sink.events.back().kind);
+    EXPECT_EQ("holding after a protective stop: re-arm first", sink.events.back().reason);
+
+    Execute(5, arm_host::Rearm{});
+    EXPECT_EQ(arm::ArmState::enabled, sink.snapshot.state);
+    EXPECT_FALSE(sink.snapshot.holding);
+    EXPECT_EQ(nullptr, sink.Find(ArmEventKind::tripped));
+    Execute(6, arm_host::MoveTo{ { held, foc::Radians{ 0.0f }, foc::Radians{ 0.0f }, foc::Radians{ 0.0f }, foc::Radians{ 0.0f }, foc::Radians{ 0.0f } } });
+    ForwardTime(1s);
+    EXPECT_NE(nullptr, sink.Find(ArmEventKind::moveDone));
 }

@@ -72,6 +72,15 @@ namespace
             }
         }
 
+        void Hold()
+        {
+            auto beyond = withinLimits;
+            beyond[2] = foc::Radians{ 0.55f };
+            Measured(beyond);
+            EXPECT_CALL(observer, OnProtectiveStop(2, arm::SupervisionTrip::positionLimit, 0.55f));
+            supervisor.Supervise(withinLimits, std::nullopt);
+        }
+
         StrictMock<arm::JointBusMock> bus;
         arm::SafetySupervisorImpl supervisor{ bus, limits, Tracking(), Collision(), 10ms };
         StrictMock<arm::JointBusObserverMock> observer{ supervisor };
@@ -300,20 +309,20 @@ TEST_F(SafetySupervisorImplTest, a_measured_position_on_its_limits_keeps_the_arm
     EXPECT_FALSE(supervisor.Tripped());
 }
 
-TEST_F(SafetySupervisorImplTest, a_measured_position_outside_its_limits_trips_the_arm)
+TEST_F(SafetySupervisorImplTest, a_measured_position_outside_its_limits_stops_the_arm_protectively)
 {
     auto beyond = withinLimits;
     beyond[2] = foc::Radians{ 0.55f };
     Measured(beyond);
 
-    EXPECT_CALL(bus, EmergencyStop()).WillOnce(Return(true));
-    EXPECT_CALL(observer, OnSupervisionTrip(2, arm::SupervisionTrip::positionLimit, 0.55f));
+    EXPECT_CALL(observer, OnProtectiveStop(2, arm::SupervisionTrip::positionLimit, 0.55f));
     supervisor.Supervise(withinLimits, std::nullopt);
 
-    EXPECT_TRUE(supervisor.Tripped());
+    EXPECT_TRUE(supervisor.Holding());
+    EXPECT_FALSE(supervisor.Tripped());
 }
 
-TEST_F(SafetySupervisorImplTest, a_tracking_error_held_above_its_window_for_its_time_trips_the_arm)
+TEST_F(SafetySupervisorImplTest, a_tracking_error_held_above_its_window_for_its_time_stops_the_arm_protectively)
 {
     Measured(withinLimits);
     auto reference = withinLimits;
@@ -321,13 +330,12 @@ TEST_F(SafetySupervisorImplTest, a_tracking_error_held_above_its_window_for_its_
 
     supervisor.Supervise(reference, std::nullopt);
     supervisor.Supervise(reference, std::nullopt);
-    EXPECT_FALSE(supervisor.Tripped());
+    EXPECT_FALSE(supervisor.Holding());
 
-    EXPECT_CALL(bus, EmergencyStop()).WillOnce(Return(true));
-    EXPECT_CALL(observer, OnSupervisionTrip(1, arm::SupervisionTrip::trackingError, 0.25f));
+    EXPECT_CALL(observer, OnProtectiveStop(1, arm::SupervisionTrip::trackingError, 0.25f));
     supervisor.Supervise(reference, std::nullopt);
 
-    EXPECT_TRUE(supervisor.Tripped());
+    EXPECT_TRUE(supervisor.Holding());
 }
 
 TEST_F(SafetySupervisorImplTest, a_step_within_the_window_or_without_streaming_starts_the_count_again)
@@ -345,7 +353,7 @@ TEST_F(SafetySupervisorImplTest, a_step_within_the_window_or_without_streaming_s
     supervisor.Supervise(reference, std::nullopt);
     supervisor.Supervise(reference, std::nullopt);
 
-    EXPECT_FALSE(supervisor.Tripped());
+    EXPECT_FALSE(supervisor.Holding());
 }
 
 TEST_F(SafetySupervisorImplTest, a_stale_reading_is_neither_checked_nor_counted_nor_starts_the_count_again)
@@ -359,7 +367,7 @@ TEST_F(SafetySupervisorImplTest, a_stale_reading_is_neither_checked_nor_counted_
     supervisor.Supervise(reference, std::nullopt);
     supervisor.Supervise(reference, std::nullopt);
     supervisor.Supervise(reference, std::nullopt);
-    EXPECT_FALSE(supervisor.Tripped());
+    EXPECT_FALSE(supervisor.Holding());
 
     Measured(withinLimits);
     supervisor.Supervise(reference, std::nullopt);
@@ -367,8 +375,7 @@ TEST_F(SafetySupervisorImplTest, a_stale_reading_is_neither_checked_nor_counted_
     Measured(withinLimits, 5);
     supervisor.Supervise(reference, std::nullopt);
     Measured(withinLimits);
-    EXPECT_CALL(bus, EmergencyStop()).WillOnce(Return(true));
-    EXPECT_CALL(observer, OnSupervisionTrip(1, arm::SupervisionTrip::trackingError, 0.25f));
+    EXPECT_CALL(observer, OnProtectiveStop(1, arm::SupervisionTrip::trackingError, 0.25f));
     supervisor.Supervise(reference, std::nullopt);
 }
 
@@ -380,7 +387,7 @@ TEST_F(SafetySupervisorImplTest, without_streaming_a_position_outside_its_limits
 
     supervisor.Supervise(std::nullopt, std::nullopt);
 
-    EXPECT_FALSE(supervisor.Tripped());
+    EXPECT_FALSE(supervisor.Holding());
 }
 
 TEST_F(SafetySupervisorImplTest, a_tripped_arm_is_not_supervised_again)
@@ -401,20 +408,19 @@ TEST_F(SafetySupervisorImplTest, an_external_torque_within_its_joints_limit_keep
 
     supervisor.Supervise(withinLimits, external);
 
-    EXPECT_FALSE(supervisor.Tripped());
+    EXPECT_FALSE(supervisor.Holding());
 }
 
-TEST_F(SafetySupervisorImplTest, an_external_torque_beyond_its_joints_limit_trips_the_arm_on_a_collision)
+TEST_F(SafetySupervisorImplTest, an_external_torque_beyond_its_joints_limit_stops_the_arm_protectively_on_a_collision)
 {
     Measured(withinLimits);
     arm::JointTorques external{};
     external[3] = foc::NewtonMeter{ -5.5f };
 
-    EXPECT_CALL(bus, EmergencyStop()).WillOnce(Return(true));
-    EXPECT_CALL(observer, OnSupervisionTrip(3, arm::SupervisionTrip::collision, -5.5f));
+    EXPECT_CALL(observer, OnProtectiveStop(3, arm::SupervisionTrip::collision, -5.5f));
     supervisor.Supervise(withinLimits, external);
 
-    EXPECT_TRUE(supervisor.Tripped());
+    EXPECT_TRUE(supervisor.Holding());
 }
 
 TEST_F(SafetySupervisorImplTest, without_streaming_an_external_torque_is_not_checked)
@@ -424,5 +430,75 @@ TEST_F(SafetySupervisorImplTest, without_streaming_an_external_torque_is_not_che
 
     supervisor.Supervise(std::nullopt, external);
 
+    EXPECT_FALSE(supervisor.Holding());
+}
+
+TEST_F(SafetySupervisorImplTest, while_holding_torques_pass_on_and_mode_start_and_align_are_refused)
+{
+    CompatibleContracts();
+    Hold();
+
+    EXPECT_CALL(bus, SendTorques(_)).WillOnce(Return(true));
+    EXPECT_TRUE(supervisor.SendTorques({}));
+    EXPECT_FALSE(supervisor.SelectMode(can::FocMotorMode::torque));
+    EXPECT_FALSE(supervisor.Start());
+    EXPECT_FALSE(supervisor.Align());
+}
+
+TEST_F(SafetySupervisorImplTest, while_holding_neither_collision_nor_position_limits_are_checked_again)
+{
+    Hold();
+    auto held = withinLimits;
+    held[2] = foc::Radians{ 0.55f };
+    arm::JointTorques external{};
+    external[3] = foc::NewtonMeter{ 50.0f };
+
+    supervisor.Supervise(held, external);
+    supervisor.Supervise(held, external);
+    supervisor.Supervise(held, external);
+
+    EXPECT_TRUE(supervisor.Holding());
     EXPECT_FALSE(supervisor.Tripped());
+}
+
+TEST_F(SafetySupervisorImplTest, a_hold_that_drifts_out_of_its_window_for_its_time_emergency_stops_the_arm)
+{
+    Hold();
+    auto held = withinLimits;
+    held[2] = foc::Radians{ 0.8f };
+
+    supervisor.Supervise(held, std::nullopt);
+    supervisor.Supervise(held, std::nullopt);
+
+    EXPECT_CALL(bus, EmergencyStop()).WillOnce(Return(true));
+    EXPECT_CALL(observer, OnSupervisionTrip(2, arm::SupervisionTrip::holdLost, FloatNear(0.25f, 1e-5f)));
+    supervisor.Supervise(held, std::nullopt);
+
+    EXPECT_TRUE(supervisor.Tripped());
+    EXPECT_FALSE(supervisor.Holding());
+}
+
+TEST_F(SafetySupervisorImplTest, a_joint_fault_while_holding_ends_the_hold_in_an_emergency_stop)
+{
+    Hold();
+
+    Trip();
+
+    EXPECT_TRUE(supervisor.Tripped());
+    EXPECT_FALSE(supervisor.Holding());
+}
+
+TEST_F(SafetySupervisorImplTest, rearming_a_protective_stop_resumes_supervision_and_motion)
+{
+    CompatibleContracts();
+    Hold();
+
+    EXPECT_TRUE(supervisor.Rearm());
+    EXPECT_FALSE(supervisor.Holding());
+
+    EXPECT_CALL(bus, Start()).WillOnce(Return(true));
+    EXPECT_TRUE(supervisor.Start());
+    EXPECT_CALL(observer, OnProtectiveStop(2, arm::SupervisionTrip::positionLimit, 0.55f));
+    supervisor.Supervise(withinLimits, std::nullopt);
+    EXPECT_TRUE(supervisor.Holding());
 }

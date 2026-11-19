@@ -66,12 +66,17 @@ namespace arm::lifecycle
         static constexpr const char* name{ "Disabling" };
     };
 
+    struct Holding
+    {
+        static constexpr const char* name{ "Holding" };
+    };
+
     struct Tripped
     {
         static constexpr const char* name{ "Tripped" };
     };
 
-    using State = std::variant<Unpowered, Checking, Incompatible, WaitingForCalibration, Configuring, Misconfigured, Ready, Enabling, Enabled, Moving, Disabling, Tripped>;
+    using State = std::variant<Unpowered, Checking, Incompatible, WaitingForCalibration, Configuring, Misconfigured, Ready, Enabling, Enabled, Moving, Disabling, Holding, Tripped>;
 
     struct BringUp
     {
@@ -140,12 +145,17 @@ namespace arm::lifecycle
         static constexpr const char* name{ "Trip" };
     };
 
+    struct ProtectiveStop
+    {
+        static constexpr const char* name{ "ProtectiveStop" };
+    };
+
     struct Rearmed
     {
         static constexpr const char* name{ "Rearmed" };
     };
 
-    using Event = std::variant<BringUp, ContractsResolved, Observed, Configured, Misconfigure, Enable, Disable, MoveStarted, MoveFinished, Delivered, Failed, Trip, Rearmed>;
+    using Event = std::variant<BringUp, ContractsResolved, Observed, Configured, Misconfigure, Enable, Disable, MoveStarted, MoveFinished, Delivered, Failed, Trip, ProtectiveStop, Rearmed>;
 }
 
 namespace arm
@@ -160,7 +170,7 @@ namespace arm
         using Machine = services::TableStateMachine<lifecycle::State, lifecycle::Event, ArmLifecycleImpl>;
         using Initial = lifecycle::Unpowered;
 
-        static constexpr std::size_t rowCount{ 35 };
+        static constexpr std::size_t rowCount{ 40 };
         static constexpr std::array<Machine::Transition, rowCount> Rows();
         static constexpr Machine::Rules Rules();
 
@@ -183,6 +193,7 @@ namespace arm
         void OnJointFault(std::size_t joint, can::FocFaultCode fault) override;
         void OnJointSilent(std::size_t joint) override;
         void OnSupervisionTrip(std::size_t joint, SupervisionTrip trip, float value) override;
+        void OnProtectiveStop(std::size_t joint, SupervisionTrip trip, float value) override;
         void OnCommandDelivered(JointCommand command) override;
         void OnCommandFailed(JointCommand command, CommandFailure failure) override;
         void OnMoveDone() override;

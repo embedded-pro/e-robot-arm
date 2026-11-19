@@ -89,7 +89,7 @@ namespace arm
             {
                 return math::IsFinite(torque.Value());
             });
-        if (!MayCommandMotion() || !finite)
+        if (!MayStream() || !finite)
             return false;
 
         bus.SendTorques(torques);
@@ -136,12 +136,19 @@ namespace arm
         return tripped;
     }
 
+    bool SafetySupervisorImpl::Holding() const
+    {
+        return holding;
+    }
+
     bool SafetySupervisorImpl::Rearm()
     {
         if (AnyJointFaulted())
             return false;
 
         tripped = false;
+        holding = false;
+        stepsOutside.fill(0);
         return true;
     }
 
@@ -205,6 +212,11 @@ namespace arm
 
     bool SafetySupervisorImpl::MayCommandMotion() const
     {
+        return !holding && MayStream();
+    }
+
+    bool SafetySupervisorImpl::MayStream() const
+    {
         return !tripped && bus.Contracts() == can::ContractCompatibility::compatible;
     }
 
@@ -225,6 +237,12 @@ namespace arm
             return;
         }
 
+        if (holding)
+        {
+            SuperviseHold(*reference);
+            return;
+        }
+
         if (externalTorques.has_value() && !SuperviseCollision(*externalTorques))
             return;
 
@@ -242,17 +260,46 @@ namespace arm
         const auto measured = reading.position;
         if (measured < limits[joint].lower || limits[joint].upper < measured)
         {
-            TripOnSupervision(joint, SupervisionTrip::positionLimit, measured.Value());
+            Protect(joint, SupervisionTrip::positionLimit, measured.Value());
             return false;
         }
 
-        const foc::Radians error{ math::Abs(reference.Value() - measured.Value()) };
-        stepsOutside[joint] = tracking[joint].window < error ? stepsOutside[joint] + 1 : 0;
-        if (stepsOutside[joint] < stepsToTrip[joint])
+        const auto error = TrackingErrorHeld(joint, reference);
+        if (!error.has_value())
             return true;
 
-        TripOnSupervision(joint, SupervisionTrip::trackingError, error.Value());
+        Protect(joint, SupervisionTrip::trackingError, *error);
         return false;
+    }
+
+    std::optional<float> SafetySupervisorImpl::TrackingErrorHeld(std::size_t joint, foc::Radians reference)
+    {
+        const foc::Radians error{ math::Abs(reference.Value() - bus.Reading(joint).position.Value()) };
+        stepsOutside[joint] = tracking[joint].window < error ? stepsOutside[joint] + 1 : 0;
+        if (stepsOutside[joint] < stepsToTrip[joint])
+            return std::nullopt;
+        return error.Value();
+    }
+
+    void SafetySupervisorImpl::SuperviseHold(const JointPositions& held)
+    {
+        for (std::size_t joint = 0; joint != jointCount; ++joint)
+        {
+            if (Stale(bus.Reading(joint), bus.Period()))
+                continue;
+
+            if (const auto error = TrackingErrorHeld(joint, held[joint]); error.has_value())
+            {
+                const auto value = *error;
+                Trip();
+                stepsOutside.fill(0);
+                NotifyObservers([joint, value](auto& observer)
+                    {
+                        observer.OnSupervisionTrip(joint, SupervisionTrip::holdLost, value);
+                    });
+                return;
+            }
+        }
     }
 
     bool SafetySupervisorImpl::SuperviseCollision(const JointTorques& externalTorques)
@@ -260,25 +307,26 @@ namespace arm
         for (std::size_t joint = 0; joint != jointCount; ++joint)
             if (collision[joint].Value() < math::Abs(externalTorques[joint].Value()))
             {
-                TripOnSupervision(joint, SupervisionTrip::collision, externalTorques[joint].Value());
+                Protect(joint, SupervisionTrip::collision, externalTorques[joint].Value());
                 return false;
             }
 
         return true;
     }
 
-    void SafetySupervisorImpl::TripOnSupervision(std::size_t joint, SupervisionTrip cause, float value)
+    void SafetySupervisorImpl::Protect(std::size_t joint, SupervisionTrip cause, float value)
     {
-        Trip();
+        holding = true;
         stepsOutside.fill(0);
         NotifyObservers([joint, cause, value](auto& observer)
             {
-                observer.OnSupervisionTrip(joint, cause, value);
+                observer.OnProtectiveStop(joint, cause, value);
             });
     }
 
     void SafetySupervisorImpl::Trip()
     {
+        holding = false;
         if (tripped)
             return;
 

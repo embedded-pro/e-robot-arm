@@ -179,6 +179,38 @@ TEST_F(SimulatorPresenterTest, a_trip_names_its_source_in_the_status_and_in_the_
     EXPECT_EQ("Re-arm after the trip by Joint 3 (Overcurrent)?", prompt);
 }
 
+TEST_F(SimulatorPresenterTest, a_protective_stop_shows_holding_with_its_rule_and_asks_before_rearm_and_disable)
+{
+    auto holding = simulator::test::Running();
+    holding.holding = true;
+    holding.state = arm::ArmState::holding;
+    const std::array events{ arm_host::ArmEvent{ .kind = ArmEventKind::protectiveStop, .reason = "collision 12.0 N·m", .joint = 1 } };
+    presenter.Refresh(holding, events);
+
+    std::string rearmPrompt;
+    presenter.SetRearmPrompt([&rearmPrompt](std::string_view text)
+        {
+            rearmPrompt = text;
+        });
+    std::string disablePrompt;
+    presenter.SetDisablePrompt([&disablePrompt](std::string_view text)
+        {
+            disablePrompt = text;
+        });
+    Trigger(OperateAction::rearm);
+    Trigger(OperateAction::disable);
+
+    EXPECT_EQ("Holding — Joint 2 (collision 12.0 N·m): re-arm or disable", presenter.Status().trip);
+    EXPECT_EQ(ui::theme::StatusLevel::Warning, presenter.Status().tripLevel);
+    EXPECT_EQ("Re-arm after the protective stop by Joint 2 (collision 12.0 N·m)? The arm resumes from the held pose.", rearmPrompt);
+    EXPECT_EQ("The arm holds its pose after the protective stop by Joint 2 (collision 12.0 N·m). Disabling stops the joints: an arm without brakes falls. "
+              "Disable?",
+        disablePrompt);
+
+    EXPECT_CALL(arm, Post(Holds(arm_host::Disable{}))).WillOnce(Return(7));
+    presenter.ConfirmDisable();
+}
+
 TEST_F(SimulatorPresenterTest, a_supervision_trip_names_its_reason_as_its_source)
 {
     auto tripped = simulator::test::Running();

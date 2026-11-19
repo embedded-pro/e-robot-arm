@@ -11,6 +11,8 @@ namespace arm
     void ArmControllerEngagement::OnStateChanged(ArmState state)
     {
         Follow(state);
+        if (state == ArmState::holding && controllers.Streaming())
+            controllers.Hold();
     }
 
     void ArmControllerEngagement::OnActiveControllerChanged(std::optional<ArmControllerId> active)
@@ -21,7 +23,7 @@ namespace arm
 
     bool ArmControllerEngagement::Streams(ArmState state)
     {
-        return state == ArmState::enabled || state == ArmState::moving;
+        return state == ArmState::enabled || state == ArmState::moving || state == ArmState::holding;
     }
 
     void ArmControllerEngagement::Follow(ArmState state)

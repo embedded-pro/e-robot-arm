@@ -75,6 +75,7 @@ namespace simulator
         QDockWidget* ConfigurationDock(const QString& title, const QString& name, ConfigurationPanel* panel, QDockWidget* tabbedWith);
         void ChooseTarget(int choice);
         void ConfirmRearm(std::string_view prompt);
+        void ConfirmDisable(std::string_view prompt);
         void SaveLog();
         void OpenProfile();
         void SaveProfile();

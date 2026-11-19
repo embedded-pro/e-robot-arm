@@ -2,9 +2,9 @@
 title: "Simulator Design"
 type: design
 status: draft
-version: 0.17.0
+version: 0.18.0
 component: "simulator"
-date: 2026-11-18
+date: 2026-11-19
 ---
 
 | Field     | Value            |
@@ -12,9 +12,9 @@ date: 2026-11-18
 | Title     | Simulator Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.17.0           |
+| Version   | 0.18.0           |
 | Component | simulator        |
-| Date      | 2026-11-18       |
+| Date      | 2026-11-19       |
 
 > The e-robot-arm Simulator's components, threads, targets and data flow (phase 8a,
 > [#28](https://github.com/embedded-pro/e-robot-arm/issues/28)). The screen itself — layout, controls, flows,
@@ -217,7 +217,8 @@ The snapshot is what the screen shows; events are what the log shows; traces are
   code) and the working directory, also while the target connects. While the arm drives its joints it carries the
   external torque the collision observer estimates on each joint ([collision.md](collision.md)), and none otherwise.
 - **Events** — command accepted or refused (with its id, its name and the reason), contracts resolved, joint fault,
-  joint silent, tripped (with the joint and the fault that caused it, once per trip), move done, move aborted, target
+  joint silent, tripped (with the joint and the fault that caused it, once per trip), protective stop (with the joint
+  and the rule, as "collision 12.0 N·m"), move done, move aborted, target
   ready, target failed, lifecycle state changed; each with the arm-thread time. The snapshot carries the lifecycle
   state as well.
 - **Trace samples** — one per control period: the time, the six commanded positions, the six measured positions and,
@@ -288,6 +289,7 @@ empty until the arm has been enabled); nothing else in `core/` changes for the s
 | Snapshot        | joint liveness        | 6 × answered, silent                | —                     | From the joint bus                                      |
 | Snapshot        | contracts             | unchecked, compatible, incompatible | —                     | Per joint                                               |
 | Snapshot        | tripped, moving, loop | bool                                | —                     |                                                         |
+| Snapshot        | holding               | bool                                | —                     | A protective stop holds the arm (safety.md Part G)      |
 | Snapshot        | profile               | name and arm configuration          | —                     | The profile loaded, never the commissioning copy        |
 | Snapshot        | commissioning         | bool                                | —                     | Real arm only; on at every connection                   |
 | Snapshot        | tool pose             | m, rad; singularity flags           | —                     | From the measured joints ([arm-model.md](arm-model.md)) |

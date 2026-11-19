@@ -3,9 +3,9 @@ Feature: The arm on six e-foc virtual motors
   The arm runs on six e-foc virtual motors, one per joint, each through a 50:1 gear and each carrying the load the
   arm's links put on its shaft. The motors run the e-foc firmware against a motor model in real time, in torque mode:
   the arm closes position with gravity-pd on the host, and supervises each joint's tracking error, so a joint that
-  lags its reference by more than 0.1 rad for 0.1 s trips the arm. A momentum observer estimates the external torque on
+  lags its reference by more than 0.1 rad for 0.1 s stops the arm. A momentum observer estimates the external torque on
   each joint, and one above the joint's collision limit, 10 N·m on the first three joints and 2 N·m on the wrist,
-  trips the arm. gravity-pd and computed-torque have no integral action, so the joints settle short of the target by
+  stops the arm. Both are protective stops: the joints stay powered and hold the pose the arm stopped at. gravity-pd and computed-torque have no integral action, so the joints settle short of the target by
   the drives' Coulomb friction over their stiffness; gravity-pid integrates it away.
 
   Background:
@@ -38,11 +38,12 @@ Feature: The arm on six e-foc virtual motors
     And a step test of 0.05 rad runs on joint 3
     Then the step shall rise within 0.15 s and overshoot by less than 75 %
 
-  @REQ-ARM-016
-  Scenario: A collision trips the arm on the external torque its momentum observer estimates
+  @REQ-ARM-016 @REQ-SAF-002
+  Scenario: A collision stops the arm protectively, and a push the hold cannot resist ends in an emergency stop
     When the arm moves the joints to 0.3, -0.5, 0.4, 0.2, 0.3, 0.1 rad
     And a collision pushes joint 2 with 30 N·m
-    Then within 300 ms the arm shall trip with joint 2 on a collision
+    Then within 300 ms the arm shall stop protectively with joint 2 on a collision
+    And within 2000 ms the arm shall trip on a lost hold
 
   @REQ-ARM-005
   Scenario: A motor that stops answering trips the arm

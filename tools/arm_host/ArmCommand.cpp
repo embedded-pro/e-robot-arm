@@ -22,8 +22,8 @@ namespace arm_host
 
     std::string_view StateName(arm::ArmState state)
     {
-        static constexpr std::array<std::string_view, 12> names{ "unpowered", "checking contracts", "contracts incompatible", "waiting for calibration",
-            "configuring motor controllers", "misconfigured", "ready", "enabling", "enabled", "moving", "disabling", "tripped" };
+        static constexpr std::array<std::string_view, 13> names{ "unpowered", "checking contracts", "contracts incompatible", "waiting for calibration",
+            "configuring motor controllers", "misconfigured", "ready", "enabling", "enabled", "moving", "disabling", "holding", "tripped" };
 
         return names[static_cast<std::size_t>(state)];
     }

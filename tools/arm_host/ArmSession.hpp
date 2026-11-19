@@ -44,6 +44,7 @@ namespace arm_host
             void OnJointFault(std::size_t joint, can::FocFaultCode fault) override;
             void OnJointSilent(std::size_t joint) override;
             void OnSupervisionTrip(std::size_t joint, arm::SupervisionTrip trip, float value) override;
+            void OnProtectiveStop(std::size_t joint, arm::SupervisionTrip trip, float value) override;
             void OnCommandDelivered(arm::JointCommand command) override;
             void OnCommandFailed(arm::JointCommand command, arm::CommandFailure failure) override;
             void OnMoveDone() override;
@@ -85,6 +86,8 @@ namespace arm_host
         void PublishDisturbances(ArmSnapshot& snapshot) const;
         std::string_view RefusalReason(const ArmCommand& command) const;
         std::string_view ArmControllerRefusal(arm::ArmControllerId id) const;
+        std::optional<std::string_view> MotionPermissionRefusal() const;
+        std::string_view MoveRefusal(const ArmCommand& command) const;
         void ReportTrip(std::size_t joint, can::FocFaultCode fault, std::string reason = {});
         void Emit(ArmEvent event);
         void Publish();

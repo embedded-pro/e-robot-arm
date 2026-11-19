@@ -45,6 +45,8 @@ namespace simulator
                     return { LogLevel::fault, Joint(event.joint) + " silent" };
                 case supervisionTrip:
                     return { LogLevel::fault, Joint(event.joint) + " " + Text(event.reason) };
+                case protectiveStop:
+                    return { LogLevel::warning, "Protective stop, holding: " + Joint(event.joint) + " " + Text(event.reason) };
                 case tripped:
                     return { LogLevel::fault, "Tripped by " + Joint(event.joint) };
                 case moveDone:

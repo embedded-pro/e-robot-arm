@@ -12,6 +12,15 @@ namespace arm_console
 {
     namespace
     {
+        std::string_view SafetyText(const arm_host::ArmSnapshot& snapshot)
+        {
+            if (snapshot.tripped)
+                return "tripped";
+            if (snapshot.holding)
+                return "holding";
+            return "armed";
+        }
+
         constexpr std::array<const char*, 7> stateNames{ "idle", "running", "fault", "calibrating", "partialCalibration", "ready", "stopping" };
         constexpr std::array<const char*, 14> faultNames{ "none", "overCurrent", "overVoltage", "underVoltage", "overTemperature", "sensorFault", "stall",
             "phaseMissing", "hardwareFault", "calibrationFailed", "overSpeed", "followingError", "commandTimeout", "positionLimit" };
@@ -285,7 +294,7 @@ namespace arm_console
                    << " rad/s, state " << Name(stateNames, reading.state) << ", fault " << Name(faultNames, reading.fault) << (reading.silent ? ", silent" : "") << "\n";
         }
         output << "arm: " << arm_host::StateName(snapshot.state) << "\n";
-        output << "safety: " << (snapshot.tripped ? "tripped" : "armed") << "\n";
+        output << "safety: " << SafetyText(snapshot) << "\n";
         output << "motion: " << (snapshot.moving ? "moving" : "idle") << "\n";
         output << "overruns: " << snapshot.overruns << "\n";
     }
@@ -397,6 +406,9 @@ namespace arm_console
                 break;
             case supervisionTrip:
                 output << "joint " << event.joint + 1 << " " << event.reason << "\n";
+                break;
+            case protectiveStop:
+                output << "protective stop, holding: joint " << event.joint + 1 << " " << event.reason << "\n";
                 break;
             case tripped:
                 output << "tripped by joint " << event.joint + 1 << "\n";

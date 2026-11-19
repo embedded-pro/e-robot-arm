@@ -239,7 +239,7 @@ namespace simulator
         scope->Add(trace);
         if (std::ranges::any_of(events, [](const arm_host::ArmEvent& event)
                 {
-                    return event.kind == arm_host::ArmEventKind::tripped;
+                    return event.kind == arm_host::ArmEventKind::tripped || event.kind == arm_host::ArmEventKind::protectiveStop;
                 }))
             scope->TriggerOnTrip();
         scope->Repaint();
@@ -568,6 +568,10 @@ namespace simulator
             {
                 ConfirmRearm(prompt);
             });
+        presenter.SetDisablePrompt([this](std::string_view prompt)
+            {
+                ConfirmDisable(prompt);
+            });
     }
 
     void SimulatorWindow::ChooseTarget(int choice)
@@ -633,6 +637,16 @@ namespace simulator
         confirm.exec();
         if (confirm.clickedButton() == rearmButton)
             presenter.ConfirmRearm();
+    }
+
+    void SimulatorWindow::ConfirmDisable(std::string_view prompt)
+    {
+        QMessageBox confirm{ QMessageBox::Warning, "Disable While Holding", ui::backend::qt::ToQt(prompt), QMessageBox::NoButton, this };
+        auto* disableButton = confirm.addButton("Disable", QMessageBox::DestructiveRole);
+        confirm.setDefaultButton(confirm.addButton(QMessageBox::Cancel));
+        confirm.exec();
+        if (confirm.clickedButton() == disableButton)
+            presenter.ConfirmDisable();
     }
 
     void SimulatorWindow::SaveLog()

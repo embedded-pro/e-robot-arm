@@ -34,6 +34,7 @@ namespace arm
         uint32_t Period() const override;
 
         bool Tripped() const override;
+        bool Holding() const override;
         bool Rearm() override;
         void Supervise(const std::optional<JointPositions>& reference, const std::optional<JointTorques>& externalTorques) override;
 
@@ -47,11 +48,14 @@ namespace arm
         void OnParameter(std::size_t joint, can::FocParameter parameter, can::FocParameterValue value) override;
 
         bool MayCommandMotion() const;
+        bool MayStream() const;
         bool AnyJointFaulted() const;
         void Trip();
         bool SuperviseJoint(std::size_t joint, foc::Radians reference);
         bool SuperviseCollision(const JointTorques& externalTorques);
-        void TripOnSupervision(std::size_t joint, SupervisionTrip cause, float value);
+        void SuperviseHold(const JointPositions& held);
+        std::optional<float> TrackingErrorHeld(std::size_t joint, foc::Radians reference);
+        void Protect(std::size_t joint, SupervisionTrip cause, float value);
 
         JointBus& bus;
         JointLimits limits;
@@ -60,6 +64,7 @@ namespace arm
         std::array<uint32_t, jointCount> stepsToTrip{};
         std::array<uint32_t, jointCount> stepsOutside{};
         bool tripped{ false };
+        bool holding{ false };
     };
 }
 
