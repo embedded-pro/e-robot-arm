@@ -2,7 +2,7 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.31.0
+version: 0.32.0
 component: "tool-simulator"
 date: 2026-11-19
 ---
@@ -12,7 +12,7 @@ date: 2026-11-19
 | Title     | Simulator Screen Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.31.0                  |
+| Version   | 0.32.0                  |
 | Component | tool-simulator          |
 | Date      | 2026-11-19              |
 
@@ -365,6 +365,7 @@ loaded, so the file stays the single description of the arm.
 | Menu item            | Shortcut     | Enabled when      | Does                                                         |
 |----------------------|--------------|-------------------|--------------------------------------------------------------|
 | File → Open Profile… | Ctrl+O       | A target is built | Reads a profile file and loads it into the arm host          |
+| File → Open Recent   | —            | A target is built | The five profiles last opened or saved, newest first         |
 | File → Save Profile… | Ctrl+Shift+S | A target is built | Writes the profile in effect, under the name and path chosen |
 
 **Open** reads the file first. A file that cannot be read or that the profile reader refuses shows one dialog with
@@ -375,6 +376,13 @@ while the arm is enabling, enabled, moving or disabling, with that reason in the
 otherwise the arm starts again unpowered and Bring Up configures the motor controllers the profile names. The Move
 form's ranges follow the loaded limits. The path of the last profile opened or saved is kept and the profile is
 loaded again on launch.
+
+**Open Recent** lists the five profiles last opened or saved, newest first, each by its file name with the full
+path as its tooltip; opening or saving one moves it to the top, and a path appears once. A file that no longer
+exists stays in the list, disabled, with "File not found" as its tooltip, until a newer one pushes it out, and
+**Clear Recent** empties the list. The window title names the profile in effect after the product and before the
+target: **e-robot-arm Simulator — `<profile>` — `<target>`**. The simulator never edits a profile, so there is no
+plain Save and no modified mark: what it shows is always the file as loaded.
 
 ### Part J — Motor panel (phase 8b)
 

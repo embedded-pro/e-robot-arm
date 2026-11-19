@@ -43,6 +43,8 @@ target_sources(e_robot_arm.tool.simulator.view_models PRIVATE
     MotorPresenter.hpp
     ProfileView.cpp
     ProfileView.hpp
+    RecentProfiles.cpp
+    RecentProfiles.hpp
     SimulatorPresenter.cpp
     SimulatorPresenter.hpp
     ToolReadout.cpp

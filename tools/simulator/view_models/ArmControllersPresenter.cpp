@@ -26,9 +26,16 @@ namespace simulator
             return std::format("ω {:.1f} rad/s, ζ {:.2f}", tuning->bandwidth, tuning->dampingRatio);
         }
 
+        const char* StateText(const arm_host::ArmControllerStatus& controller)
+        {
+            if (controller.active)
+                return "Active";
+            return controller.enabled ? "Enabled" : "Disabled";
+        }
+
         ArmControllerRow RowOf(const arm_host::ArmControllerStatus& controller, const arm::ArmConfig& config)
         {
-            const auto* state = controller.active ? "Active" : (controller.enabled ? "Enabled" : "Disabled");
+            const auto* state = StateText(controller);
             const auto level = controller.active ? ui::theme::StatusLevel::Ok : ui::theme::StatusLevel::Neutral;
             return ArmControllerRow{ controller.name, state, level, Parameters(config, controller.name), controller.enabled };
         }
@@ -151,7 +158,7 @@ namespace simulator
         return Refused("Unknown action");
     }
 
-    void ArmControllersPresenter::Post(const arm_host::ArmCommand& command)
+    void ArmControllersPresenter::Post(const arm_host::ArmCommand& command) const
     {
         if (post)
             post(command);
