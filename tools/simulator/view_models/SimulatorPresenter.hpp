@@ -82,6 +82,7 @@ namespace simulator
         bool Commissioning() const;
         void Note(LogLevel level, std::size_t joint, std::string message);
         void ConfirmRearm();
+        void ConfirmDisable();
         bool InjectFault(std::size_t joint);
         bool SilenceJoint(std::size_t joint);
         bool RestartMotor(std::size_t joint);
@@ -99,6 +100,7 @@ namespace simulator
         const std::string& MoveHint() const;
         ui::model::FormModel& MoveForm();
         void SetRearmPrompt(const ui::Callback<void(std::string_view prompt)>& prompt);
+        void SetDisablePrompt(const ui::Callback<void(std::string_view prompt)>& prompt);
 
     private:
         struct Forms
@@ -122,6 +124,7 @@ namespace simulator
         static std::string_view TripCause(const arm_host::ArmEvent& event);
         void UpdateControls();
         void UpdateStatus();
+        void UpdateStop(std::string_view tripSource);
         void TrackSequence();
         void FollowLimits();
         std::string TargetProblem() const;
@@ -141,10 +144,12 @@ namespace simulator
         ArmSceneModel scene;
         EventLog log;
         std::string tripSource;
+        std::string holdSource;
         std::string operateHint;
         std::string moveHint;
         std::map<uint32_t, std::string> pending;
         ui::Callback<void(std::string_view prompt)> rearmPrompt;
+        ui::Callback<void(std::string_view prompt)> disablePrompt;
         uint64_t lastSequence{ 0 };
         std::size_t unchangedFrames{ 0 };
     };

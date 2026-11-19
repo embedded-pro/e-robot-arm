@@ -41,6 +41,7 @@ namespace arm_host
         std::optional<arm::JointPositions> commanded{};
         can::ContractCompatibility contracts{ can::ContractCompatibility::unknown };
         bool tripped{ false };
+        bool holding{ false };
         bool moving{ false };
         arm::ArmState state{ arm::ArmState::unpowered };
         std::optional<arm::Misconfiguration> misconfiguration{};

@@ -92,7 +92,8 @@ namespace arm
     {
         positionLimit,
         trackingError,
-        collision
+        collision,
+        holdLost
     };
 
     class JointBusObserver
@@ -114,6 +115,9 @@ namespace arm
         {}
 
         virtual void OnSupervisionTrip(std::size_t, SupervisionTrip, float)
+        {}
+
+        virtual void OnProtectiveStop(std::size_t, SupervisionTrip, float)
         {}
 
     protected:

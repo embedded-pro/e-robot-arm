@@ -75,7 +75,20 @@ TEST_F(ControlRulesTest, a_trip_blocks_motion_and_allows_rearm_once_no_joint_is_
 
     tripped.readings[2].state = can::FocMotorState::ready;
     ExpectEnabled(Control::rearm, tripped);
-    ExpectDisabled(Control::rearm, simulator::test::Running(), "Not tripped");
+    ExpectDisabled(Control::rearm, simulator::test::Running(), "Not tripped or holding");
+}
+
+TEST_F(ControlRulesTest, holding_blocks_motion_and_allows_rearm_and_disable)
+{
+    auto holding = simulator::test::Running();
+    holding.holding = true;
+    holding.state = arm::ArmState::holding;
+
+    ExpectDisabled(Control::move, holding, "Holding: re-arm first");
+    ExpectDisabled(Control::enable, holding, "Holding: re-arm first");
+    ExpectEnabled(Control::rearm, holding);
+    ExpectEnabled(Control::disable, holding);
+    ExpectEnabled(Control::emergencyStop, holding);
 }
 
 TEST_F(ControlRulesTest, move_needs_an_enabled_arm_and_valid_targets)

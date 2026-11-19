@@ -39,6 +39,11 @@ namespace arm_host
                    std::holds_alternative<PowerOffMotor>(command) || std::holds_alternative<RestartMotor>(command);
         }
 
+        bool Stopped(arm::ArmState state)
+        {
+            return state == arm::ArmState::tripped || state == arm::ArmState::holding;
+        }
+
         bool LifecycleCommand(const ArmCommand& command)
         {
             return std::holds_alternative<BringUp>(command) || std::holds_alternative<Enable>(command) || std::holds_alternative<Disable>(command);
@@ -69,6 +74,8 @@ namespace arm_host
                     return std::format("tracking error {:.3f} rad", value);
                 case arm::SupervisionTrip::collision:
                     return std::format("collision {:.1f} N·m", value);
+                case arm::SupervisionTrip::holdLost:
+                    return std::format("hold lost: {:.3f} rad from the held pose", value);
                 case arm::SupervisionTrip::positionLimit:
                     break;
             }
@@ -427,7 +434,7 @@ namespace arm_host
         if (const auto id = ArmControllerOf(command); id.has_value())
             return ArmControllerRefusal(*id);
         if (std::holds_alternative<Rearm>(command))
-            return arm.Lifecycle().State() == arm::ArmState::tripped ? "a joint is in fault" : "not tripped";
+            return Stopped(arm.Lifecycle().State()) ? "a joint is in fault" : "not tripped or holding";
         if (LifecycleCommand(command))
             return StateName(arm.Lifecycle().State());
         if (std::holds_alternative<ApplyController>(command) || std::holds_alternative<ReadController>(command) || std::holds_alternative<ApplyMotor>(command) ||
@@ -435,9 +442,13 @@ namespace arm_host
             return arm.Configurator().Busy() ? "busy" : "the arm is not ready";
         if (NeedsMotionPermission(command) && arm.Safety().Tripped())
             return "tripped";
+        if (NeedsMotionPermission(command) && arm.Safety().Holding())
+            return "holding after a protective stop: re-arm first";
         if (NeedsMotionPermission(command) && arm.Safety().Contracts() != can::ContractCompatibility::compatible)
             return "contracts not compatible";
         const bool motion = std::holds_alternative<MoveTo>(command) || std::holds_alternative<StepTo>(command);
+        if (motion && arm.Lifecycle().State() == arm::ArmState::holding)
+            return "holding after a protective stop: re-arm first";
         if (motion && arm.Lifecycle().State() != arm::ArmState::enabled)
             return Moving() ? "moving" : "the arm is not enabled";
         if (std::holds_alternative<MoveTo>(command))
@@ -490,6 +501,11 @@ namespace arm_host
         auto reason = SupervisionReason(trip, value);
         session.Emit({ .kind = ArmEventKind::supervisionTrip, .reason = reason, .joint = joint });
         session.ReportTrip(joint, can::FocFaultCode::none, std::move(reason));
+    }
+
+    void ArmSession::Events::OnProtectiveStop(std::size_t joint, arm::SupervisionTrip trip, float value)
+    {
+        session.Emit({ .kind = ArmEventKind::protectiveStop, .reason = SupervisionReason(trip, value), .joint = joint });
     }
 
     void ArmSession::Events::OnCommandDelivered(arm::JointCommand command)
@@ -610,6 +626,7 @@ namespace arm_host
             sample.torques = setpoints->torques;
         snapshot.contracts = safety.Contracts();
         snapshot.tripped = safety.Tripped();
+        snapshot.holding = safety.Holding();
         snapshot.moving = arm.Motion().Moving();
         snapshot.state = arm.Lifecycle().State();
         snapshot.misconfiguration = arm.Lifecycle().MisconfiguredJoint();

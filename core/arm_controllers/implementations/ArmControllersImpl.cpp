@@ -83,11 +83,16 @@ namespace arm
 
     void ArmControllersImpl::Engage()
     {
+        Hold();
+        streaming = true;
+    }
+
+    void ArmControllersImpl::Hold()
+    {
         const auto measured = Measured();
         heldReference = AtRest(measured.positions);
         if (active.has_value())
             entries[*active].controller->Reset(measured);
-        streaming = true;
     }
 
     void ArmControllersImpl::Disengage()

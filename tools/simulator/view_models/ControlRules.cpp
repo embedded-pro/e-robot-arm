@@ -50,6 +50,8 @@ namespace simulator
                 return "Contracts incompatible";
             if (snapshot.tripped)
                 return "Tripped";
+            if (snapshot.holding)
+                return "Holding: re-arm first";
             return std::nullopt;
         }
 
@@ -65,6 +67,8 @@ namespace simulator
                 return Disabled("Not connected");
             if (snapshot.state == tripped)
                 return Disabled("Tripped");
+            if (snapshot.state == holding)
+                return Disabled("Holding: re-arm first");
             if (snapshot.moving || snapshot.state == moving)
                 return Disabled("Moving");
             if (snapshot.state != enabled)
@@ -89,6 +93,8 @@ namespace simulator
                     return Disabled("Checking contracts");
                 case tripped:
                     return Disabled("Tripped: re-arm first");
+                case holding:
+                    return Disabled("Holding: re-arm first");
                 default:
                     return Disabled("Already brought up");
             }
@@ -120,6 +126,8 @@ namespace simulator
                     return Disabled("Disabling");
                 case tripped:
                     return Disabled("Tripped");
+                case holding:
+                    return Disabled("Holding: re-arm first");
                 default:
                     return Disabled("Already enabled");
             }
@@ -127,7 +135,7 @@ namespace simulator
 
         ControlState Disable(const arm_host::ArmSnapshot& snapshot)
         {
-            if (snapshot.state == arm::ArmState::enabled)
+            if (snapshot.state == arm::ArmState::enabled || snapshot.state == arm::ArmState::holding)
                 return Enabled();
             if (snapshot.state == arm::ArmState::moving)
                 return Disabled("Moving: abort first");
@@ -139,15 +147,16 @@ namespace simulator
             if (snapshot.target.kind != arm_host::TargetKind::real)
                 return Disabled("Not the real arm");
             const auto state = snapshot.state;
-            if (state == arm::ArmState::enabling || state == arm::ArmState::enabled || state == arm::ArmState::moving || state == arm::ArmState::disabling)
+            if (state == arm::ArmState::enabling || state == arm::ArmState::enabled || state == arm::ArmState::moving || state == arm::ArmState::disabling ||
+                state == arm::ArmState::holding)
                 return Disabled("Disable the arm first");
             return Enabled();
         }
 
         ControlState Rearm(const arm_host::ArmSnapshot& snapshot)
         {
-            if (snapshot.state != arm::ArmState::tripped)
-                return Disabled("Not tripped");
+            if (snapshot.state != arm::ArmState::tripped && snapshot.state != arm::ArmState::holding)
+                return Disabled("Not tripped or holding");
             if (const auto joint = FirstJoint(snapshot, Faulted); joint.has_value())
                 return Disabled(JointText(*joint, "in fault: clear it first"));
             return Enabled();

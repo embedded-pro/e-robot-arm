@@ -44,6 +44,7 @@ namespace arm_host
             void OnJointFault(std::size_t joint, can::FocFaultCode fault) override;
             void OnJointSilent(std::size_t joint) override;
             void OnSupervisionTrip(std::size_t joint, arm::SupervisionTrip trip, float value) override;
+            void OnProtectiveStop(std::size_t joint, arm::SupervisionTrip trip, float value) override;
             void OnCommandDelivered(arm::JointCommand command) override;
             void OnCommandFailed(arm::JointCommand command, arm::CommandFailure failure) override;
             void OnMoveDone() override;

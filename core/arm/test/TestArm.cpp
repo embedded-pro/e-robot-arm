@@ -244,3 +244,21 @@ TEST_F(ArmTest, the_collision_observer_waits_until_every_joint_has_reported_agai
 
     EXPECT_NE(held[1].Value(), (*arm.EstimatedExternalTorques())[1].Value());
 }
+
+TEST_F(ArmTest, a_supervision_rule_holds_the_measured_pose_and_keeps_the_joints_powered)
+{
+    EnableArm();
+    for (const auto node : nodes)
+        Receive(node, can::focTelemetryMotionId, services::CanPayloadWriter{}.WriteFloat32(0.0f).WriteFloat32(node == nodes[0] ? 3.5f : 0.0f));
+    ForwardTime(10ms);
+
+    EXPECT_EQ(arm::ArmState::holding, arm.Lifecycle().State());
+    EXPECT_TRUE(arm.Safety().Holding());
+    EXPECT_EQ(0u, SentOf(can::focEmergencyStopId));
+
+    const auto streamed = SentOf(can::SetpointCommandId(can::FocSetpointKind::torqueNewtonMeter));
+    ForwardTime(10ms);
+    EXPECT_EQ(streamed + arm::jointCount, SentOf(can::SetpointCommandId(can::FocSetpointKind::torqueNewtonMeter)));
+    ASSERT_TRUE(arm.Controllers().Reference().has_value());
+    EXPECT_NEAR(3.5f, (*arm.Controllers().Reference())[0].Value(), 1e-5f);
+}

@@ -2,9 +2,9 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.24.0
+version: 0.25.0
 component: "tool-simulator"
-date: 2026-11-18
+date: 2026-11-19
 ---
 
 | Field     | Value                   |
@@ -12,9 +12,9 @@ date: 2026-11-18
 | Title     | Simulator Screen Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.24.0                  |
+| Version   | 0.25.0                  |
 | Component | tool-simulator          |
-| Date      | 2026-11-18              |
+| Date      | 2026-11-19              |
 
 > What the e-robot-arm Simulator shows, what each control does and when, and how it looks (phase 8a,
 > [#28](https://github.com/embedded-pro/e-robot-arm/issues/28)). Components and threads are in
@@ -113,7 +113,7 @@ the target is built and at least one joint has answered. Joints are numbered 1�
 | Enable               | The arm is Ready                                                                 | "Bring the arm up first", "Checking contracts", "Waiting for calibration", "Configuring motor controllers", "Misconfigured: bring the arm up again", "Enabling", "Already enabled", "Disabling", "Tripped" | Lifecycle: select torque mode, start the joints                          |
 | Disable              | The arm is Enabled                                                               | "Moving: abort first", "Not enabled"                                                                                                                                                                       | Lifecycle: stop the joints                                               |
 | Clear Faults         | Any joint in fault                                                               | "No joint in fault"                                                                                                                                                                                        | Clear faults on all joints                                               |
-| Re-arm…              | The arm is Tripped, no joint in fault                                            | "Not tripped", "Joint N in fault: clear it first"                                                                                                                                                          | Confirmation naming the trip's source, then re-arm through the lifecycle |
+| Re-arm…              | The arm is Tripped or Holding, no joint in fault                                 | "Not tripped or holding", "Joint N in fault: clear it first"                                                                                                                                               | Confirmation naming the trip's source, then re-arm through the lifecycle |
 | Move target J1–6     | Always editable                                                                  | —                                                                                                                                                                                                          | Validated as typed against the joint limits                              |
 | Move                 | The arm is Enabled, all targets valid                                            | "Not connected", "Tripped", "Moving", "Enable the arm first", "J N outside limits"                                                                                                                         | Move to the six targets through the lifecycle                            |
 | Abort                | A move running                                                                   | "No move running"                                                                                                                                                                                          | Abort the move                                                           |
@@ -157,6 +157,14 @@ the joint, the log records it, and the scope triggers. Clear Faults, then Re-arm
 source. Re-arm returns the arm to Waiting for calibration, then (configuring the joints again) Ready; Enable starts it
 again.
 
+**Protective stop and recover.** A supervision rule ([safety.md](safety.md) Parts F and G) does not trip the arm: the
+joints stay powered and hold the pose the arm had when it stopped. The stage reads **Holding** and the status strip
+**Holding — `<source>`: re-arm or disable** in `Warning`, for example **Joint 2 (collision 12.0 N·m)**; the log records
+it and the scope triggers. Moves, Enable and Bring Up are disabled with "Holding: re-arm first". Re-arm… asks "Re-arm
+after the protective stop by `<source>`? The arm resumes from the held pose." and returns the arm to Enabled. Disable is
+offered too, behind a warning: "Disabling stops the joints: an arm without brakes falls", with Cancel the default. A
+hold that drifts out of its tracking window becomes a trip ("hold lost").
+
 **Inject a failure** (simulated joints and virtual arm only). The Disturbances dock (Part M), or **Simulation →
 Inject Fault → Joint N** and **Silence Joint N**.
 
@@ -195,26 +203,26 @@ camera are ui-cpp's `StudioView` with its defaults and the theme's colours:
   arm generated by the mesh kit from the OPW lengths, with a size unit $R$ of 15 % of the longer of c2 and c3,
   between 1.5 and 8 cm:
 
-  | Link           | Generated parts, in the link's frame                                                   |
-  |----------------|----------------------------------------------------------------------------------------|
-  | Base (fixed)   | Chamfered foot plate Ø 4.6R with six bolts, turned aluminium column to a quarter of c1 |
-  | 1, turret      | Turntable ring, column, yoke and two fork plates up to J2; J2 gearbox and motor        |
-  | 2, upper arm   | Hub on J2, two stadium plates over c2 with steel standoffs; J3 gearbox and motor       |
-  | 3, forearm     | Hub on J3, rounded aluminium tube over a2 and c3 to the wrist; J4 motor along the tube |
-  | 4, wrist roll  | Roll housing, accent ring, fork plates around J5; J5 gearbox and motor                 |
-  | 5, wrist pitch | Hub on J5 and a block towards the flange                                               |
-  | 6, flange      | Collar and a steel tool flange at c4 with four bolts                                   |
+| Link           | Generated parts, in the link's frame                                                   |
+|----------------|----------------------------------------------------------------------------------------|
+| Base (fixed)   | Chamfered foot plate Ø 4.6R with six bolts, turned aluminium column to a quarter of c1 |
+| 1, turret      | Turntable ring, column, yoke and two fork plates up to J2; J2 gearbox and motor        |
+| 2, upper arm   | Hub on J2, two stadium plates over c2 with steel standoffs; J3 gearbox and motor       |
+| 3, forearm     | Hub on J3, rounded aluminium tube over a2 and c3 to the wrist; J4 motor along the tube |
+| 4, wrist roll  | Roll housing, accent ring, fork plates around J5; J5 gearbox and motor                 |
+| 5, wrist pitch | Hub on J5 and a block towards the flange                                               |
+| 6, flange      | Collar and a steel tool flange at c4 with four bolts                                   |
 
   Each link is one mesh per finish, all physically based:
 
-  | Finish    | Colour        | Metalness | Roughness | Where                                       |
-  |-----------|---------------|-----------|-----------|---------------------------------------------|
-  | Aluminium | #f2f4f7       | 0.45      | 0.28      | Plates, tubes, columns                      |
-  | Anodised  | #8a96a5       | 0.5       | 0.4       | Gearboxes, housings, foot plate             |
-  | Motor     | #3a3f46       | 0.2       | 0.5       | Motor bodies                                |
-  | Steel     | #fafbfc       | 0.7       | 0.2       | Bolts, standoffs, motor end plates, flange  |
-  | Hub       | signal orange | 0.2       | 0.35      | Joint hubs and rings; carries the highlight |
-  | Rubber    | #4a4f56       | 0.0       | 0.75      | Motor caps                                  |
+| Finish    | Colour        | Metalness | Roughness | Where                                       |
+|-----------|---------------|-----------|-----------|---------------------------------------------|
+| Aluminium | #f2f4f7       | 0.45      | 0.28      | Plates, tubes, columns                      |
+| Anodised  | #8a96a5       | 0.5       | 0.4       | Gearboxes, housings, foot plate             |
+| Motor     | #3a3f46       | 0.2       | 0.5       | Motor bodies                                |
+| Steel     | #fafbfc       | 0.7       | 0.2       | Bolts, standoffs, motor end plates, flange  |
+| Hub       | signal orange | 0.2       | 0.35      | Joint hubs and rings; carries the highlight |
+| Rubber    | #4a4f56       | 0.0       | 0.75      | Motor caps                                  |
 
   The hubs are signal orange (#f28c28) whatever the theme's accent, so the joints stand out; the ghost keeps the
   theme's accent. In the dark theme the scene is a bright studio of its own, lighter than the panels around it: a
@@ -602,6 +610,7 @@ the screen keeps no state of its own. The lifecycle state decides which of its c
 | Enabling, Disabling                            | —                                                        |
 | Enabled                                        | Disable, Move                                            |
 | Moving                                         | Abort                                                    |
+| Holding                                        | Re-arm…, Disable (behind a warning)                      |
 | Tripped                                        | Clear Faults (a joint in fault), Re-arm… (none in fault) |
 
 The emergency stop is enabled in every state while a target is built.

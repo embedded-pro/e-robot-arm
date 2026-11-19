@@ -189,3 +189,19 @@ TEST_F(ArmControllersImplTest, a_set_the_supervisor_refuses_stops_the_streaming)
     EXPECT_FALSE(controllers.Streaming());
     EXPECT_FALSE(controllers.LastSetpoints().has_value());
 }
+
+TEST_F(ArmControllersImplTest, holding_tracks_the_measured_pose_at_rest_from_a_reset_controller)
+{
+    EngageStateless();
+    EXPECT_CALL(stateless, Step(_, arm::AtRest(Uniform(1.0f)))).WillOnce(Return(arm::JointSetpoints{ Uniform(1.0f), Torques(0.9f) }));
+    EXPECT_CALL(bus, SendTorques(Torques(0.9f))).WillOnce(Return(true));
+    EXPECT_TRUE(controllers.Step(arm::AtRest(Uniform(1.0f))));
+
+    EXPECT_CALL(stateless, Reset(MeasuredAt(Uniform(0.25f))));
+    controllers.Hold();
+
+    EXPECT_CALL(stateless, Step(_, arm::AtRest(Uniform(0.25f)))).WillOnce(Return(arm::JointSetpoints{ Uniform(0.25f), Torques(0.1f) }));
+    EXPECT_CALL(bus, SendTorques(Torques(0.1f))).WillOnce(Return(true));
+    EXPECT_TRUE(controllers.Step(std::nullopt));
+    EXPECT_EQ(std::optional<arm::JointPositions>{ Uniform(0.25f) }, controllers.Reference());
+}

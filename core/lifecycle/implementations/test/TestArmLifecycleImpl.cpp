@@ -69,6 +69,14 @@ namespace
                 });
         }
 
+        void StopProtectively()
+        {
+            safety.NotifyObservers([](auto& joints)
+                {
+                    joints.OnProtectiveStop(1, arm::SupervisionTrip::collision, 12.0f);
+                });
+        }
+
         void FinishMove()
         {
             motion.NotifyObservers([](auto& moves)
@@ -316,19 +324,85 @@ TEST_F(ArmLifecycleImplTest, a_fault_trips_a_moving_arm_and_aborts_the_move)
     EXPECT_FALSE(lifecycle.BringUp());
 }
 
-TEST_F(ArmLifecycleImplTest, a_supervision_trip_trips_a_moving_arm_and_aborts_the_move)
+TEST_F(ArmLifecycleImplTest, a_lost_hold_trips_the_arm)
+{
+    BringToEnabled();
+    StopProtectively();
+
+    safety.NotifyObservers([](auto& joints)
+        {
+            joints.OnSupervisionTrip(1, arm::SupervisionTrip::holdLost, 0.3f);
+        });
+
+    EXPECT_EQ(ArmState::tripped, lifecycle.State());
+}
+
+TEST_F(ArmLifecycleImplTest, a_protective_stop_holds_a_moving_arm_aborts_the_move_and_refuses_another)
 {
     BringToEnabled();
     EXPECT_CALL(motion, MoveTo(_)).WillOnce(Return(true));
     EXPECT_TRUE(lifecycle.MoveTo(target));
 
     EXPECT_CALL(motion, Abort());
-    safety.NotifyObservers([](auto& joints)
-        {
-            joints.OnSupervisionTrip(1, arm::SupervisionTrip::trackingError, 0.3f);
-        });
+    StopProtectively();
+
+    EXPECT_EQ(ArmState::holding, lifecycle.State());
+    EXPECT_FALSE(lifecycle.MoveTo(target));
+    EXPECT_FALSE(lifecycle.StepTo(target));
+    EXPECT_FALSE(lifecycle.Enable());
+}
+
+TEST_F(ArmLifecycleImplTest, rearming_a_hold_returns_to_enabled_without_starting_the_joints_again)
+{
+    BringToEnabled();
+    StopProtectively();
+
+    EXPECT_CALL(safety, Rearm()).WillOnce(Return(false));
+    EXPECT_FALSE(lifecycle.Rearm());
+    EXPECT_EQ(ArmState::holding, lifecycle.State());
+
+    EXPECT_CALL(safety, Rearm()).WillOnce(Return(true));
+    EXPECT_TRUE(lifecycle.Rearm());
+    EXPECT_EQ(ArmState::enabled, lifecycle.State());
+}
+
+TEST_F(ArmLifecycleImplTest, disabling_a_held_arm_stops_the_joints)
+{
+    BringToEnabled();
+    StopProtectively();
+
+    EXPECT_CALL(safety, Stop()).WillOnce(Return(true));
+    EXPECT_TRUE(lifecycle.Disable());
+    EXPECT_EQ(ArmState::disabling, lifecycle.State());
+}
+
+TEST_F(ArmLifecycleImplTest, a_held_arm_whose_joint_stops_running_falls_back_to_ready)
+{
+    BringToEnabled();
+    StopProtectively();
+
+    Observe(can::FocMotorState::ready);
+
+    EXPECT_EQ(ArmState::ready, lifecycle.State());
+}
+
+TEST_F(ArmLifecycleImplTest, a_fault_while_holding_trips_the_arm)
+{
+    BringToEnabled();
+    StopProtectively();
+
+    FaultJoint(2);
 
     EXPECT_EQ(ArmState::tripped, lifecycle.State());
+}
+
+TEST_F(ArmLifecycleImplTest, a_protective_stop_outside_enabled_and_moving_changes_nothing)
+{
+    BringToReady();
+
+    StopProtectively();
+
+    EXPECT_EQ(ArmState::ready, lifecycle.State());
 }
 
 TEST_F(ArmLifecycleImplTest, rearm_needs_the_safety_supervisor_and_then_waits_for_calibration_again)

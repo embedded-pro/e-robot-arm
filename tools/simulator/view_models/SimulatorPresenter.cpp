@@ -126,10 +126,17 @@ namespace simulator
                     return { "Moving", StatusLevel::Ok };
                 case disabling:
                     return { "Disabling…", StatusLevel::Neutral };
+                case holding:
+                    return { "Holding", StatusLevel::Warning };
                 case tripped:
                     return { "Tripped", StatusLevel::Fault };
             }
             return { "Unknown", StatusLevel::Neutral };
+        }
+
+        std::string Source(const std::string& source)
+        {
+            return source.empty() ? std::string{ "an unknown source" } : source;
         }
 
         std::string ContractsText(can::ContractCompatibility contracts)
@@ -212,6 +219,11 @@ namespace simulator
     void SimulatorPresenter::ConfirmRearm()
     {
         Post(arm_host::Rearm{});
+    }
+
+    void SimulatorPresenter::ConfirmDisable()
+    {
+        Post(arm_host::Disable{});
     }
 
     bool SimulatorPresenter::InjectFault(std::size_t joint)
@@ -314,6 +326,11 @@ namespace simulator
         return forms.moveModel;
     }
 
+    void SimulatorPresenter::SetDisablePrompt(const ui::Callback<void(std::string_view prompt)>& prompt)
+    {
+        disablePrompt = prompt;
+    }
+
     void SimulatorPresenter::SetRearmPrompt(const ui::Callback<void(std::string_view prompt)>& prompt)
     {
         rearmPrompt = prompt;
@@ -325,12 +342,17 @@ namespace simulator
             Post(arm_host::BringUp{});
         else if (action == OperateAction::enable)
             Post(arm_host::Enable{});
+        else if (action == OperateAction::disable && snapshot.state == arm::ArmState::holding && disablePrompt)
+            disablePrompt(std::format("The arm holds its pose after the protective stop by {}. Disabling stops the joints: an arm without brakes falls. Disable?",
+                Source(holdSource)));
         else if (action == OperateAction::disable)
             Post(arm_host::Disable{});
         else if (action == OperateAction::clearFaults)
             Post(arm_host::ClearFaults{});
+        else if (action == OperateAction::rearm && rearmPrompt && snapshot.state == arm::ArmState::holding)
+            rearmPrompt(std::format("Re-arm after the protective stop by {}? The arm resumes from the held pose.", Source(holdSource)));
         else if (action == OperateAction::rearm && rearmPrompt)
-            rearmPrompt(std::format("Re-arm after the trip by {}?", tripSource.empty() ? std::string{ "an unknown source" } : tripSource));
+            rearmPrompt(std::format("Re-arm after the trip by {}?", Source(tripSource)));
     }
 
     void SimulatorPresenter::OnMoveAction(ui::model::ActionId action)
@@ -410,6 +432,8 @@ namespace simulator
 
         if (event.kind == arm_host::ArmEventKind::tripped)
             tripSource = std::format("Joint {} ({})", event.joint + 1, TripCause(event));
+        if (event.kind == arm_host::ArmEventKind::protectiveStop)
+            holdSource = std::format("Joint {} ({})", event.joint + 1, event.reason);
 
         using enum arm_host::ArmEventKind;
         const auto request = pending.find(event.command);
@@ -425,6 +449,25 @@ namespace simulator
         else
             shell.SetStatus(std::format("{} refused: {}", request->second, event.reason));
         pending.erase(request);
+    }
+
+    void SimulatorPresenter::UpdateStop(std::string_view source)
+    {
+        if (snapshot.tripped)
+        {
+            status.trip = std::format("Tripped — {}", source);
+            status.tripLevel = ui::theme::StatusLevel::Fault;
+        }
+        else if (snapshot.holding)
+        {
+            status.trip = std::format("Holding — {}: re-arm or disable", holdSource.empty() ? std::string_view{ "unknown source" } : std::string_view{ holdSource });
+            status.tripLevel = ui::theme::StatusLevel::Warning;
+        }
+        else
+        {
+            status.trip = "Trip: —";
+            status.tripLevel = ui::theme::StatusLevel::Neutral;
+        }
     }
 
     void SimulatorPresenter::UpdateStatus()
@@ -450,8 +493,7 @@ namespace simulator
         std::tie(status.stage, status.stageLevel) = Stage(snapshot);
         status.contracts = ContractsText(snapshot.contracts);
         const std::string_view source = tripSource.empty() ? std::string_view{ "unknown source" } : std::string_view{ tripSource };
-        status.trip = snapshot.tripped ? std::format("Tripped — {}", source) : std::string{ "Trip: —" };
-        status.tripLevel = snapshot.tripped ? ui::theme::StatusLevel::Fault : ui::theme::StatusLevel::Neutral;
+        UpdateStop(source);
         status.overruns = std::format("Overruns: {}", snapshot.overruns);
         status.overrunLevel = snapshot.overruns == 0 ? ui::theme::StatusLevel::Neutral : ui::theme::StatusLevel::Warning;
         status.limits.clear();

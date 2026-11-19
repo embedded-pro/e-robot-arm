@@ -153,6 +153,23 @@ namespace arm
                     return Tripped{};
                 }),
 
+            Machine::Row<Enabled, ProtectiveStop, Holding>(),
+            Machine::Row<Moving, ProtectiveStop, Holding>(nullptr, [](ArmLifecycleImpl& self, Moving&, const ProtectiveStop&)
+                {
+                    self.motion.Abort();
+                    return Holding{};
+                }),
+            Machine::Row<Holding, Rearmed, Enabled>(),
+            Machine::Row<Holding, lifecycle::Disable, Disabling>(nullptr, [](ArmLifecycleImpl& self, Holding&, const lifecycle::Disable&)
+                {
+                    self.StopJoints();
+                    return Disabling{};
+                }),
+            Machine::Row<Holding, Observed, Ready>([](ArmLifecycleImpl&, const Holding&, const Observed& event)
+                {
+                    return !event.allRunning;
+                }),
+
             Machine::InternalRow<Tripped, Trip>(),
             Machine::RowFromAny<Trip, Tripped>(nullptr, [](ArmLifecycleImpl& self, const lifecycle::State& from, const Trip&)
                 {
@@ -175,8 +192,9 @@ namespace arm
             .Allow<lifecycle::Misconfigured, Checking, lifecycle::Incompatible, Tripped>()
             .Allow<Ready, Enabled, WaitingForCalibration, Enabling, lifecycle::Incompatible, Tripped>()
             .Allow<Enabling, Ready, Enabled, Tripped>()
-            .Allow<Enabled, Ready, Moving, Disabling, Tripped>()
-            .Allow<Moving, Enabled, Ready, Tripped>()
+            .Allow<Enabled, Ready, Moving, Disabling, Holding, Tripped>()
+            .Allow<Moving, Enabled, Ready, Holding, Tripped>()
+            .Allow<Holding, Enabled, Disabling, Ready, Tripped>()
             .Allow<Disabling, Ready, Tripped>()
             .Allow<Tripped, WaitingForCalibration>();
     }
@@ -212,7 +230,7 @@ namespace arm
 
     bool ArmLifecycleImpl::Rearm()
     {
-        return fsm.Is<Tripped>() && safety.Rearm() && Accepted(Rearmed{});
+        return (fsm.Is<Tripped>() || fsm.Is<Holding>()) && safety.Rearm() && Accepted(Rearmed{});
     }
 
     bool ArmLifecycleImpl::MoveTo(const JointPositions& target)
@@ -260,6 +278,11 @@ namespace arm
     void ArmLifecycleImpl::OnSupervisionTrip(std::size_t, SupervisionTrip, float)
     {
         fsm.Dispatch(Trip{});
+    }
+
+    void ArmLifecycleImpl::OnProtectiveStop(std::size_t, SupervisionTrip, float)
+    {
+        fsm.Dispatch(ProtectiveStop{});
     }
 
     void ArmLifecycleImpl::OnCommandDelivered(JointCommand command)

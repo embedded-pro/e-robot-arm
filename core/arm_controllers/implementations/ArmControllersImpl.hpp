@@ -33,6 +33,7 @@ namespace arm
         bool Select(ArmControllerId id) override;
 
         void Engage();
+        void Hold();
         void Disengage();
         bool Streaming() const;
         bool Step(const std::optional<JointReference>& reference);
