@@ -237,7 +237,7 @@ sequenceDiagram
 
 ## Open Questions
 
-| #   | Question                                                          | Options                                                | Status                                                                                        |
-|-----|-------------------------------------------------------------------|--------------------------------------------------------|-----------------------------------------------------------------------------------------------|
-| 1   | Whether the arm should start calibration of an uncalibrated joint | Operator calibrates on the node, the arm commands it   | closed: the operator calibrates                                                               |
-| 2   | Whether the simulator drives the lifecycle                        | Lifecycle state and bring-up controls in the simulator | closed: the Operate group and status strip follow it ([tool-simulator.md](tool-simulator.md)) |
+| # | Question                                                          | Options                                                | Status                                                                                        |
+|---|-------------------------------------------------------------------|--------------------------------------------------------|-----------------------------------------------------------------------------------------------|
+| 1 | Whether the arm should start calibration of an uncalibrated joint | Operator calibrates on the node, the arm commands it   | closed: the operator calibrates                                                               |
+| 2 | Whether the simulator drives the lifecycle                        | Lifecycle state and bring-up controls in the simulator | closed: the Operate group and status strip follow it ([tool-simulator.md](tool-simulator.md)) |

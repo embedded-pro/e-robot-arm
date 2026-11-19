@@ -289,9 +289,9 @@ sequenceDiagram
 
 ## Open Questions
 
-| #   | Question                                | Options                                       | Status                                  |
-|-----|-----------------------------------------|-----------------------------------------------|-----------------------------------------|
-| 1   | File format                             | JSON, binary image                            | decided: JSON                           |
-| 2   | How a loaded profile reaches the joints | Lifecycle step, operator button               | decided: lifecycle step                 |
-| 3   | How a loaded profile changes the arm    | Rebuild the arm, profile at start only        | decided: rebuild while not enabled      |
-| 4   | Motor characteristics and limits        | Added to `motorController`, a `motor` section | decided: a `motor` section with presets |
+| # | Question                                | Options                                       | Status                                  |
+|---|-----------------------------------------|-----------------------------------------------|-----------------------------------------|
+| 1 | File format                             | JSON, binary image                            | decided: JSON                           |
+| 2 | How a loaded profile reaches the joints | Lifecycle step, operator button               | decided: lifecycle step                 |
+| 3 | How a loaded profile changes the arm    | Rebuild the arm, profile at start only        | decided: rebuild while not enabled      |
+| 4 | Motor characteristics and limits        | Added to `motorController`, a `motor` section | decided: a `motor` section with presets |

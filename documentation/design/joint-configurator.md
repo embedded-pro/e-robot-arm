@@ -212,7 +212,7 @@ sequenceDiagram
 
 ## Open Questions
 
-| #   | Question                                           | Options                                             | Status                        |
-|-----|----------------------------------------------------|-----------------------------------------------------|-------------------------------|
-| 1   | Whether to apply only the gains the algorithms use | All fourteen (simple, always verifiable), only used | decided: all fourteen         |
-| 2   | Motor characteristics and limits                   | The same configurator, a second one                 | decided: the same one, Part D |
+| # | Question                                           | Options                                             | Status                        |
+|---|----------------------------------------------------|-----------------------------------------------------|-------------------------------|
+| 1 | Whether to apply only the gains the algorithms use | All fourteen (simple, always verifiable), only used | decided: all fourteen         |
+| 2 | Motor characteristics and limits                   | The same configurator, a second one                 | decided: the same one, Part D |

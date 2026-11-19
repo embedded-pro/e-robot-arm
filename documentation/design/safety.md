@@ -335,8 +335,8 @@ sequenceDiagram
 
 ## Open Questions
 
-| #   | Question                                            | Options                                                                                  | Status                                            |
-|-----|-----------------------------------------------------|------------------------------------------------------------------------------------------|---------------------------------------------------|
-| 1   | How the hardware stop cuts power and how it is read | Relay or safe-torque-off; platform input or an e-foc node input over CAN                 | open: decided with the bring-up hardware (Part J) |
-| 2   | Keeping a torque-controlled joint within its limits | Decided: a measured position outside the limits stops the arm (Part F)                   | closed                                            |
-| 3   | Which stop each rule takes                          | Decided: faults, silence, hardware stop and a lost hold emergency-stop; the rest protect | closed                                            |
+| # | Question                                            | Options                                                                                  | Status                                            |
+|---|-----------------------------------------------------|------------------------------------------------------------------------------------------|---------------------------------------------------|
+| 1 | How the hardware stop cuts power and how it is read | Relay or safe-torque-off; platform input or an e-foc node input over CAN                 | open: decided with the bring-up hardware (Part J) |
+| 2 | Keeping a torque-controlled joint within its limits | Decided: a measured position outside the limits stops the arm (Part F)                   | closed                                            |
+| 3 | Which stop each rule takes                          | Decided: faults, silence, hardware stop and a lost hold emergency-stop; the rest protect | closed                                            |
