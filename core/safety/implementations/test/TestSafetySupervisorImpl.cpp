@@ -1,5 +1,6 @@
 #include "core/joint_bus/test_doubles/JointBusMock.hpp"
 #include "core/safety/implementations/SafetySupervisorImpl.hpp"
+#include "core/safety/test_doubles/HardwareStopMock.hpp"
 #include "core/safety/test_doubles/PoseGuardMock.hpp"
 #include "gmock/gmock.h"
 #include <chrono>
@@ -55,6 +56,19 @@ namespace
         SafetySupervisorImplTest()
         {
             EXPECT_CALL(guard, Check(_)).WillRepeatedly(Return(std::nullopt));
+            EXPECT_CALL(hardwareStop, Open()).WillRepeatedly(Invoke([this]()
+                {
+                    return stopOpen;
+                }));
+        }
+
+        void ChangeHardwareStop(bool open)
+        {
+            stopOpen = open;
+            hardwareStop.NotifyObservers([open](auto& observer)
+                {
+                    observer.OnHardwareStopChanged(open);
+                });
         }
 
         void CompatibleContracts()
@@ -103,7 +117,9 @@ namespace
 
         StrictMock<arm::JointBusMock> bus;
         StrictMock<arm::PoseGuardMock> guard;
-        arm::SafetySupervisorImpl supervisor{ bus, limits, Tracking(), Collision(), 10ms, Motion(), &guard };
+        StrictMock<arm::HardwareStopMock> hardwareStop;
+        bool stopOpen{ false };
+        arm::SafetySupervisorImpl supervisor{ bus, limits, Tracking(), Collision(), 10ms, Motion(), &guard, &hardwareStop };
         StrictMock<arm::JointBusObserverMock> observer{ supervisor };
         std::array<arm::JointReading, arm::jointCount> readings{};
     };
@@ -630,4 +646,43 @@ TEST_F(SafetySupervisorImplTest, a_measured_pose_with_a_stale_joint_is_not_check
     supervisor.Supervise(arm::AtRest(withinLimits), std::nullopt);
 
     EXPECT_FALSE(supervisor.Holding());
+}
+
+TEST_F(SafetySupervisorImplTest, the_hardware_stop_opening_emergency_stops_every_joint_and_is_passed_on)
+{
+    CompatibleContracts();
+
+    EXPECT_CALL(bus, EmergencyStop()).WillOnce(Return(true));
+    EXPECT_CALL(observer, OnHardwareStop(true));
+    ChangeHardwareStop(true);
+
+    EXPECT_TRUE(supervisor.Tripped());
+    EXPECT_TRUE(supervisor.HardwareStopOpen());
+    EXPECT_FALSE(supervisor.Start());
+    EXPECT_FALSE(supervisor.SendTorques({}));
+}
+
+TEST_F(SafetySupervisorImplTest, refuses_to_rearm_while_the_hardware_stop_is_open)
+{
+    JointStates(can::FocMotorState::ready);
+    EXPECT_CALL(bus, EmergencyStop()).WillOnce(Return(true));
+    EXPECT_CALL(observer, OnHardwareStop(true));
+    ChangeHardwareStop(true);
+
+    EXPECT_FALSE(supervisor.Rearm());
+
+    EXPECT_CALL(observer, OnHardwareStop(false));
+    ChangeHardwareStop(false);
+    EXPECT_TRUE(supervisor.Tripped());
+    EXPECT_TRUE(supervisor.Rearm());
+}
+
+TEST_F(SafetySupervisorImplTest, a_hardware_stop_open_from_the_start_refuses_motion_without_a_trip)
+{
+    CompatibleContracts();
+    stopOpen = true;
+
+    EXPECT_FALSE(supervisor.Start());
+    EXPECT_FALSE(supervisor.SelectMode(can::FocMotorMode::torque));
+    EXPECT_FALSE(supervisor.Tripped());
 }

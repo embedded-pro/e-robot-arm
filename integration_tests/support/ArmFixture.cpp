@@ -103,7 +103,7 @@ namespace integration
     ArmFixture::ArmFixture(const arm::JointTransmissions& transmissions, const arm::JointControllers& controllers, const arm::JointMotors& motors,
         const arm::WorkspaceConfig& workspace)
         : simulatedArm(nodes, infra::Duration{}, simulation::PlantFor(transmissions, arm::ReferenceGeometry(), arm::ReferenceMass(), motors))
-        , arm(client.CategoryClient(), Config(transmissions, controllers, motors, workspace))
+        , arm(client.CategoryClient(), Config(transmissions, controllers, motors, workspace), &simulatedArm.HardwareStop())
     {}
 
     simulation::SimulatedJoint& ArmFixture::Joint(std::size_t number)

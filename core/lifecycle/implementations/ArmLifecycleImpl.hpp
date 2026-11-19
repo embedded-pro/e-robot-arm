@@ -194,6 +194,7 @@ namespace arm
         void OnJointSilent(std::size_t joint) override;
         void OnSupervisionTrip(std::size_t joint, SupervisionTrip trip, float value) override;
         void OnProtectiveStop(std::size_t joint, SupervisionTrip trip, float value) override;
+        void OnHardwareStop(bool open) override;
         void OnCommandDelivered(JointCommand command) override;
         void OnCommandFailed(JointCommand command, CommandFailure failure) override;
         void OnMoveDone() override;

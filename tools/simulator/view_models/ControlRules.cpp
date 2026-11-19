@@ -157,6 +157,8 @@ namespace simulator
         {
             if (snapshot.state != arm::ArmState::tripped && snapshot.state != arm::ArmState::holding)
                 return Disabled("Not tripped or holding");
+            if (snapshot.hardwareStopOpen)
+                return Disabled("Hardware stop open: close it first");
             if (const auto joint = FirstJoint(snapshot, Faulted); joint.has_value())
                 return Disabled(JointText(*joint, "in fault: clear it first"));
             return Enabled();

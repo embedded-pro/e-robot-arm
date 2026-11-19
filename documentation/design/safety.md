@@ -2,7 +2,7 @@
 title: "Safety Supervisor Design"
 type: design
 status: draft
-version: 0.8.0
+version: 0.9.0
 component: "safety"
 date: 2026-11-19
 ---
@@ -12,7 +12,7 @@ date: 2026-11-19
 | Title     | Safety Supervisor Design |
 | Type      | design                   |
 | Status    | draft                    |
-| Version   | 0.8.0                    |
+| Version   | 0.9.0                    |
 | Component | safety                   |
 | Date      | 2026-11-19               |
 
@@ -225,11 +225,18 @@ still running, trips on that fault (Part D).
 
 ### Part J — Hardware stop
 
-A hardware stop input reports whether the arm's stop circuit is open. The supervisor observes it: an opening trips
-the supervisor with an emergency stop (Part D) and the event names the hardware stop; re-arming is refused while it
-stays open. The input is an interface in the core; the platform implements it. Until the bring-up hardware decides on
-a relay or a safe-torque-off input and on how it is read (open question 1), the host platforms report it closed and
-tests drive it through its mock.
+A hardware stop input (`HardwareStop`, in the safety interfaces) reports whether the arm's stop circuit is open and
+tells its observers each time that changes. The supervisor observes it:
+
+- an opening trips the supervisor with an emergency stop (Part D), and the event passed on names the hardware stop,
+  with no joint;
+- while it is open, selecting a mode, starting, aligning and sending setpoints are refused, even before any trip, so
+  an arm built with the circuit already open never enables;
+- re-arming is refused while it stays open; its closing is passed on and changes nothing else, so the caller re-arms.
+
+The input is an interface in the core; the platform implements it, and an arm built without one has a circuit that
+never opens. Until the bring-up hardware decides on a relay or a safe-torque-off input and on how it is read (open
+question 1), the simulated joints carry a hardware stop the tests open and close, and every other target has none.
 
 ---
 

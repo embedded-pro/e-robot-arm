@@ -40,7 +40,7 @@ namespace arm
     }
 
     SafetySupervisorImpl::SafetySupervisorImpl(JointBus& bus, const JointLimits& limits, const TrackingLimits& tracking, const CollisionLimits& collision,
-        infra::Duration period, const MotionSupervision& motion, const PoseGuard* guard)
+        infra::Duration period, const MotionSupervision& motion, const PoseGuard* guard, HardwareStop* hardwareStop)
         : JointBusObserver(bus)
         , bus(bus)
         , limits(limits)
@@ -49,7 +49,11 @@ namespace arm
         , motion(motion)
         , periodSeconds(std::chrono::duration<float>{ period }.count())
         , guard(guard)
+        , hardwareStop(hardwareStop)
     {
+        if (hardwareStop != nullptr)
+            HardwareStopObserver::Attach(*hardwareStop);
+
         really_assert(std::ranges::all_of(limits, ValidLimit));
         really_assert(std::ranges::all_of(tracking, ValidTracking));
         really_assert(std::ranges::all_of(collision, [](foc::NewtonMeter limit)
@@ -183,9 +187,24 @@ namespace arm
         return holding;
     }
 
+    bool SafetySupervisorImpl::HardwareStopOpen() const
+    {
+        return hardwareStop != nullptr && hardwareStop->Open();
+    }
+
+    void SafetySupervisorImpl::OnHardwareStopChanged(bool open)
+    {
+        if (open)
+            Trip();
+        NotifyObservers([open](auto& observer)
+            {
+                observer.OnHardwareStop(open);
+            });
+    }
+
     bool SafetySupervisorImpl::Rearm()
     {
-        if (AnyJointFaulted())
+        if (AnyJointFaulted() || HardwareStopOpen())
             return false;
 
         tripped = false;
@@ -260,7 +279,7 @@ namespace arm
 
     bool SafetySupervisorImpl::MayStream() const
     {
-        return !tripped && bus.Contracts() == can::ContractCompatibility::compatible;
+        return !tripped && !HardwareStopOpen() && bus.Contracts() == can::ContractCompatibility::compatible;
     }
 
     bool SafetySupervisorImpl::AnyJointFaulted() const

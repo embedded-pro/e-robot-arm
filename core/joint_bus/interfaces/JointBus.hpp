@@ -129,6 +129,9 @@ namespace arm
         virtual void OnProtectiveStop(std::size_t, SupervisionTrip, float)
         {}
 
+        virtual void OnHardwareStop(bool)
+        {}
+
     protected:
         ~JointBusObserver() = default;
     };

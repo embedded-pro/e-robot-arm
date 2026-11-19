@@ -35,7 +35,8 @@ namespace arm_host
         profileLoaded,
         armControllerChanged,
         supervisionTrip,
-        protectiveStop
+        protectiveStop,
+        hardwareStop
     };
 
     inline constexpr std::size_t noJoint{ std::numeric_limits<std::size_t>::max() };

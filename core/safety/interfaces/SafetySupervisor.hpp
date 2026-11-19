@@ -2,6 +2,7 @@
 #define CORE_SAFETY_INTERFACES_SAFETY_SUPERVISOR_HPP
 
 #include "core/joint_bus/interfaces/JointBus.hpp"
+#include "core/safety/interfaces/HardwareStop.hpp"
 #include "core/safety/interfaces/PoseGuard.hpp"
 #include "e-foc-protocol/foc/Units.hpp"
 #include "infra/timer/Timer.hpp"
@@ -61,6 +62,7 @@ namespace arm
         virtual void Supervise(const std::optional<JointReference>& reference, const std::optional<JointTorques>& externalTorques) = 0;
         virtual const JointFlags& TorqueClamped() const = 0;
         virtual std::optional<WorkspaceViolation> LastWorkspaceViolation() const = 0;
+        virtual bool HardwareStopOpen() const = 0;
 
     protected:
         ~SafetySupervisor() = default;

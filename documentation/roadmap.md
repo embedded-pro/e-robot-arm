@@ -132,7 +132,7 @@ designed in [safety.md](design/safety.md) 0.6.0:
 4. Done: drive watchdog: e-foc's command timeout written and verified on every node while configuring.
 5. Done: workspace and self-collision: the workspace check over the arm model, move targets and paths refused, every
    step supervised; robotics-toolbox's `ConvexCollision` already measures a capsule against a box.
-6. Hardware stop input: interface, mock, trip and re-arm rules; the circuit itself waits for phase 9.
+6. Done: hardware stop input: interface, mock, trip and re-arm rules; the circuit itself waits for phase 9.
 7. Simulator and console: the stop's rule and category in the status strip, the Holding state, the torque clamps,
    the workspace and zones drawn in the 3-D view; a scenario per rule, including a collision on the virtual arm.
 

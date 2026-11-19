@@ -9,10 +9,11 @@ namespace arm
     class SafetySupervisorImpl
         : public SafetySupervisor
         , private JointBusObserver
+        , private HardwareStopObserver
     {
     public:
         SafetySupervisorImpl(JointBus& bus, const JointLimits& limits, const TrackingLimits& tracking, const CollisionLimits& collision, infra::Duration period,
-            const MotionSupervision& motion = {}, const PoseGuard* guard = nullptr);
+            const MotionSupervision& motion = {}, const PoseGuard* guard = nullptr, HardwareStop* hardwareStop = nullptr);
 
         bool QueryContracts() override;
         can::ContractCompatibility Contracts() const override;
@@ -40,6 +41,7 @@ namespace arm
         void Supervise(const std::optional<JointReference>& reference, const std::optional<JointTorques>& externalTorques) override;
         const JointFlags& TorqueClamped() const override;
         std::optional<WorkspaceViolation> LastWorkspaceViolation() const override;
+        bool HardwareStopOpen() const override;
 
     private:
         void OnContractsResolved(can::ContractCompatibility compatibility) override;
@@ -49,6 +51,7 @@ namespace arm
         void OnCommandFailed(JointCommand command, CommandFailure failure) override;
         void OnAlgorithms(std::size_t joint, const can::FocAlgorithms& algorithms) override;
         void OnParameter(std::size_t joint, can::FocParameter parameter, can::FocParameterValue value) override;
+        void OnHardwareStopChanged(bool open) override;
 
         bool MayCommandMotion() const;
         bool MayStream() const;
@@ -73,6 +76,7 @@ namespace arm
         std::optional<JointPositions> previousReference;
         JointFlags torqueClamped{};
         const PoseGuard* guard;
+        HardwareStop* hardwareStop;
         std::optional<WorkspaceViolation> lastWorkspaceViolation;
         std::array<uint32_t, jointCount> stepsToTrip{};
         std::array<uint32_t, jointCount> stepsOutside{};

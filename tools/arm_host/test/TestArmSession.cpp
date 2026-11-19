@@ -184,6 +184,31 @@ TEST_F(ArmSessionTest, a_silenced_joint_trips_the_arm_once)
     EXPECT_EQ(4u, sink.Find(ArmEventKind::tripped)->joint);
 }
 
+TEST_F(ArmSessionTest, the_hardware_stop_opening_trips_the_arm_and_names_the_hardware_stop)
+{
+    BringUp();
+    simulatedArm.HardwareStop().Set(true);
+    ForwardTime(20ms);
+
+    ASSERT_NE(nullptr, sink.Find(ArmEventKind::tripped));
+    EXPECT_EQ(arm_host::noJoint, sink.Find(ArmEventKind::tripped)->joint);
+    EXPECT_EQ("hardware stop open", sink.Find(ArmEventKind::tripped)->reason);
+    EXPECT_TRUE(sink.snapshot.hardwareStopOpen);
+    EXPECT_TRUE(sink.snapshot.tripped);
+
+    Execute(7, arm_host::Rearm{});
+    EXPECT_EQ(ArmEventKind::refused, sink.Last()->kind);
+
+    simulatedArm.HardwareStop().Set(false);
+    ForwardTime(20ms);
+    EXPECT_FALSE(sink.snapshot.hardwareStopOpen);
+    Execute(8, arm_host::Rearm{});
+    EXPECT_TRUE(std::ranges::any_of(sink.events, [](const arm_host::ArmEvent& event)
+        {
+            return event.kind == ArmEventKind::accepted && event.command == 8;
+        }));
+}
+
 TEST_F(ArmSessionTest, refuses_a_failure_on_a_joint_that_does_not_exist)
 {
     Execute(6, arm_host::InjectFault{ 6, can::FocFaultCode::overCurrent });

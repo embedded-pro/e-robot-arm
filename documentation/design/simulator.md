@@ -2,7 +2,7 @@
 title: "Simulator Design"
 type: design
 status: draft
-version: 0.19.0
+version: 0.20.0
 component: "simulator"
 date: 2026-11-19
 ---
@@ -12,7 +12,7 @@ date: 2026-11-19
 | Title     | Simulator Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.19.0           |
+| Version   | 0.20.0           |
 | Component | simulator        |
 | Date      | 2026-11-19       |
 
@@ -218,7 +218,8 @@ The snapshot is what the screen shows; events are what the log shows; traces are
   external torque the collision observer estimates on each joint ([collision.md](collision.md)), and none otherwise.
 - **Events** — command accepted or refused (with its id, its name and the reason), contracts resolved, joint fault,
   joint silent, tripped (with the joint and the fault that caused it, once per trip), protective stop (with the joint
-  and the rule, as "collision 12.0 N·m"), move done, move aborted, target
+  and the rule, as "collision 12.0 N·m"), hardware stop open or closed (a trip by it names no joint and the reason
+  "hardware stop open"), move done, move aborted, target
   ready, target failed, lifecycle state changed; each with the arm-thread time. The snapshot carries the lifecycle
   state as well.
 - **Trace samples** — one per control period: the time, the six commanded positions, the six measured positions and,
@@ -290,6 +291,7 @@ empty until the arm has been enabled); nothing else in `core/` changes for the s
 | Snapshot        | contracts             | unchecked, compatible, incompatible | —                     | Per joint                                               |
 | Snapshot        | tripped, moving, loop | bool                                | —                     |                                                         |
 | Snapshot        | holding               | bool                                | —                     | A protective stop holds the arm (safety.md Part G)      |
+| Snapshot        | hardware stop open    | bool                                | —                     | The stop circuit is open (safety.md Part J)             |
 | Snapshot        | torque clamped        | 6 × bool                            | —                     | The last torque sent was clamped (safety.md Part B)     |
 | Snapshot        | profile               | name and arm configuration          | —                     | The profile loaded, never the commissioning copy        |
 | Snapshot        | commissioning         | bool                                | —                     | Real arm only; on at every connection                   |

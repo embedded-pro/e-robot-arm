@@ -469,3 +469,27 @@ THEN(R"(within {int} ms every joint shall have faulted on its command timeout)",
     for (std::size_t joint = 1; joint <= arm::jointCount; ++joint)
         EXPECT_EQ(can::FocMotorState::fault, fixture.Joint(joint).State()) << "joint " << joint;
 }
+
+WHEN(R"(the hardware stop opens)")
+{
+    auto& fixture = context.Get<ArmFixture>();
+    fixture.simulatedArm.HardwareStop().Set(true);
+    fixture.ForwardTime(20ms);
+}
+
+WHEN(R"(the hardware stop closes)")
+{
+    auto& fixture = context.Get<ArmFixture>();
+    fixture.simulatedArm.HardwareStop().Set(false);
+    fixture.ForwardTime(20ms);
+}
+
+THEN(R"(the arm shall refuse to re-arm)")
+{
+    EXPECT_FALSE(context.Get<ArmFixture>().arm.Lifecycle().Rearm());
+}
+
+THEN(R"(the arm shall re-arm)")
+{
+    EXPECT_TRUE(context.Get<ArmFixture>().arm.Lifecycle().Rearm());
+}

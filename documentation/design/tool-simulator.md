@@ -2,7 +2,7 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.26.0
+version: 0.27.0
 component: "tool-simulator"
 date: 2026-11-19
 ---
@@ -12,7 +12,7 @@ date: 2026-11-19
 | Title     | Simulator Screen Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.26.0                  |
+| Version   | 0.27.0                  |
 | Component | tool-simulator          |
 | Date      | 2026-11-19              |
 
@@ -113,7 +113,7 @@ the target is built and at least one joint has answered. Joints are numbered 1�
 | Enable               | The arm is Ready                                                                 | "Bring the arm up first", "Checking contracts", "Waiting for calibration", "Configuring motor controllers", "Misconfigured: bring the arm up again", "Enabling", "Already enabled", "Disabling", "Tripped" | Lifecycle: select torque mode, start the joints                          |
 | Disable              | The arm is Enabled                                                               | "Moving: abort first", "Not enabled"                                                                                                                                                                       | Lifecycle: stop the joints                                               |
 | Clear Faults         | Any joint in fault                                                               | "No joint in fault"                                                                                                                                                                                        | Clear faults on all joints                                               |
-| Re-arm…              | The arm is Tripped or Holding, no joint in fault                                 | "Not tripped or holding", "Joint N in fault: clear it first"                                                                                                                                               | Confirmation naming the trip's source, then re-arm through the lifecycle |
+| Re-arm…              | The arm is Tripped or Holding, no joint in fault, hardware stop closed           | "Not tripped or holding", "Joint N in fault: clear it first", "Hardware stop open: close it first"                                                                                                         | Confirmation naming the trip's source, then re-arm through the lifecycle |
 | Move target J1–6     | Always editable                                                                  | —                                                                                                                                                                                                          | Validated as typed against the joint limits                              |
 | Move                 | The arm is Enabled, all targets valid                                            | "Not connected", "Tripped", "Moving", "Enable the arm first", "J N outside limits"                                                                                                                         | Move to the six targets through the lifecycle                            |
 | Abort                | A move running                                                                   | "No move running"                                                                                                                                                                                          | Abort the move                                                           |

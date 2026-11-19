@@ -45,9 +45,9 @@ namespace arm
         return PlacedGains(model, ReflectedRotors(config), config.gravityPd);
     }
 
-    Arm::Arm(can::FocMotorCategoryClient& client, const ArmConfig& config)
+    Arm::Arm(can::FocMotorCategoryClient& client, const ArmConfig& config, HardwareStop* hardwareStop)
         : jointBus(client, config.nodes, config.transmissions, config.missedRequestsBeforeSilent, config.controlPeriod * config.commandTimeoutPeriods)
-        , safety(jointBus, config.positionLimits, config.tracking, config.collision, config.controlPeriod, Supervision(config), &workspace)
+        , safety(jointBus, config.positionLimits, config.tracking, config.collision, config.controlPeriod, Supervision(config), &workspace, hardwareStop)
         , motion(safety, config.positionLimits, config.motionLimits, config.controlPeriod, &workspace)
         , configurator(safety, lifecycle, SilenceWindow(config))
         , lifecycle(safety, motion, configurator, config.controllers, config.motors, DriveWatchdogSeconds(config))
