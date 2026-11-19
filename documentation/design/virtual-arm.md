@@ -324,16 +324,16 @@ drive one (open question 3).
 
 ## Data Model
 
-| Entity      | Field       | Type / Unit | Range                     | Notes                                              |
-|-------------|-------------|-------------|---------------------------|----------------------------------------------------|
-| Virtual arm | bus         | name        | letters, digits, `-`, `_` | `arm` by default                                   |
-| Virtual arm | plant port  | TCP port    | loopback                  | Chosen by the system unless given                  |
-| Joint       | node        | integer     | 1–256                     | From the profile; the motor's board ID is node − 1 |
-| Joint       | plant       | text file   | `jointN.plant`            | From the profile's motor and mass (Parts B, C)     |
-| Coupling    | period      | duration    | 0.25 ms                   | Speeds computed from the latest windows            |
-| Coupling    | position    | rad         | unwrapped                 | From each motor's true rotor angle                 |
-| Coupling    | speed       | rad/s       | finite                    | Integrated by the virtual arm; zero when held      |
-| Collision   | torque      | N·m         | finite                    | Joint-side; added to the coupling until cleared    |
+| Entity      | Field      | Type / Unit | Range                     | Notes                                              |
+|-------------|------------|-------------|---------------------------|----------------------------------------------------|
+| Virtual arm | bus        | name        | letters, digits, `-`, `_` | `arm` by default                                   |
+| Virtual arm | plant port | TCP port    | loopback                  | Chosen by the system unless given                  |
+| Joint       | node       | integer     | 1–256                     | From the profile; the motor's board ID is node − 1 |
+| Joint       | plant      | text file   | `jointN.plant`            | From the profile's motor and mass (Parts B, C)     |
+| Coupling    | period     | duration    | 0.25 ms                   | Speeds computed from the latest windows            |
+| Coupling    | position   | rad         | unwrapped                 | From each motor's true rotor angle                 |
+| Coupling    | speed      | rad/s       | finite                    | Integrated by the virtual arm; zero when held      |
+| Collision   | torque     | N·m         | finite                    | Joint-side; added to the coupling until cleared    |
 
 ---
 
