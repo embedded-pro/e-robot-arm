@@ -21,6 +21,9 @@ namespace virtual_arm::plant_port
         const std::optional<std::string>& Failure() const;
         std::optional<float> RotorAngle() const;
         std::optional<float> RotorSpeed() const;
+        std::optional<float> ElectricalTorque() const;
+        std::optional<uint64_t> LastPeriod() const;
+        bool Paused() const;
         const std::optional<Status>& LastStatus() const;
         const std::optional<Refused>& LastRefusal() const;
         const std::vector<std::string>& RecentLog() const;
@@ -28,7 +31,7 @@ namespace virtual_arm::plant_port
         void Stream(bool on);
         void Pause();
         void Resume();
-        void ExternalTorque(float newtonMeter);
+        void ShaftSpeed(const std::optional<ShaftDrive>& drive);
         void ClearAll();
         std::vector<uint8_t> TakeOutgoing();
 
@@ -45,6 +48,9 @@ namespace virtual_arm::plant_port
         std::optional<float> rawAngle;
         float unwrappedAngle{ 0.0f };
         std::optional<float> speed;
+        std::optional<float> torque;
+        std::optional<uint64_t> lastPeriod;
+        bool paused{ false };
         std::optional<Status> status;
         std::optional<Refused> refusal;
         std::vector<std::string> log;

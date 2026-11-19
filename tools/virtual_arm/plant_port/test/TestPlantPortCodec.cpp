@@ -27,7 +27,7 @@ TEST_F(PlantPortCodecTest, assembles_frames_split_across_reads)
 
     const auto hello = DecodeHello(*assembler.Next());
     ASSERT_TRUE(hello.has_value());
-    EXPECT_EQ(2u, hello->version);
+    EXPECT_EQ(3u, hello->version);
     EXPECT_EQ(20u, hello->node);
     EXPECT_EQ("arm", hello->bus);
     EXPECT_EQ("teknic", hello->plant);
@@ -41,7 +41,9 @@ TEST_F(PlantPortCodecTest, assembles_frames_split_across_reads)
 
 TEST_F(PlantPortCodecTest, encodes_requests_in_the_wire_layout)
 {
-    EXPECT_EQ((std::vector<uint8_t>{ 0x85, 17, 0, 1, 0x00, 0x00, 0xc0, 0x3f, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }), EncodeConstantExternalTorque(1.5f));
+    EXPECT_EQ((std::vector<uint8_t>{ 0x89, 21, 0, 1, 0x00, 0x00, 0xc0, 0x3f, 0x34, 0x12, 0, 0, 0, 0, 0, 0, 0x00, 0x00, 0x00, 0xbf, 0x00, 0x00, 0x80, 0x3f }),
+        EncodeShaftSpeed(ShaftDrive{ 1.5f, 0x1234, -0.5f, 1.0f }));
+    EXPECT_EQ((std::vector<uint8_t>{ 0x89, 21, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }), EncodeShaftSpeed(std::nullopt));
     EXPECT_EQ((std::vector<uint8_t>{ 0x90, 1, 0, 1 }), EncodeStream(true));
     EXPECT_EQ((std::vector<uint8_t>{ 0x81, 0, 0 }), EncodeFrame(MessageType::pause));
 }

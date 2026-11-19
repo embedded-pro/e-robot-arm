@@ -10,6 +10,7 @@ target_link_libraries(e_robot_arm.tool.simulated_arm_test PUBLIC
 )
 
 target_sources(e_robot_arm.tool.simulated_arm_test PRIVATE
+    TestArmDynamics.cpp
     TestArmPlant.cpp
     TestFirstOrderLag.cpp
     TestSimulatedJoint.cpp

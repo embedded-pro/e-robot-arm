@@ -41,6 +41,21 @@ namespace virtual_arm::plant_port
         return speed;
     }
 
+    std::optional<float> MotorConnection::ElectricalTorque() const
+    {
+        return torque;
+    }
+
+    std::optional<uint64_t> MotorConnection::LastPeriod() const
+    {
+        return lastPeriod;
+    }
+
+    bool MotorConnection::Paused() const
+    {
+        return paused;
+    }
+
     const std::optional<Status>& MotorConnection::LastStatus() const
     {
         return status;
@@ -63,17 +78,19 @@ namespace virtual_arm::plant_port
 
     void MotorConnection::Pause()
     {
+        paused = true;
         Queue(EncodeFrame(MessageType::pause));
     }
 
     void MotorConnection::Resume()
     {
+        paused = false;
         Queue(EncodeFrame(MessageType::resume));
     }
 
-    void MotorConnection::ExternalTorque(float newtonMeter)
+    void MotorConnection::ShaftSpeed(const std::optional<ShaftDrive>& drive)
     {
-        Queue(EncodeConstantExternalTorque(newtonMeter));
+        Queue(EncodeShaftSpeed(drive));
     }
 
     void MotorConnection::ClearAll()
@@ -141,6 +158,8 @@ namespace virtual_arm::plant_port
             unwrappedAngle = angle;
         rawAngle = angle;
         speed = window.last[rotorSpeedSignal];
+        torque = window.last[electricalTorqueSignal];
+        lastPeriod = window.firstPeriod + window.periods - 1;
     }
 
     void MotorConnection::Fail(std::string reason)

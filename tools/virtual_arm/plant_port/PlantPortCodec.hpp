@@ -11,10 +11,11 @@
 
 namespace virtual_arm::plant_port
 {
-    inline constexpr uint16_t protocolVersion{ 2 };
+    inline constexpr uint16_t protocolVersion{ 3 };
     inline constexpr std::size_t signalCount{ 25 };
     inline constexpr std::size_t rotorAngleSignal{ 16 };
     inline constexpr std::size_t rotorSpeedSignal{ 18 };
+    inline constexpr std::size_t electricalTorqueSignal{ 19 };
 
     enum class MessageType : uint8_t
     {
@@ -26,18 +27,9 @@ namespace virtual_arm::plant_port
         window = 0x10,
         pause = 0x81,
         resume = 0x82,
-        externalTorque = 0x85,
         clearAll = 0x88,
+        shaftSpeed = 0x89,
         stream = 0x90
-    };
-
-    enum class TorqueForm : uint8_t
-    {
-        none,
-        constant,
-        step,
-        ramp,
-        sine
     };
 
     struct Frame
@@ -112,6 +104,14 @@ namespace virtual_arm::plant_port
         std::array<float, signalCount> last{};
     };
 
+    struct ShaftDrive
+    {
+        float speed{ 0.0f };
+        uint64_t period{ 0 };
+        float torque{ 0.0f };
+        float inertia{ 0.0f };
+    };
+
     std::optional<Hello> DecodeHello(const Frame& frame);
     std::optional<Status> DecodeStatus(const Frame& frame);
     std::optional<Refused> DecodeRefused(const Frame& frame);
@@ -119,7 +119,7 @@ namespace virtual_arm::plant_port
     std::optional<Window> DecodeWindow(const Frame& frame);
 
     std::vector<uint8_t> EncodeFrame(MessageType type, std::span<const uint8_t> payload = {});
-    std::vector<uint8_t> EncodeConstantExternalTorque(float newtonMeter);
+    std::vector<uint8_t> EncodeShaftSpeed(const std::optional<ShaftDrive>& drive);
     std::vector<uint8_t> EncodeStream(bool on);
 }
 

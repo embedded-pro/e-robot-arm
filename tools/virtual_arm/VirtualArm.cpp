@@ -1,4 +1,5 @@
 #include "tools/virtual_arm/VirtualArm.hpp"
+#include <limits>
 #include "can-lite/drivers/implementation/LoopbackSocket.hpp"
 #include <algorithm>
 #include <format>
@@ -9,7 +10,9 @@ namespace virtual_arm
 {
     namespace
     {
-        constexpr auto couplingPeriod{ std::chrono::milliseconds{ 1 } };
+        constexpr auto couplingPeriod{ std::chrono::microseconds{ 250 } };
+        constexpr auto longestCouplingStep{ std::chrono::milliseconds{ 2 } };
+        constexpr plant_port::ShaftDrive heldShaft{ 0.0f, std::numeric_limits<uint64_t>::max(), 0.0f, 1.0f };
 
         std::string LastLines(const plant_port::MotorConnection& connection)
         {
@@ -357,6 +360,7 @@ namespace virtual_arm
     void VirtualArm::Run(const std::stop_token& stop)
     {
         nextCoupling = std::chrono::steady_clock::now();
+        lastCoupling = nextCoupling;
         while (!stop.stop_requested())
         {
             Poll();
@@ -451,20 +455,26 @@ namespace virtual_arm
         if (now < nextCoupling)
             return;
         nextCoupling = std::max(nextCoupling + couplingPeriod, now);
+        const auto elapsed = std::chrono::duration<float>(std::min<std::chrono::steady_clock::duration>(now - lastCoupling, longestCouplingStep)).count();
+        lastCoupling = now;
 
-        MotorStates states{};
+        MotorSamples samples{};
         for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
         {
-            const auto angle = motors[joint].connection.RotorAngle();
-            const auto speed = motors[joint].connection.RotorSpeed();
-            if (!angle.has_value() || !speed.has_value())
-                return;
-            states[joint] = { *angle, *speed };
+            const auto& motor = motors[joint];
+            const auto angle = motor.connection.RotorAngle();
+            const auto torque = motor.connection.ElectricalTorque();
+            const auto period = motor.connection.LastPeriod();
+            if (motor.socket.has_value() && !motor.connection.Paused() && angle.has_value() && torque.has_value() && period.has_value())
+                samples[joint] = MotorSample{ *angle, *torque, *period };
         }
 
-        const auto torques = coupling->ShaftTorques(states, collision);
+        const auto shafts = coupling->Step(samples, collision, elapsed);
+        if (!coupling->Engaged())
+            return;
         for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
-            motors[joint].connection.ExternalTorque(torques[joint]);
+            if (motors[joint].socket.has_value())
+                motors[joint].connection.ShaftSpeed(shafts[joint].value_or(heldShaft));
     }
 
     void VirtualArm::Send()

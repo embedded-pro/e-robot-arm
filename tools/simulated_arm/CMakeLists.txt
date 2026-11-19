@@ -16,6 +16,8 @@ target_link_libraries(e_robot_arm.tool.simulated_arm PUBLIC
 )
 
 target_sources(e_robot_arm.tool.simulated_arm PRIVATE
+    ArmDynamics.cpp
+    ArmDynamics.hpp
     ArmPlant.cpp
     ArmPlant.hpp
     FirstOrderLag.cpp

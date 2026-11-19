@@ -165,7 +165,7 @@ int main(int count, char** arguments)
     FrameAssembler assembler;
     bool streaming{ false };
     uint32_t sequence{ 0 };
-    std::string torque;
+    int shaftSign{ 0 };
     while (true)
     {
         if (exitAfter != nullptr && std::chrono::steady_clock::now() - start > std::chrono::milliseconds{ std::atoi(exitAfter) })
@@ -189,14 +189,15 @@ int main(int count, char** arguments)
                 case MessageType::stream:
                     streaming = reader.U8() != 0;
                     break;
-                case MessageType::externalTorque:
+                case MessageType::shaftSpeed:
                 {
                     reader.U8();
-                    auto value = std::to_string(reader.F32());
-                    if (value != torque)
+                    const auto speed = reader.F32();
+                    const int sign = speed > 0.0f ? 1 : (speed < 0.0f ? -1 : 0);
+                    if (sign != 0 && sign != shaftSign)
                     {
-                        torque = std::move(value);
-                        Record(options.memory + ".torque", torque);
+                        shaftSign = sign;
+                        Record(options.memory + ".shaft", std::to_string(speed));
                     }
                     break;
                 }

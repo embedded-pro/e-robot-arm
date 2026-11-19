@@ -2,7 +2,7 @@
 title: "Simulator Design"
 type: design
 status: draft
-version: 0.24.0
+version: 0.24.1
 component: "simulator"
 date: 2026-11-19
 ---
@@ -12,7 +12,7 @@ date: 2026-11-19
 | Title     | Simulator Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.24.0           |
+| Version   | 0.24.1           |
 | Component | simulator        |
 | Date      | 2026-11-19       |
 
@@ -136,6 +136,7 @@ A `SimulatedJoint` is an e-foc node on the in-process bus (a `FocMotorCategorySe
   through its transmission (efficiency 1). Every other joint is held as on a brake:
   its acceleration is zero in the solve, so the driven joints feel its constraint, and it keeps its lag-driven or
   held position.
+  The virtual arm drives its motors' shafts with the same solver ([virtual-arm.md](virtual-arm.md) Part C).
   The integration catches up with the time whenever a joint is asked for telemetry or changes state, never by more
   than 100 ms at once, and only while a joint is driven: a stalled host never spends a burst of steps catching up. Positions and speeds are
   reported in motor space through the same transmissions, so the arm reads them as from a real node. A simulated
