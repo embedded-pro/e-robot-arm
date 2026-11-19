@@ -1,4 +1,5 @@
 #include "core/lifecycle/implementations/ArmLifecycleImpl.hpp"
+#include "numerical/math/Math.hpp"
 #include "services/fsm/StateMachineDefinition.hpp"
 #include <algorithm>
 
@@ -17,6 +18,8 @@ namespace arm
         {
             return event.compatibility == can::ContractCompatibility::incompatible;
         }
+
+        constexpr std::size_t configurationSteps{ 3 * jointCount };
 
         bool Calibrated(can::FocMotorState state)
         {
@@ -199,7 +202,8 @@ namespace arm
             .Allow<Tripped, WaitingForCalibration>();
     }
 
-    ArmLifecycleImpl::ArmLifecycleImpl(SafetySupervisor& safety, JointMotion& motion, JointConfigurator& configurator, const JointControllers& controllers, const JointMotors& motors)
+    ArmLifecycleImpl::ArmLifecycleImpl(SafetySupervisor& safety, JointMotion& motion, JointConfigurator& configurator, const JointControllers& controllers, const JointMotors& motors,
+        std::optional<float> watchdogSeconds)
         : JointBusObserver(safety)
         , JointMotionObserver(motion)
         , JointConfiguratorObserver(configurator)
@@ -208,6 +212,7 @@ namespace arm
         , configurator(configurator)
         , controllers(controllers)
         , motors(motors)
+        , watchdogSeconds(watchdogSeconds)
         , fsm(*this, services::Validated<ArmLifecycleImpl>())
     {
         fsm.Start<Unpowered>();
@@ -339,9 +344,26 @@ namespace arm
             Verified();
     }
 
+    void ArmLifecycleImpl::OnWatchdogApplied(std::size_t joint)
+    {
+        if (WorkingOn(joint, ConfigurationPart::watchdog) && !configurator.ReadWatchdog(joint))
+            Misconfigure(MisconfigurationReason::failed);
+    }
+
+    void ArmLifecycleImpl::OnWatchdogRead(std::size_t joint, float timeoutSeconds)
+    {
+        if (!WorkingOn(joint, ConfigurationPart::watchdog))
+            return;
+
+        if (math::Abs(timeoutSeconds - *watchdogSeconds) > 1.0e-4f * math::Abs(*watchdogSeconds))
+            Misconfigure(MisconfigurationReason::differs);
+        else
+            Verified();
+    }
+
     void ArmLifecycleImpl::OnConfigurationFailed(std::size_t joint, ConfigurationFailure)
     {
-        if (fsm.Is<Configuring>() && configuringStep.has_value() && *configuringStep / 2 == joint)
+        if (fsm.Is<Configuring>() && configuringStep.has_value() && JointOf(*configuringStep) == joint)
             Misconfigure(MisconfigurationReason::failed);
     }
 
@@ -405,21 +427,55 @@ namespace arm
 
     bool ArmLifecycleImpl::HasConfiguration() const
     {
-        for (std::size_t configurationStep = 0; configurationStep != 2 * jointCount; ++configurationStep)
+        for (std::size_t configurationStep = 0; configurationStep != configurationSteps; ++configurationStep)
             if (Configures(configurationStep))
                 return true;
         return false;
     }
 
+    std::size_t ArmLifecycleImpl::JointOf(std::size_t configurationStep)
+    {
+        return configurationStep < jointCount ? configurationStep : (configurationStep - jointCount) / 2;
+    }
+
+    ConfigurationPart ArmLifecycleImpl::PartOf(std::size_t configurationStep)
+    {
+        if (configurationStep < jointCount)
+            return ConfigurationPart::watchdog;
+        return (configurationStep - jointCount) % 2 == 0 ? ConfigurationPart::motor : ConfigurationPart::controller;
+    }
+
     bool ArmLifecycleImpl::Configures(std::size_t configurationStep) const
     {
-        const auto joint = configurationStep / 2;
-        return configurationStep % 2 == 0 ? motors[joint].has_value() : controllers[joint].has_value();
+        const auto joint = JointOf(configurationStep);
+        switch (PartOf(configurationStep))
+        {
+            case ConfigurationPart::watchdog:
+                return watchdogSeconds.has_value();
+            case ConfigurationPart::motor:
+                return motors[joint].has_value();
+            default:
+                return controllers[joint].has_value();
+        }
+    }
+
+    bool ArmLifecycleImpl::StartStep(std::size_t configurationStep)
+    {
+        const auto joint = JointOf(configurationStep);
+        switch (PartOf(configurationStep))
+        {
+            case ConfigurationPart::watchdog:
+                return configurator.ApplyWatchdog(joint, *watchdogSeconds);
+            case ConfigurationPart::motor:
+                return configurator.ApplyMotor(joint, motors[joint]->settings);
+            default:
+                return configurator.Apply(joint, *controllers[joint]);
+        }
     }
 
     bool ArmLifecycleImpl::WorkingOn(std::size_t joint, ConfigurationPart part) const
     {
-        return fsm.Is<lifecycle::Configuring>() && configuringStep == 2 * joint + static_cast<std::size_t>(part);
+        return fsm.Is<lifecycle::Configuring>() && configuringStep.has_value() && JointOf(*configuringStep) == joint && PartOf(*configuringStep) == part;
     }
 
     void ArmLifecycleImpl::StartConfiguring()
@@ -433,19 +489,17 @@ namespace arm
         if (configuringStep.has_value() || configurator.Busy())
             return;
 
-        while (nextStep != 2 * jointCount && !Configures(nextStep))
+        while (nextStep != configurationSteps && !Configures(nextStep))
             ++nextStep;
 
-        if (nextStep == 2 * jointCount)
+        if (nextStep == configurationSteps)
         {
             fsm.Dispatch(Configured{});
             return;
         }
 
         configuringStep = nextStep;
-        const auto joint = nextStep / 2;
-        const bool started = nextStep % 2 == 0 ? configurator.ApplyMotor(joint, motors[joint]->settings) : configurator.Apply(joint, *controllers[joint]);
-        if (!started)
+        if (!StartStep(nextStep))
             Misconfigure(MisconfigurationReason::failed);
     }
 
@@ -460,6 +514,6 @@ namespace arm
     {
         const auto step = *configuringStep;
         configuringStep.reset();
-        fsm.Dispatch(lifecycle::Misconfigure{ { step / 2, reason, step % 2 == 0 ? ConfigurationPart::motor : ConfigurationPart::controller } });
+        fsm.Dispatch(lifecycle::Misconfigure{ { JointOf(step), reason, PartOf(step) } });
     }
 }

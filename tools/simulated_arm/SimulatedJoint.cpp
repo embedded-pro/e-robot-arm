@@ -20,11 +20,38 @@ namespace simulation
 
     void SimulatedJoint::Fault(can::FocFaultCode code)
     {
-        node.CatchUp();
-        node.torque = foc::NewtonMeter{ 0.0f };
-        node.state = can::FocMotorState::fault;
-        node.fault = code;
-        node.Hold();
+        node.Fault(code);
+    }
+
+    float SimulatedJoint::Parameter(can::FocParameter parameter) const
+    {
+        return node.parameters[static_cast<std::size_t>(parameter)];
+    }
+
+    void SimulatedJoint::Node::Fault(can::FocFaultCode code)
+    {
+        CatchUp();
+        commandTimeout.Cancel();
+        torque = foc::NewtonMeter{ 0.0f };
+        state = can::FocMotorState::fault;
+        fault = code;
+        Hold();
+    }
+
+    void SimulatedJoint::Node::WatchCommands()
+    {
+        const auto timeout = parameters[static_cast<std::size_t>(can::FocParameter::commandTimeout)];
+        if (state != can::FocMotorState::running || !(timeout > 0.0f))
+        {
+            commandTimeout.Cancel();
+            return;
+        }
+
+        commandTimeout.Start(std::chrono::duration_cast<infra::Duration>(std::chrono::duration<float>{ timeout }), [this]()
+            {
+                if (state == can::FocMotorState::running)
+                    Fault(can::FocFaultCode::commandTimeout);
+            });
     }
 
     void SimulatedJoint::Silence()
@@ -157,6 +184,7 @@ namespace simulation
     void SimulatedJoint::Node::Halt()
     {
         CatchUp();
+        commandTimeout.Cancel();
         torque = foc::NewtonMeter{ 0.0f };
         if (state == can::FocMotorState::running)
             state = can::FocMotorState::ready;
@@ -180,6 +208,7 @@ namespace simulation
 
         CatchUp();
         state = can::FocMotorState::running;
+        WatchCommands();
         onDone(services::CanAckStatus::success);
     }
 
@@ -231,6 +260,8 @@ namespace simulation
             CatchUp();
             torque = foc::NewtonMeter{ setpoint.value };
         }
+        if (state == can::FocMotorState::running)
+            WatchCommands();
         onDone();
     }
 
@@ -273,6 +304,8 @@ namespace simulation
     {
         if (ignored != parameter)
             parameters[static_cast<std::size_t>(parameter)] = value;
+        if (parameter == can::FocParameter::commandTimeout)
+            WatchCommands();
         onDone(can::FocParameterValue{ value, false });
     }
 

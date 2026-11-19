@@ -14,6 +14,8 @@ namespace arm
         MOCK_METHOD(bool, Read, (std::size_t joint), (override));
         MOCK_METHOD(bool, ApplyMotor, (std::size_t joint, const MotorSettings& motor), (override));
         MOCK_METHOD(bool, ReadMotor, (std::size_t joint), (override));
+        MOCK_METHOD(bool, ApplyWatchdog, (std::size_t joint, float timeoutSeconds), (override));
+        MOCK_METHOD(bool, ReadWatchdog, (std::size_t joint), (override));
         MOCK_METHOD(bool, Busy, (), (const, override));
     };
 
@@ -27,6 +29,8 @@ namespace arm
         MOCK_METHOD(void, OnRead, (std::size_t joint, const ControllerReading& reading), (override));
         MOCK_METHOD(void, OnMotorApplied, (std::size_t joint), (override));
         MOCK_METHOD(void, OnMotorRead, (std::size_t joint, const MotorSettings& motor), (override));
+        MOCK_METHOD(void, OnWatchdogApplied, (std::size_t joint), (override));
+        MOCK_METHOD(void, OnWatchdogRead, (std::size_t joint, float timeoutSeconds), (override));
         MOCK_METHOD(void, OnConfigurationFailed, (std::size_t joint, ConfigurationFailure failure), (override));
     };
 }

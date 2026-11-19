@@ -251,3 +251,23 @@ TEST_F(JointConfiguratorImplTest, a_parameter_request_left_unanswered_is_sent_ag
     ForwardTime(49ms);
     EXPECT_TRUE(configurator.Busy());
 }
+
+TEST_F(JointConfiguratorImplTest, apply_watchdog_sets_the_drives_command_timeout)
+{
+    EXPECT_CALL(bus, SetParameter(joint, can::FocParameter::commandTimeout, 0.1f)).WillOnce(Return(true));
+    EXPECT_TRUE(configurator.ApplyWatchdog(joint, 0.1f));
+    EXPECT_TRUE(configurator.Busy());
+
+    EXPECT_CALL(observer, OnWatchdogApplied(joint));
+    AnswerParameter(joint, can::FocParameter::commandTimeout, 0.1f);
+    EXPECT_FALSE(configurator.Busy());
+}
+
+TEST_F(JointConfiguratorImplTest, read_watchdog_reports_the_drives_command_timeout)
+{
+    EXPECT_CALL(bus, QueryParameter(joint, can::FocParameter::commandTimeout)).WillOnce(Return(true));
+    EXPECT_TRUE(configurator.ReadWatchdog(joint));
+
+    EXPECT_CALL(observer, OnWatchdogRead(joint, 0.25f));
+    AnswerParameter(joint, can::FocParameter::commandTimeout, 0.25f);
+}

@@ -239,6 +239,8 @@ namespace arm
                     return Mark(seen.missed, ReadPeriods(path, value, profile.config.missedRequestsBeforeSilent));
                 if (key == "commandTimeoutPeriods")
                     return ReadPeriods(path, value, profile.config.commandTimeoutPeriods);
+                if (key == "driveWatchdogPeriods")
+                    return ReadWatchdogPeriods(path, value, profile.config.driveWatchdogPeriods);
                 if (key == "enableMode")
                     return ReadMode(path, value);
                 if (key == "joints")
@@ -512,6 +514,15 @@ namespace arm
             {
                 int32_t periods{ 0 };
                 if (!ReadInteger(path, value, 1, 255, "must be a whole number from 1 to 255", periods))
+                    return false;
+                result = static_cast<uint8_t>(periods);
+                return true;
+            }
+
+            bool ReadWatchdogPeriods(const Path& path, const Value& value, uint8_t& result)
+            {
+                int32_t periods{ 0 };
+                if (!ReadInteger(path, value, 2, 255, "must be a whole number from 2 to 255", periods))
                     return false;
                 result = static_cast<uint8_t>(periods);
                 return true;
@@ -905,6 +916,7 @@ namespace arm
                 stream << ",\n  \"controlPeriodMs\": " << static_cast<int64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(config.controlPeriod).count())
                        << ",\n  \"missedRequestsBeforeSilent\": " << static_cast<uint32_t>(config.missedRequestsBeforeSilent)
                        << ",\n  \"commandTimeoutPeriods\": " << static_cast<uint32_t>(config.commandTimeoutPeriods)
+                       << ",\n  \"driveWatchdogPeriods\": " << static_cast<uint32_t>(config.driveWatchdogPeriods)
                        << ",\n  \"gravityPd\": ";
                 Tuning(config.gravityPd);
                 stream << ",\n  \"computedTorque\": ";

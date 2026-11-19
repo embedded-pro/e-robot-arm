@@ -50,7 +50,7 @@ namespace arm
         , safety(jointBus, config.positionLimits, config.tracking, config.collision, config.controlPeriod, Supervision(config))
         , motion(safety, config.positionLimits, config.motionLimits, config.controlPeriod)
         , configurator(safety, lifecycle, SilenceWindow(config))
-        , lifecycle(safety, motion, configurator, config.controllers, config.motors)
+        , lifecycle(safety, motion, configurator, config.controllers, config.motors, DriveWatchdogSeconds(config))
         , model(config.geometry, config.mass, config.positionLimits)
         , gravityPd(model, GravityPdGains(model, config))
         , computedTorque(model, ReflectedRotors(config), config.computedTorque)

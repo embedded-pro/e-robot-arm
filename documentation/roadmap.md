@@ -128,7 +128,7 @@ designed in [safety.md](design/safety.md) 0.6.0:
 2. Done: protective stop: a supervision rule holds the measured pose (category 2) instead of an emergency stop; the
    lifecycle's Holding state; a lost hold emergency-stops.
 3. Done: torque limits (clamp, reported) and the speed rule; the reference rule.
-4. Drive watchdog: e-foc's command timeout written and verified on every node while configuring.
+4. Done: drive watchdog: e-foc's command timeout written and verified on every node while configuring.
 5. Workspace and self-collision: the workspace check over the arm model, move targets and paths refused, every step
    supervised; a capsule-box distance in robotics-toolbox if it lacks one.
 6. Hardware stop input: interface, mock, trip and re-arm rules; the circuit itself waits for phase 9.

@@ -35,7 +35,8 @@ namespace arm
     enum class ConfigurationPart : uint8_t
     {
         motor,
-        controller
+        controller,
+        watchdog
     };
 
     struct Misconfiguration

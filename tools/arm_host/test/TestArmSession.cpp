@@ -244,9 +244,11 @@ TEST_F(ArmSessionTest, bring_up_and_enable_walk_the_lifecycle_and_report_each_st
     for (const auto& event : sink.events)
         if (event.kind == ArmEventKind::stateChanged)
             states.push_back(event.state);
-    EXPECT_EQ((std::vector<arm::ArmState>{ arm::ArmState::checking, arm::ArmState::waitingForCalibration, arm::ArmState::ready, arm::ArmState::enabling,
-                  arm::ArmState::enabled }),
+    EXPECT_EQ((std::vector<arm::ArmState>{ arm::ArmState::checking, arm::ArmState::waitingForCalibration, arm::ArmState::configuring, arm::ArmState::ready,
+                  arm::ArmState::enabling, arm::ArmState::enabled }),
         states);
+    for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+        EXPECT_NEAR(0.1f, simulatedArm.Joint(joint).Parameter(can::FocParameter::commandTimeout), 1e-6f) << joint;
 }
 
 TEST_F(ArmSessionTest, refuses_lifecycle_commands_and_moves_out_of_order_and_names_the_state)

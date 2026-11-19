@@ -52,6 +52,12 @@ namespace integration
         motorRead = motor;
     }
 
+    void ArmEvents::OnWatchdogApplied(std::size_t)
+    {}
+
+    void ArmEvents::OnWatchdogRead(std::size_t, float)
+    {}
+
     void ArmEvents::OnConfigurationFailed(std::size_t, arm::ConfigurationFailure)
     {
         configurationFailed = true;

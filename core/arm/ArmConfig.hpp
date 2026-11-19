@@ -26,6 +26,7 @@ namespace arm
         JointMotionLimits motionLimits;
         infra::Duration controlPeriod;
         uint8_t commandTimeoutPeriods{ 3 };
+        uint8_t driveWatchdogPeriods{ 10 };
         JointTransmissions transmissions{};
         JointControllers controllers{};
         JointMotors motors{};
@@ -42,6 +43,11 @@ namespace arm
     };
 
     inline constexpr float defaultSpeedTripShare{ 4.0f };
+
+    inline float DriveWatchdogSeconds(const ArmConfig& config)
+    {
+        return std::chrono::duration<float>{ config.controlPeriod * config.driveWatchdogPeriods }.count();
+    }
 
     inline infra::Duration SilenceWindow(const ArmConfig& config)
     {
