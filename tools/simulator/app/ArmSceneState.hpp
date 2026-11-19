@@ -33,6 +33,10 @@ namespace simulator
         Q_PROPERTY(QQuaternion toolRotation READ ToolRotation NOTIFY changed)
         Q_PROPERTY(QVariantList trail READ Trail NOTIFY trailChanged)
         Q_PROPERTY(QVariantList boxes READ Boxes NOTIFY boxesChanged)
+        Q_PROPERTY(bool targetVisible READ TargetVisible NOTIFY changed)
+        Q_PROPERTY(QVector3D targetPosition READ TargetPosition NOTIFY changed)
+        Q_PROPERTY(QQuaternion targetRotation READ TargetRotation NOTIFY changed)
+        Q_PROPERTY(QVariantList limitArc READ LimitArc NOTIFY limitArcChanged)
         Q_PROPERTY(QStringList meshes READ Meshes NOTIFY meshesChanged)
         Q_PROPERTY(QColor warningColor READ WarningColor NOTIFY themeChanged)
         Q_PROPERTY(QVariantList levels READ Levels NOTIFY changed)
@@ -65,6 +69,10 @@ namespace simulator
         QQuaternion ToolRotation() const;
         QVariantList Trail() const;
         QVariantList Boxes() const;
+        bool TargetVisible() const;
+        QVector3D TargetPosition() const;
+        QQuaternion TargetRotation() const;
+        QVariantList LimitArc() const;
         QStringList Meshes() const;
         void SetMeshes(const QStringList& urls);
         QColor WarningColor() const;
@@ -88,6 +96,7 @@ namespace simulator
         void partsChanged();
         void trailChanged();
         void boxesChanged();
+        void limitArcChanged();
         void meshesChanged();
         void meshFailed(int node, const QString& reason);
         void jointPicked(int joint);
@@ -106,6 +115,11 @@ namespace simulator
         uint32_t trailRevision{ 0 };
         QVariantList boxes;
         uint32_t boxesRevision{ 0 };
+        bool targetVisible{ false };
+        QVector3D targetPosition;
+        QQuaternion targetRotation;
+        QVariantList limitArc;
+        uint32_t limitArcRevision{ 0 };
         QStringList meshes;
         QColor warning;
         QVariantList levels;

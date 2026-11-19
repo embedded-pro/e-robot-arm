@@ -58,6 +58,54 @@ namespace simulator
             ++meshesRevision;
         }
         UpdateTrail(ModelIsLive(snapshot), rebuilt);
+        UpdateTarget(model, ModelIsLive(snapshot));
+        UpdateLimitArc(model, snapshot, measuredJoints);
+    }
+
+    void ArmSceneModel::SetTarget(const std::optional<arm::JointPositions>& joints)
+    {
+        target = joints;
+    }
+
+    void ArmSceneModel::UpdateTarget(const arm::ArmModel& model, bool live)
+    {
+        targetNode.reset();
+        if (!live || !target.has_value())
+            return;
+
+        const auto pose = ToScene(model.ToolPose(*target));
+        float squared{ 0.0f };
+        for (std::size_t axis = 0; axis != 3; ++axis)
+            squared += (pose.position[axis] - toolNode.position[axis]) * (pose.position[axis] - toolNode.position[axis]);
+        if (squared > trailSpacingCentimetres * trailSpacingCentimetres)
+            targetNode = pose;
+    }
+
+    void ArmSceneModel::UpdateLimitArc(const arm::ArmModel& model, const arm_host::ArmSnapshot& snapshot, const arm::JointPositions& measuredJoints)
+    {
+        std::vector<std::array<float, 3>> arc;
+        if (selected.has_value())
+        {
+            const auto joint = *selected;
+            const auto& limit = snapshot.config.positionLimits[joint];
+            const auto radius = limitArcShare * extent / 100.0f;
+            auto joints = measuredJoints;
+            for (std::size_t point = 0; point != limitArcPoints; ++point)
+            {
+                const auto share = static_cast<float>(point) / static_cast<float>(limitArcPoints - 1);
+                joints[joint] = foc::Radians{ limit.lower.Value() + share * (limit.upper.Value() - limit.lower.Value()) };
+                const auto frame = model.LinkPoses(joints)[joint];
+                const auto& t = frame.translation;
+                const auto& r = frame.rotation;
+                const std::array<float, 3> modelPoint{ t[0] + radius * r.at(0, 0), t[1] + radius * r.at(1, 0), t[2] + radius * r.at(2, 0) };
+                arc.push_back({ 100.0f * modelPoint[0], 100.0f * modelPoint[2], -100.0f * modelPoint[1] });
+            }
+        }
+        if (arc != limitArc)
+        {
+            limitArc = std::move(arc);
+            ++limitArcRevision;
+        }
     }
 
     void ArmSceneModel::UpdateBoxes(const arm_host::ArmSnapshot& snapshot)
@@ -202,6 +250,21 @@ namespace simulator
     const ArmSceneModel::BoxList& ArmSceneModel::Boxes() const
     {
         return boxes;
+    }
+
+    const std::optional<ScenePose>& ArmSceneModel::TargetNode() const
+    {
+        return targetNode;
+    }
+
+    const std::vector<std::array<float, 3>>& ArmSceneModel::LimitArc() const
+    {
+        return limitArc;
+    }
+
+    uint32_t ArmSceneModel::LimitArcRevision() const
+    {
+        return limitArcRevision;
     }
 
     uint32_t ArmSceneModel::BoxesRevision() const

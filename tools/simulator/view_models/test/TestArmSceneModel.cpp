@@ -312,3 +312,56 @@ TEST_F(ArmSceneModelTest, a_box_outline_runs_along_all_twelve_edges)
     }
     EXPECT_EQ(12u, edges.size());
 }
+
+TEST_F(ArmSceneModelTest, the_target_marker_sits_at_the_tool_pose_of_the_move_targets_and_hides_on_the_measured_tool)
+{
+    const auto snapshot = simulator::test::Running();
+    arm::JointPositions target{};
+    target[1] = foc::Radians{ 0.4f };
+
+    scene.SetTarget(target);
+    scene.Update(snapshot);
+
+    ASSERT_TRUE(scene.TargetNode().has_value());
+    const arm::ArmModel model{ snapshot.config.geometry, snapshot.config.mass, snapshot.config.positionLimits };
+    const auto expected = simulator::ToScene(model.ToolPose(target));
+    for (std::size_t axis = 0; axis != 3; ++axis)
+        EXPECT_NEAR(expected.position[axis], scene.TargetNode()->position[axis], 1.0e-3f);
+
+    scene.SetTarget(arm::JointPositions{});
+    scene.Update(snapshot);
+    EXPECT_FALSE(scene.TargetNode().has_value());
+
+    scene.SetTarget(std::nullopt);
+    scene.Update(snapshot);
+    EXPECT_FALSE(scene.TargetNode().has_value());
+}
+
+TEST_F(ArmSceneModelTest, a_selected_joint_shows_an_arc_over_its_range_around_its_axis)
+{
+    auto snapshot = simulator::test::Running();
+    snapshot.config.positionLimits[0] = { foc::Radians{ -1.0f }, foc::Radians{ 1.5f } };
+    scene.Update(snapshot);
+    EXPECT_TRUE(scene.LimitArc().empty());
+    const auto before = scene.LimitArcRevision();
+
+    ASSERT_TRUE(scene.Select(0));
+    scene.Update(snapshot);
+
+    const auto& arc = scene.LimitArc();
+    ASSERT_EQ(simulator::ArmSceneModel::limitArcPoints, arc.size());
+    EXPECT_NE(before, scene.LimitArcRevision());
+    const auto& centre = scene.MeasuredNodes()[1].position;
+    const auto radius = 0.08f * scene.Extent();
+    for (const auto& point : arc)
+    {
+        EXPECT_NEAR(radius, std::hypot(point[0] - centre[0], point[2] - centre[2]), 1.0e-2f);
+        EXPECT_NEAR(centre[1], point[1], 1.0e-3f);
+    }
+    const auto sweep = std::atan2(-arc.back()[2] + centre[2], arc.back()[0] - centre[0]) - std::atan2(-arc.front()[2] + centre[2], arc.front()[0] - centre[0]);
+    EXPECT_NEAR(2.5f, sweep, 1.0e-2f);
+
+    scene.ClearSelection();
+    scene.Update(snapshot);
+    EXPECT_TRUE(scene.LimitArc().empty());
+}

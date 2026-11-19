@@ -19,10 +19,13 @@ namespace simulator
         static constexpr float ghostThresholdDegrees{ 0.5f };
         static constexpr std::size_t trailCapacity{ 500 };
         static constexpr float trailSpacingCentimetres{ 0.2f };
+        static constexpr std::size_t limitArcPoints{ 33 };
+        static constexpr float limitArcShare{ 0.08f };
         using Trail = std::deque<std::array<float, 3>>;
         using BoxList = std::vector<SceneBox>;
 
         void Update(const arm_host::ArmSnapshot& snapshot);
+        void SetTarget(const std::optional<arm::JointPositions>& joints);
         bool Select(int pickedJoint);
         void ClearSelection();
 
@@ -41,12 +44,17 @@ namespace simulator
         const Trail& ToolTrail() const;
         uint32_t TrailRevision() const;
         const BoxList& Boxes() const;
+        const std::optional<ScenePose>& TargetNode() const;
+        const std::vector<std::array<float, 3>>& LimitArc() const;
+        uint32_t LimitArcRevision() const;
         uint32_t BoxesRevision() const;
 
     private:
         void UpdateNodes(const arm_host::ArmSnapshot& snapshot);
         void UpdateTrail(bool live, bool rebuilt);
         void UpdateBoxes(const arm_host::ArmSnapshot& snapshot);
+        void UpdateTarget(const arm::ArmModel& model, bool live);
+        void UpdateLimitArc(const arm::ArmModel& model, const arm_host::ArmSnapshot& snapshot, const arm::JointPositions& measuredJoints);
 
         std::array<float, arm::jointCount> measured{};
         std::array<float, arm::jointCount> commanded{};
@@ -64,6 +72,10 @@ namespace simulator
         Trail trail;
         uint32_t trailRevision{ 0 };
         BoxList boxes;
+        std::optional<arm::JointPositions> target;
+        std::optional<ScenePose> targetNode;
+        std::vector<std::array<float, 3>> limitArc;
+        uint32_t limitArcRevision{ 0 };
         uint32_t boxesRevision{ 0 };
     };
 }

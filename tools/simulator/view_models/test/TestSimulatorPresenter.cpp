@@ -145,6 +145,20 @@ TEST_F(SimulatorPresenterTest, move_posts_the_six_targets_from_the_form)
     moveView.PressAction(MoveAction::move);
 }
 
+TEST_F(SimulatorPresenterTest, the_scene_marks_where_valid_move_targets_take_the_tool)
+{
+    presenter.Refresh(simulator::test::Running(), {});
+    EXPECT_FALSE(presenter.Scene().TargetNode().has_value());
+
+    moveView.TypeNumber(ui::model::FieldId{ 1 }, 0.5);
+    presenter.Refresh(simulator::test::Running(), {});
+    EXPECT_TRUE(presenter.Scene().TargetNode().has_value());
+
+    moveView.TypeNumber(ui::model::FieldId{ 1 }, 5.0);
+    presenter.Refresh(simulator::test::Running(), {});
+    EXPECT_FALSE(presenter.Scene().TargetNode().has_value());
+}
+
 TEST_F(SimulatorPresenterTest, move_is_not_posted_while_the_rules_forbid_it)
 {
     presenter.Refresh(simulator::test::Compatible(), {});
