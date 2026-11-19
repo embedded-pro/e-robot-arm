@@ -1,6 +1,7 @@
 add_library(e_robot_arm.integration_tests.steps OBJECT
     ArmControllerSteps.cpp
     ArmSteps.cpp
+    SupervisionSteps.cpp
 )
 
 target_link_libraries(e_robot_arm.integration_tests.steps PUBLIC

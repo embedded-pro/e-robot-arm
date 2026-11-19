@@ -90,6 +90,12 @@ namespace integration
         failedCommands.push_back(command);
     }
 
+    void ArmEvents::OnProtectiveStop(std::size_t joint, arm::SupervisionTrip trip, float)
+    {
+        if (!protectiveStop.has_value())
+            protectiveStop = { joint, trip };
+    }
+
     void ArmEvents::OnMoveDone()
     {
         ++movesDone;
@@ -102,9 +108,18 @@ namespace integration
 
     ArmFixture::ArmFixture(const arm::JointTransmissions& transmissions, const arm::JointControllers& controllers, const arm::JointMotors& motors,
         const arm::WorkspaceConfig& workspace)
-        : simulatedArm(nodes, infra::Duration{}, simulation::PlantFor(transmissions, arm::ReferenceGeometry(), arm::ReferenceMass(), motors))
-        , arm(client.CategoryClient(), Config(transmissions, controllers, motors, workspace), &simulatedArm.HardwareStop())
+        : ArmFixture(Config(transmissions, controllers, motors, workspace))
     {}
+
+    ArmFixture::ArmFixture(const arm::ArmConfig& config)
+        : simulatedArm(nodes, infra::Duration{}, simulation::PlantFor(config.transmissions, arm::ReferenceGeometry(), arm::ReferenceMass(), config.motors))
+        , arm(client.CategoryClient(), config, &simulatedArm.HardwareStop())
+    {}
+
+    arm::ArmConfig ArmFixture::DefaultConfig()
+    {
+        return Config({}, {}, {}, {});
+    }
 
     simulation::SimulatedJoint& ArmFixture::Joint(std::size_t number)
     {
