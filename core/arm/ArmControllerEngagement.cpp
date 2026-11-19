@@ -23,7 +23,7 @@ namespace arm
 
     bool ArmControllerEngagement::Streams(ArmState state)
     {
-        return state == ArmState::enabled || state == ArmState::moving || state == ArmState::holding;
+        return state == ArmState::enabling || state == ArmState::enabled || state == ArmState::moving || state == ArmState::holding;
     }
 
     void ArmControllerEngagement::Follow(ArmState state)
