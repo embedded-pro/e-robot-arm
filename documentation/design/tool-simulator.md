@@ -2,7 +2,7 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.33.0
+version: 0.34.0
 component: "tool-simulator"
 date: 2026-11-19
 ---
@@ -12,7 +12,7 @@ date: 2026-11-19
 | Title     | Simulator Screen Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.33.0                  |
+| Version   | 0.34.0                  |
 | Component | tool-simulator          |
 | Date      | 2026-11-19              |
 
@@ -98,6 +98,10 @@ Layout** restores this one.
     goes does not flicker; hidden otherwise.
   - **Overruns** shows the control loop's count of late phases ([control-loop.md](control-loop.md) Part C):
     `Neutral` at 0, `Warning` from the first one, with a tooltip saying what it counts.
+  - **Bus** shows the CAN bus load of the last second from the snapshot ([simulator.md](simulator.md) Part F),
+    as **Bus: 43 %**: `Neutral` below 70 %, `Warning` from 70 %, and **Bus: —** until a first second has been
+    measured. Its tooltip says what it counts: the frames the arm sent and received over the bitrate, without bit
+    stuffing, so the real load is somewhat higher.
 - **Torque-limited joints:** a joint whose torque is clamped reads **Running · torque limit** at `Warning` in the
   joint table, for as long as the status strip names it.
 - **Silent joints:** a joint that stopped answering shows **Silent** at `Fault` level, with position and speed as
@@ -730,6 +734,6 @@ sequenceDiagram
 | 2 | Joint-limit defaults before the arm profile exists                                           | ±π for every joint, per-joint guesses                 | decided: ±π                                                        |
 | 3 | Default-role buttons (Check Contracts, Position Mode) draw flat in ui-cpp's Instrument theme | Give `ButtonRole::Default` a raised surface in ui-cpp | resolved: ui-cpp#24 gives Default buttons a raised fill and border |
 | 4 | Naming every joint an emergency stop did not reach                                           | Per-joint delivery reports from the joint bus         | phase 1a (#17)                                                     |
-| 5 | Bus load and period overruns in the status strip                                             | Control-loop overrun count, bus-load estimate         | overruns shown (phase 1d); bus load open                           |
+| 5 | Bus load and period overruns in the status strip                                             | Control-loop overrun count, bus-load estimate         | decided: both shown (Part A)                                       |
 | 6 | Marking a differing gain on its field rather than in the hint                                | A per-field status in ui-cpp forms                    | open: needs a ui-cpp primitive                                     |
 | 7 | Editing a profile in the simulator                                                           | A profile editor form, a file edited outside          | decided: edited as a file, shown read-only                         |

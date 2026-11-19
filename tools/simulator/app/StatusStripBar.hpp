@@ -41,6 +41,7 @@ namespace simulator
         QLabel* contracts;
         QLabel* stop;
         QLabel* torqueLimited;
+        QLabel* bus;
         QLabel* overruns;
         QLabel* limits;
         QAction* torqueLimitedItem{ nullptr };

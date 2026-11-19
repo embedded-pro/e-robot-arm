@@ -24,10 +24,12 @@ namespace arm_host
         bool Connected() override;
         void Poll() override;
         simulation::SimulatedArm* Simulation() override;
+        uint32_t Bitrate() const override;
 
     private:
         services::VirtualCanHub hub;
         services::PlatformCanAdapter platformAdapter;
+        uint32_t bitrate;
         bool connected{ false };
     };
 

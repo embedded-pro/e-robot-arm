@@ -34,6 +34,7 @@ namespace arm_host
         std::optional<std::string> Failure() override;
         VirtualMotors* Motors() override;
         bool Adopt(const arm::ArmConfig& newConfig) override;
+        uint32_t Bitrate() const override;
 
         VirtualMotorsStatus Status() const override;
         std::optional<std::string> Restart(std::size_t joint) override;
@@ -47,6 +48,7 @@ namespace arm_host
         bool Started();
 
         arm::ArmConfig config;
+        uint32_t bitrate;
         std::filesystem::path folder;
         std::array<bool, arm::jointCount> silenced{};
         arm::JointTorques torques{};

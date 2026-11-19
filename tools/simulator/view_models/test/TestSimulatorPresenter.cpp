@@ -145,6 +145,24 @@ TEST_F(SimulatorPresenterTest, move_posts_the_six_targets_from_the_form)
     moveView.PressAction(MoveAction::move);
 }
 
+TEST_F(SimulatorPresenterTest, the_bus_load_shows_as_a_percentage_and_warns_from_70_percent)
+{
+    auto snapshot = simulator::test::Running();
+    presenter.Refresh(snapshot, {});
+    EXPECT_EQ("Bus: —", presenter.Status().bus);
+    EXPECT_EQ(ui::theme::StatusLevel::Neutral, presenter.Status().busLevel);
+
+    snapshot.busLoad = 0.434f;
+    presenter.Refresh(snapshot, {});
+    EXPECT_EQ("Bus: 43 %", presenter.Status().bus);
+    EXPECT_EQ(ui::theme::StatusLevel::Neutral, presenter.Status().busLevel);
+
+    snapshot.busLoad = 0.71f;
+    presenter.Refresh(snapshot, {});
+    EXPECT_EQ("Bus: 71 %", presenter.Status().bus);
+    EXPECT_EQ(ui::theme::StatusLevel::Warning, presenter.Status().busLevel);
+}
+
 TEST_F(SimulatorPresenterTest, the_scene_marks_where_valid_move_targets_take_the_tool)
 {
     presenter.Refresh(simulator::test::Running(), {});

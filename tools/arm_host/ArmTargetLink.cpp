@@ -22,6 +22,11 @@ namespace arm_host
         return false;
     }
 
+    uint32_t ArmTargetLink::Bitrate() const
+    {
+        return BusLoadMeter::defaultBitrate;
+    }
+
     simulation::PlantConfig PlantFor(const arm::ArmConfig& config)
     {
         return simulation::PlantFor(config.transmissions, config.geometry, config.mass, config.motors);

@@ -7,6 +7,7 @@
 #include "infra/timer/Timer.hpp"
 #include "tools/arm_host/ArmCommand.hpp"
 #include "tools/arm_host/ArmSnapshot.hpp"
+#include "tools/arm_host/BusLoadMeter.hpp"
 #include "tools/arm_host/VirtualMotors.hpp"
 #include "tools/simulated_arm/SimulatedArm.hpp"
 #include <optional>
@@ -14,11 +15,18 @@
 
 namespace arm_host
 {
+    struct SessionOptions
+    {
+        VirtualMotors* virtualMotors{ nullptr };
+        bool commissioning{ false };
+        uint32_t bitrate{ BusLoadMeter::defaultBitrate };
+    };
+
     class ArmSession
     {
     public:
         ArmSession(hal::Can& can, const arm::ArmProfile& profile, const ArmTarget& target, ArmSessionSink& sink, simulation::SimulatedArm* simulation,
-            VirtualMotors* virtualMotors = nullptr, bool commissioning = false);
+            const SessionOptions& options = {});
         ArmSession(const ArmSession& other) = delete;
         ArmSession& operator=(const ArmSession& other) = delete;
         ~ArmSession();
@@ -98,6 +106,7 @@ namespace arm_host
 
         arm::ArmProfile profile;
         bool commissioning;
+        BusLoadMeter meter;
         can::FocMotorCanClient client;
         arm::Arm arm;
         arm::ArmModel model;

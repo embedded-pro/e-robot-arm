@@ -63,6 +63,7 @@ namespace arm_host
         arm::JointFlags torqueClamped{};
         std::optional<StopReport> stop{};
         arm::WorkspaceBox workspace{};
+        std::optional<float> busLoad{};
         bool moving{ false };
         arm::ArmState state{ arm::ArmState::unpowered };
         std::optional<arm::Misconfiguration> misconfiguration{};

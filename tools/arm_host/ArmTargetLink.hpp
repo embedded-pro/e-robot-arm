@@ -5,6 +5,7 @@
 #include "core/joint_bus/interfaces/JointBus.hpp"
 #include "hal/interfaces/Can.hpp"
 #include "tools/arm_host/ArmTarget.hpp"
+#include "tools/arm_host/BusLoadMeter.hpp"
 #include "tools/arm_host/VirtualMotors.hpp"
 #include "tools/simulated_arm/SimulatedArm.hpp"
 #include <functional>
@@ -31,6 +32,7 @@ namespace arm_host
         virtual std::optional<std::string> Failure();
         virtual VirtualMotors* Motors();
         virtual bool Adopt(const arm::ArmConfig& config);
+        virtual uint32_t Bitrate() const;
     };
 
     simulation::PlantConfig PlantFor(const arm::ArmConfig& config);

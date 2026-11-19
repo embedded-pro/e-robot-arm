@@ -2,7 +2,7 @@
 title: "Simulator Design"
 type: design
 status: draft
-version: 0.23.0
+version: 0.24.0
 component: "simulator"
 date: 2026-11-19
 ---
@@ -12,7 +12,7 @@ date: 2026-11-19
 | Title     | Simulator Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.23.0           |
+| Version   | 0.24.0           |
 | Component | simulator        |
 | Date      | 2026-11-19       |
 
@@ -221,12 +221,15 @@ The snapshot is what the screen shows; events are what the log shows; traces are
 - **Events** — command accepted or refused (with its id, its name and the reason), contracts resolved, joint fault,
   joint silent, tripped (with the joint and the fault that caused it, once per trip), protective stop (with the joint
   and the rule, as "collision 12.0 N·m"), hardware stop open or closed (a trip by it names no joint and the reason
-  "hardware stop open"), move done, move aborted, target
-  ready, target failed, lifecycle state changed; each with the arm-thread time. The snapshot carries the lifecycle
-  state as well, and the stop in effect: its category (protective, category 2, or emergency, category 0), the joint
-  or none, the rule or reason and the fault. The first stop sets it, an emergency stop replaces a protective one (a
-  lost hold names its joint and "hold lost"), and it clears once the arm is neither holding nor tripped. A view that
-  opens after the stop, or misses its event, still names it.
+  "hardware stop open"), move done, move aborted, target ready, target failed, lifecycle state changed; each with the
+  arm-thread time. The snapshot carries the lifecycle state as well, and the bus load: the arm's CAN port counts every
+  frame it sends and receives, a 29-bit frame of n data bytes as 64 + 8n bits plus 3 of interframe space, and each
+  second divides the sum by the target's bitrate (1 Mbit/s unless the adapter is opened at another; the simulated
+  joints count at 1 Mbit/s too). It is a lower bound, since bit stuffing is not counted. The snapshot carries the stop
+  in effect: its category (protective, category 2, or emergency, category 0), the joint or none, the rule or reason
+  and the fault. The first stop sets it, an emergency stop replaces a protective one (a lost hold names its joint and
+  "hold lost"), and it clears once the arm is neither holding nor tripped. A view that opens after the stop, or misses
+  its event, still names it.
 - **Trace samples** — one per control period: the time, the six commanded positions, the six measured positions and,
   while the arm drives its joints, the six commanded torques and the six estimated external torques.
 
@@ -301,6 +304,7 @@ empty until the arm has been enabled); nothing else in `core/` changes for the s
 | Snapshot        | stop                  | category, joint, rule, fault; opt.  | —                     | The stop in effect; cleared once re-armed (Part F)      |
 | Snapshot        | stop's workspace rule | rule, link, other link or zone, m   | —                     | A stop by the workspace check only (safety.md Part H)   |
 | Snapshot        | workspace             | box: min and max corner, m          | —                     | The box the supervisor checks, default or profile's     |
+| Snapshot        | bus load              | share of the bitrate, optional      | 0–1                   | The last whole second; none before the first one        |
 | Snapshot        | profile               | name and arm configuration          | —                     | The profile loaded, never the commissioning copy        |
 | Snapshot        | commissioning         | bool                                | —                     | Real arm only; on at every connection                   |
 | Snapshot        | tool pose             | m, rad; singularity flags           | —                     | From the measured joints ([arm-model.md](arm-model.md)) |
@@ -378,7 +382,7 @@ flowchart LR
 |------------|--------------------------------------------------------------------------------------------------|
 | Timing     | Event-loop timers on a desktop OS: periods jitter with scheduling; real-time comes with phase 9  |
 | Memory     | Host tools may allocate; `core/` stays heap-free; the queues are bounded                         |
-| Bus        | Phase 1 adds bus load and overrun counts to the snapshot; until then the status shows "—"        |
+| Bus        | Bus load is an estimate: frames without bit stuffing, over the target's nominal bitrate          |
 | Lifecycle  | No arm lifecycle until phase 1; the controls follow the joints' states and the safety supervisor |
 
 ---
