@@ -36,7 +36,7 @@ jobs:
         with:
           persist-credentials: false
           submodules: recursive
-      - uses: hendrikmuhs/ccache-action@f09c25b45002a07be2955cbe52e8cee55643f89d # v1.2.24
+      - uses: hendrikmuhs/ccache-action@dbeefd73e8e2ffc1bbc412570072735eb4db3607 # v1.2.25
         with:
           key: ${{ github.job }}-ubuntu-latest
           max-size: 2G
@@ -147,7 +147,7 @@ jobs:
             "$(available qml6-module-qtquick3d-helpers qml6-module-quick3d-helpers)" \
             libgl1-mesa-dri xvfb xauth
           echo "Qt $(dpkg-query -W -f='${Version}' qt6-quick3d-dev) with Qt Quick 3D" >> "$GITHUB_STEP_SUMMARY"
-      - uses: hendrikmuhs/ccache-action@f09c25b45002a07be2955cbe52e8cee55643f89d # v1.2.24
+      - uses: hendrikmuhs/ccache-action@dbeefd73e8e2ffc1bbc412570072735eb4db3607 # v1.2.25
         with:
           key: ${{ github.job }}-ubuntu-latest
           max-size: 2G
@@ -203,7 +203,7 @@ jobs:
           git -C e-foc fetch -q --depth 1 origin "$E_FOC_REVISION"
           git -C e-foc checkout -q FETCH_HEAD
           git -C e-foc submodule update -q --init --recursive --depth 1
-      - uses: hendrikmuhs/ccache-action@f09c25b45002a07be2955cbe52e8cee55643f89d # v1.2.24
+      - uses: hendrikmuhs/ccache-action@dbeefd73e8e2ffc1bbc412570072735eb4db3607 # v1.2.25
         with:
           key: ${{ github.job }}-ubuntu-latest
           max-size: 2G
@@ -297,7 +297,7 @@ jobs:
         with:
           persist-credentials: false
           submodules: recursive
-      - uses: hendrikmuhs/ccache-action@f09c25b45002a07be2955cbe52e8cee55643f89d # v1.2.24
+      - uses: hendrikmuhs/ccache-action@dbeefd73e8e2ffc1bbc412570072735eb4db3607 # v1.2.25
         with:
           key: ${{ matrix.configuration }}-${{ matrix.target }}
           max-size: 2G
