@@ -26,6 +26,8 @@ namespace arm
         virtual void OnRead(std::size_t joint, const ControllerReading& reading) = 0;
         virtual void OnMotorApplied(std::size_t joint) = 0;
         virtual void OnMotorRead(std::size_t joint, const MotorSettings& motor) = 0;
+        virtual void OnWatchdogApplied(std::size_t joint) = 0;
+        virtual void OnWatchdogRead(std::size_t joint, float timeoutSeconds) = 0;
         virtual void OnConfigurationFailed(std::size_t joint, ConfigurationFailure failure) = 0;
 
     protected:
@@ -44,6 +46,8 @@ namespace arm
         virtual bool Read(std::size_t joint) = 0;
         virtual bool ApplyMotor(std::size_t joint, const MotorSettings& motor) = 0;
         virtual bool ReadMotor(std::size_t joint) = 0;
+        virtual bool ApplyWatchdog(std::size_t joint, float timeoutSeconds) = 0;
+        virtual bool ReadWatchdog(std::size_t joint) = 0;
         virtual bool Busy() const = 0;
 
     protected:

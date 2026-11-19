@@ -73,10 +73,22 @@ namespace
                 for (const auto node : nodes)
                     ReportStatus(node, can::FocMotorState::running, can::FocFaultCode::none);
                 ReportMotionFromEveryJoint();
+                AnswerParameterRequests();
                 ForwardTime(10ms);
             }
             ReportMotionFromEveryJoint();
             ASSERT_EQ(arm::ArmState::enabled, arm.Lifecycle().State());
+        }
+
+        void AnswerParameterRequests()
+        {
+            while (answered != sent.size())
+            {
+                const auto frame = sent[answered++];
+                if (frame.messageType == can::focSetParameterId || frame.messageType == can::focQueryParameterId)
+                    Receive(frame.node, can::focParameterResponseId,
+                        services::CanPayloadWriter{}.WriteUInt8(static_cast<uint8_t>(can::FocParameter::commandTimeout)).WriteUInt8(0).WriteFloat32(0.1f));
+            }
         }
 
         std::size_t SentOf(uint8_t messageType) const
@@ -90,6 +102,7 @@ namespace
         StrictMock<hal::CanMock> canMock;
         infra::Function<void(hal::Can::Id, const hal::Can::Message&)> receive;
         std::vector<SentFrame> sent;
+        std::size_t answered{ 0 };
         infra::Execute setupBus{ [this]()
             {
                 EXPECT_CALL(canMock, ReceiveData(_)).WillRepeatedly(SaveArg<0>(&receive));
@@ -281,4 +294,12 @@ TEST_F(ArmTest, supervision_limits_come_from_the_profile_or_default_from_motion_
     EXPECT_NEAR(12.0f, supervision.torque[2].Value(), 1e-6f);
     EXPECT_NEAR(1.5f * 4.0f * 0.0064f * 20.0f * 50.0f, supervision.torque[3].Value(), 1e-3f);
     EXPECT_TRUE(std::isinf(supervision.torque[0].Value()));
+}
+
+TEST_F(ArmTest, bring_up_writes_and_reads_back_every_drives_command_timeout_before_the_arm_is_ready)
+{
+    EnableArm();
+
+    EXPECT_EQ(arm::jointCount, SentOf(can::focSetParameterId));
+    EXPECT_EQ(arm::jointCount, SentOf(can::focQueryParameterId));
 }

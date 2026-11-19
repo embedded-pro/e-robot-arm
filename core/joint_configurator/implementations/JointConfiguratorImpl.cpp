@@ -59,6 +59,22 @@ namespace arm
         return Start(Operation::readMotor, newJoint);
     }
 
+    bool JointConfiguratorImpl::ApplyWatchdog(std::size_t newJoint, float timeoutSeconds)
+    {
+        if (operation.has_value())
+            return false;
+        watchdog = timeoutSeconds;
+        return Start(Operation::applyWatchdog, newJoint);
+    }
+
+    bool JointConfiguratorImpl::ReadWatchdog(std::size_t newJoint)
+    {
+        if (operation.has_value())
+            return false;
+        watchdog = 0.0f;
+        return Start(Operation::readWatchdog, newJoint);
+    }
+
     bool JointConfiguratorImpl::Busy() const
     {
         return operation.has_value();
@@ -105,6 +121,8 @@ namespace arm
             reading.settings.gains[*index] = value.value;
         else if (operation == Operation::readMotor)
             motor.values[*index] = value.value;
+        else if (operation == Operation::readWatchdog)
+            watchdog = value.value;
 
         Advance();
     }
@@ -124,19 +142,26 @@ namespace arm
 
     std::size_t JointConfiguratorImpl::StepCount() const
     {
+        if (OnWatchdog())
+            return 1;
         return AlgorithmSteps() + (OnMotor() ? motorParameterCount : gainCount);
     }
 
     std::size_t JointConfiguratorImpl::AlgorithmSteps() const
     {
-        if (OnMotor())
+        if (OnMotor() || OnWatchdog())
             return 0;
         return operation == Operation::applyController ? loops.size() : 1;
     }
 
     bool JointConfiguratorImpl::Applies() const
     {
-        return operation == Operation::applyController || operation == Operation::applyMotor;
+        return operation == Operation::applyController || operation == Operation::applyMotor || operation == Operation::applyWatchdog;
+    }
+
+    bool JointConfiguratorImpl::OnWatchdog() const
+    {
+        return operation == Operation::applyWatchdog || operation == Operation::readWatchdog;
     }
 
     bool JointConfiguratorImpl::OnMotor() const
@@ -146,6 +171,8 @@ namespace arm
 
     can::FocParameter JointConfiguratorImpl::ParameterAt(std::size_t index) const
     {
+        if (OnWatchdog())
+            return can::FocParameter::commandTimeout;
         return OnMotor() ? motorParameters[index] : gainParameters[index];
     }
 
@@ -196,7 +223,14 @@ namespace arm
         const auto index = *ExpectedParameter();
         if (!Applies())
             return bus.QueryParameter(joint, ParameterAt(index));
-        return bus.SetParameter(joint, ParameterAt(index), OnMotor() ? motor.values[index] : settings.gains[index]);
+        return bus.SetParameter(joint, ParameterAt(index), ValueToApply(index));
+    }
+
+    float JointConfiguratorImpl::ValueToApply(std::size_t index) const
+    {
+        if (OnWatchdog())
+            return watchdog;
+        return OnMotor() ? motor.values[index] : settings.gains[index];
     }
 
     void JointConfiguratorImpl::Advance()
@@ -214,6 +248,7 @@ namespace arm
         const auto finishedJoint = joint;
         const auto finishedReading = reading;
         const auto finishedMotor = motor;
+        const auto finishedWatchdog = watchdog;
         operation.reset();
         retryTimer.Cancel();
         resendTimer.Cancel();
@@ -243,6 +278,18 @@ namespace arm
                 NotifyObservers([finishedJoint, &finishedMotor](auto& observer)
                     {
                         observer.OnMotorRead(finishedJoint, finishedMotor);
+                    });
+                break;
+            case Operation::applyWatchdog:
+                NotifyObservers([finishedJoint](auto& observer)
+                    {
+                        observer.OnWatchdogApplied(finishedJoint);
+                    });
+                break;
+            case Operation::readWatchdog:
+                NotifyObservers([finishedJoint, finishedWatchdog](auto& observer)
+                    {
+                        observer.OnWatchdogRead(finishedJoint, finishedWatchdog);
                     });
                 break;
         }

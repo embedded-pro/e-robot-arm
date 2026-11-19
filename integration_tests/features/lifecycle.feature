@@ -24,3 +24,11 @@ Feature: Arm start-up sequence
     And the arm moves the joints to -0.2, -0.2, -0.2, -0.2, -0.2, -0.2 rad
     Then the move shall be done within 1500 ms
     And every joint shall be at its target
+
+  @REQ-SAF-009
+  Scenario: Every drive stops on its own when the arm stops commanding it
+    When the arm is brought up
+    Then every joint's drive shall stop on its own after 100 ms without a setpoint
+    When the arm is enabled
+    And the arm's control loop stalls
+    Then within 200 ms every joint shall have faulted on its command timeout

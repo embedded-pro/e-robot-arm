@@ -323,7 +323,7 @@ WHEN(R"(the faults are cleared, the arm is re-armed and the joints are started a
     fixture.ForwardTime(20ms);
     EXPECT_TRUE(fixture.arm.Lifecycle().Rearm());
     EXPECT_TRUE(fixture.arm.Safety().Start());
-    fixture.ForwardTime(20ms);
+    fixture.ForwardTime(50ms);
 }
 
 WHEN(R"(joint {int} is given sliding-mode current, LQI speed and two-DOF position control with a speed bandwidth of {float} radians per second)", (std::int32_t joint, float bandwidth))
@@ -439,4 +439,24 @@ THEN(R"(the arm shall be misconfigured within {int} ms, naming the motor of join
     EXPECT_TRUE(ReachedWithin(fixture, arm::ArmState::misconfigured, milliseconds));
     EXPECT_EQ((arm::Misconfiguration{ static_cast<std::size_t>(joint - 1), arm::MisconfigurationReason::differs, arm::ConfigurationPart::motor }),
         fixture.arm.Lifecycle().MisconfiguredJoint());
+}
+
+THEN(R"(every joint's drive shall stop on its own after {int} ms without a setpoint)", (std::int32_t milliseconds))
+{
+    auto& fixture = context.Get<ArmFixture>();
+    for (std::size_t joint = 1; joint <= arm::jointCount; ++joint)
+        EXPECT_NEAR(static_cast<float>(milliseconds) / 1000.0f, fixture.Joint(joint).Parameter(can::FocParameter::commandTimeout), 1e-6f) << "joint " << joint;
+}
+
+WHEN(R"(the arm's control loop stalls)")
+{
+    context.Get<ArmFixture>().arm.Loop().Stop();
+}
+
+THEN(R"(within {int} ms every joint shall have faulted on its command timeout)", (std::int32_t milliseconds))
+{
+    auto& fixture = context.Get<ArmFixture>();
+    fixture.ForwardTime(std::chrono::milliseconds{ milliseconds });
+    for (std::size_t joint = 1; joint <= arm::jointCount; ++joint)
+        EXPECT_EQ(can::FocMotorState::fault, fixture.Joint(joint).State()) << "joint " << joint;
 }

@@ -81,6 +81,7 @@ TEST_F(ArmProfileTest, reads_every_item_and_fills_in_the_defaults)
     EXPECT_EQ(std::chrono::milliseconds{ 5 }, config.controlPeriod);
     EXPECT_EQ(4, config.missedRequestsBeforeSilent);
     EXPECT_EQ(3, config.commandTimeoutPeriods);
+    EXPECT_EQ(10, config.driveWatchdogPeriods);
     EXPECT_EQ((arm::JointNodeIds{ 1, 2, 3, 4, 5, 6 }), config.nodes);
 
     EXPECT_NEAR(50.0f, config.transmissions[0].ratio, 1.0e-6f);
@@ -306,6 +307,18 @@ TEST_F(ArmProfileTest, reads_the_speed_trip_and_torque_limit_and_leaves_them_to_
     EXPECT_EQ(1u, Count(written, R"("torqueLimitNm": 30)"));
 }
 
+TEST_F(ArmProfileTest, reads_and_writes_the_drive_watchdog_in_control_periods)
+{
+    const auto profile = Read(Profile(Joint(1), R"( "driveWatchdogPeriods": 25,)"));
+    ASSERT_TRUE(profile.has_value()) << Problem();
+    EXPECT_EQ(25, profile->config.driveWatchdogPeriods);
+
+    infra::StringOutputStream::WithStorage<16384> stream;
+    arm::WriteArmProfile(*profile, stream);
+    const std::string written{ stream.Storage().begin(), stream.Storage().end() };
+    EXPECT_EQ(1u, Count(written, R"("driveWatchdogPeriods": 25,)"));
+}
+
 TEST_F(ArmProfileTest, reads_a_version_1_profile_and_writes_version_3)
 {
     const auto version1 = Read(Profile(Joint(1)));
@@ -374,6 +387,7 @@ TEST_F(ArmProfileTest, refuses_a_profile_and_names_the_first_problem)
         { Profile(Joint(1), R"( "meshes": { "base": "" },)"), "meshes.base: must be a path of 1 to 96 characters" },
         { Profile(Joint(1), R"( "meshes": { "base": 3 },)"), "meshes.base: must be a path of 1 to 96 characters" },
         { R"({ "format": "e-robot-arm profile", "version": 4 })", "version: is not a version this reader knows" },
+        { Profile(Joint(1), R"( "driveWatchdogPeriods": 1,)"), "driveWatchdogPeriods: must be a whole number from 2 to 255" },
         { Profile(Joint(1, R"(, "speedLimitRadPerS": 0)")), "joints[0].speedLimitRadPerS: must be above 0" },
         { Profile(Joint(1, R"(, "torqueLimitNm": 1001)")), "joints[0].torqueLimitNm: must be above 0 and at most 1000" },
         { R"({ "format": "something else" })", "format: must be \"e-robot-arm profile\"" },

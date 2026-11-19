@@ -2,7 +2,7 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.25.0
+version: 0.26.0
 component: "tool-simulator"
 date: 2026-11-19
 ---
@@ -12,7 +12,7 @@ date: 2026-11-19
 | Title     | Simulator Screen Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.25.0                  |
+| Version   | 0.26.0                  |
 | Component | tool-simulator          |
 | Date      | 2026-11-19              |
 
@@ -146,9 +146,10 @@ opens a confirmation: "Connect to the real arm on `<adapter>`? Joints start stop
 target.
 
 **Bring up and move.** Bring Up → the arm waits for calibration, naming the joints not ready (calibration is done on
-the node) → Configuring motor controllers, when the arm's configuration names any → Ready → Enable → Enabled → set
-targets → Move. A motor controller that cannot be applied or reads back different shows **Misconfigured: `<joint>`
-`<reason>`** in `Fault`, and Bring Up starts again. The ghost shows the commanded arm while moving; the scope
+the node) → Configuring motor controllers: every drive's watchdog, then the motors and motor controllers the
+configuration names → Ready → Enable → Enabled → set targets → Move. A drive watchdog, motor or motor controller that
+cannot be applied or reads back different shows **Misconfigured: `<joint>` `<reason>`** in `Fault`, for example
+"drive watchdog reads back different", and Bring Up starts again. The ghost shows the commanded arm while moving; the scope
 shows the selected joint. Disable stops the joints and returns the arm to Ready.
 
 **Trip and recover.** On a trip the status strip shows **Tripped — `<source>`** in `Fault`: the joint and its fault,

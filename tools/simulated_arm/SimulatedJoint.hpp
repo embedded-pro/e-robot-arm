@@ -35,6 +35,7 @@ namespace simulation
         arm::ControllerSettings Controller() const;
         arm::MotorSettings Motor() const;
         void IgnoreParameter(can::FocParameter parameter);
+        float Parameter(can::FocParameter parameter) const;
 
         void AttachPlant(JointPlant& plant, std::size_t index);
         std::optional<foc::NewtonMeter> DrivingTorque() const;
@@ -53,6 +54,8 @@ namespace simulation
             void Halt();
             void CatchUp();
             bool Driven() const;
+            void Fault(can::FocFaultCode code);
+            void WatchCommands();
 
         private:
             friend class SimulatedJoint;
@@ -95,6 +98,7 @@ namespace simulation
             can::FocMotorCategoryServer& server;
             infra::Duration timeConstant;
             infra::TimePoint lastUpdate{ infra::Now() };
+            infra::TimerSingleShot commandTimeout;
         };
 
         VirtualCanBus::Port port;

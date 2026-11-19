@@ -175,7 +175,7 @@ namespace arm
         static constexpr Machine::Rules Rules();
 
         ArmLifecycleImpl(SafetySupervisor& safety, JointMotion& motion, JointConfigurator& configurator, const JointControllers& controllers,
-            const JointMotors& motors = {});
+            const JointMotors& motors = {}, std::optional<float> watchdogSeconds = std::nullopt);
 
         bool BringUp() override;
         bool Enable() override;
@@ -202,6 +202,8 @@ namespace arm
         void OnRead(std::size_t joint, const ControllerReading& reading) override;
         void OnMotorApplied(std::size_t joint) override;
         void OnMotorRead(std::size_t joint, const MotorSettings& motor) override;
+        void OnWatchdogApplied(std::size_t joint) override;
+        void OnWatchdogRead(std::size_t joint, float timeoutSeconds) override;
         void OnConfigurationFailed(std::size_t joint, ConfigurationFailure failure) override;
 
         class StateReporter
@@ -224,6 +226,9 @@ namespace arm
         void StopJoints();
         bool HasConfiguration() const;
         bool Configures(std::size_t configurationStep) const;
+        bool StartStep(std::size_t configurationStep);
+        static std::size_t JointOf(std::size_t configurationStep);
+        static ConfigurationPart PartOf(std::size_t configurationStep);
         bool WorkingOn(std::size_t joint, ConfigurationPart part) const;
         void Verified();
         void StartConfiguring();
@@ -235,6 +240,7 @@ namespace arm
         JointConfigurator& configurator;
         JointControllers controllers;
         JointMotors motors;
+        std::optional<float> watchdogSeconds;
         std::size_t nextStep{ 0 };
         std::optional<std::size_t> configuringStep;
         std::optional<Misconfiguration> misconfiguration;

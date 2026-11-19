@@ -564,6 +564,12 @@ namespace arm_host
         session.Emit({ .kind = ArmEventKind::motorRead, .joint = joint, .motor = motor });
     }
 
+    void ArmSession::Events::OnWatchdogApplied(std::size_t)
+    {}
+
+    void ArmSession::Events::OnWatchdogRead(std::size_t, float)
+    {}
+
     void ArmSession::Events::OnRead(std::size_t joint, const arm::ControllerReading& reading)
     {
         session.Emit({ .kind = ArmEventKind::controllerRead, .joint = joint, .controller = reading });

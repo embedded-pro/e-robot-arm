@@ -22,6 +22,8 @@ namespace arm
         bool Read(std::size_t joint) override;
         bool ApplyMotor(std::size_t joint, const MotorSettings& motor) override;
         bool ReadMotor(std::size_t joint) override;
+        bool ApplyWatchdog(std::size_t joint, float timeoutSeconds) override;
+        bool ReadWatchdog(std::size_t joint) override;
         bool Busy() const override;
 
     private:
@@ -30,7 +32,9 @@ namespace arm
             applyController,
             readController,
             applyMotor,
-            readMotor
+            readMotor,
+            applyWatchdog,
+            readWatchdog
         };
 
         void OnContractsResolved(can::ContractCompatibility compatibility) override;
@@ -49,6 +53,8 @@ namespace arm
         can::FocParameter ParameterAt(std::size_t index) const;
         bool Applies() const;
         bool OnMotor() const;
+        bool OnWatchdog() const;
+        float ValueToApply(std::size_t index) const;
         void SendStep();
         void TrySend();
         bool SendCurrentStep();
@@ -65,6 +71,7 @@ namespace arm
         ControllerSettings settings{};
         ControllerReading reading{};
         MotorSettings motor{};
+        float watchdog{ 0.0f };
         infra::TimerSingleShot retryTimer;
         infra::TimerSingleShot timeoutTimer;
         infra::TimerRepeating resendTimer;

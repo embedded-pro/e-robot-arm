@@ -1,10 +1,11 @@
 {
   "format": "e-robot-arm profile",
-  "version": 2,
+  "version": 3,
   "name": "virtual reference arm",
   "controlPeriodMs": 10,
   "missedRequestsBeforeSilent": 50,
   "commandTimeoutPeriods": 50,
+  "driveWatchdogPeriods": 50,
   "joints": [
     {
       "node": 1,

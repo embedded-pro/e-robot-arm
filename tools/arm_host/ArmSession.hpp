@@ -54,6 +54,8 @@ namespace arm_host
             void OnRead(std::size_t joint, const arm::ControllerReading& reading) override;
             void OnMotorApplied(std::size_t joint) override;
             void OnMotorRead(std::size_t joint, const arm::MotorSettings& motor) override;
+            void OnWatchdogApplied(std::size_t joint) override;
+            void OnWatchdogRead(std::size_t joint, float timeoutSeconds) override;
             void OnConfigurationFailed(std::size_t joint, arm::ConfigurationFailure failure) override;
             void OnActiveControllerChanged(std::optional<arm::ArmControllerId> active) override;
 

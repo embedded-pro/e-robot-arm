@@ -14,9 +14,10 @@ namespace
         : public Test
     {
     public:
-        explicit ArmLifecycleImplTest(const arm::JointControllers& controllers = {}, const arm::JointMotors& motors = {})
+        explicit ArmLifecycleImplTest(const arm::JointControllers& controllers = {}, const arm::JointMotors& motors = {}, std::optional<float> watchdog = std::nullopt)
             : controllers(controllers)
             , motors(motors)
+            , watchdog(watchdog)
         {
             EXPECT_CALL(observer, OnStateChanged(_)).Times(AnyNumber());
             EXPECT_CALL(safety, Reading(_)).WillRepeatedly(Invoke([this](std::size_t joint) -> const arm::JointReading&
@@ -111,7 +112,8 @@ namespace
         StrictMock<arm::JointConfiguratorMock> configurator;
         arm::JointControllers controllers;
         arm::JointMotors motors;
-        arm::ArmLifecycleImpl lifecycle{ safety, motion, configurator, controllers, motors };
+        std::optional<float> watchdog;
+        arm::ArmLifecycleImpl lifecycle{ safety, motion, configurator, controllers, motors, watchdog };
         StrictMock<arm::ArmLifecycleObserverMock> observer{ lifecycle };
         arm::JointPositions target{};
     };
@@ -623,4 +625,64 @@ TEST_F(ArmLifecycleMotorFirstTest, a_motor_that_reads_back_different_names_the_j
     MotorAnswers(1, arm::motorPresets[1].settings);
 
     EXPECT_EQ((arm::Misconfiguration{ 1, arm::MisconfigurationReason::differs, arm::ConfigurationPart::motor }), lifecycle.MisconfiguredJoint());
+}
+
+namespace
+{
+    class ArmLifecycleWatchdogTest
+        : public ArmLifecycleImplTest
+    {
+    public:
+        ArmLifecycleWatchdogTest()
+            : ArmLifecycleImplTest({}, {}, 0.1f)
+        {
+            EXPECT_CALL(configurator, Busy()).WillRepeatedly(Return(false));
+            EXPECT_CALL(safety, QueryContracts()).WillOnce(Return(true));
+            EXPECT_TRUE(lifecycle.BringUp());
+            ResolveContracts(can::ContractCompatibility::compatible);
+        }
+
+        void WatchdogAnswers(std::size_t joint, float timeout)
+        {
+            configurator.NotifyObservers([joint](auto& observer)
+                {
+                    observer.OnWatchdogApplied(joint);
+                });
+            configurator.NotifyObservers([joint, timeout](auto& observer)
+                {
+                    observer.OnWatchdogRead(joint, timeout);
+                });
+        }
+    };
+}
+
+TEST_F(ArmLifecycleWatchdogTest, configures_every_joints_drive_watchdog_before_the_arm_is_ready)
+{
+    InSequence order;
+    Observe(can::FocMotorState::ready);
+    EXPECT_CALL(configurator, ApplyWatchdog(0, 0.1f)).WillOnce(Return(true));
+    lifecycle.Step();
+    EXPECT_EQ(ArmState::configuring, lifecycle.State());
+
+    for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+    {
+        EXPECT_CALL(configurator, ReadWatchdog(joint)).WillOnce(Return(true));
+        if (joint + 1 != arm::jointCount)
+            EXPECT_CALL(configurator, ApplyWatchdog(joint + 1, 0.1f)).WillOnce(Return(true));
+        WatchdogAnswers(joint, 0.1f);
+    }
+
+    EXPECT_EQ(ArmState::ready, lifecycle.State());
+}
+
+TEST_F(ArmLifecycleWatchdogTest, a_drive_watchdog_that_reads_back_different_names_the_joint_and_the_watchdog)
+{
+    Observe(can::FocMotorState::ready);
+    EXPECT_CALL(configurator, ApplyWatchdog(0, 0.1f)).WillOnce(Return(true));
+    lifecycle.Step();
+
+    EXPECT_CALL(configurator, ReadWatchdog(0)).WillOnce(Return(true));
+    WatchdogAnswers(0, 0.0f);
+
+    EXPECT_EQ((arm::Misconfiguration{ 0, arm::MisconfigurationReason::differs, arm::ConfigurationPart::watchdog }), lifecycle.MisconfiguredJoint());
 }

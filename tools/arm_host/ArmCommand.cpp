@@ -17,6 +17,8 @@ namespace arm_host
         const bool differs = misconfiguration.reason == arm::MisconfigurationReason::differs;
         if (misconfiguration.part == arm::ConfigurationPart::motor)
             return differs ? "motor reads back different" : "motor could not be configured";
+        if (misconfiguration.part == arm::ConfigurationPart::watchdog)
+            return differs ? "drive watchdog reads back different" : "drive watchdog could not be configured";
         return differs ? "motor controller reads back different" : "motor controller could not be configured";
     }
 
