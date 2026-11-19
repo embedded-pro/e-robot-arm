@@ -2,7 +2,7 @@
 title: "Simulator Design"
 type: design
 status: draft
-version: 0.16.0
+version: 0.17.0
 component: "simulator"
 date: 2026-11-18
 ---
@@ -12,7 +12,7 @@ date: 2026-11-18
 | Title     | Simulator Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.16.0           |
+| Version   | 0.17.0           |
 | Component | simulator        |
 | Date      | 2026-11-18       |
 
@@ -154,6 +154,7 @@ A `SimulatedJoint` is an e-foc node on the in-process bus (a `FocMotorCategorySe
 | `SwitchTarget(target)` | Part C; its result arrives as an event                                                                                                                                                                                                                                                                                                                                            |
 | `LoadProfile(profile)` | Rebuilds the arm from the profile on the current target, as a target switch does; refused while the arm is enabling, enabled, moving or disabling, or while a target switch runs. Answered `profileLoaded` or `refused` with the reason ([arm-profile.md](arm-profile.md))                                                                                                        |
 | `SetCommissioning(on)` | Turns the commissioning limits on or off (below); answered `accepted` or `refused` with the reason                                                                                                                                                                                                                                                                                |
+| `DetectAdapters()`     | The CAN adapters can-lite finds on this computer, virtual buses left out; found on the arm thread, where the adapters' timers live, within 500 ms, else none                                                                                                                                                                                                                      |
 | `Snapshot()`           | A copy of the latest snapshot                                                                                                                                                                                                                                                                                                                                                     |
 | `TakeEvents()`         | Every event since the last call, in order                                                                                                                                                                                                                                                                                                                                         |
 | `TakeTrace()`          | Every trace sample since the last call, in order                                                                                                                                                                                                                                                                                                                                  |

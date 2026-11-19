@@ -1,5 +1,7 @@
 #include "tools/simulator/app/SimulatorWindow.hpp"
+#include "tools/arm_host/AdapterTargetLink.hpp"
 #include "tools/arm_host/ProfileFile.hpp"
+#include "tools/simulator/view_models/AdapterChoices.hpp"
 #include "ui/backend/qt/QtConversions.hpp"
 #include "ui/backend/qt/QtTheme.hpp"
 #include <QAction>
@@ -588,8 +590,11 @@ namespace simulator
         }
         else
         {
-            const auto adapter = QInputDialog::getText(this, "Real Arm", "CAN adapter (socketcan:<interface> or slcan:<port>):", QLineEdit::Normal,
-                settings.value("realAdapter", "socketcan:can0").toString(), &accepted);
+            const auto choices = ChooseAdapter(host.DetectAdapters(arm_host::DetectedAdapters), settings.value("realAdapter").toString().toStdString());
+            QStringList items;
+            for (const auto& item : choices.items)
+                items << QString::fromStdString(item);
+            const auto adapter = QInputDialog::getItem(this, "Real Arm", QString::fromStdString(choices.label), items, choices.current, true, &accepted);
             if (!accepted || adapter.isEmpty())
                 return;
 

@@ -92,3 +92,17 @@ TEST_F(ArmHostTest, a_loaded_profile_rebuilds_the_arm_and_answers_with_its_id)
             return host->Snapshot().profileName == "generic six-joint" && host->Snapshot().config.nodes[0] == 31;
         }));
 }
+
+TEST_F(ArmHostTest, detects_the_adapters_on_its_own_thread)
+{
+    std::thread::id detectedOn{};
+    const auto adapters = host->DetectAdapters([&detectedOn]()
+        {
+            detectedOn = std::this_thread::get_id();
+            return std::vector<std::string>{ "can0", "slcan:/dev/ttyACM0" };
+        });
+
+    EXPECT_EQ((std::vector<std::string>{ "can0", "slcan:/dev/ttyACM0" }), adapters);
+    EXPECT_NE(std::thread::id{}, detectedOn);
+    EXPECT_NE(std::this_thread::get_id(), detectedOn);
+}
