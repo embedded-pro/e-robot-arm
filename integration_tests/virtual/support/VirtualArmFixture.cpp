@@ -163,9 +163,9 @@ namespace integration
         std::size_t end{ trace.size() };
         if (stop != events.end())
             end = static_cast<std::size_t>(std::distance(trace.begin(), std::ranges::find_if(trace, [&stop](const arm_host::TraceSample& sample)
-                {
-                    return sample.time > stop->time;
-                })));
+                                                                            {
+                                                                                return sample.time > stop->time;
+                                                                            })));
         for (std::size_t sample = end > 20 ? end - 20 : 1; sample < end; ++sample)
         {
             const auto gap = std::chrono::duration<double, std::milli>(trace[sample].time - trace[sample - 1].time).count();
