@@ -596,11 +596,14 @@ namespace arm_host
     void ArmSession::Events::OnStateChanged(arm::ArmState state)
     {
         const auto misconfiguration = session.arm.Lifecycle().MisconfiguredJoint();
+        const auto unstarted = session.arm.Lifecycle().UnstartedJoint();
         if (state == arm::ArmState::misconfigured && misconfiguration.has_value())
             session.Emit({ .kind = ArmEventKind::stateChanged,
                 .reason = std::string{ MisconfigurationText(*misconfiguration) },
                 .joint = misconfiguration->joint,
                 .state = state });
+        else if (state == arm::ArmState::disabling && unstarted.has_value())
+            session.Emit({ .kind = ArmEventKind::stateChanged, .reason = "did not start", .joint = *unstarted, .state = state });
         else
             session.Emit({ .kind = ArmEventKind::stateChanged, .state = state });
     }

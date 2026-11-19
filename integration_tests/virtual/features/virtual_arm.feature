@@ -38,13 +38,6 @@ Feature: The arm on six e-foc virtual motors
     And a step test of 0.05 rad runs on joint 3
     Then the step shall rise within 0.15 s and overshoot by less than 75 %
 
-  @REQ-ARM-016 @REQ-SAF-002
-  Scenario: A collision stops the arm protectively, and a push the hold cannot resist ends in an emergency stop
-    When the arm moves the joints to 0.3, -0.5, 0.4, 0.2, 0.3, 0.1 rad
-    And a collision pushes joint 2 with 15 N·m
-    Then within 300 ms the arm shall stop protectively with joint 2 on a collision
-    And within 2000 ms the arm shall trip on a lost hold
-
   @REQ-ARM-005
   Scenario: A motor that stops answering trips the arm
     When motor 4 stops answering

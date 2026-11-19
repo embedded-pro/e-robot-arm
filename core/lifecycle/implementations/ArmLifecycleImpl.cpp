@@ -101,11 +101,13 @@ namespace arm
 
             Machine::Row<Ready, lifecycle::Enable, Enabling>(nullptr, [](ArmLifecycleImpl& self, Ready&, const lifecycle::Enable&)
                 {
+                    self.unstartedJoint.reset();
                     self.SelectMode();
                     return Enabling{};
                 }),
-            Machine::InternalRow<Enabling, Delivered>([](ArmLifecycleImpl& self, Enabling&, const Delivered&)
+            Machine::InternalRow<Enabling, Delivered>([](ArmLifecycleImpl& self, Enabling& enabling, const Delivered&)
                 {
+                    enabling.started = true;
                     self.StartJoints();
                 },
                 [](ArmLifecycleImpl&, const Enabling&, const Delivered& event)
@@ -119,6 +121,19 @@ namespace arm
             Machine::Row<Enabling, Observed, Enabled>([](ArmLifecycleImpl&, const Enabling&, const Observed& event)
                 {
                     return event.allRunning;
+                }),
+            Machine::Row<Enabling, Observed, Disabling>([](ArmLifecycleImpl&, const Enabling& enabling, const Observed&)
+                {
+                    return enabling.started && enabling.periodsStarting + 1 >= giveUpPeriods;
+                },
+                [](ArmLifecycleImpl& self, Enabling&, const Observed&)
+                {
+                    self.GiveUpStarting();
+                    return Disabling{};
+                }),
+            Machine::InternalRow<Enabling, Observed>([](ArmLifecycleImpl& self, Enabling& enabling, const Observed&)
+                {
+                    self.KeepStarting(enabling);
                 }),
 
             Machine::Row<Enabled, Observed, Ready>([](ArmLifecycleImpl&, const Enabled&, const Observed& event)
@@ -194,7 +209,7 @@ namespace arm
             .Allow<Configuring, Ready, lifecycle::Misconfigured, WaitingForCalibration, lifecycle::Incompatible, Tripped>()
             .Allow<lifecycle::Misconfigured, Checking, lifecycle::Incompatible, Tripped>()
             .Allow<Ready, Enabled, WaitingForCalibration, Enabling, lifecycle::Incompatible, Tripped>()
-            .Allow<Enabling, Ready, Enabled, Tripped>()
+            .Allow<Enabling, Ready, Enabled, Disabling, Tripped>()
             .Allow<Enabled, Ready, Moving, Disabling, Holding, Tripped>()
             .Allow<Moving, Enabled, Ready, Holding, Tripped>()
             .Allow<Holding, Enabled, Disabling, Ready, Tripped>()
@@ -258,6 +273,11 @@ namespace arm
         if (fsm.Is<lifecycle::Misconfigured>())
             return misconfiguration;
         return std::nullopt;
+    }
+
+    std::optional<std::size_t> ArmLifecycleImpl::UnstartedJoint() const
+    {
+        return unstartedJoint;
     }
 
     void ArmLifecycleImpl::Step()
@@ -423,6 +443,27 @@ namespace arm
     {
         if (!safety.Start())
             fsm.Dispatch(Failed{ JointCommand::start });
+    }
+
+    void ArmLifecycleImpl::KeepStarting(lifecycle::Enabling& enabling)
+    {
+        if (!enabling.started)
+            return;
+
+        ++enabling.periodsStarting;
+        if (enabling.periodsStarting % restartPeriods == 0)
+            StartJoints();
+    }
+
+    void ArmLifecycleImpl::GiveUpStarting()
+    {
+        for (std::size_t joint = 0; joint != jointCount; ++joint)
+            if (safety.Reading(joint).state != can::FocMotorState::running)
+            {
+                unstartedJoint = joint;
+                break;
+            }
+        StopJoints();
     }
 
     void ArmLifecycleImpl::StopJoints()

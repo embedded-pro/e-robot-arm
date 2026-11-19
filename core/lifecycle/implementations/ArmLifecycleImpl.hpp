@@ -49,6 +49,9 @@ namespace arm::lifecycle
     struct Enabling
     {
         static constexpr const char* name{ "Enabling" };
+
+        bool started{ false };
+        uint32_t periodsStarting{ 0 };
     };
 
     struct Enabled
@@ -170,7 +173,9 @@ namespace arm
         using Machine = services::TableStateMachine<lifecycle::State, lifecycle::Event, ArmLifecycleImpl>;
         using Initial = lifecycle::Unpowered;
 
-        static constexpr std::size_t rowCount{ 40 };
+        static constexpr std::size_t rowCount{ 42 };
+        static constexpr uint32_t restartPeriods{ 20 };
+        static constexpr uint32_t giveUpPeriods{ 200 };
         static constexpr std::array<Machine::Transition, rowCount> Rows();
         static constexpr Machine::Rules Rules();
 
@@ -185,6 +190,7 @@ namespace arm
         bool StepTo(const JointPositions& target) override;
         ArmState State() const override;
         std::optional<Misconfiguration> MisconfiguredJoint() const override;
+        std::optional<std::size_t> UnstartedJoint() const override;
 
         void Step();
 
@@ -224,6 +230,8 @@ namespace arm
         void QueryContracts();
         void SelectMode();
         void StartJoints();
+        void KeepStarting(lifecycle::Enabling& enabling);
+        void GiveUpStarting();
         void StopJoints();
         bool HasConfiguration() const;
         bool Configures(std::size_t configurationStep) const;
@@ -245,6 +253,7 @@ namespace arm
         std::size_t nextStep{ 0 };
         std::optional<std::size_t> configuringStep;
         std::optional<Misconfiguration> misconfiguration;
+        std::optional<std::size_t> unstartedJoint;
         Machine::WithStorage<4> fsm;
         StateReporter reporter{ *this, fsm };
     };
