@@ -132,6 +132,8 @@ namespace simulator
         void TrackSequence();
         void FollowLimits();
         std::string TargetProblem() const;
+        arm::JointPositions FormTarget() const;
+        std::optional<arm::JointPositions> MoveTarget() const;
         std::string Hint(std::span<const std::pair<Control, std::string_view>> controls) const;
 
         arm_host::ArmCommands& arm;

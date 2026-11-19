@@ -219,6 +219,7 @@ namespace simulator
         UpdateTorqueLimits();
         rows = JointRows(snapshot, limits, torqueLimited);
         tool = ToolReadoutOf(snapshot);
+        scene.SetTarget(MoveTarget());
         scene.Update(snapshot);
         UpdateStatus();
         UpdateControls();
@@ -388,10 +389,22 @@ namespace simulator
         if (action != MoveAction::move || !State(Control::move).enabled)
             return;
 
+        Post(arm_host::MoveTo{ FormTarget() });
+    }
+
+    arm::JointPositions SimulatorPresenter::FormTarget() const
+    {
         arm::JointPositions target{};
         for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
             target[joint] = foc::Radians{ forms.moveModel.Float(forms.moveFields[joint].id) };
-        Post(arm_host::MoveTo{ target });
+        return target;
+    }
+
+    std::optional<arm::JointPositions> SimulatorPresenter::MoveTarget() const
+    {
+        if (forms.moveModel.Validate().has_value())
+            return std::nullopt;
+        return FormTarget();
     }
 
     void SimulatorPresenter::Post(const arm_host::ArmCommand& command)

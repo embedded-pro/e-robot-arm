@@ -108,6 +108,20 @@ namespace simulator
                 boxes.append(ToMap(box));
             emit boxesChanged();
         }
+        targetVisible = model.TargetNode().has_value();
+        if (targetVisible)
+        {
+            targetPosition = Vector(model.TargetNode()->position);
+            targetRotation = Rotation(model.TargetNode()->rotation);
+        }
+        if (model.LimitArcRevision() != limitArcRevision)
+        {
+            limitArcRevision = model.LimitArcRevision();
+            limitArc.clear();
+            for (const auto& point : model.LimitArc())
+                limitArc.append(Vector(point));
+            emit limitArcChanged();
+        }
         selectedJoint = model.Selected() ? static_cast<int>(*model.Selected()) : -1;
         emit changed();
     }
@@ -181,6 +195,26 @@ namespace simulator
     QVariantList ArmSceneState::Boxes() const
     {
         return boxes;
+    }
+
+    bool ArmSceneState::TargetVisible() const
+    {
+        return targetVisible;
+    }
+
+    QVector3D ArmSceneState::TargetPosition() const
+    {
+        return targetPosition;
+    }
+
+    QQuaternion ArmSceneState::TargetRotation() const
+    {
+        return targetRotation;
+    }
+
+    QVariantList ArmSceneState::LimitArc() const
+    {
+        return limitArc;
     }
 
     QColor ArmSceneState::WarningColor() const

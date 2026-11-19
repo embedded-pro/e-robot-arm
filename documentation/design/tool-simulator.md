@@ -2,7 +2,7 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.32.0
+version: 0.33.0
 component: "tool-simulator"
 date: 2026-11-19
 ---
@@ -12,7 +12,7 @@ date: 2026-11-19
 | Title     | Simulator Screen Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.32.0                  |
+| Version   | 0.33.0                  |
 | Component | tool-simulator          |
 | Date      | 2026-11-19              |
 
@@ -274,6 +274,14 @@ camera are ui-cpp's `StudioView` with its defaults and the theme's colours:
   point is added when the tool has moved 2 mm from the last one, and the trail keeps the newest 500 points, so its
   memory and drawing cost are bounded. It is a one-pixel line strip (ui-cpp's `PolylineGeometry`): Qt 6.4 has no line width. It is cleared when a profile changes the geometry and while the arm is not
   live (no target, or a joint silent), so it never joins positions of two different arms.
+- **Target pose** (phase 8c): a smaller triad, at 60 % of the tool triad's length, marks the tool pose the Move form's
+  six targets would reach, from the arm model at those joints. It shows while the targets are within their limits and
+  the target pose is more than 2 mm from the measured tool, so the operator sees where **Move** will take the tool
+  before pressing it; it hides with an invalid target and without a live arm.
+- **Joint-limit arc** (phase 8c): while a joint is selected, a line in the accent colour sweeps its range, from the
+  lower to the upper limit of the profile, in the plane the joint turns in, around its axis at a radius of 8 % of the
+  arm's height: 33 points, each the joint frame's x axis at that angle with every other joint where it is measured.
+  The arm's own link shows where in the range the joint is now. No joint selected, no arc.
 - **Workspace and zones** (phase 6): the workspace box the safety supervisor checks ([safety.md](safety.md) Part H),
   the profile's or the default one around the arm's reach, is drawn as its twelve edges in the grid colour; each
   forbidden zone is a translucent box in the `Warning` colour (opacity 0.18, blended, no depth write, casting and

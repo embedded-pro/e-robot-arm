@@ -69,6 +69,32 @@ Item {
             }
         }
 
+        Node {
+            objectName: "targetMarker"
+            visible: ArmSceneState.targetVisible
+            position: ArmSceneState.targetPosition
+            rotation: ArmSceneState.targetRotation
+
+            AxisTriad {
+                length: ArmSceneState.extent * 0.12 * 0.6
+            }
+        }
+
+        Model {
+            objectName: "limitArc"
+            visible: ArmSceneState.limitArc.length > 1
+            castsShadows: false
+            receivesShadows: false
+            pickable: false
+            geometry: PolylineGeometry {
+                points: ArmSceneState.limitArc
+            }
+            materials: DefaultMaterial {
+                lighting: DefaultMaterial.NoLighting
+                diffuseColor: ArmSceneState.accentColor
+            }
+        }
+
         Repeater3D {
             model: ArmSceneState.boxes
 

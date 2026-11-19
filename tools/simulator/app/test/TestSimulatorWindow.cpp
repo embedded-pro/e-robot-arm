@@ -188,6 +188,18 @@ TEST_F(SimulatorWindowTest, loads_the_lit_scene_and_shows_a_move_with_its_ghost)
     EXPECT_TRUE(trail->property("visible").toBool());
     EXPECT_TRUE(triad->property("visible").toBool());
     EXPECT_GT(window.Presenter().Scene().ToolTrail().size(), 2u);
+
+    auto* arc = window.ArmView().rootObject()->findChild<QObject*>("limitArc");
+    ASSERT_NE(nullptr, arc);
+    EXPECT_FALSE(arc->property("visible").toBool());
+    window.Presenter().SelectJoint(1);
+    EXPECT_TRUE(Eventually([arc]()
+        {
+            return arc->property("visible").toBool();
+        }));
+    EXPECT_NE(nullptr, window.ArmView().rootObject()->findChild<QObject*>("targetMarker"));
+    if (const auto* capture = std::getenv("SIMULATOR_FRAME_CAPTURE"))
+        window.ArmView().grabFramebuffer().save(QString{ capture }.replace(".png", "-limit-arc.png"));
 }
 
 TEST_F(SimulatorWindowTest, an_injected_fault_trips_the_arm_and_names_its_source)
