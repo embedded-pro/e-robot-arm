@@ -11,6 +11,7 @@ namespace arm_host
     }
 
     AdapterTargetLink::AdapterTargetLink(const ArmTarget& target, uint32_t bitrate)
+        : bitrate(bitrate)
     {
         if (target.kind == TargetKind::virtualBus)
             hub.Listen();
@@ -68,5 +69,10 @@ namespace arm_host
                 return nullptr;
             return AdapterTargetLink::Open(target, bitrate);
         };
+    }
+
+    uint32_t AdapterTargetLink::Bitrate() const
+    {
+        return bitrate;
     }
 }

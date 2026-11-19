@@ -40,6 +40,7 @@ namespace arm_host
 
     VirtualArmTargetLink::VirtualArmTargetLink(const ArmTarget& target, const arm::ArmConfig& config, uint32_t bitrate, const std::filesystem::path& folder)
         : config(config)
+        , bitrate(bitrate)
         , folder(folder)
         , virtualArm(config, OptionsFor(target, folder))
     {
@@ -133,6 +134,11 @@ namespace arm_host
     VirtualMotors* VirtualArmTargetLink::Motors()
     {
         return this;
+    }
+
+    uint32_t VirtualArmTargetLink::Bitrate() const
+    {
+        return bitrate;
     }
 
     bool VirtualArmTargetLink::Adopt(const arm::ArmConfig& newConfig)

@@ -43,6 +43,7 @@ namespace simulator
         , contracts{ StatusLabel(this, "Contracts") }
         , stop{ StatusLabel(this, "Stop") }
         , torqueLimited{ StatusLabel(this, "Torque limited") }
+        , bus{ StatusLabel(this, "Bus load") }
         , overruns{ StatusLabel(this, "Overruns") }
         , limits{ StatusLabel(this, "Limits") }
         , emergencyStop{ new QPushButton{ "EMERGENCY STOP\nEsc", this } }
@@ -77,6 +78,8 @@ namespace simulator
         torqueLimitedItem = addWidget(torqueLimited);
         torqueLimited->setToolTip("Joints whose torque was clamped to its limit in the last half second");
         torqueLimitedItem->setVisible(false);
+        bus->setToolTip("CAN frames sent and received in the last second over the bitrate, without bit stuffing");
+        addWidget(bus);
         addWidget(overruns);
         limitsItem = addWidget(limits);
         limits->setToolTip("The limits the real arm runs under: Arm → Commissioning Limits");
@@ -110,6 +113,8 @@ namespace simulator
         torqueLimited->setText(ToQt(status.torqueLimited));
         StyleStatusLabel(*torqueLimited, status.torqueLimitedLevel);
         torqueLimitedItem->setVisible(!status.torqueLimited.empty());
+        bus->setText(ToQt(status.bus));
+        StyleStatusLabel(*bus, status.busLevel);
         overruns->setText(ToQt(status.overruns));
         StyleStatusLabel(*overruns, status.overrunLevel);
         limits->setText(ToQt(status.limits));

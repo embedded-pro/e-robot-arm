@@ -143,7 +143,8 @@ namespace arm_host
 
     void ArmRuntime::Build()
     {
-        session.emplace(link->Can(), profile, current, sink, link->Simulation(), link->Motors(), commissioning && current.kind == TargetKind::real);
+        session.emplace(link->Can(), profile, current, sink, link->Simulation(),
+            SessionOptions{ .virtualMotors = link->Motors(), .commissioning = commissioning && current.kind == TargetKind::real, .bitrate = link->Bitrate() });
     }
 
     void ArmRuntime::PublishConnecting()

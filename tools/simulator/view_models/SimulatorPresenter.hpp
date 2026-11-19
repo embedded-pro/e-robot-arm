@@ -32,6 +32,8 @@ namespace simulator
         ui::theme::StatusLevel stopLevel{ ui::theme::StatusLevel::Neutral };
         std::string torqueLimited;
         ui::theme::StatusLevel torqueLimitedLevel{ ui::theme::StatusLevel::Neutral };
+        std::string bus;
+        ui::theme::StatusLevel busLevel{ ui::theme::StatusLevel::Neutral };
         std::string overruns;
         ui::theme::StatusLevel overrunLevel{ ui::theme::StatusLevel::Neutral };
         std::string limits;

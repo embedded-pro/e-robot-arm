@@ -56,7 +56,7 @@ namespace
         arm_host::ArmTarget target{ arm_host::TargetKind::real, "can0" };
         simulation::SimulatedArm simulatedArm{ arm_host::test::nodes, 50ms, arm_host::PlantFor(arm_host::test::Config()) };
         arm_host::test::RecordingSink sink;
-        arm_host::ArmSession session{ simulatedArm.ArmSide(), arm_host::test::Profile(), target, sink, &simulatedArm, nullptr, true };
+        arm_host::ArmSession session{ simulatedArm.ArmSide(), arm_host::test::Profile(), target, sink, &simulatedArm, arm_host::SessionOptions{ .commissioning = true } };
     };
 }
 
@@ -92,6 +92,18 @@ TEST_F(ArmSessionTest, publishes_the_workspace_box_the_safety_supervisor_checks)
     EXPECT_NEAR(expected.min[0], sink.snapshot.workspace.min[0], 1.0e-6f);
     EXPECT_NEAR(expected.max[2], sink.snapshot.workspace.max[2], 1.0e-6f);
     EXPECT_GT(sink.snapshot.workspace.max[2], sink.snapshot.workspace.min[2]);
+}
+
+TEST_F(ArmSessionTest, publishes_the_bus_load_of_the_last_second_once_a_second_has_passed)
+{
+    EXPECT_FALSE(sink.snapshot.busLoad.has_value());
+
+    BringUp();
+    ForwardTime(1s);
+
+    ASSERT_TRUE(sink.snapshot.busLoad.has_value());
+    EXPECT_GT(*sink.snapshot.busLoad, 0.0f);
+    EXPECT_LT(*sink.snapshot.busLoad, 1.0f);
 }
 
 TEST_F(ArmSessionTest, publishes_the_tool_pose_of_the_measured_joints)

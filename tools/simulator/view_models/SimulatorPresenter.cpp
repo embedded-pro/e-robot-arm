@@ -535,6 +535,9 @@ namespace simulator
         std::tie(status.stage, status.stageLevel) = Stage(snapshot);
         status.contracts = ContractsText(snapshot.contracts);
         UpdateStop();
+        constexpr float busWarning{ 0.7f };
+        status.bus = snapshot.busLoad.has_value() ? std::format("Bus: {:.0f} %", *snapshot.busLoad * 100.0f) : std::string{ "Bus: —" };
+        status.busLevel = snapshot.busLoad.has_value() && *snapshot.busLoad >= busWarning ? ui::theme::StatusLevel::Warning : ui::theme::StatusLevel::Neutral;
         status.overruns = std::format("Overruns: {}", snapshot.overruns);
         status.overrunLevel = snapshot.overruns == 0 ? ui::theme::StatusLevel::Neutral : ui::theme::StatusLevel::Warning;
         status.limits.clear();

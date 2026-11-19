@@ -152,17 +152,18 @@ namespace arm_host
     }
 
     ArmSession::ArmSession(hal::Can& can, const arm::ArmProfile& profile, const ArmTarget& target, ArmSessionSink& sink, simulation::SimulatedArm* simulation,
-        VirtualMotors* virtualMotors, bool commissioning)
+        const SessionOptions& options)
         : profile(profile)
-        , commissioning(commissioning)
-        , client(can)
+        , commissioning(options.commissioning)
+        , meter(can, options.bitrate)
+        , client(meter)
         , arm(client.CategoryClient(), commissioning ? CommissioningConfig(profile.config) : profile.config,
               simulation != nullptr ? &simulation->HardwareStop() : nullptr)
         , model(profile.config.geometry, profile.config.mass, profile.config.positionLimits)
         , target(target)
         , sink(sink)
         , simulation(simulation)
-        , virtualMotors(virtualMotors)
+        , virtualMotors(options.virtualMotors)
         , publishTimer(profile.config.controlPeriod, [this]()
               {
                   Publish();
@@ -712,6 +713,7 @@ namespace arm_host
             stop.reset();
         snapshot.stop = stop;
         snapshot.workspace = arm.Workspace().Workspace();
+        snapshot.busLoad = meter.Load();
         snapshot.hardwareStopOpen = safety.HardwareStopOpen();
         snapshot.torqueClamped = safety.TorqueClamped();
         snapshot.moving = arm.Motion().Moving();

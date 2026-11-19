@@ -6,6 +6,7 @@ target_link_libraries(e_robot_arm.tool.arm_host_test PUBLIC
     gmock_main
     e_robot_arm.tool.arm_host
     infra.timer_test_helper
+    hal.interfaces_test_doubles
 )
 
 target_sources(e_robot_arm.tool.arm_host_test PRIVATE
@@ -14,6 +15,7 @@ target_sources(e_robot_arm.tool.arm_host_test PRIVATE
     TestArmRequestQueue.cpp
     TestArmRuntime.cpp
     TestArmSession.cpp
+    TestBusLoadMeter.cpp
     TestCommissioning.cpp
     TestProfileFile.cpp
 )
