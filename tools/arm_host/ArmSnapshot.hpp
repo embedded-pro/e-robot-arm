@@ -4,6 +4,8 @@
 #include "core/arm/ArmConfig.hpp"
 #include "core/arm_model/ArmModel.hpp"
 #include "core/joint_bus/interfaces/JointBus.hpp"
+#include "core/safety/interfaces/PoseGuard.hpp"
+#include "core/workspace/WorkspaceConfig.hpp"
 #include "infra/timer/Timer.hpp"
 #include "tools/arm_host/ArmEvent.hpp"
 #include "tools/arm_host/ArmTarget.hpp"
@@ -44,6 +46,7 @@ namespace arm_host
         std::size_t joint{ noJoint };
         std::string reason{};
         can::FocFaultCode fault{ can::FocFaultCode::none };
+        std::optional<arm::WorkspaceViolation> workspace{};
     };
 
     struct ArmSnapshot
@@ -59,6 +62,7 @@ namespace arm_host
         bool hardwareStopOpen{ false };
         arm::JointFlags torqueClamped{};
         std::optional<StopReport> stop{};
+        arm::WorkspaceBox workspace{};
         bool moving{ false };
         arm::ArmState state{ arm::ArmState::unpowered };
         std::optional<arm::Misconfiguration> misconfiguration{};

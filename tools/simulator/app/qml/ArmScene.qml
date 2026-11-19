@@ -69,6 +69,49 @@ Item {
             }
         }
 
+        Repeater3D {
+            model: ArmSceneState.boxes
+
+            Node {
+                id: box
+                required property var modelData
+
+                objectName: box.modelData.zone ? "forbiddenZone" : "workspaceBox"
+                readonly property color tone: box.modelData.violated ? ArmSceneState.faultColor
+                                                                     : (box.modelData.zone ? ArmSceneState.warningColor : ArmSceneState.gridColor)
+
+                Model {
+                    visible: box.modelData.zone
+                    source: "#Cube"
+                    position: box.modelData.centre
+                    scale: Qt.vector3d(box.modelData.size.x / 100, box.modelData.size.y / 100, box.modelData.size.z / 100)
+                    castsShadows: false
+                    receivesShadows: false
+                    pickable: false
+                    materials: PrincipledMaterial {
+                        lighting: PrincipledMaterial.NoLighting
+                        baseColor: box.tone
+                        opacity: box.modelData.violated ? 0.35 : 0.18
+                        alphaMode: PrincipledMaterial.Blend
+                        depthDrawMode: Material.NeverDepthDraw
+                    }
+                }
+
+                Model {
+                    castsShadows: false
+                    receivesShadows: false
+                    pickable: false
+                    geometry: PolylineGeometry {
+                        points: box.modelData.outline
+                    }
+                    materials: DefaultMaterial {
+                        lighting: DefaultMaterial.NoLighting
+                        diffuseColor: box.tone
+                    }
+                }
+            }
+        }
+
         ArmModel {
             id: ghostArm
             visible: ArmSceneState.ghostVisible

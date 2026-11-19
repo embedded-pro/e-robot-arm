@@ -26,6 +26,18 @@ namespace simulator
             return QVariantMap{ { "position", Vector(node.position) }, { "rotation", Rotation(node.rotation) } };
         }
 
+        QVariantMap ToMap(const SceneBox& box)
+        {
+            QVariantList outline;
+            for (const auto& point : BoxOutline(box))
+                outline.append(Vector(point));
+            return QVariantMap{ { "zone", box.kind == SceneBoxKind::zone },
+                { "centre", Vector(box.centre) },
+                { "size", Vector(box.size) },
+                { "violated", box.violated },
+                { "outline", outline } };
+        }
+
         QVariantList ToList(const SceneNodes& nodes)
         {
             QVariantList list;
@@ -87,6 +99,14 @@ namespace simulator
             for (const auto& point : model.ToolTrail())
                 trail.append(Vector(point));
             emit trailChanged();
+        }
+        if (model.BoxesRevision() != boxesRevision)
+        {
+            boxesRevision = model.BoxesRevision();
+            boxes.clear();
+            for (const auto& box : model.Boxes())
+                boxes.append(ToMap(box));
+            emit boxesChanged();
         }
         selectedJoint = model.Selected() ? static_cast<int>(*model.Selected()) : -1;
         emit changed();
@@ -156,6 +176,11 @@ namespace simulator
     QVariantList ArmSceneState::Trail() const
     {
         return trail;
+    }
+
+    QVariantList ArmSceneState::Boxes() const
+    {
+        return boxes;
     }
 
     QColor ArmSceneState::WarningColor() const

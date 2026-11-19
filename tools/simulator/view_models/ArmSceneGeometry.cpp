@@ -39,6 +39,29 @@ namespace simulator
         return { { t[0] * centimetres, t[2] * centimetres, -t[1] * centimetres }, Quaternion(converted) };
     }
 
+    SceneBox ToSceneBox(const arm::WorkspaceBox& box, SceneBoxKind kind)
+    {
+        std::array<float, 3> centre{};
+        std::array<float, 3> size{};
+        for (std::size_t axis = 0; axis != 3; ++axis)
+        {
+            centre[axis] = 0.5f * (box.min[axis] + box.max[axis]) * centimetres;
+            size[axis] = std::abs(box.max[axis] - box.min[axis]) * centimetres;
+        }
+        return { kind, { centre[0], centre[2], -centre[1] }, { size[0], size[2], size[1] }, false };
+    }
+
+    std::array<std::array<float, 3>, 16> BoxOutline(const SceneBox& box)
+    {
+        constexpr std::array<std::array<int, 3>, 16> corners{ { { -1, -1, -1 }, { 1, -1, -1 }, { 1, -1, 1 }, { -1, -1, 1 }, { -1, -1, -1 }, { -1, 1, -1 },
+            { 1, 1, -1 }, { 1, -1, -1 }, { 1, 1, -1 }, { 1, 1, 1 }, { 1, -1, 1 }, { 1, 1, 1 }, { -1, 1, 1 }, { -1, -1, 1 }, { -1, 1, 1 }, { -1, 1, -1 } } };
+        std::array<std::array<float, 3>, 16> outline{};
+        for (std::size_t point = 0; point != corners.size(); ++point)
+            for (std::size_t axis = 0; axis != 3; ++axis)
+                outline[point][axis] = box.centre[axis] + 0.5f * static_cast<float>(corners[point][axis]) * box.size[axis];
+        return outline;
+    }
+
     SceneNodes SceneNodePoses(const arm::ArmModel& model, const arm::ArmGeometry& geometry, const arm::JointPositions& joints)
     {
         SceneNodes nodes{};

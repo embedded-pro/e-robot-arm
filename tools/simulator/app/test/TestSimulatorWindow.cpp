@@ -184,6 +184,7 @@ TEST_F(SimulatorWindowTest, loads_the_lit_scene_and_shows_a_move_with_its_ghost)
     auto* triad = window.ArmView().rootObject()->findChild<QObject*>("toolTriad");
     ASSERT_NE(nullptr, trail);
     ASSERT_NE(nullptr, triad);
+    EXPECT_NE(nullptr, window.ArmView().rootObject()->findChild<QObject*>("workspaceBox"));
     EXPECT_TRUE(trail->property("visible").toBool());
     EXPECT_TRUE(triad->property("visible").toBool());
     EXPECT_GT(window.Presenter().Scene().ToolTrail().size(), 2u);
