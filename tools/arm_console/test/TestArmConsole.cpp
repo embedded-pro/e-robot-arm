@@ -117,6 +117,7 @@ TEST_F(ArmConsoleTest, status_prints_every_joint_the_trip_and_the_move_from_the_
     snapshot.readings[3] = { foc::Radians{ 0.25f }, foc::RadiansPerSecond{ -1.5f }, can::FocMotorState::fault, can::FocFaultCode::overCurrent };
     snapshot.readings[5].silent = true;
     snapshot.tripped = true;
+    snapshot.stop = arm_host::StopReport{ .category = arm_host::StopCategory::emergency, .joint = 3, .fault = can::FocFaultCode::overCurrent };
     snapshot.overruns = 4;
     snapshot.state = arm::ArmState::tripped;
     EXPECT_CALL(arm, Snapshot()).WillOnce(Return(snapshot));
@@ -126,10 +127,36 @@ TEST_F(ArmConsoleTest, status_prints_every_joint_the_trip_and_the_move_from_the_
     EXPECT_THAT(status, HasSubstr("joint 1: position 0.000 rad, speed 0.000 rad/s, state idle, fault none\n"));
     EXPECT_THAT(status, HasSubstr("joint 4: position 0.250 rad, speed -1.500 rad/s, state fault, fault overCurrent\n"));
     EXPECT_THAT(status, HasSubstr("joint 6: position 0.000 rad, speed 0.000 rad/s, state idle, fault none, silent\n"));
-    EXPECT_THAT(status, HasSubstr("safety: tripped\n"));
+    EXPECT_THAT(status, HasSubstr("safety: tripped, emergency stop (category 0): joint 4 overCurrent\n"));
     EXPECT_THAT(status, HasSubstr("motion: idle\n"));
     EXPECT_THAT(status, HasSubstr("overruns: 4\n"));
     EXPECT_THAT(status, HasSubstr("arm: tripped\n"));
+    EXPECT_THAT(status, Not(HasSubstr("torque limited")));
+}
+
+TEST_F(ArmConsoleTest, status_prints_a_protective_stop_with_its_rule_and_the_torque_limited_joints)
+{
+    arm_host::ArmSnapshot snapshot{};
+    snapshot.holding = true;
+    snapshot.stop = arm_host::StopReport{ .category = arm_host::StopCategory::protective, .joint = 1, .reason = "collision 12.0 N·m" };
+    snapshot.torqueClamped[1] = true;
+    snapshot.torqueClamped[2] = true;
+    EXPECT_CALL(arm, Snapshot()).WillOnce(Return(snapshot));
+
+    const auto status = Run("status");
+
+    EXPECT_THAT(status, HasSubstr("safety: holding, protective stop (category 2): joint 2 collision 12.0 N·m\n"));
+    EXPECT_THAT(status, HasSubstr("torque limited: joints 2, 3\n"));
+}
+
+TEST_F(ArmConsoleTest, status_prints_a_stop_that_names_no_joint_by_its_reason)
+{
+    arm_host::ArmSnapshot snapshot{};
+    snapshot.tripped = true;
+    snapshot.stop = arm_host::StopReport{ .category = arm_host::StopCategory::emergency, .reason = "hardware stop open" };
+    EXPECT_CALL(arm, Snapshot()).WillOnce(Return(snapshot));
+
+    EXPECT_THAT(Run("status"), HasSubstr("safety: tripped, emergency stop (category 0): hardware stop open\n"));
 }
 
 TEST_F(ArmConsoleTest, events_print_as_one_line_each_with_joints_numbered_from_one)

@@ -569,6 +569,8 @@ namespace arm_host
         const auto workspace = session.arm.Safety().LastWorkspaceViolation();
         const bool posed = trip == arm::SupervisionTrip::workspace || trip == arm::SupervisionTrip::forbiddenZone || trip == arm::SupervisionTrip::selfCollision;
         auto reason = posed && workspace.has_value() ? WorkspaceText(*workspace) : SupervisionReason(trip, value);
+        if (!session.stop.has_value())
+            session.stop = StopReport{ .category = StopCategory::protective, .joint = joint, .reason = reason };
         session.Emit({ .kind = ArmEventKind::protectiveStop, .reason = std::move(reason), .joint = joint });
     }
 
@@ -648,6 +650,7 @@ namespace arm_host
             return;
 
         tripReported = true;
+        stop = StopReport{ .category = StopCategory::emergency, .joint = joint, .reason = reason, .fault = fault };
         Emit({ .kind = ArmEventKind::tripped, .reason = std::move(reason), .joint = joint, .fault = fault });
     }
 
@@ -697,6 +700,9 @@ namespace arm_host
         snapshot.contracts = safety.Contracts();
         snapshot.tripped = safety.Tripped();
         snapshot.holding = safety.Holding();
+        if (!snapshot.tripped && !snapshot.holding)
+            stop.reset();
+        snapshot.stop = stop;
         snapshot.hardwareStopOpen = safety.HardwareStopOpen();
         snapshot.torqueClamped = safety.TorqueClamped();
         snapshot.moving = arm.Motion().Moving();

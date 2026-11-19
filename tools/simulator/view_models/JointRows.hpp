@@ -25,7 +25,7 @@ namespace simulator
     std::string_view FaultName(can::FocFaultCode fault);
     ui::theme::StatusLevel LevelOf(const arm::JointReading& reading);
     bool ModelIsLive(const arm_host::ArmSnapshot& snapshot);
-    std::array<JointRow, arm::jointCount> JointRows(const arm_host::ArmSnapshot& snapshot, const arm::JointLimits& limits);
+    std::array<JointRow, arm::jointCount> JointRows(const arm_host::ArmSnapshot& snapshot, const arm::JointLimits& limits, const arm::JointFlags& torqueLimited = {});
 }
 
 #endif

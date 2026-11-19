@@ -172,6 +172,10 @@ TEST_F(ArmSessionTest, an_injected_fault_trips_the_arm_and_names_the_joint)
     EXPECT_EQ(2u, sink.Find(ArmEventKind::tripped)->joint);
     EXPECT_EQ(can::FocFaultCode::overCurrent, sink.Find(ArmEventKind::tripped)->fault);
     EXPECT_TRUE(sink.snapshot.tripped);
+    ASSERT_TRUE(sink.snapshot.stop.has_value());
+    EXPECT_EQ(arm_host::StopCategory::emergency, sink.snapshot.stop->category);
+    EXPECT_EQ(2u, sink.snapshot.stop->joint);
+    EXPECT_EQ(can::FocFaultCode::overCurrent, sink.snapshot.stop->fault);
 }
 
 TEST_F(ArmSessionTest, a_silenced_joint_trips_the_arm_once)
@@ -199,6 +203,11 @@ TEST_F(ArmSessionTest, the_hardware_stop_opening_trips_the_arm_and_names_the_har
     Execute(7, arm_host::Rearm{});
     EXPECT_EQ(ArmEventKind::refused, sink.Last()->kind);
 
+    ASSERT_TRUE(sink.snapshot.stop.has_value());
+    EXPECT_EQ(arm_host::StopCategory::emergency, sink.snapshot.stop->category);
+    EXPECT_EQ(arm_host::noJoint, sink.snapshot.stop->joint);
+    EXPECT_EQ("hardware stop open", sink.snapshot.stop->reason);
+
     simulatedArm.HardwareStop().Set(false);
     ForwardTime(20ms);
     EXPECT_FALSE(sink.snapshot.hardwareStopOpen);
@@ -207,6 +216,8 @@ TEST_F(ArmSessionTest, the_hardware_stop_opening_trips_the_arm_and_names_the_har
         {
             return event.kind == ArmEventKind::accepted && event.command == 8;
         }));
+    ForwardTime(20ms);
+    EXPECT_FALSE(sink.snapshot.stop.has_value());
 }
 
 TEST_F(ArmSessionTest, refuses_a_failure_on_a_joint_that_does_not_exist)
@@ -606,6 +617,28 @@ TEST_F(SoftTorqueArmSessionTest, a_joint_that_lags_its_reference_too_long_stops_
     EXPECT_TRUE(sink.snapshot.holding);
     EXPECT_FALSE(sink.snapshot.tripped);
     EXPECT_EQ(arm::ArmState::holding, sink.snapshot.state);
+    ASSERT_TRUE(sink.snapshot.stop.has_value());
+    EXPECT_EQ(arm_host::StopCategory::protective, sink.snapshot.stop->category);
+    EXPECT_EQ(0u, sink.snapshot.stop->joint);
+    EXPECT_EQ(stop->reason, sink.snapshot.stop->reason);
+}
+
+TEST_F(SoftTorqueArmSessionTest, an_emergency_stop_while_holding_replaces_the_protective_stop_in_the_snapshot)
+{
+    Execute(1, arm_host::BringUp{});
+    Execute(2, arm_host::Enable{});
+    Execute(3, arm_host::MoveTo{ { foc::Radians{ 1.0f }, foc::Radians{ 0.0f }, foc::Radians{ 0.0f }, foc::Radians{ 0.0f }, foc::Radians{ 0.0f },
+                   foc::Radians{ 0.0f } } });
+    ForwardTime(3s);
+    ASSERT_EQ(arm::ArmState::holding, sink.snapshot.state);
+
+    Execute(4, arm_host::InjectFault{ 3, can::FocFaultCode::overTemperature });
+    ForwardTime(20ms);
+
+    ASSERT_TRUE(sink.snapshot.stop.has_value());
+    EXPECT_EQ(arm_host::StopCategory::emergency, sink.snapshot.stop->category);
+    EXPECT_EQ(3u, sink.snapshot.stop->joint);
+    EXPECT_EQ(can::FocFaultCode::overTemperature, sink.snapshot.stop->fault);
 }
 
 TEST_F(SoftTorqueArmSessionTest, a_held_arm_keeps_its_pose_refuses_moves_and_drives_again_once_rearmed)
@@ -628,6 +661,7 @@ TEST_F(SoftTorqueArmSessionTest, a_held_arm_keeps_its_pose_refuses_moves_and_dri
     Execute(5, arm_host::Rearm{});
     EXPECT_EQ(arm::ArmState::enabled, sink.snapshot.state);
     EXPECT_FALSE(sink.snapshot.holding);
+    EXPECT_FALSE(sink.snapshot.stop.has_value());
     EXPECT_EQ(nullptr, sink.Find(ArmEventKind::tripped));
     Execute(6, arm_host::MoveTo{ { held, foc::Radians{ 0.0f }, foc::Radians{ 0.0f }, foc::Radians{ 0.0f }, foc::Radians{ 0.0f }, foc::Radians{ 0.0f } } });
     ForwardTime(1s);

@@ -111,6 +111,7 @@ namespace arm_host
         std::optional<Pending> issuing;
         std::optional<Pending> held;
         bool tripReported{ false };
+        std::optional<StopReport> stop;
     };
 }
 

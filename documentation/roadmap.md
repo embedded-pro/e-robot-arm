@@ -133,8 +133,11 @@ designed in [safety.md](design/safety.md) 0.6.0:
 5. Done: workspace and self-collision: the workspace check over the arm model, move targets and paths refused, every
    step supervised; robotics-toolbox's `ConvexCollision` already measures a capsule against a box.
 6. Done: hardware stop input: interface, mock, trip and re-arm rules; the circuit itself waits for phase 9.
-7. Simulator and console: the stop's rule and category in the status strip, the Holding state, the torque clamps,
-   the workspace and zones drawn in the 3-D view; a scenario per rule, including a collision on the virtual arm.
+7. Simulator and console, in three pull requests:
+   - Done: the stop in effect, with its category and rule, in the snapshot, the status strip and the console's
+     `status`; the torque-limited joints in the status strip, the joint table and `status`;
+   - the workspace and zones drawn in the 3-D view;
+   - a scenario per rule, including a collision on the virtual arm.
 
 ## Decisions waiting for input
 

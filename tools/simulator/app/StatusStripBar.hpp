@@ -39,9 +39,11 @@ namespace simulator
         QLabel* connection;
         QLabel* stage;
         QLabel* contracts;
-        QLabel* trip;
+        QLabel* stop;
+        QLabel* torqueLimited;
         QLabel* overruns;
         QLabel* limits;
+        QAction* torqueLimitedItem{ nullptr };
         QAction* limitsItem{ nullptr };
         QPushButton* emergencyStop;
     };

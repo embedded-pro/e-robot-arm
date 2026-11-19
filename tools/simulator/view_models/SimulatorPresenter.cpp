@@ -134,9 +134,33 @@ namespace simulator
             return { "Unknown", StatusLevel::Neutral };
         }
 
-        std::string Source(const std::string& source)
+        constexpr uint32_t torqueLimitHoldFrames{ 30 };
+
+        std::string_view StopCause(const arm_host::StopReport& stop)
         {
-            return source.empty() ? std::string{ "an unknown source" } : source;
+            if (!stop.reason.empty())
+                return stop.reason;
+            if (stop.fault == can::FocFaultCode::none)
+                return "silent";
+            return FaultName(stop.fault);
+        }
+
+        std::string Source(const std::optional<arm_host::StopReport>& stop)
+        {
+            if (!stop.has_value())
+                return "an unknown source";
+            if (stop->joint == arm_host::noJoint)
+                return SentenceCase(StopCause(*stop));
+            return std::format("Joint {} ({})", stop->joint + 1, StopCause(*stop));
+        }
+
+        std::string JointList(const arm::JointFlags& joints)
+        {
+            std::string list;
+            for (std::size_t joint = 0; joint != joints.size(); ++joint)
+                if (joints[joint])
+                    list += std::format("{}J{}", list.empty() ? "" : ", ", joint + 1);
+            return list;
         }
 
         std::string ContractsText(can::ContractCompatibility contracts)
@@ -192,7 +216,8 @@ namespace simulator
             Handle(event);
 
         FollowLimits();
-        rows = JointRows(snapshot, limits);
+        UpdateTorqueLimits();
+        rows = JointRows(snapshot, limits, torqueLimited);
         tool = ToolReadoutOf(snapshot);
         scene.Update(snapshot);
         UpdateStatus();
@@ -344,15 +369,15 @@ namespace simulator
             Post(arm_host::Enable{});
         else if (action == OperateAction::disable && snapshot.state == arm::ArmState::holding && disablePrompt)
             disablePrompt(std::format("The arm holds its pose after the protective stop by {}. Disabling stops the joints: an arm without brakes falls. Disable?",
-                Source(holdSource)));
+                Source(snapshot.stop)));
         else if (action == OperateAction::disable)
             Post(arm_host::Disable{});
         else if (action == OperateAction::clearFaults)
             Post(arm_host::ClearFaults{});
         else if (action == OperateAction::rearm && rearmPrompt && snapshot.state == arm::ArmState::holding)
-            rearmPrompt(std::format("Re-arm after the protective stop by {}? The arm resumes from the held pose.", Source(holdSource)));
+            rearmPrompt(std::format("Re-arm after the protective stop by {}? The arm resumes from the held pose.", Source(snapshot.stop)));
         else if (action == OperateAction::rearm && rearmPrompt)
-            rearmPrompt(std::format("Re-arm after the trip by {}?", Source(tripSource)));
+            rearmPrompt(std::format("Re-arm after the emergency stop by {}?", Source(snapshot.stop)));
     }
 
     void SimulatorPresenter::OnMoveAction(ui::model::ActionId action)
@@ -417,23 +442,9 @@ namespace simulator
         moveView.Build(forms.moveModel);
     }
 
-    std::string_view SimulatorPresenter::TripCause(const arm_host::ArmEvent& event)
-    {
-        if (!event.reason.empty())
-            return event.reason;
-        if (event.fault == can::FocFaultCode::none)
-            return "silent";
-        return FaultName(event.fault);
-    }
-
     void SimulatorPresenter::Handle(const arm_host::ArmEvent& event)
     {
         log.Add(event);
-
-        if (event.kind == arm_host::ArmEventKind::tripped)
-            tripSource = event.joint == arm_host::noJoint ? SentenceCase(event.reason) : std::format("Joint {} ({})", event.joint + 1, TripCause(event));
-        if (event.kind == arm_host::ArmEventKind::protectiveStop)
-            holdSource = std::format("Joint {} ({})", event.joint + 1, event.reason);
 
         using enum arm_host::ArmEventKind;
         const auto request = pending.find(event.command);
@@ -451,23 +462,41 @@ namespace simulator
         pending.erase(request);
     }
 
-    void SimulatorPresenter::UpdateStop(std::string_view source)
+    void SimulatorPresenter::UpdateStop()
     {
         if (snapshot.tripped)
         {
-            status.trip = std::format("Tripped — {}", source);
-            status.tripLevel = ui::theme::StatusLevel::Fault;
+            status.stop = std::format("Emergency stop (category 0) — {}", Source(snapshot.stop));
+            status.stopDetail = "Category 0: every drive's power stage is off";
+            status.stopLevel = ui::theme::StatusLevel::Fault;
         }
         else if (snapshot.holding)
         {
-            status.trip = std::format("Holding — {}: re-arm or disable", holdSource.empty() ? std::string_view{ "unknown source" } : std::string_view{ holdSource });
-            status.tripLevel = ui::theme::StatusLevel::Warning;
+            status.stop = std::format("Protective stop (category 2) — {}: re-arm or disable", Source(snapshot.stop));
+            status.stopDetail = "Category 2: the joints stay powered and hold the pose";
+            status.stopLevel = ui::theme::StatusLevel::Warning;
         }
         else
         {
-            status.trip = "Trip: —";
-            status.tripLevel = ui::theme::StatusLevel::Neutral;
+            status.stop = "Stop: —";
+            status.stopDetail = "No stop in effect";
+            status.stopLevel = ui::theme::StatusLevel::Neutral;
         }
+    }
+
+    void SimulatorPresenter::UpdateTorqueLimits()
+    {
+        for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+        {
+            if (snapshot.torqueClamped[joint])
+                torqueLimitFrames[joint] = torqueLimitHoldFrames;
+            else if (torqueLimitFrames[joint] != 0)
+                --torqueLimitFrames[joint];
+            torqueLimited[joint] = torqueLimitFrames[joint] != 0;
+        }
+        const auto joints = JointList(torqueLimited);
+        status.torqueLimited = joints.empty() ? std::string{} : "Torque limited: " + joints;
+        status.torqueLimitedLevel = joints.empty() ? ui::theme::StatusLevel::Neutral : ui::theme::StatusLevel::Warning;
     }
 
     void SimulatorPresenter::UpdateStatus()
@@ -492,8 +521,7 @@ namespace simulator
         }
         std::tie(status.stage, status.stageLevel) = Stage(snapshot);
         status.contracts = ContractsText(snapshot.contracts);
-        const std::string_view source = tripSource.empty() ? std::string_view{ "unknown source" } : std::string_view{ tripSource };
-        UpdateStop(source);
+        UpdateStop();
         status.overruns = std::format("Overruns: {}", snapshot.overruns);
         status.overrunLevel = snapshot.overruns == 0 ? ui::theme::StatusLevel::Neutral : ui::theme::StatusLevel::Warning;
         status.limits.clear();

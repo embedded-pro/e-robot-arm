@@ -164,8 +164,8 @@ TEST_F(SimulatorPresenterTest, a_trip_names_its_source_in_the_status_and_in_the_
     auto tripped = simulator::test::Running();
     tripped.tripped = true;
     tripped.state = arm::ArmState::tripped;
-    const std::array events{ arm_host::ArmEvent{ .kind = ArmEventKind::tripped, .joint = 2, .fault = can::FocFaultCode::overCurrent } };
-    presenter.Refresh(tripped, events);
+    tripped.stop = arm_host::StopReport{ .category = arm_host::StopCategory::emergency, .joint = 2, .fault = can::FocFaultCode::overCurrent };
+    presenter.Refresh(tripped, {});
 
     std::string prompt;
     presenter.SetRearmPrompt([&prompt](std::string_view text)
@@ -174,9 +174,10 @@ TEST_F(SimulatorPresenterTest, a_trip_names_its_source_in_the_status_and_in_the_
         });
     Trigger(OperateAction::rearm);
 
-    EXPECT_EQ("Tripped — Joint 3 (Overcurrent)", presenter.Status().trip);
-    EXPECT_EQ(ui::theme::StatusLevel::Fault, presenter.Status().tripLevel);
-    EXPECT_EQ("Re-arm after the trip by Joint 3 (Overcurrent)?", prompt);
+    EXPECT_EQ("Emergency stop (category 0) — Joint 3 (Overcurrent)", presenter.Status().stop);
+    EXPECT_EQ(ui::theme::StatusLevel::Fault, presenter.Status().stopLevel);
+    EXPECT_EQ("Category 0: every drive's power stage is off", presenter.Status().stopDetail);
+    EXPECT_EQ("Re-arm after the emergency stop by Joint 3 (Overcurrent)?", prompt);
 }
 
 TEST_F(SimulatorPresenterTest, a_protective_stop_shows_holding_with_its_rule_and_asks_before_rearm_and_disable)
@@ -184,8 +185,8 @@ TEST_F(SimulatorPresenterTest, a_protective_stop_shows_holding_with_its_rule_and
     auto holding = simulator::test::Running();
     holding.holding = true;
     holding.state = arm::ArmState::holding;
-    const std::array events{ arm_host::ArmEvent{ .kind = ArmEventKind::protectiveStop, .reason = "collision 12.0 N·m", .joint = 1 } };
-    presenter.Refresh(holding, events);
+    holding.stop = arm_host::StopReport{ .category = arm_host::StopCategory::protective, .joint = 1, .reason = "collision 12.0 N·m" };
+    presenter.Refresh(holding, {});
 
     std::string rearmPrompt;
     presenter.SetRearmPrompt([&rearmPrompt](std::string_view text)
@@ -200,8 +201,9 @@ TEST_F(SimulatorPresenterTest, a_protective_stop_shows_holding_with_its_rule_and
     Trigger(OperateAction::rearm);
     Trigger(OperateAction::disable);
 
-    EXPECT_EQ("Holding — Joint 2 (collision 12.0 N·m): re-arm or disable", presenter.Status().trip);
-    EXPECT_EQ(ui::theme::StatusLevel::Warning, presenter.Status().tripLevel);
+    EXPECT_EQ("Protective stop (category 2) — Joint 2 (collision 12.0 N·m): re-arm or disable", presenter.Status().stop);
+    EXPECT_EQ(ui::theme::StatusLevel::Warning, presenter.Status().stopLevel);
+    EXPECT_EQ("Category 2: the joints stay powered and hold the pose", presenter.Status().stopDetail);
     EXPECT_EQ("Re-arm after the protective stop by Joint 2 (collision 12.0 N·m)? The arm resumes from the held pose.", rearmPrompt);
     EXPECT_EQ("The arm holds its pose after the protective stop by Joint 2 (collision 12.0 N·m). Disabling stops the joints: an arm without brakes falls. "
               "Disable?",
@@ -216,10 +218,55 @@ TEST_F(SimulatorPresenterTest, a_supervision_trip_names_its_reason_as_its_source
     auto tripped = simulator::test::Running();
     tripped.tripped = true;
     tripped.state = arm::ArmState::tripped;
-    const std::array events{ arm_host::ArmEvent{ .kind = ArmEventKind::tripped, .reason = "tracking error 0.250 rad", .joint = 1 } };
-    presenter.Refresh(tripped, events);
+    tripped.stop = arm_host::StopReport{ .category = arm_host::StopCategory::emergency, .joint = 1, .reason = "hold lost" };
+    presenter.Refresh(tripped, {});
 
-    EXPECT_EQ("Tripped — Joint 2 (tracking error 0.250 rad)", presenter.Status().trip);
+    EXPECT_EQ("Emergency stop (category 0) — Joint 2 (hold lost)", presenter.Status().stop);
+}
+
+TEST_F(SimulatorPresenterTest, a_stop_that_names_no_joint_shows_its_reason)
+{
+    auto tripped = simulator::test::Running();
+    tripped.tripped = true;
+    tripped.state = arm::ArmState::tripped;
+    tripped.stop = arm_host::StopReport{ .category = arm_host::StopCategory::emergency, .reason = "hardware stop open" };
+    presenter.Refresh(tripped, {});
+
+    EXPECT_EQ("Emergency stop (category 0) — Hardware stop open", presenter.Status().stop);
+}
+
+TEST_F(SimulatorPresenterTest, no_stop_in_effect_shows_a_neutral_placeholder)
+{
+    presenter.Refresh(simulator::test::Running(), {});
+
+    EXPECT_EQ("Stop: —", presenter.Status().stop);
+    EXPECT_EQ(ui::theme::StatusLevel::Neutral, presenter.Status().stopLevel);
+}
+
+TEST_F(SimulatorPresenterTest, a_clamped_torque_names_its_joints_and_stays_shown_for_half_a_second)
+{
+    auto clamped = simulator::test::Running();
+    clamped.torqueClamped[1] = true;
+    clamped.torqueClamped[2] = true;
+    presenter.Refresh(clamped, {});
+
+    EXPECT_EQ("Torque limited: J2, J3", presenter.Status().torqueLimited);
+    EXPECT_EQ(ui::theme::StatusLevel::Warning, presenter.Status().torqueLimitedLevel);
+    EXPECT_EQ("Running · torque limit", presenter.Rows()[1].state);
+    EXPECT_EQ(ui::theme::StatusLevel::Warning, presenter.Rows()[1].level);
+
+    auto released = simulator::test::Running();
+    for (uint32_t frame = 0; frame != 29; ++frame)
+    {
+        ++released.sequence;
+        presenter.Refresh(released, {});
+    }
+    EXPECT_EQ("Torque limited: J2, J3", presenter.Status().torqueLimited);
+
+    ++released.sequence;
+    presenter.Refresh(released, {});
+    EXPECT_TRUE(presenter.Status().torqueLimited.empty());
+    EXPECT_EQ("Running", presenter.Rows()[1].state);
 }
 
 TEST_F(SimulatorPresenterTest, confirming_the_rearm_posts_it)
@@ -401,7 +448,7 @@ TEST_F(SimulatorPresenterTest, a_rearm_prompt_without_a_known_source_says_so)
         });
     Trigger(OperateAction::rearm);
 
-    EXPECT_EQ("Re-arm after the trip by an unknown source?", prompt);
+    EXPECT_EQ("Re-arm after the emergency stop by an unknown source?", prompt);
 }
 
 TEST_F(SimulatorPresenterTest, a_loaded_profile_is_requested_and_its_limits_reach_the_move_form)

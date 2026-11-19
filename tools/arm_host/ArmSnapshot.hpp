@@ -32,6 +32,20 @@ namespace arm_host
         arm::JointTorques torque{};
     };
 
+    enum class StopCategory : uint8_t
+    {
+        protective,
+        emergency
+    };
+
+    struct StopReport
+    {
+        StopCategory category{ StopCategory::protective };
+        std::size_t joint{ noJoint };
+        std::string reason{};
+        can::FocFaultCode fault{ can::FocFaultCode::none };
+    };
+
     struct ArmSnapshot
     {
         uint64_t sequence{ 0 };
@@ -44,6 +58,7 @@ namespace arm_host
         bool holding{ false };
         bool hardwareStopOpen{ false };
         arm::JointFlags torqueClamped{};
+        std::optional<StopReport> stop{};
         bool moving{ false };
         arm::ArmState state{ arm::ArmState::unpowered };
         std::optional<arm::Misconfiguration> misconfiguration{};
