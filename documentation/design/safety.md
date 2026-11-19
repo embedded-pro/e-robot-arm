@@ -2,7 +2,7 @@
 title: "Safety Supervisor Design"
 type: design
 status: draft
-version: 0.9.0
+version: 0.10.0
 component: "safety"
 date: 2026-11-19
 ---
@@ -12,7 +12,7 @@ date: 2026-11-19
 | Title     | Safety Supervisor Design |
 | Type      | design                   |
 | Status    | draft                    |
-| Version   | 0.9.0                    |
+| Version   | 0.10.0                   |
 | Component | safety                   |
 | Date      | 2026-11-19               |
 
@@ -237,6 +237,27 @@ tells its observers each time that changes. The supervisor observes it:
 The input is an interface in the core; the platform implements it, and an arm built without one has a circuit that
 never opens. Until the bring-up hardware decides on a relay or a safe-torque-off input and on how it is read (open
 question 1), the simulated joints carry a hardware stop the tests open and close, and every other target has none.
+
+### Part K — Verification
+
+Each rule has a scenario at the arm's boundary, on the simulated joints (`integration_tests/features`) or on the
+e-foc virtual motors (`integration_tests/virtual/features`), besides the supervisor's unit tests:
+
+| Rule                                      | Stop                       | Scenario (feature)                                                                                  | Requirement              |
+|-------------------------------------------|----------------------------|-----------------------------------------------------------------------------------------------------|--------------------------|
+| Joint fault, silent joint                 | Emergency                  | A faulted joint stops every joint; a silent joint stops every joint (`arm`)                         | REQ-ARM-004, 005         |
+| Hardware stop                             | Emergency                  | The hardware stop stops every joint (`arm`)                                                         | REQ-SAF-010              |
+| Drive watchdog                            | Drive                      | Every drive stops on its own (`lifecycle`)                                                          | REQ-SAF-009              |
+| Speed; the hold and the re-arm            | Protective                 | A joint faster than its speed limit stops the arm, holds and moves again (`supervision`)            | REQ-SAF-005, 001, 003    |
+| Torque limit                              | Clamp                      | A torque above a joint's limit is clamped and reported (`supervision`)                              | REQ-SAF-004              |
+| Reference beyond the motion limits        | Protective                 | A reference faster than the motion limits allow stops the arm (`supervision`)                       | REQ-SAF-006              |
+| Workspace, forbidden zone, self-collision | Refusal                    | A move into a zone or onto the arm itself moves nothing (`workspace`)                               | REQ-SAF-007, 008         |
+| Tracking error                            | Protective                 | A collision that holds a joint back stops the arm (`tracking_supervision`, virtual)                 | REQ-ARM-014              |
+| Collision; a lost hold                    | Protective, then emergency | A collision stops the arm protectively, and a push it cannot hold trips it (`virtual_arm`, virtual) | REQ-ARM-016, REQ-SAF-002 |
+
+The reference scenario hands the supervisor a reference the arm's own joint motion never produces, as a faulty arm
+controller would. The workspace rules while the arm drives are covered by the supervisor's unit tests only: joint
+motion refuses every path that would break them, so no scenario can drive the arm into one.
 
 ---
 

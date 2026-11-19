@@ -27,6 +27,7 @@ namespace integration
         std::optional<arm::ControllerReading> read;
         std::optional<std::size_t> motorApplied;
         std::optional<arm::MotorSettings> motorRead;
+        std::optional<std::pair<std::size_t, arm::SupervisionTrip>> protectiveStop;
         bool configurationFailed{ false };
         uint32_t movesDone{ 0 };
         uint32_t movesAborted{ 0 };
@@ -37,6 +38,7 @@ namespace integration
         void OnJointSilent(std::size_t joint) override;
         void OnCommandDelivered(arm::JointCommand command) override;
         void OnCommandFailed(arm::JointCommand command, arm::CommandFailure failure) override;
+        void OnProtectiveStop(std::size_t joint, arm::SupervisionTrip trip, float value) override;
         void OnApplied(std::size_t joint) override;
         void OnRead(std::size_t joint, const arm::ControllerReading& reading) override;
         void OnMotorApplied(std::size_t joint) override;
@@ -53,6 +55,9 @@ namespace integration
     {
         explicit ArmFixture(const arm::JointTransmissions& transmissions = {}, const arm::JointControllers& controllers = {}, const arm::JointMotors& motors = {},
             const arm::WorkspaceConfig& workspace = {});
+        explicit ArmFixture(const arm::ArmConfig& config);
+
+        static arm::ArmConfig DefaultConfig();
 
         simulation::SimulatedJoint& Joint(std::size_t number);
         void StartInTorqueMode();
