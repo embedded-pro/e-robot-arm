@@ -2,7 +2,7 @@
 title: "Arm Controllers Design"
 type: design
 status: draft
-version: 0.9.0
+version: 0.10.0
 component: "arm-controllers"
 date: 2026-11-17
 ---
@@ -12,7 +12,7 @@ date: 2026-11-17
 | Title     | Arm Controllers Design |
 | Type      | design                 |
 | Status    | draft                  |
-| Version   | 0.9.0                  |
+| Version   | 0.10.0                  |
 | Component | arm-controllers        |
 | Date      | 2026-11-17             |
 
@@ -50,7 +50,9 @@ date: 2026-11-17
 
 ### Part A — The controller
 
-A controller takes the measured joints (positions and speeds from the latest telemetry) and the reference (the joint
+A controller takes the measured joints (positions and speeds from the latest telemetry; a reading from an earlier
+period, answered too late for this step's setpoints, is advanced by its speed for each period it missed, at most two,
+so a late answer does not add a period of delay to the loop) and the reference (the joint
 positions, speeds and accelerations the motion wants now, [joint-motion.md](joint-motion.md) Part B) and returns a
 setpoint set: six joint torques, with the reference positions alongside for the trace and for the safety
 supervisor's tracking check.

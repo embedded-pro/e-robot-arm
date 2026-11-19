@@ -1,11 +1,14 @@
 #include "core/arm_controllers/implementations/ArmControllersImpl.hpp"
 #include "infra/util/ReallyAssert.hpp"
+#include <algorithm>
+#include <chrono>
 
 namespace arm
 {
-    ArmControllersImpl::ArmControllersImpl(JointBus& bus, const JointMotion& motion)
+    ArmControllersImpl::ArmControllersImpl(JointBus& bus, const JointMotion& motion, infra::Duration period)
         : bus(bus)
         , motion(motion)
+        , periodSeconds(std::chrono::duration<float>{ period }.count())
     {}
 
     ArmControllerId ArmControllersImpl::Register(infra::BoundedConstString name, ArmController& controller)
@@ -159,10 +162,12 @@ namespace arm
     MeasuredJoints ArmControllersImpl::Measured() const
     {
         MeasuredJoints measured;
+        const auto current = periodSeconds > 0.0f ? bus.Period() : 0;
         for (std::size_t joint = 0; joint != jointCount; ++joint)
         {
             const auto& reading = bus.Reading(joint);
-            measured.positions[joint] = reading.position;
+            const auto age = reading.period != 0 && current > reading.period ? std::min(current - reading.period, maxExtrapolatedPeriods) : 0;
+            measured.positions[joint] = foc::Radians{ reading.position.Value() + reading.speed.Value() * periodSeconds * static_cast<float>(age) };
             measured.speeds[joint] = reading.speed;
         }
         return measured;

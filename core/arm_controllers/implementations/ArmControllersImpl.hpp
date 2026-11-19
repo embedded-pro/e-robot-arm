@@ -16,7 +16,9 @@ namespace arm
         : public ArmControllers
     {
     public:
-        ArmControllersImpl(JointBus& bus, const JointMotion& motion);
+        static constexpr uint32_t maxExtrapolatedPeriods{ 2 };
+
+        ArmControllersImpl(JointBus& bus, const JointMotion& motion, infra::Duration period = {});
 
         ArmControllerId Register(infra::BoundedConstString name, ArmController& controller);
 
@@ -53,6 +55,7 @@ namespace arm
 
         JointBus& bus;
         const JointMotion& motion;
+        float periodSeconds;
         infra::BoundedVector<Entry>::WithMaxSize<maxArmControllers> entries;
         std::optional<ArmControllerId> active;
         bool streaming{ false };

@@ -58,7 +58,8 @@ namespace arm
         , gravityPid(model, ReflectedRotors(config), config.gravityPid, config.controlPeriod)
         , collision(model, ReflectedRotors(config), config.collisionObserverGain)
         , period(config.controlPeriod)
-        , controllers(safety, motion)
+        , torqueLimits(Supervision(config).torque)
+        , controllers(safety, motion, config.controlPeriod)
         , engagement(lifecycle, controllers)
         , loop(safety, config.controlPeriod, [this]()
               {
@@ -139,7 +140,10 @@ namespace arm
 
     void Arm::Step()
     {
-        const auto applied = controllers.LastSetpoints();
+        auto applied = controllers.LastSetpoints();
+        if (applied.has_value())
+            for (std::size_t joint = 0; joint != jointCount; ++joint)
+                applied->torques[joint] = foc::NewtonMeter{ std::clamp(applied->torques[joint].Value(), -torqueLimits[joint].Value(), torqueLimits[joint].Value()) };
         const auto reference = motion.Step();
         if (!controllers.Step(reference))
             motion.Abort();

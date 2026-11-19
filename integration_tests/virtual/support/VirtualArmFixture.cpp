@@ -156,20 +156,28 @@ namespace integration
             history += std::format("  J{} state {} fault {} silent {}\n", joint + 1, static_cast<int>(snapshot.readings[joint].state),
                 static_cast<int>(snapshot.readings[joint].fault), snapshot.readings[joint].silent);
         history += std::format("  host control loop overruns {}\n", snapshot.overruns);
-        for (std::size_t sample = trace.size() > 15 ? trace.size() - 15 : 1; sample < trace.size(); ++sample)
+        const auto stop = std::ranges::find_if(events, [](const arm_host::ArmEvent& event)
+            {
+                return event.kind == arm_host::ArmEventKind::protectiveStop || event.kind == arm_host::ArmEventKind::tripped;
+            });
+        std::size_t end{ trace.size() };
+        if (stop != events.end())
+            end = static_cast<std::size_t>(std::distance(trace.begin(), std::ranges::find_if(trace, [&stop](const arm_host::TraceSample& sample)
+                {
+                    return sample.time > stop->time;
+                })));
+        for (std::size_t sample = end > 20 ? end - 20 : 1; sample < end; ++sample)
         {
             const auto gap = std::chrono::duration<double, std::milli>(trace[sample].time - trace[sample - 1].time).count();
-            std::size_t joint{ 0 };
-            float external{ 0.0f };
-            if (trace[sample].externalTorques.has_value())
-                for (std::size_t candidate = 0; candidate != arm::jointCount; ++candidate)
-                    if (std::abs((*trace[sample].externalTorques)[candidate].Value()) > std::abs(external))
-                    {
-                        joint = candidate;
-                        external = (*trace[sample].externalTorques)[candidate].Value();
-                    }
-            const auto commanded = trace[sample].torques.has_value() ? (*trace[sample].torques)[joint].Value() : 0.0f;
-            history += std::format("  trace +{:.1f} ms external J{} {:.2f} N·m commanded {:.2f} N·m\n", gap, joint + 1, external, commanded);
+            history += std::format("  trace +{:.1f} ms", gap);
+            for (std::size_t joint = 0; joint != 3; ++joint)
+            {
+                const auto external = trace[sample].externalTorques.has_value() ? (*trace[sample].externalTorques)[joint].Value() : 0.0f;
+                const auto commanded = trace[sample].torques.has_value() ? (*trace[sample].torques)[joint].Value() : 0.0f;
+                history += std::format(" | J{} ext {:.2f} cmd {:.2f} N·m ref {:.3f} pos {:.3f}", joint + 1, external, commanded, trace[sample].commanded[joint].Value(),
+                    trace[sample].measured[joint].Value());
+            }
+            history += "\n";
         }
         const auto timings = virtualArm->Timings();
         for (std::size_t joint = 0; joint != arm::jointCount; ++joint)

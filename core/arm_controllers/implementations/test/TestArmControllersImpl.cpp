@@ -205,3 +205,38 @@ TEST_F(ArmControllersImplTest, holding_tracks_the_measured_pose_at_rest_from_a_r
     EXPECT_TRUE(controllers.Step(std::nullopt));
     EXPECT_EQ(std::optional<arm::JointPositions>{ Uniform(0.25f) }, controllers.Reference());
 }
+
+namespace
+{
+    class ArmControllersExtrapolatingTest
+        : public ArmControllersImplTest
+    {
+    public:
+        ArmControllersExtrapolatingTest()
+        {
+            EXPECT_CALL(bus, Period()).WillRepeatedly(Return(9));
+            for (auto& reading : readings)
+                reading.period = 9;
+        }
+
+        arm::ArmControllersImpl extrapolating{ bus, motion, std::chrono::milliseconds{ 10 } };
+        arm::ArmControllerId statelessHere{ extrapolating.Register("stepping", stateless) };
+    };
+}
+
+TEST_F(ArmControllersExtrapolatingTest, a_reading_from_an_earlier_period_is_advanced_by_its_speed_for_each_period_it_missed)
+{
+    readings[2].period = 8;
+    readings[4].period = 2;
+    extrapolating.Enable(statelessHere);
+    extrapolating.Select(statelessHere);
+
+    EXPECT_CALL(stateless, Reset(_)).WillOnce(Invoke([](const arm::MeasuredJoints& measured)
+        {
+            EXPECT_NEAR(0.25f, measured.positions[0].Value(), 1e-6f);
+            EXPECT_NEAR(0.25f + 0.5f * 0.01f, measured.positions[2].Value(), 1e-6f);
+            EXPECT_NEAR(0.25f + 0.5f * 0.02f, measured.positions[4].Value(), 1e-6f);
+            EXPECT_NEAR(0.5f, measured.speeds[2].Value(), 1e-6f);
+        }));
+    extrapolating.Engage();
+}

@@ -62,6 +62,7 @@ namespace arm
         GravityPid gravityPid;
         CollisionObserver collision;
         infra::Duration period;
+        std::array<foc::NewtonMeter, jointCount> torqueLimits;
         bool observing{ false };
         JointTorques previousApplied{};
         JointTorques actingSum{};
