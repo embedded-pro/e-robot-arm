@@ -9,6 +9,7 @@
 #include <array>
 #include <deque>
 #include <optional>
+#include <vector>
 
 namespace simulator
 {
@@ -19,6 +20,7 @@ namespace simulator
         static constexpr std::size_t trailCapacity{ 500 };
         static constexpr float trailSpacingCentimetres{ 0.2f };
         using Trail = std::deque<std::array<float, 3>>;
+        using BoxList = std::vector<SceneBox>;
 
         void Update(const arm_host::ArmSnapshot& snapshot);
         bool Select(int pickedJoint);
@@ -38,10 +40,13 @@ namespace simulator
         const ScenePose& ToolNode() const;
         const Trail& ToolTrail() const;
         uint32_t TrailRevision() const;
+        const BoxList& Boxes() const;
+        uint32_t BoxesRevision() const;
 
     private:
         void UpdateNodes(const arm_host::ArmSnapshot& snapshot);
         void UpdateTrail(bool live, bool rebuilt);
+        void UpdateBoxes(const arm_host::ArmSnapshot& snapshot);
 
         std::array<float, arm::jointCount> measured{};
         std::array<float, arm::jointCount> commanded{};
@@ -58,6 +63,8 @@ namespace simulator
         ScenePose toolNode{};
         Trail trail;
         uint32_t trailRevision{ 0 };
+        BoxList boxes;
+        uint32_t boxesRevision{ 0 };
     };
 }
 

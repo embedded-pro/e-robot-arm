@@ -32,6 +32,7 @@ namespace simulator
         Q_PROPERTY(QVector3D toolPosition READ ToolPosition NOTIFY changed)
         Q_PROPERTY(QQuaternion toolRotation READ ToolRotation NOTIFY changed)
         Q_PROPERTY(QVariantList trail READ Trail NOTIFY trailChanged)
+        Q_PROPERTY(QVariantList boxes READ Boxes NOTIFY boxesChanged)
         Q_PROPERTY(QStringList meshes READ Meshes NOTIFY meshesChanged)
         Q_PROPERTY(QColor warningColor READ WarningColor NOTIFY themeChanged)
         Q_PROPERTY(QVariantList levels READ Levels NOTIFY changed)
@@ -63,6 +64,7 @@ namespace simulator
         QVector3D ToolPosition() const;
         QQuaternion ToolRotation() const;
         QVariantList Trail() const;
+        QVariantList Boxes() const;
         QStringList Meshes() const;
         void SetMeshes(const QStringList& urls);
         QColor WarningColor() const;
@@ -85,6 +87,7 @@ namespace simulator
         void themeChanged();
         void partsChanged();
         void trailChanged();
+        void boxesChanged();
         void meshesChanged();
         void meshFailed(int node, const QString& reason);
         void jointPicked(int joint);
@@ -101,6 +104,8 @@ namespace simulator
         QQuaternion toolRotation;
         QVariantList trail;
         uint32_t trailRevision{ 0 };
+        QVariantList boxes;
+        uint32_t boxesRevision{ 0 };
         QStringList meshes;
         QColor warning;
         QVariantList levels;

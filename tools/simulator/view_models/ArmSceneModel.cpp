@@ -1,5 +1,6 @@
 #include "tools/simulator/view_models/ArmSceneModel.hpp"
 #include "tools/simulator/view_models/JointRows.hpp"
+#include <algorithm>
 #include <cmath>
 #include <numbers>
 
@@ -32,6 +33,7 @@ namespace simulator
         }
         ghostVisible = snapshot.targetReady && (snapshot.moving || apart);
         UpdateNodes(snapshot);
+        UpdateBoxes(snapshot);
         singularityWarning = ToolReadoutOf(snapshot).warning;
     }
 
@@ -56,6 +58,31 @@ namespace simulator
             ++meshesRevision;
         }
         UpdateTrail(ModelIsLive(snapshot), rebuilt);
+    }
+
+    void ArmSceneModel::UpdateBoxes(const arm_host::ArmSnapshot& snapshot)
+    {
+        const auto& zones = snapshot.config.workspace;
+        BoxList built;
+        built.reserve(1 + zones.forbiddenZoneCount);
+        built.push_back(ToSceneBox(snapshot.workspace, SceneBoxKind::workspace));
+        for (std::size_t zone = 0; zone != std::min<std::size_t>(zones.forbiddenZoneCount, arm::maxForbiddenZones); ++zone)
+            built.push_back(ToSceneBox(zones.forbiddenZones[zone], SceneBoxKind::zone));
+
+        if (snapshot.stop.has_value() && snapshot.stop->workspace.has_value())
+        {
+            const auto& violation = *snapshot.stop->workspace;
+            if (violation.rule == arm::WorkspaceRule::workspace)
+                built.front().violated = true;
+            else if (violation.rule == arm::WorkspaceRule::forbiddenZone && violation.other + 1u < built.size())
+                built[violation.other + 1u].violated = true;
+        }
+
+        if (built != boxes)
+        {
+            boxes = std::move(built);
+            ++boxesRevision;
+        }
     }
 
     void ArmSceneModel::UpdateTrail(bool live, bool rebuilt)
@@ -170,5 +197,15 @@ namespace simulator
     uint32_t ArmSceneModel::TrailRevision() const
     {
         return trailRevision;
+    }
+
+    const ArmSceneModel::BoxList& ArmSceneModel::Boxes() const
+    {
+        return boxes;
+    }
+
+    uint32_t ArmSceneModel::BoxesRevision() const
+    {
+        return boxesRevision;
     }
 }

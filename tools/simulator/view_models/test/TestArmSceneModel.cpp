@@ -1,7 +1,10 @@
 #include "tools/simulator/view_models/ArmSceneModel.hpp"
 #include "tools/simulator/view_models/test/SnapshotBuilder.hpp"
 #include "gmock/gmock.h"
+#include <algorithm>
+#include <cmath>
 #include <numbers>
+#include <set>
 
 namespace
 {
@@ -225,4 +228,87 @@ TEST_F(ArmSceneModelTest, the_trail_adds_spaced_points_keeps_the_newest_and_clea
     snapshot.config.geometry.opw.c2 = 0.3f;
     scene.Update(snapshot);
     EXPECT_EQ(1u, scene.ToolTrail().size());
+}
+
+TEST_F(ArmSceneModelTest, draws_the_workspace_and_each_forbidden_zone_in_y_up_centimetres)
+{
+    auto snapshot = simulator::test::Running();
+    snapshot.workspace = { math::Vector3<float>{ -0.5f, -0.4f, 0.0f }, math::Vector3<float>{ 0.5f, 0.4f, 0.9f } };
+    snapshot.config.workspace.forbiddenZones[0] = { math::Vector3<float>{ 0.2f, 0.1f, 0.0f }, math::Vector3<float>{ 0.4f, 0.3f, 0.2f } };
+    snapshot.config.workspace.forbiddenZoneCount = 1;
+
+    scene.Update(snapshot);
+
+    const auto& boxes = scene.Boxes();
+    ASSERT_EQ(2u, boxes.size());
+    EXPECT_EQ(simulator::SceneBoxKind::workspace, boxes[0].kind);
+    EXPECT_NEAR(0.0f, boxes[0].centre[0], 1.0e-4f);
+    EXPECT_NEAR(45.0f, boxes[0].centre[1], 1.0e-4f);
+    EXPECT_NEAR(100.0f, boxes[0].size[0], 1.0e-4f);
+    EXPECT_NEAR(90.0f, boxes[0].size[1], 1.0e-4f);
+    EXPECT_NEAR(80.0f, boxes[0].size[2], 1.0e-4f);
+    EXPECT_EQ(simulator::SceneBoxKind::zone, boxes[1].kind);
+    EXPECT_NEAR(30.0f, boxes[1].centre[0], 1.0e-4f);
+    EXPECT_NEAR(10.0f, boxes[1].centre[1], 1.0e-4f);
+    EXPECT_NEAR(-20.0f, boxes[1].centre[2], 1.0e-4f);
+    EXPECT_FALSE(boxes[0].violated);
+    EXPECT_FALSE(boxes[1].violated);
+}
+
+TEST_F(ArmSceneModelTest, marks_the_zone_a_protective_stop_names_and_rebuilds_the_boxes_only_on_change)
+{
+    auto snapshot = simulator::test::Running();
+    snapshot.config.workspace.forbiddenZoneCount = 2;
+    scene.Update(snapshot);
+    const auto revision = scene.BoxesRevision();
+    scene.Update(snapshot);
+    EXPECT_EQ(revision, scene.BoxesRevision());
+
+    snapshot.holding = true;
+    snapshot.stop = arm_host::StopReport{ .category = arm_host::StopCategory::protective,
+        .joint = 2,
+        .reason = "forearm in forbidden zone 2 by 0.010 m",
+        .workspace = arm::WorkspaceViolation{ .rule = arm::WorkspaceRule::forbiddenZone, .link = 3, .other = 1, .distance = 0.01f } };
+    scene.Update(snapshot);
+
+    EXPECT_NE(revision, scene.BoxesRevision());
+    EXPECT_FALSE(scene.Boxes()[0].violated);
+    EXPECT_FALSE(scene.Boxes()[1].violated);
+    EXPECT_TRUE(scene.Boxes()[2].violated);
+}
+
+TEST_F(ArmSceneModelTest, marks_the_workspace_box_on_a_stop_by_the_workspace_rule)
+{
+    auto snapshot = simulator::test::Running();
+    snapshot.holding = true;
+    snapshot.stop = arm_host::StopReport{ .category = arm_host::StopCategory::protective,
+        .joint = 0,
+        .workspace = arm::WorkspaceViolation{ .rule = arm::WorkspaceRule::workspace, .link = 6, .distance = 0.02f } };
+
+    scene.Update(snapshot);
+
+    EXPECT_TRUE(scene.Boxes()[0].violated);
+}
+
+TEST_F(ArmSceneModelTest, a_box_outline_runs_along_all_twelve_edges)
+{
+    const simulator::SceneBox box{ simulator::SceneBoxKind::zone, { 10.0f, 20.0f, 30.0f }, { 2.0f, 4.0f, 6.0f }, false };
+
+    const auto path = simulator::BoxOutline(box);
+
+    std::set<std::pair<std::array<float, 3>, std::array<float, 3>>> edges;
+    for (std::size_t point = 1; point != path.size(); ++point)
+    {
+        const auto& a = path[point - 1];
+        const auto& b = path[point];
+        int differing = 0;
+        for (std::size_t axis = 0; axis != 3; ++axis)
+        {
+            EXPECT_NEAR(box.size[axis] / 2.0f, std::abs(a[axis] - box.centre[axis]), 1.0e-5f);
+            differing += a[axis] != b[axis] ? 1 : 0;
+        }
+        EXPECT_EQ(1, differing);
+        edges.insert(std::minmax(a, b));
+    }
+    EXPECT_EQ(12u, edges.size());
 }

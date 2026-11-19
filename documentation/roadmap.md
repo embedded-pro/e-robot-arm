@@ -136,7 +136,7 @@ designed in [safety.md](design/safety.md) 0.6.0:
 7. Simulator and console, in three pull requests:
    - Done: the stop in effect, with its category and rule, in the snapshot, the status strip and the console's
      `status`; the torque-limited joints in the status strip, the joint table and `status`;
-   - the workspace and zones drawn in the 3-D view;
+   - Done: the workspace and zones drawn in the 3-D view, the one that stopped the arm in the fault colour;
    - a scenario per rule, including a collision on the virtual arm.
 
 ## Decisions waiting for input

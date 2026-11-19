@@ -2,7 +2,7 @@
 title: "Simulator Design"
 type: design
 status: draft
-version: 0.21.0
+version: 0.22.0
 component: "simulator"
 date: 2026-11-19
 ---
@@ -12,7 +12,7 @@ date: 2026-11-19
 | Title     | Simulator Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.21.0           |
+| Version   | 0.22.0           |
 | Component | simulator        |
 | Date      | 2026-11-19       |
 
@@ -297,6 +297,8 @@ empty until the arm has been enabled); nothing else in `core/` changes for the s
 | Snapshot        | hardware stop open    | bool                                | —                     | The stop circuit is open (safety.md Part J)             |
 | Snapshot        | torque clamped        | 6 × bool                            | —                     | The last torque sent was clamped (safety.md Part B)     |
 | Snapshot        | stop                  | category, joint, rule, fault; opt.  | —                     | The stop in effect; cleared once re-armed (Part F)      |
+| Snapshot        | stop's workspace rule | rule, link, other link or zone, m   | —                     | A stop by the workspace check only (safety.md Part H)   |
+| Snapshot        | workspace             | box: min and max corner, m          | —                     | The box the supervisor checks, default or profile's     |
 | Snapshot        | profile               | name and arm configuration          | —                     | The profile loaded, never the commissioning copy        |
 | Snapshot        | commissioning         | bool                                | —                     | Real arm only; on at every connection                   |
 | Snapshot        | tool pose             | m, rad; singularity flags           | —                     | From the measured joints ([arm-model.md](arm-model.md)) |

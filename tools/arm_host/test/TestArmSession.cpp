@@ -85,6 +85,15 @@ TEST_F(ArmSessionTest, publishes_a_ready_snapshot_of_its_target_at_once)
     EXPECT_FALSE(sink.snapshot.commanded.has_value());
 }
 
+TEST_F(ArmSessionTest, publishes_the_workspace_box_the_safety_supervisor_checks)
+{
+    const auto expected = arm::DefaultWorkspace(arm_host::test::Config().geometry, arm_host::test::Config().workspace);
+
+    EXPECT_NEAR(expected.min[0], sink.snapshot.workspace.min[0], 1.0e-6f);
+    EXPECT_NEAR(expected.max[2], sink.snapshot.workspace.max[2], 1.0e-6f);
+    EXPECT_GT(sink.snapshot.workspace.max[2], sink.snapshot.workspace.min[2]);
+}
+
 TEST_F(ArmSessionTest, publishes_the_tool_pose_of_the_measured_joints)
 {
     Execute(1, arm_host::CheckContracts{});

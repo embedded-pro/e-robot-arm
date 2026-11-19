@@ -2,6 +2,7 @@
 #define TOOLS_SIMULATOR_VIEW_MODELS_ARM_SCENE_GEOMETRY_HPP
 
 #include "core/arm_model/ArmModel.hpp"
+#include "core/workspace/WorkspaceConfig.hpp"
 #include <array>
 #include <cstdint>
 
@@ -14,6 +15,25 @@ namespace simulator
 
         bool operator==(const ScenePose& other) const = default;
     };
+
+    enum class SceneBoxKind : uint8_t
+    {
+        workspace,
+        zone
+    };
+
+    struct SceneBox
+    {
+        SceneBoxKind kind{ SceneBoxKind::workspace };
+        std::array<float, 3> centre{};
+        std::array<float, 3> size{};
+        bool violated{ false };
+
+        bool operator==(const SceneBox& other) const = default;
+    };
+
+    SceneBox ToSceneBox(const arm::WorkspaceBox& box, SceneBoxKind kind);
+    std::array<std::array<float, 3>, 16> BoxOutline(const SceneBox& box);
 
     constexpr std::size_t sceneNodeCount{ arm::jointCount + 1 };
     using SceneNodes = std::array<ScenePose, sceneNodeCount>;
