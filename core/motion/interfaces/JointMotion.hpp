@@ -39,7 +39,7 @@ namespace arm
         JointMotion(const JointMotion& other) = delete;
         JointMotion& operator=(const JointMotion& other) = delete;
 
-        static constexpr float maxStep{ 0.2f };
+        static constexpr float maxStep{ maxReferenceStep };
 
         virtual bool MoveTo(const JointPositions& target) = 0;
         virtual bool StepTo(const JointPositions& target) = 0;

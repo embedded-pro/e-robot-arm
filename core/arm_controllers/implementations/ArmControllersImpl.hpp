@@ -27,6 +27,7 @@ namespace arm
         std::optional<ArmControllerId> Active() const override;
         std::optional<JointSetpoints> LastSetpoints() const override;
         std::optional<JointPositions> Reference() const override;
+        std::optional<JointReference> TrackedReference() const;
 
         bool Enable(ArmControllerId id) override;
         bool Disable(ArmControllerId id) override;

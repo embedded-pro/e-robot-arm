@@ -42,6 +42,7 @@ namespace arm_host
         can::ContractCompatibility contracts{ can::ContractCompatibility::unknown };
         bool tripped{ false };
         bool holding{ false };
+        arm::JointFlags torqueClamped{};
         bool moving{ false };
         arm::ArmState state{ arm::ArmState::unpowered };
         std::optional<arm::Misconfiguration> misconfiguration{};

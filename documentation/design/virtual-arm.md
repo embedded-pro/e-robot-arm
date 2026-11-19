@@ -2,7 +2,7 @@
 title: "Virtual Arm Design"
 type: design
 status: draft
-version: 0.16.0
+version: 0.17.0
 component: "virtual-arm"
 date: 2026-11-19
 ---
@@ -12,7 +12,7 @@ date: 2026-11-19
 | Title     | Virtual Arm Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.16.0             |
+| Version   | 0.17.0             |
 | Component | virtual-arm        |
 | Date      | 2026-11-19         |
 
@@ -243,7 +243,7 @@ preset with the drive's following-error supervision off: the arm's own tracking-
 Part F, 0.1 rad for 0.1 s in this profile) watches every joint instead, beside its collision supervision
 ([collision.md](collision.md)) at 10 N·m on the first three joints and 2 N·m on the wrist, more than twice the
 largest external torque the observer estimates through the reference move. The `Held back` scenario is a feature
-of its own (`tracking_supervision.feature`), started with every collision limit out of reach. Every rule stops the
+of its own (`tracking_supervision.feature`), started with every collision and speed limit out of reach. Every rule stops the
 arm protectively and the gains that hold it are the tracking gains, so on this light arm a push of the size the
 scenarios use, even one that ends, swings the forearm out of the 0.1 rad window and the hold is lost: the scenarios
 check the stop and its escalation, and the hold itself and its re-arm are checked on the simulated joints (the arm
@@ -264,7 +264,7 @@ scenario, and a failed step prints each motor's real-time factor and overrun cou
 | PID with gravity       | The same move under `gravity-pid`: every joint settles within 0.015 rad despite the drives' friction, and a tracking limit pinned from its `[METRIC]` line                                                                                                                                      |
 | Step test              | A 0.05 rad reference step on the elbow under `gravity-pid` through the tuning runner ([tuning.md](tuning.md)): rise time and overshoot as `[METRIC]` lines held to limits pinned from them                                                                                                      |
 | Collision              | A 30 N·m torque against the shoulder while it moves, about the drive's peak torque through the gear, stops the arm protectively on that joint's collision within 300 ms (REQ-ARM-016); the push goes on, the hold cannot resist it, and the arm trips on the lost hold within 2 s (REQ-SAF-002) |
-| Held back              | The same collision with every joint's collision limit at 1000 N·m, out of reach, stops the arm protectively on a joint's tracking error instead (REQ-ARM-014); without either supervision the drive holds on and nothing stops                                                                  |
+| Held back              | The same collision with every joint's collision limit at 1000 N·m and speed limit at 100 rad/s, out of reach, stops the arm protectively on a joint's tracking error instead (REQ-ARM-014); without either supervision the drive holds on and nothing stops                                     |
 | Silent joint           | A paused motor trips the arm as a silent joint (REQ-ARM-005)                                                                                                                                                                                                                                    |
 
 CI runs them in a job of its own after building the engine (Part F). A torque well beyond the drive's peak is no

@@ -76,6 +76,14 @@ namespace arm_host
                     return std::format("collision {:.1f} N·m", value);
                 case arm::SupervisionTrip::holdLost:
                     return std::format("hold lost: {:.3f} rad from the held pose", value);
+                case arm::SupervisionTrip::speedLimit:
+                    return std::format("speed {:.2f} rad/s above its limit", value);
+                case arm::SupervisionTrip::referenceSpeed:
+                    return std::format("reference speed {:.2f} rad/s above its motion limit", value);
+                case arm::SupervisionTrip::referenceAcceleration:
+                    return std::format("reference acceleration {:.2f} rad/s² above its motion limit", value);
+                case arm::SupervisionTrip::referenceStep:
+                    return std::format("reference jumped {:.3f} rad in one period", value);
                 case arm::SupervisionTrip::positionLimit:
                     break;
             }
@@ -638,6 +646,7 @@ namespace arm_host
         snapshot.contracts = safety.Contracts();
         snapshot.tripped = safety.Tripped();
         snapshot.holding = safety.Holding();
+        snapshot.torqueClamped = safety.TorqueClamped();
         snapshot.moving = arm.Motion().Moving();
         snapshot.state = arm.Lifecycle().State();
         snapshot.misconfiguration = arm.Lifecycle().MisconfiguredJoint();

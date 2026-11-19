@@ -11,7 +11,8 @@ namespace arm
         , private JointBusObserver
     {
     public:
-        SafetySupervisorImpl(JointBus& bus, const JointLimits& limits, const TrackingLimits& tracking, const CollisionLimits& collision, infra::Duration period);
+        SafetySupervisorImpl(JointBus& bus, const JointLimits& limits, const TrackingLimits& tracking, const CollisionLimits& collision, infra::Duration period,
+            const MotionSupervision& motion = {});
 
         bool QueryContracts() override;
         can::ContractCompatibility Contracts() const override;
@@ -36,7 +37,8 @@ namespace arm
         bool Tripped() const override;
         bool Holding() const override;
         bool Rearm() override;
-        void Supervise(const std::optional<JointPositions>& reference, const std::optional<JointTorques>& externalTorques) override;
+        void Supervise(const std::optional<JointReference>& reference, const std::optional<JointTorques>& externalTorques) override;
+        const JointFlags& TorqueClamped() const override;
 
     private:
         void OnContractsResolved(can::ContractCompatibility compatibility) override;
@@ -53,6 +55,8 @@ namespace arm
         void Trip();
         bool SuperviseJoint(std::size_t joint, foc::Radians reference);
         bool SuperviseCollision(const JointTorques& externalTorques);
+        bool SuperviseReference(const JointReference& reference);
+        bool SuperviseSpeed(std::size_t joint);
         void SuperviseHold(const JointPositions& held);
         std::optional<float> TrackingErrorHeld(std::size_t joint, foc::Radians reference);
         void Protect(std::size_t joint, SupervisionTrip cause, float value);
@@ -61,6 +65,10 @@ namespace arm
         JointLimits limits;
         TrackingLimits tracking;
         CollisionLimits collision;
+        MotionSupervision motion;
+        float periodSeconds;
+        std::optional<JointPositions> previousReference;
+        JointFlags torqueClamped{};
         std::array<uint32_t, jointCount> stepsToTrip{};
         std::array<uint32_t, jointCount> stepsOutside{};
         bool tripped{ false };

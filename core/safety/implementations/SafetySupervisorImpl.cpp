@@ -2,6 +2,7 @@
 #include "infra/util/ReallyAssert.hpp"
 #include "numerical/math/Math.hpp"
 #include <algorithm>
+#include <utility>
 
 namespace arm
 {
@@ -16,15 +17,24 @@ namespace arm
         {
             return math::IsFinite(limit.window.Value()) && limit.window.Value() > 0.0f && limit.time > infra::Duration::zero();
         }
+
+        constexpr float limitTolerance{ 1.0e-3f };
+
+        bool Above(float value, float limit)
+        {
+            return math::Abs(value) > limit * (1.0f + limitTolerance) + 1.0e-6f;
+        }
     }
 
     SafetySupervisorImpl::SafetySupervisorImpl(JointBus& bus, const JointLimits& limits, const TrackingLimits& tracking, const CollisionLimits& collision,
-        infra::Duration period)
+        infra::Duration period, const MotionSupervision& motion)
         : JointBusObserver(bus)
         , bus(bus)
         , limits(limits)
         , tracking(tracking)
         , collision(collision)
+        , motion(motion)
+        , periodSeconds(std::chrono::duration<float>{ period }.count())
     {
         really_assert(std::ranges::all_of(limits, ValidLimit));
         really_assert(std::ranges::all_of(tracking, ValidTracking));
@@ -92,8 +102,21 @@ namespace arm
         if (!MayStream() || !finite)
             return false;
 
-        bus.SendTorques(torques);
+        auto clamped = torques;
+        for (std::size_t joint = 0; joint != jointCount; ++joint)
+        {
+            const auto limit = motion.torque[joint].Value();
+            clamped[joint] = foc::NewtonMeter{ std::clamp(torques[joint].Value(), -limit, limit) };
+            torqueClamped[joint] = clamped[joint] != torques[joint];
+        }
+
+        bus.SendTorques(clamped);
         return true;
+    }
+
+    const JointFlags& SafetySupervisorImpl::TorqueClamped() const
+    {
+        return torqueClamped;
     }
 
     bool SafetySupervisorImpl::RequestTelemetry()
@@ -149,6 +172,7 @@ namespace arm
         tripped = false;
         holding = false;
         stepsOutside.fill(0);
+        previousReference.reset();
         return true;
     }
 
@@ -229,26 +253,65 @@ namespace arm
         return false;
     }
 
-    void SafetySupervisorImpl::Supervise(const std::optional<JointPositions>& reference, const std::optional<JointTorques>& externalTorques)
+    void SafetySupervisorImpl::Supervise(const std::optional<JointReference>& reference, const std::optional<JointTorques>& externalTorques)
     {
         if (!reference.has_value() || tripped)
         {
             stepsOutside.fill(0);
+            previousReference.reset();
             return;
         }
 
         if (holding)
         {
-            SuperviseHold(*reference);
+            SuperviseHold(reference->positions);
             return;
         }
 
         if (externalTorques.has_value() && !SuperviseCollision(*externalTorques))
             return;
 
+        if (!SuperviseReference(*reference))
+            return;
+
         for (std::size_t joint = 0; joint != jointCount; ++joint)
-            if (!SuperviseJoint(joint, (*reference)[joint]))
+            if (!SuperviseJoint(joint, reference->positions[joint]))
                 return;
+    }
+
+    bool SafetySupervisorImpl::SuperviseReference(const JointReference& reference)
+    {
+        const auto previous = std::exchange(previousReference, reference.positions);
+        for (std::size_t joint = 0; joint != jointCount; ++joint)
+        {
+            const auto& limit = motion.reference[joint];
+            if (Above(reference.speeds[joint].Value(), limit.speed.Value()))
+            {
+                Protect(joint, SupervisionTrip::referenceSpeed, reference.speeds[joint].Value());
+                return false;
+            }
+            if (Above(reference.accelerations[joint].Value(), limit.acceleration.Value()))
+            {
+                Protect(joint, SupervisionTrip::referenceAcceleration, reference.accelerations[joint].Value());
+                return false;
+            }
+            const auto travelled = previous.has_value() ? reference.positions[joint].Value() - (*previous)[joint].Value() : 0.0f;
+            if (Above(travelled, std::max(limit.speed.Value() * periodSeconds, maxReferenceStep)))
+            {
+                Protect(joint, SupervisionTrip::referenceStep, math::Abs(travelled));
+                return false;
+            }
+        }
+        return true;
+    }
+
+    bool SafetySupervisorImpl::SuperviseSpeed(std::size_t joint)
+    {
+        const auto speed = bus.Reading(joint).speed.Value();
+        if (!Above(speed, motion.speed[joint].Value()))
+            return true;
+        Protect(joint, SupervisionTrip::speedLimit, speed);
+        return false;
     }
 
     bool SafetySupervisorImpl::SuperviseJoint(std::size_t joint, foc::Radians reference)
@@ -263,6 +326,9 @@ namespace arm
             Protect(joint, SupervisionTrip::positionLimit, measured.Value());
             return false;
         }
+
+        if (!SuperviseSpeed(joint))
+            return false;
 
         const auto error = TrackingErrorHeld(joint, reference);
         if (!error.has_value())
@@ -318,6 +384,7 @@ namespace arm
     {
         holding = true;
         stepsOutside.fill(0);
+        previousReference.reset();
         NotifyObservers([joint, cause, value](auto& observer)
             {
                 observer.OnProtectiveStop(joint, cause, value);

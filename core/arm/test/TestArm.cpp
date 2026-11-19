@@ -8,6 +8,7 @@
 #include "gmock/gmock.h"
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <numbers>
 #include <vector>
 
@@ -261,4 +262,23 @@ TEST_F(ArmTest, a_supervision_rule_holds_the_measured_pose_and_keeps_the_joints_
     EXPECT_EQ(streamed + arm::jointCount, SentOf(can::SetpointCommandId(can::FocSetpointKind::torqueNewtonMeter)));
     ASSERT_TRUE(arm.Controllers().Reference().has_value());
     EXPECT_NEAR(3.5f, (*arm.Controllers().Reference())[0].Value(), 1e-5f);
+}
+
+TEST_F(ArmTest, supervision_limits_come_from_the_profile_or_default_from_motion_and_motor)
+{
+    auto config = Config();
+    config.speedTrips[1] = foc::RadiansPerSecond{ 2.5f };
+    config.torqueLimits[2] = foc::NewtonMeter{ 12.0f };
+    config.motors[3] = arm::JointMotor{ 0, arm::motorPresets[0].settings };
+    config.transmissions[3].ratio = 50.0f;
+
+    const auto supervision = arm::Supervision(config);
+
+    EXPECT_NEAR(1.0f, supervision.reference[0].speed.Value(), 1e-6f);
+    EXPECT_NEAR(2.0f, supervision.reference[0].acceleration.Value(), 1e-6f);
+    EXPECT_NEAR(4.0f, supervision.speed[0].Value(), 1e-6f);
+    EXPECT_NEAR(2.5f, supervision.speed[1].Value(), 1e-6f);
+    EXPECT_NEAR(12.0f, supervision.torque[2].Value(), 1e-6f);
+    EXPECT_NEAR(1.5f * 4.0f * 0.0064f * 20.0f * 50.0f, supervision.torque[3].Value(), 1e-3f);
+    EXPECT_TRUE(std::isinf(supervision.torque[0].Value()));
 }

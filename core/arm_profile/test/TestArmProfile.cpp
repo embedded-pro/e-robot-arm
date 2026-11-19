@@ -45,6 +45,14 @@ namespace
         R"( "motorController": { "current": "slidingMode", "speed": "adrc", "position": "lqr", "gains": { "positionBandwidth": 25, "speedErrorWeight": 1.5 } },)"
         R"( "motor": { "preset": "teknic-m2310p-ln-04k", "inertiaGramCm2": 120.5 }, "trackingError": { "windowRad": 0.1, "timeS": 0.35 }, "collisionTorqueNm": 7.5)") };
 
+    std::size_t Count(const std::string& text, const std::string& part)
+    {
+        std::size_t count{ 0 };
+        for (auto at = text.find(part); at != std::string::npos; at = text.find(part, at + part.size()))
+            ++count;
+        return count;
+    }
+
     class ArmProfileTest
         : public testing::Test
     {
@@ -279,7 +287,26 @@ TEST_F(ArmProfileTest, reads_the_controllers_bandwidth_and_damping_and_defaults_
     EXPECT_NEAR(0.7f, plain->config.gravityPd.dampingRatio, 1.0e-6f);
 }
 
-TEST_F(ArmProfileTest, reads_a_version_1_profile_and_writes_version_2)
+TEST_F(ArmProfileTest, reads_the_speed_trip_and_torque_limit_and_leaves_them_to_their_defaults_when_absent)
+{
+    const auto profile = Read(Profile(Joint(1, R"(, "speedLimitRadPerS": 2.5, "torqueLimitNm": 30)")));
+
+    ASSERT_TRUE(profile.has_value()) << Problem();
+    ASSERT_TRUE(profile->config.speedTrips[0].has_value());
+    EXPECT_NEAR(2.5f, profile->config.speedTrips[0]->Value(), 1.0e-6f);
+    ASSERT_TRUE(profile->config.torqueLimits[0].has_value());
+    EXPECT_NEAR(30.0f, profile->config.torqueLimits[0]->Value(), 1.0e-6f);
+    EXPECT_FALSE(profile->config.speedTrips[1].has_value());
+    EXPECT_FALSE(profile->config.torqueLimits[1].has_value());
+
+    infra::StringOutputStream::WithStorage<16384> stream;
+    arm::WriteArmProfile(*profile, stream);
+    const std::string written{ stream.Storage().begin(), stream.Storage().end() };
+    EXPECT_EQ(1u, Count(written, R"("speedLimitRadPerS": 2.5)"));
+    EXPECT_EQ(1u, Count(written, R"("torqueLimitNm": 30)"));
+}
+
+TEST_F(ArmProfileTest, reads_a_version_1_profile_and_writes_version_3)
 {
     const auto version1 = Read(Profile(Joint(1)));
     ASSERT_TRUE(version1.has_value()) << Problem();
@@ -287,11 +314,11 @@ TEST_F(ArmProfileTest, reads_a_version_1_profile_and_writes_version_2)
     infra::StringOutputStream::WithStorage<16384> stream;
     arm::WriteArmProfile(*version1, stream);
     const std::string written{ stream.Storage().begin(), stream.Storage().end() };
-    EXPECT_NE(std::string::npos, written.find(R"("version": 2,)"));
+    EXPECT_NE(std::string::npos, written.find(R"("version": 3,)"));
 
-    auto version3{ Profile(Joint(1)) };
-    version3.replace(version3.find(R"("version": 1)"), 12, R"("version": 3)");
-    EXPECT_FALSE(Read(version3).has_value());
+    auto version4{ Profile(Joint(1)) };
+    version4.replace(version4.find(R"("version": 1)"), 12, R"("version": 4)");
+    EXPECT_FALSE(Read(version4).has_value());
     EXPECT_EQ("version: is not a version this reader knows", Problem());
 }
 
@@ -346,7 +373,9 @@ TEST_F(ArmProfileTest, refuses_a_profile_and_names_the_first_problem)
         { Profile(Joint(1), R"( "meshes": { "link1": "arm.stl" },)"), "meshes.link1: must name a .gltf or .glb file" },
         { Profile(Joint(1), R"( "meshes": { "base": "" },)"), "meshes.base: must be a path of 1 to 96 characters" },
         { Profile(Joint(1), R"( "meshes": { "base": 3 },)"), "meshes.base: must be a path of 1 to 96 characters" },
-        { R"({ "format": "e-robot-arm profile", "version": 3 })", "version: is not a version this reader knows" },
+        { R"({ "format": "e-robot-arm profile", "version": 4 })", "version: is not a version this reader knows" },
+        { Profile(Joint(1, R"(, "speedLimitRadPerS": 0)")), "joints[0].speedLimitRadPerS: must be above 0" },
+        { Profile(Joint(1, R"(, "torqueLimitNm": 1001)")), "joints[0].torqueLimitNm: must be above 0 and at most 1000" },
         { R"({ "format": "something else" })", "format: must be \"e-robot-arm profile\"" },
         { R"({ "format": "e-robot-arm profile", "version": 1, "controlPeriodMs": 5 })", "name: is missing" },
         { R"({ "format": "e-robot-arm profile", "version": 1, "controlPeriodMs": 0 })", "controlPeriodMs: must be a whole number from 1 to 1000" },
