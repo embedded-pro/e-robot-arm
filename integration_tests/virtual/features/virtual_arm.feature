@@ -41,7 +41,7 @@ Feature: The arm on six e-foc virtual motors
   @REQ-ARM-016 @REQ-SAF-002
   Scenario: A collision stops the arm protectively, and a push the hold cannot resist ends in an emergency stop
     When the arm moves the joints to 0.3, -0.5, 0.4, 0.2, 0.3, 0.1 rad
-    And a collision pushes joint 2 with 30 N·m
+    And a collision pushes joint 2 with 15 N·m
     Then within 300 ms the arm shall stop protectively with joint 2 on a collision
     And within 2000 ms the arm shall trip on a lost hold
 
