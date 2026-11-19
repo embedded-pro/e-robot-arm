@@ -119,7 +119,7 @@ namespace
         StrictMock<arm::PoseGuardMock> guard;
         StrictMock<arm::HardwareStopMock> hardwareStop;
         bool stopOpen{ false };
-        arm::SafetySupervisorImpl supervisor{ bus, limits, Tracking(), Collision(), 10ms, Motion(), &guard, &hardwareStop };
+        arm::SafetySupervisorImpl supervisor{ bus, limits, Tracking(), Collision(), 10ms, Motion(), arm::SupervisionInputs{ &guard, &hardwareStop } };
         StrictMock<arm::JointBusObserverMock> observer{ supervisor };
         std::array<arm::JointReading, arm::jointCount> readings{};
     };

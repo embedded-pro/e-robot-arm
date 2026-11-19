@@ -52,6 +52,12 @@ namespace arm
 
     using JointFlags = std::array<bool, jointCount>;
 
+    struct SupervisionInputs
+    {
+        const PoseGuard* pose{ nullptr };
+        HardwareStop* hardwareStop{ nullptr };
+    };
+
     class SafetySupervisor
         : public JointBus
     {

@@ -13,7 +13,7 @@ namespace arm
     {
     public:
         SafetySupervisorImpl(JointBus& bus, const JointLimits& limits, const TrackingLimits& tracking, const CollisionLimits& collision, infra::Duration period,
-            const MotionSupervision& motion = {}, const PoseGuard* guard = nullptr, HardwareStop* hardwareStop = nullptr);
+            const MotionSupervision& motion = {}, const SupervisionInputs& inputs = {});
 
         bool QueryContracts() override;
         can::ContractCompatibility Contracts() const override;

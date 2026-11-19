@@ -40,7 +40,7 @@ namespace arm
     }
 
     SafetySupervisorImpl::SafetySupervisorImpl(JointBus& bus, const JointLimits& limits, const TrackingLimits& tracking, const CollisionLimits& collision,
-        infra::Duration period, const MotionSupervision& motion, const PoseGuard* guard, HardwareStop* hardwareStop)
+        infra::Duration period, const MotionSupervision& motion, const SupervisionInputs& inputs)
         : JointBusObserver(bus)
         , bus(bus)
         , limits(limits)
@@ -48,8 +48,8 @@ namespace arm
         , collision(collision)
         , motion(motion)
         , periodSeconds(std::chrono::duration<float>{ period }.count())
-        , guard(guard)
-        , hardwareStop(hardwareStop)
+        , guard(inputs.pose)
+        , hardwareStop(inputs.hardwareStop)
     {
         if (hardwareStop != nullptr)
             HardwareStopObserver::Attach(*hardwareStop);
