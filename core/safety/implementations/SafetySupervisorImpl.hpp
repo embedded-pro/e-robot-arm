@@ -12,7 +12,7 @@ namespace arm
     {
     public:
         SafetySupervisorImpl(JointBus& bus, const JointLimits& limits, const TrackingLimits& tracking, const CollisionLimits& collision, infra::Duration period,
-            const MotionSupervision& motion = {});
+            const MotionSupervision& motion = {}, const PoseGuard* guard = nullptr);
 
         bool QueryContracts() override;
         can::ContractCompatibility Contracts() const override;
@@ -39,6 +39,7 @@ namespace arm
         bool Rearm() override;
         void Supervise(const std::optional<JointReference>& reference, const std::optional<JointTorques>& externalTorques) override;
         const JointFlags& TorqueClamped() const override;
+        std::optional<WorkspaceViolation> LastWorkspaceViolation() const override;
 
     private:
         void OnContractsResolved(can::ContractCompatibility compatibility) override;
@@ -57,6 +58,8 @@ namespace arm
         bool SuperviseCollision(const JointTorques& externalTorques);
         bool SuperviseReference(const JointReference& reference);
         bool SuperviseSpeed(std::size_t joint);
+        bool SuperviseWorkspace(const JointPositions& reference);
+        std::optional<JointPositions> FreshMeasuredPose() const;
         void SuperviseHold(const JointPositions& held);
         std::optional<float> TrackingErrorHeld(std::size_t joint, foc::Radians reference);
         void Protect(std::size_t joint, SupervisionTrip cause, float value);
@@ -69,6 +72,8 @@ namespace arm
         float periodSeconds;
         std::optional<JointPositions> previousReference;
         JointFlags torqueClamped{};
+        const PoseGuard* guard;
+        std::optional<WorkspaceViolation> lastWorkspaceViolation;
         std::array<uint32_t, jointCount> stepsToTrip{};
         std::array<uint32_t, jointCount> stepsOutside{};
         bool tripped{ false };

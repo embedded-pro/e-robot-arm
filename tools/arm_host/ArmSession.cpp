@@ -84,11 +84,34 @@ namespace arm_host
                     return std::format("reference acceleration {:.2f} rad/s² above its motion limit", value);
                 case arm::SupervisionTrip::referenceStep:
                     return std::format("reference jumped {:.3f} rad in one period", value);
+                case arm::SupervisionTrip::workspace:
+                case arm::SupervisionTrip::forbiddenZone:
+                case arm::SupervisionTrip::selfCollision:
+                    return std::format("workspace {:.3f} m", value);
                 case arm::SupervisionTrip::positionLimit:
                     break;
             }
 
             return std::format("position {:.3f} rad outside its limits", value);
+        }
+
+        std::string LinkName(std::size_t link)
+        {
+            return link + 1 < arm::workspaceCapsules ? std::format("link {}", link + 1) : std::string{ "tool" };
+        }
+
+        std::string WorkspaceText(const arm::WorkspaceViolation& violation)
+        {
+            switch (violation.rule)
+            {
+                case arm::WorkspaceRule::workspace:
+                    return std::format("{} outside the workspace by {:.3f} m", LinkName(violation.link), violation.distance);
+                case arm::WorkspaceRule::forbiddenZone:
+                    return std::format("{} in forbidden zone {} by {:.3f} m", LinkName(violation.link), violation.other + 1, violation.distance);
+                case arm::WorkspaceRule::selfCollision:
+                    break;
+            }
+            return std::format("{} and {} {:.3f} m apart (self-collision)", LinkName(violation.link), LinkName(violation.other), violation.distance);
         }
 
         std::string_view JointCommandName(arm::JointCommand command)
@@ -474,6 +497,17 @@ namespace arm_host
             return "holding after a protective stop: re-arm first";
         if (arm.Lifecycle().State() != arm::ArmState::enabled)
             return Moving() ? "moving" : "the arm is not enabled";
+        const auto& target = std::holds_alternative<MoveTo>(command) ? std::get<MoveTo>(command).target : std::get<StepTo>(command).target;
+        if (arm::WithinLimits(profile.config.positionLimits, target))
+        {
+            if (const auto violation = arm.Workspace().Check(target); violation.has_value())
+            {
+                workspaceRefusal = "target: " + WorkspaceText(*violation);
+                return workspaceRefusal;
+            }
+            if (std::holds_alternative<MoveTo>(command))
+                return "its path leaves the workspace, enters a forbidden zone or meets the arm itself";
+        }
         if (std::holds_alternative<MoveTo>(command))
             return "target outside the joint limits";
         return "a step is at most 0.2 rad from where the joints are, within the joint limits";
@@ -524,7 +558,10 @@ namespace arm_host
 
     void ArmSession::Events::OnProtectiveStop(std::size_t joint, arm::SupervisionTrip trip, float value)
     {
-        session.Emit({ .kind = ArmEventKind::protectiveStop, .reason = SupervisionReason(trip, value), .joint = joint });
+        const auto workspace = session.arm.Safety().LastWorkspaceViolation();
+        const bool posed = trip == arm::SupervisionTrip::workspace || trip == arm::SupervisionTrip::forbiddenZone || trip == arm::SupervisionTrip::selfCollision;
+        auto reason = posed && workspace.has_value() ? WorkspaceText(*workspace) : SupervisionReason(trip, value);
+        session.Emit({ .kind = ArmEventKind::protectiveStop, .reason = std::move(reason), .joint = joint });
     }
 
     void ArmSession::Events::OnCommandDelivered(arm::JointCommand command)

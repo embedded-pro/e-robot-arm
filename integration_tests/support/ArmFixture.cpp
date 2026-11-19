@@ -11,9 +11,11 @@ namespace integration
 
         constexpr arm::JointNodeIds nodes{ 11, 12, 13, 14, 15, 16 };
 
-        arm::ArmConfig Config(const arm::JointTransmissions& transmissions, const arm::JointControllers& controllers, const arm::JointMotors& motors)
+        arm::ArmConfig Config(const arm::JointTransmissions& transmissions, const arm::JointControllers& controllers, const arm::JointMotors& motors,
+            const arm::WorkspaceConfig& workspace)
         {
             arm::ArmConfig config{ nodes, 3, {}, {}, 10ms };
+            config.workspace = workspace;
             config.transmissions = transmissions;
             config.controllers = controllers;
             config.motors = motors;
@@ -98,9 +100,10 @@ namespace integration
         ++movesAborted;
     }
 
-    ArmFixture::ArmFixture(const arm::JointTransmissions& transmissions, const arm::JointControllers& controllers, const arm::JointMotors& motors)
+    ArmFixture::ArmFixture(const arm::JointTransmissions& transmissions, const arm::JointControllers& controllers, const arm::JointMotors& motors,
+        const arm::WorkspaceConfig& workspace)
         : simulatedArm(nodes, infra::Duration{}, simulation::PlantFor(transmissions, arm::ReferenceGeometry(), arm::ReferenceMass(), motors))
-        , arm(client.CategoryClient(), Config(transmissions, controllers, motors))
+        , arm(client.CategoryClient(), Config(transmissions, controllers, motors, workspace))
     {}
 
     simulation::SimulatedJoint& ArmFixture::Joint(std::size_t number)

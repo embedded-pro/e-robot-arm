@@ -104,6 +104,7 @@ namespace arm_host
         simulation::SimulatedArm* simulation;
         VirtualMotors* virtualMotors;
         std::string refusal;
+        mutable std::string workspaceRefusal;
         Events events{ *this, arm };
         infra::TimerRepeating publishTimer;
         std::optional<Pending> issuing;

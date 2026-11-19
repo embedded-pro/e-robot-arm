@@ -6,6 +6,7 @@ target_link_libraries(e_robot_arm.motion_test PUBLIC
     gmock_main
     e_robot_arm.motion.implementations
     e_robot_arm.joint_bus.test_doubles
+    e_robot_arm.safety.test_doubles
     infra.timer_test_helper
 )
 

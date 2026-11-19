@@ -59,6 +59,15 @@ GIVEN(R"(an arm whose joint {int} turns its motor {float} times, reversed, with 
     context.Emplace<ArmFixture>(transmissions);
 }
 
+GIVEN(R"(an arm with six simulated joints whose workspace forbids the box from {float}, {float}, {float} to {float}, {float}, {float} m)",
+    (float x0, float y0, float z0, float x1, float y1, float z1))
+{
+    arm::WorkspaceConfig workspace{};
+    workspace.forbiddenZones[0] = { math::Vector3<float>{ x0, y0, z0 }, math::Vector3<float>{ x1, y1, z1 } };
+    workspace.forbiddenZoneCount = 1;
+    context.Emplace<ArmFixture>(arm::JointTransmissions{}, arm::JointControllers{}, arm::JointMotors{}, workspace);
+}
+
 GIVEN(R"(the control loop is running)")
 {
     auto& fixture = context.Get<ArmFixture>();

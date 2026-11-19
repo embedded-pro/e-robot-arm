@@ -2,7 +2,7 @@
 title: "Safety Supervisor Design"
 type: design
 status: draft
-version: 0.7.0
+version: 0.8.0
 component: "safety"
 date: 2026-11-19
 ---
@@ -12,7 +12,7 @@ date: 2026-11-19
 | Title     | Safety Supervisor Design |
 | Type      | design                   |
 | Status    | draft                    |
-| Version   | 0.7.0                    |
+| Version   | 0.8.0                    |
 | Component | safety                   |
 | Date      | 2026-11-19               |
 
@@ -174,20 +174,34 @@ confirms in the tools.
 
 ### Part H — Workspace and self-collision
 
-The workspace check is a component over the arm model ([arm-model.md](arm-model.md)): it computes the joint frames of
-a joint-space pose, places a capsule on each link, from one joint origin to the next and from the last to the tool
-centre point, and checks the capsules against:
+The workspace check (`core/workspace/`) is a component over the arm model ([arm-model.md](arm-model.md)). For a
+joint-space pose it takes the joint frames, expresses them in the base frame, and places seven capsules, each with its
+radius from the profile:
 
-- **the workspace**, a box in the base frame: every capsule of the links joint 2 and later move must lie inside it,
-  its radius included. The default box spans the arm's reach in x and y and from the base plane (z = 0) to the base
-  height plus the reach, so the default forbids the floor. The base link, which turns about its own axis on the
-  base plane, is not checked against the box;
-- **forbidden zones**, at most eight boxes in the base frame: no capsule may touch one;
-- **itself**: every pair of links that is not adjacent and not declared allowed must stay farther apart than the
-  margin, with robotics-toolbox's `SelfCollision` over `PrimitiveDistance`.
+| Capsule | From             | To                        |
+|---------|------------------|---------------------------|
+| Link 1  | the base         | the shoulder (joint 2)    |
+| Link 2  | the shoulder     | the elbow (joint 3)       |
+| Link 3  | the elbow        | the wrist centre          |
+| Link 4  | the wrist centre | the wrist centre (a ball) |
+| Link 5  | the wrist centre | the wrist centre (a ball) |
+| Link 6  | the wrist centre | the flange                |
+| Tool    | the flange       | the tool centre point     |
 
-The distances between a capsule and a box come from robotics-toolbox's `PrimitiveDistance`; a capsule-box distance it
-lacks is added there, not here.
+It checks them, in this order, against:
+
+- **the workspace**, a box in the base frame: every capsule but link 1 must lie inside it, its radius included. Link 1
+  turns about its own axis on the base plane and is not checked. The default box spans the arm's reach, plus its
+  largest link radius, in x and y, and from the base plane (z = 0) up by the same distance. The default therefore
+  forbids the floor;
+- **forbidden zones**, at most eight boxes in the base frame: no capsule may touch one, robotics-toolbox's
+  `ConvexCollision` measuring the capsule against the box;
+- **itself**: every pair of links farther apart than the margin, with robotics-toolbox's `SelfCollision`. Adjacent
+  links are never checked, nor a pair that already touches with every joint at zero: those touch by construction, as
+  the forearm, the two wrist balls and link 6 all meet at the wrist centre. The profile can allow more pairs.
+
+A violation names the rule, the link (or the two links, or the link and the zone) and the distance: how far outside
+the workspace, how deep into the zone, or how close the two links are.
 
 The check is used twice:
 

@@ -501,6 +501,19 @@ TEST_F(TorqueArmSessionTest, a_step_jumps_one_joints_reference_traces_the_comman
     EXPECT_NEAR(0.1f, sink.snapshot.readings[1].position.Value(), 0.01f);
 }
 
+TEST_F(TorqueArmSessionTest, a_move_whose_target_collides_with_the_arm_itself_is_refused_naming_the_links)
+{
+    Execute(1, arm_host::BringUp{});
+    Execute(2, arm_host::Enable{});
+
+    Execute(3, arm_host::MoveTo{ { foc::Radians{ 0.0f }, foc::Radians{ 0.0f }, foc::Radians{ 3.0f }, foc::Radians{ 0.0f }, foc::Radians{ 0.0f },
+                   foc::Radians{ 0.0f } } });
+
+    EXPECT_EQ(ArmEventKind::refused, sink.Last()->kind);
+    EXPECT_THAT(sink.Last()->reason, testing::StartsWith("target: link "));
+    EXPECT_THAT(sink.Last()->reason, testing::EndsWith("(self-collision)"));
+}
+
 TEST_F(TorqueArmSessionTest, a_step_larger_than_0_2_rad_is_refused)
 {
     Execute(1, arm_host::BringUp{});
