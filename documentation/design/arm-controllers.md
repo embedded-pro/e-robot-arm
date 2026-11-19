@@ -4,7 +4,7 @@ type: design
 status: draft
 version: 0.10.0
 component: "arm-controllers"
-date: 2026-11-17
+date: 2026-11-19
 ---
 
 | Field     | Value                  |
@@ -12,9 +12,9 @@ date: 2026-11-17
 | Title     | Arm Controllers Design |
 | Type      | design                 |
 | Status    | draft                  |
-| Version   | 0.10.0                  |
+| Version   | 0.10.0                 |
 | Component | arm-controllers        |
-| Date      | 2026-11-17             |
+| Date      | 2026-11-19             |
 
 > Which controller turns the motion's reference into the joints' setpoints, and how one is enabled, disabled and
 > switched at run time without a setpoint step (phase 2, [#18](https://github.com/embedded-pro/e-robot-arm/issues/18)
