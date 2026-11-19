@@ -242,6 +242,11 @@ namespace arm_host
         return state == arm::ArmState::enabling || state == arm::ArmState::enabled || state == arm::ArmState::moving || state == arm::ArmState::disabling;
     }
 
+    bool ArmSession::DrivesJoints() const
+    {
+        return Running() || arm.Lifecycle().State() == arm::ArmState::holding || Moving();
+    }
+
     struct ArmSession::Runner
     {
         bool operator()(const CheckContracts&) const

@@ -278,7 +278,7 @@ namespace simulator
         return true;
     }
 
-    void SimulatorPresenter::Disturb(const arm_host::ArmCommand& command)
+    void SimulatorPresenter::Request(const arm_host::ArmCommand& command)
     {
         Post(command);
     }

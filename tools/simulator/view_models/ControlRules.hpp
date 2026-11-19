@@ -36,6 +36,7 @@ namespace simulator
     };
 
     ControlState Evaluate(Control control, const arm_host::ArmSnapshot& snapshot, std::string_view targetProblem = {});
+    bool DrivesJoints(const arm_host::ArmSnapshot& snapshot);
 }
 
 #endif

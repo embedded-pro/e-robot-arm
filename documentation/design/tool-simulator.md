@@ -2,7 +2,7 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.29.0
+version: 0.31.0
 component: "tool-simulator"
 date: 2026-11-19
 ---
@@ -12,7 +12,7 @@ date: 2026-11-19
 | Title     | Simulator Screen Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.29.0                  |
+| Version   | 0.31.0                  |
 | Component | tool-simulator          |
 | Date      | 2026-11-19              |
 
@@ -115,20 +115,20 @@ Every disabled control carries its reason: in a hint under its group, one line p
 tooltip on the status strip's controls. "Connected" means
 the target is built and at least one joint has answered. Joints are numbered 1–6, base first.
 
-| Control              | Enabled when                                                                     | Disabled reason shown                                                                                                                                                                                      | Action                                                                   |
-|----------------------|----------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------|
-| Emergency stop       | A target is built                                                                | "No target"                                                                                                                                                                                                | Emergency stop to all joints, ahead of all else                          |
-| Bring Up             | Connected; the arm is Unpowered, Misconfigured or its contracts are incompatible | "Not connected", "Checking contracts", "Tripped: re-arm first", "Already brought up"                                                                                                                       | Lifecycle: check the contracts, wait for calibration                     |
-| Enable               | The arm is Ready                                                                 | "Bring the arm up first", "Checking contracts", "Waiting for calibration", "Configuring motor controllers", "Misconfigured: bring the arm up again", "Enabling", "Already enabled", "Disabling", "Tripped" | Lifecycle: select torque mode, start the joints                          |
-| Disable              | The arm is Enabled                                                               | "Moving: abort first", "Not enabled"                                                                                                                                                                       | Lifecycle: stop the joints                                               |
-| Clear Faults         | Any joint in fault                                                               | "No joint in fault"                                                                                                                                                                                        | Clear faults on all joints                                               |
-| Re-arm…              | The arm is Tripped or Holding, no joint in fault, hardware stop closed           | "Not tripped or holding", "Joint N in fault: clear it first", "Hardware stop open: close it first"                                                                                                         | Confirmation naming the trip's source, then re-arm through the lifecycle |
-| Move target J1–6     | Always editable                                                                  | —                                                                                                                                                                                                          | Validated as typed against the joint limits                              |
-| Move                 | The arm is Enabled, all targets valid                                            | "Not connected", "Tripped", "Moving", "Enable the arm first", "J N outside limits"                                                                                                                         | Move to the six targets through the lifecycle                            |
-| Abort                | A move running                                                                   | "No move running"                                                                                                                                                                                          | Abort the move                                                           |
-| Target selector      | No move running                                                                  | "Moving"                                                                                                                                                                                                   | Part C                                                                   |
-| Restart (motor)      | Virtual arm, arm not enabling, enabled, moving or disabling, motor not starting  | "Disable the arm first", "Starting"                                                                                                                                                                        | Restart that joint's virtual motor (Part L)                              |
-| Commissioning Limits | Real arm, arm not enabling, enabled, moving or disabling                         | "Not the real arm", "Disable the arm first"                                                                                                                                                                | Arm menu toggle; off asks first (Part P)                                 |
+| Control              | Enabled when                                                                           | Disabled reason shown                                                                                                                                                                                      | Action                                                                   |
+|----------------------|----------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------|
+| Emergency stop       | A target is built                                                                      | "No target"                                                                                                                                                                                                | Emergency stop to all joints, ahead of all else                          |
+| Bring Up             | Connected; the arm is Unpowered, Misconfigured or its contracts are incompatible       | "Not connected", "Checking contracts", "Tripped: re-arm first", "Already brought up"                                                                                                                       | Lifecycle: check the contracts, wait for calibration                     |
+| Enable               | The arm is Ready                                                                       | "Bring the arm up first", "Checking contracts", "Waiting for calibration", "Configuring motor controllers", "Misconfigured: bring the arm up again", "Enabling", "Already enabled", "Disabling", "Tripped" | Lifecycle: select torque mode, start the joints                          |
+| Disable              | The arm is Enabled                                                                     | "Moving: abort first", "Not enabled"                                                                                                                                                                       | Lifecycle: stop the joints                                               |
+| Clear Faults         | Any joint in fault                                                                     | "No joint in fault"                                                                                                                                                                                        | Clear faults on all joints                                               |
+| Re-arm…              | The arm is Tripped or Holding, no joint in fault, hardware stop closed                 | "Not tripped or holding", "Joint N in fault: clear it first", "Hardware stop open: close it first"                                                                                                         | Confirmation naming the trip's source, then re-arm through the lifecycle |
+| Move target J1–6     | Always editable                                                                        | —                                                                                                                                                                                                          | Validated as typed against the joint limits                              |
+| Move                 | The arm is Enabled, all targets valid                                                  | "Not connected", "Tripped", "Moving", "Enable the arm first", "J N outside limits"                                                                                                                         | Move to the six targets through the lifecycle                            |
+| Abort                | A move running                                                                         | "No move running"                                                                                                                                                                                          | Abort the move                                                           |
+| Target selector      | The arm does not drive its joints: not enabling, enabled, moving, disabling or holding | "Disable the arm first"                                                                                                                                                                                    | Part C                                                                   |
+| Restart (motor)      | Virtual arm, arm not enabling, enabled, moving or disabling, motor not starting        | "Disable the arm first", "Starting"                                                                                                                                                                        | Restart that joint's virtual motor (Part L)                              |
+| Commissioning Limits | Real arm, arm not enabling, enabled, moving or disabling                               | "Not the real arm", "Disable the arm first"                                                                                                                                                                | Arm menu toggle; off asks first (Part P)                                 |
 
 - **Arm → Single Step** holds the joints' own commands for debugging: Check Contracts (connected, no move
   running), Torque Mode and Start (contracts compatible, not tripped), Stop (any joint running). A disabled item
@@ -585,6 +585,43 @@ connection to the real arm.
   on again needs no confirmation. Either way the item shows "requested…" until the arm host answers, and a refusal
   goes to the status bar and the log with its reason.
 - The Profile panel and **File → Save Profile…** show and write the profile as loaded, never the reduced copy.
+
+### Part Q — Arm Controllers dock (phase 8b)
+
+An **Arm Controllers** dock, tabbed with the Motor Controller and Motor docks, shows the arm's controller registry
+([arm-controllers.md](arm-controllers.md) Part B) from the snapshot and enables, disables and selects them through
+the arm host, which decides; the dock only shows the answer.
+
+```text
+┌ Arm Controllers ──────────────────────────────────────────────┐
+│ Controller        State      Parameters                       │
+│ gravity-pd        ● Active   ω 30.0 rad/s, ζ 0.70             │
+│ computed-torque     Enabled  ω 30.0 rad/s, ζ 0.70             │
+│ gravity-pid         Enabled  ω 20.0 rad/s, ζ 0.70             │
+│ [Select] [Enable] [Disable]                                   │
+│ Disable is unavailable: disable the arm first                 │
+│ Parameters come from the profile (File → Open Profile…)       │
+└───────────────────────────────────────────────────────────────┘
+```
+
+- **Rows** are the registry in its order: the name, **Active** (`Ok`), **Enabled** (`Neutral`) or **Disabled**
+  (`Neutral`), and the bandwidth ω and damping ratio ζ the profile gives that controller. The parameters are
+  read-only: they change with the profile.
+- **Selection:** clicking a row selects it; the buttons act on the selected row. With no row selected every button
+  is disabled with "Choose a controller".
+
+| Action  | Enabled when                                                           | Disabled reason shown                       | Does                                   |
+|---------|------------------------------------------------------------------------|---------------------------------------------|----------------------------------------|
+| Select  | The row is enabled and not active                                      | "Enable it first", "Already active"         | Selects it; a refused switch says why  |
+| Enable  | The row is disabled                                                    | "Already enabled"                           | Enables it                             |
+| Disable | The row is enabled, and not the active one while the arm drives joints | "Already disabled", "Disable the arm first" | Disables it; the active one asks first |
+
+- **Disabling the active controller** while the arm does not drive its joints asks first: "Disable `<name>`? The arm
+  then has no controller and cannot be enabled until another one is selected." with **Disable** and **Cancel**
+  (default).
+- **Feedback:** each click shows "requested…" in the status strip until the arm host answers; a refusal, such as a
+  switch to a controller that cannot take over a running move without a step, goes to the status strip and the log
+  with its reason. The log records every change of the active controller (Part F).
 
 ---
 

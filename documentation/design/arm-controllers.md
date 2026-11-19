@@ -2,7 +2,7 @@
 title: "Arm Controllers Design"
 type: design
 status: draft
-version: 0.10.0
+version: 0.11.0
 component: "arm-controllers"
 date: 2026-11-19
 ---
@@ -12,7 +12,7 @@ date: 2026-11-19
 | Title     | Arm Controllers Design |
 | Type      | design                 |
 | Status    | draft                  |
-| Version   | 0.10.0                 |
+| Version   | 0.11.0                 |
 | Component | arm-controllers        |
 | Date      | 2026-11-19             |
 
@@ -131,7 +131,9 @@ registration order. A controller is registered disabled; the arm then enables `g
 Selecting the active controller again is accepted and changes nothing. In torque mode nothing but the active
 controller holds the joints, so it cannot be disabled while the arm streams (`Enabled` or `Moving`): the request is
 refused with "disable the arm first". Disabled once the arm is disabled, it leaves the arm unable to stream: enabling
-then aborts at the first period, until a controller is selected again.
+then aborts at the first period, until a controller is selected again. The simulator's Arm Controllers dock offers
+these requests and shows each refusal ([tool-simulator.md](tool-simulator.md) Part Q), as the console's `controller`
+command does ([arm-console.md](arm-console.md)).
 
 ### Part C — Streaming
 

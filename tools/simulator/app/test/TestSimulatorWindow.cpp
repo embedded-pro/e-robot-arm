@@ -251,6 +251,36 @@ TEST_F(SimulatorWindowTest, the_motor_controller_reads_the_selected_joint_then_a
     }
 }
 
+TEST_F(SimulatorWindowTest, the_arm_controllers_dock_selects_a_controller_from_its_list)
+{
+    auto* dock = window.findChild<QDockWidget*>("armControllersDock");
+    ASSERT_NE(nullptr, dock);
+    dock->raise();
+    auto* table = dock->findChild<QTableWidget*>("armControllersTable");
+    ASSERT_NE(nullptr, table);
+    ASSERT_TRUE(Eventually([table]()
+        {
+            return table->rowCount() >= 2;
+        }));
+    auto* select = Button(*dock, "Select");
+    ASSERT_NE(nullptr, select);
+    EXPECT_FALSE(select->isEnabled());
+
+    table->selectRow(1);
+    ASSERT_TRUE(Eventually([select]()
+        {
+            return select->isEnabled();
+        }));
+    select->click();
+
+    EXPECT_TRUE(Eventually([this]()
+        {
+            const auto controllers = host.Snapshot().armControllers;
+            return controllers.size() >= 2 && controllers[1].active;
+        }))
+        << LogText(window.Presenter());
+}
+
 TEST_F(SimulatorWindowTest, the_motor_panel_applies_a_preset_and_verifies_it)
 {
     host.Post(arm_host::BringUp{});
