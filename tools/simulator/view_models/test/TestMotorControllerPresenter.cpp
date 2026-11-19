@@ -175,6 +175,33 @@ TEST_F(MotorControllerPresenterTest, verify_lists_every_item_the_joint_reports_d
     EXPECT_THAT(presenter.Hint(), HasSubstr("Position algorithm: applied PID, joint reports LQR"));
 }
 
+TEST_F(MotorControllerPresenterTest, verify_marks_each_differing_field_until_the_form_is_edited)
+{
+    presenter.Refresh(snapshot, {});
+    view.TypeNumber(MotorControllerField::Gain(arm::Gain::speedBandwidth), 150.0);
+    EXPECT_CALL(arm, Post(AppliesJoint(0))).WillOnce(Return(6));
+    view.PressAction(MotorControllerAction::apply);
+    Answer({ .kind = ArmEventKind::controllerApplied, .joint = 0 });
+
+    auto reported = presenter.FormSettings();
+    reported[arm::Gain::speedBandwidth] = 120.0f;
+    reported.position = can::FocPositionAlgorithm::lqr;
+    EXPECT_CALL(arm, Post(ReadsJoint(0))).WillOnce(Return(7));
+    view.PressAction(MotorControllerAction::verify);
+    Answer(ReadEvent(0, reported));
+
+    const auto speedBandwidth = MotorControllerField::Gain(arm::Gain::speedBandwidth);
+    EXPECT_EQ(ui::theme::StatusLevel::Fault, view.FieldStatus(speedBandwidth));
+    EXPECT_EQ("applied 150, joint reports 120", view.FieldNote(speedBandwidth));
+    EXPECT_EQ(ui::theme::StatusLevel::Fault, view.FieldStatus(MotorControllerField::position));
+    EXPECT_EQ("applied PID, joint reports LQR", view.FieldNote(MotorControllerField::position));
+    EXPECT_EQ(ui::theme::StatusLevel::Neutral, view.FieldStatus(MotorControllerField::current));
+
+    view.TypeNumber(speedBandwidth, 130.0);
+    EXPECT_EQ(ui::theme::StatusLevel::Neutral, view.FieldStatus(speedBandwidth));
+    EXPECT_EQ(ui::theme::StatusLevel::Neutral, view.FieldStatus(MotorControllerField::position));
+}
+
 TEST_F(MotorControllerPresenterTest, apply_to_all_joints_applies_them_one_after_the_other)
 {
     presenter.Refresh(snapshot, {});

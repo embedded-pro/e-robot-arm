@@ -8,6 +8,7 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <string_view>
 
 namespace simulator
 {
@@ -68,6 +69,9 @@ namespace simulator
         void Load(const arm::MotorSettings& motor, std::size_t preset);
         void UpdateNote();
         std::string Differences(const arm::MotorSettings& expected, const arm::MotorSettings& actual, bool withValues) const;
+        void MarkPresetDifferences();
+        void MarkReported(const arm::MotorSettings& expected, const arm::MotorSettings& actual);
+        void Mark(std::size_t parameter, ui::theme::StatusLevel level, std::string_view note);
 
         ui::shell::FormView& view;
         Form form;
@@ -75,6 +79,7 @@ namespace simulator
         ui::Callback<void(ui::model::FieldId)> viewFieldChanged;
         ui::Callback<void(std::size_t joint)> jointSelected;
         std::array<arm::MotorSettings, arm::jointCount> applied{};
+        std::array<ui::theme::StatusLevel, arm::motorParameterCount> marks{};
         std::optional<std::size_t> basePreset{ 0 };
         bool loading{ false };
     };

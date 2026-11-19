@@ -159,12 +159,16 @@ namespace simulator
     void MotorPresenter::Applied(std::size_t joint)
     {
         applied[joint] = FormSettings();
+        MarkPresetDifferences();
     }
 
     std::string MotorPresenter::Read(const arm_host::ArmEvent& event, bool verifying)
     {
         if (verifying)
+        {
+            MarkReported(applied[event.joint], event.motor);
             return Differences(applied[event.joint], event.motor, true);
+        }
 
         const auto preset = MatchingPreset(event.motor);
         basePreset = preset;
@@ -182,6 +186,7 @@ namespace simulator
             const auto joint = form.model.Selection(MotorField::joint);
             if (jointSelected)
                 jointSelected(joint);
+            MarkPresetDifferences();
             flow.JointChosen(joint);
             return;
         }
@@ -225,6 +230,7 @@ namespace simulator
                 Differences(arm::motorPresets[*basePreset].settings, FormSettings(), false)));
         else
             flow.SetNote("custom");
+        MarkPresetDifferences();
     }
 
     std::string MotorPresenter::Differences(const arm::MotorSettings& expected, const arm::MotorSettings& actual, bool withValues) const
@@ -243,5 +249,37 @@ namespace simulator
                 text += std::format("{}{}", text.empty() ? "" : ", ", label);
         }
         return text;
+    }
+
+    void MotorPresenter::MarkPresetDifferences()
+    {
+        const auto custom = Preset() == customPreset && basePreset.has_value();
+        const auto form = FormSettings();
+        const auto mismatches = custom ? arm::Compare(arm::motorPresets[*basePreset].settings, form) : arm::MotorMismatches{};
+        for (std::size_t parameter = 0; parameter != arm::motorParameterCount; ++parameter)
+        {
+            if (mismatches.values[parameter])
+                Mark(parameter, ui::theme::StatusLevel::Warning,
+                    std::format("{}: {}", arm::motorPresets[*basePreset].name, Format(arm::motorPresets[*basePreset].settings.values[parameter], parameter)));
+            else
+                Mark(parameter, ui::theme::StatusLevel::Neutral, {});
+        }
+    }
+
+    void MotorPresenter::MarkReported(const arm::MotorSettings& expected, const arm::MotorSettings& actual)
+    {
+        const auto mismatches = arm::Compare(expected, actual);
+        for (std::size_t parameter = 0; parameter != arm::motorParameterCount; ++parameter)
+            if (mismatches.values[parameter])
+                Mark(parameter, ui::theme::StatusLevel::Fault,
+                    std::format("applied {}, joint reports {}", Format(expected.values[parameter], parameter), Format(actual.values[parameter], parameter)));
+    }
+
+    void MotorPresenter::Mark(std::size_t parameter, ui::theme::StatusLevel level, std::string_view note)
+    {
+        if (level == ui::theme::StatusLevel::Neutral && marks[parameter] == ui::theme::StatusLevel::Neutral)
+            return;
+        marks[parameter] = level;
+        view.SetFieldStatus(MotorField::Parameter(static_cast<arm::MotorParameter>(parameter)), level, note);
     }
 }

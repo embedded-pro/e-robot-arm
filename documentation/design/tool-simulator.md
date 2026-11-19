@@ -2,7 +2,7 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.34.0
+version: 0.35.0
 component: "tool-simulator"
 date: 2026-11-19
 ---
@@ -12,7 +12,7 @@ date: 2026-11-19
 | Title     | Simulator Screen Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.34.0                  |
+| Version   | 0.35.0                  |
 | Component | tool-simulator          |
 | Date      | 2026-11-19              |
 
@@ -352,8 +352,9 @@ through the joint configurator ([joint-configurator.md](joint-configurator.md)).
 
 The form's **state** is shown under the gains: **Read** (as the joint reported it), **Edited** (changed since),
 **Applying…**, **Applied**, **Verified** (`Ok`, the joint reports exactly what was applied), **Differs** (`Fault`,
-with every differing item listed in the hint, for example "Speed bandwidth: applied 150, joint reports 120"), or
-**Failed** (`Fault`, with the reason). Selecting another joint reads it while the panel's tab is showing; a panel
+with every differing item listed in the hint, for example "Speed bandwidth: applied 150, joint reports 120", and
+each differing algorithm or gain marked `Fault` on its own field with "applied 150, joint reports 120" as its note),
+or **Failed** (`Fault`, with the reason). The field marks stay until the form is edited, applied or read again. Selecting another joint reads it while the panel's tab is showing; a panel
 behind another tab reads its joint when its tab is brought forward, so two panels never ask the joint configurator
 at once.
 
@@ -427,6 +428,9 @@ Part D) and applies it like the Motor Controller panel (Part H): same joint sele
 
 - **Preset** lists e-foc's reference motors and **Custom**. Choosing a preset fills the thirteen fields; editing a
   field turns the choice to Custom, and the hint names the preset it came from and every field that differs from it.
+  Each of those fields is also marked `Warning`, with the preset's value as its note ("Teknic M-2310P-LN-04K: 0.36 Ω").
+- **Verify** marks every parameter the joint reports differently `Fault` on its field, with "applied 20 A, joint reports
+  15 A" as its note; the marks give way to the preset marks once the form is edited, applied or read again.
 - **Fields** carry the display units of Part D and the contract's ranges; pole pairs is a whole number.
 - Applying replaces what the node holds, its own identification included; the confirmation is the read-back
   (Verify).
@@ -735,5 +739,5 @@ sequenceDiagram
 | 3 | Default-role buttons (Check Contracts, Position Mode) draw flat in ui-cpp's Instrument theme | Give `ButtonRole::Default` a raised surface in ui-cpp | resolved: ui-cpp#24 gives Default buttons a raised fill and border |
 | 4 | Naming every joint an emergency stop did not reach                                           | Per-joint delivery reports from the joint bus         | phase 1a (#17)                                                     |
 | 5 | Bus load and period overruns in the status strip                                             | Control-loop overrun count, bus-load estimate         | decided: both shown (Part A)                                       |
-| 6 | Marking a differing gain on its field rather than in the hint                                | A per-field status in ui-cpp forms                    | open: needs a ui-cpp primitive                                     |
+| 6 | Marking a differing gain on its field rather than in the hint                                | A per-field status in ui-cpp forms                    | resolved: ui-cpp#30 `FormView::SetFieldStatus` (Parts H and J)     |
 | 7 | Editing a profile in the simulator                                                           | A profile editor form, a file edited outside          | decided: edited as a file, shown read-only                         |

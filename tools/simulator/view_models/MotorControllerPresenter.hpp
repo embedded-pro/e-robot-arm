@@ -12,6 +12,8 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <string_view>
+#include <vector>
 
 namespace simulator
 {
@@ -71,7 +73,9 @@ namespace simulator
 
         void OnFieldChanged(ui::model::FieldId field);
         void Load(const arm::ControllerSettings& settings);
-        std::string Mismatches(const arm::ControllerSettings& expected, const arm::ControllerSettings& actual) const;
+        std::string Mismatches(const arm::ControllerSettings& expected, const arm::ControllerSettings& actual);
+        void Mark(ui::model::FieldId field, std::string_view note);
+        void ClearMarks();
 
         ui::shell::FormView& view;
         Form form;
@@ -79,6 +83,7 @@ namespace simulator
         ui::Callback<void(ui::model::FieldId)> viewFieldChanged;
         ui::Callback<void(std::size_t joint)> jointSelected;
         std::array<arm::ControllerSettings, arm::jointCount> applied{};
+        std::vector<ui::model::FieldId> marked;
         bool loading{ false };
     };
 }
