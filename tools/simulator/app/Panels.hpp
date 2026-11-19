@@ -2,6 +2,7 @@
 #define TOOLS_SIMULATOR_APP_PANELS_HPP
 
 #include "tools/arm_host/ArmSnapshot.hpp"
+#include "tools/simulator/view_models/ArmControllersPresenter.hpp"
 #include "tools/simulator/view_models/EventLog.hpp"
 #include "tools/simulator/view_models/ProfileView.hpp"
 #include "tools/simulator/view_models/ToolReadout.hpp"
@@ -55,6 +56,28 @@ namespace simulator
     private:
         QLabel* state;
         ui::theme::StatusLevel level{ ui::theme::StatusLevel::Neutral };
+    };
+
+    class ArmControllersPanel
+        : public QWidget
+    {
+        Q_OBJECT
+
+    public:
+        explicit ArmControllersPanel(QWidget* parent);
+
+        void Update(const ArmControllersPresenter& presenter);
+        void ApplyTheme();
+
+    signals:
+        void chosen(int row);
+        void actionTriggered(int action);
+
+    private:
+        QTableWidget* table;
+        std::array<QPushButton*, armControllerActionCount> buttons{};
+        QLabel* hint;
+        std::vector<ArmControllerRow> shown;
     };
 
     class DisturbancesPanel

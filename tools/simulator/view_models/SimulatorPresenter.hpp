@@ -89,7 +89,7 @@ namespace simulator
         bool InjectFault(std::size_t joint);
         bool SilenceJoint(std::size_t joint);
         bool RestartMotor(std::size_t joint);
-        void Disturb(const arm_host::ArmCommand& command);
+        void Request(const arm_host::ArmCommand& command);
         bool SelectJoint(int joint);
         bool SingleStep(Control control);
 

@@ -142,13 +142,6 @@ namespace simulator
             return Disabled("Not enabled");
         }
 
-        bool DrivesJoints(const arm_host::ArmSnapshot& snapshot)
-        {
-            const auto state = snapshot.state;
-            return snapshot.moving || state == arm::ArmState::enabling || state == arm::ArmState::enabled || state == arm::ArmState::moving ||
-                   state == arm::ArmState::disabling || state == arm::ArmState::holding;
-        }
-
         ControlState Commissioning(const arm_host::ArmSnapshot& snapshot)
         {
             if (snapshot.target.kind != arm_host::TargetKind::real)
@@ -177,6 +170,13 @@ namespace simulator
                 return Disabled("Moving");
             return Enabled();
         }
+    }
+
+    bool DrivesJoints(const arm_host::ArmSnapshot& snapshot)
+    {
+        const auto state = snapshot.state;
+        return snapshot.moving || state == arm::ArmState::enabling || state == arm::ArmState::enabled || state == arm::ArmState::moving ||
+               state == arm::ArmState::disabling || state == arm::ArmState::holding;
     }
 
     ControlState Evaluate(Control control, const arm_host::ArmSnapshot& snapshot, std::string_view targetProblem)

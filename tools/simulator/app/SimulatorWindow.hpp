@@ -76,6 +76,7 @@ namespace simulator
         void ChooseTarget(int choice);
         void ConfirmRearm(std::string_view prompt);
         void ConfirmDisable(std::string_view prompt);
+        void ConfirmControllerDisable(std::string_view prompt);
         void SaveLog();
         void OpenProfile();
         void SaveProfile();
@@ -108,6 +109,8 @@ namespace simulator
         MotorControllerPresenter motorController;
         ConfigurationPanel* motorPanel;
         MotorPresenter motor;
+        ArmControllersPanel* armControllersPanel;
+        ArmControllersPresenter armControllers;
         ProfilePanel* profilePanel;
         VirtualMotorsPanel* virtualMotorsPanel;
         DisturbancesPanel* disturbancesPanel;

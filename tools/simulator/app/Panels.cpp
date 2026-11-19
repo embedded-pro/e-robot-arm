@@ -10,6 +10,7 @@
 #include <QLabel>
 #include <QPlainTextEdit>
 #include <QPushButton>
+#include <QSignalBlocker>
 #include <QSplitter>
 #include <QTableWidget>
 #include <QTextStream>
@@ -322,6 +323,90 @@ namespace simulator
                 table->setItem(row, column, cell);
             }
         }
+    }
+
+    ArmControllersPanel::ArmControllersPanel(QWidget* parent)
+        : QWidget{ parent }
+        , table{ new QTableWidget{ 0, 3, this } }
+        , hint{ new QLabel{ this } }
+    {
+        table->setObjectName("armControllersTable");
+        table->setAccessibleName("Arm controllers");
+        table->setHorizontalHeaderLabels({ "Controller", "State", "Parameters" });
+        table->verticalHeader()->setVisible(false);
+        table->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+        table->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Stretch);
+        table->setEditTriggers(QAbstractItemView::NoEditTriggers);
+        table->setSelectionMode(QAbstractItemView::SingleSelection);
+        table->setSelectionBehavior(QAbstractItemView::SelectRows);
+        connect(table, &QTableWidget::itemSelectionChanged, this, [this]()
+            {
+                const auto selected = table->selectionModel()->selectedRows();
+                emit chosen(selected.isEmpty() ? -1 : selected.front().row());
+            });
+
+        auto* actions = new QHBoxLayout;
+        constexpr std::array<const char*, armControllerActionCount> labels{ "Select", "Enable", "Disable" };
+        for (std::size_t action = 0; action != armControllerActionCount; ++action)
+        {
+            buttons[action] = new QPushButton{ labels[action], this };
+            buttons[action]->setAccessibleName(QString{ "%1 the chosen arm controller" }.arg(labels[action]));
+            actions->addWidget(buttons[action]);
+            connect(buttons[action], &QPushButton::clicked, this, [this, action]()
+                {
+                    emit actionTriggered(static_cast<int>(action));
+                });
+        }
+        actions->addStretch();
+
+        hint->setAccessibleName("Why an action is unavailable");
+        hint->setWordWrap(true);
+        auto* source = new QLabel{ "Parameters come from the profile (File → Open Profile…)", this };
+        source->setWordWrap(true);
+
+        auto* layout = new QVBoxLayout{ this };
+        layout->addWidget(table);
+        layout->addLayout(actions);
+        layout->addWidget(hint);
+        layout->addWidget(source);
+        layout->addStretch();
+    }
+
+    void ArmControllersPanel::Update(const ArmControllersPresenter& presenter)
+    {
+        if (presenter.Rows() != shown)
+        {
+            shown = presenter.Rows();
+            const QSignalBlocker blocker{ table };
+            table->setRowCount(static_cast<int>(shown.size()));
+            for (std::size_t row = 0; row != shown.size(); ++row)
+            {
+                const auto index = static_cast<int>(row);
+                table->setItem(index, 0, new QTableWidgetItem{ ui::backend::qt::ToQt(shown[row].name) });
+                auto* state = new QLabel{ ui::backend::qt::ToQt(shown[row].state), table };
+                ui::backend::qt::StyleStatusLabel(*state, shown[row].level);
+                table->setCellWidget(index, 1, state);
+                table->setItem(index, 2, new QTableWidgetItem{ ui::backend::qt::ToQt(shown[row].parameters) });
+            }
+            if (presenter.Chosen().has_value())
+                table->selectRow(static_cast<int>(*presenter.Chosen()));
+            else
+                table->clearSelection();
+        }
+        for (std::size_t action = 0; action != armControllerActionCount; ++action)
+        {
+            const auto& state = presenter.State(static_cast<ArmControllerAction>(action));
+            buttons[action]->setEnabled(state.enabled);
+            buttons[action]->setToolTip(ui::backend::qt::ToQt(state.reason));
+        }
+        hint->setText(ui::backend::qt::ToQt(presenter.Hint()));
+        hint->setVisible(!presenter.Hint().empty());
+    }
+
+    void ArmControllersPanel::ApplyTheme()
+    {
+        ui::backend::qt::StyleStatusLabel(*hint, ui::theme::StatusLevel::Neutral);
+        shown.clear();
     }
 
     VirtualMotorsPanel::VirtualMotorsPanel(QWidget* parent)

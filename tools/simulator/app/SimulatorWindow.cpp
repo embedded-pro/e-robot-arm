@@ -79,12 +79,17 @@ namespace simulator
         , motorController{ host, motorControllerPanel->Form() }
         , motorPanel{ new ConfigurationPanel{ this } }
         , motor{ host, motorPanel->Form() }
+        , armControllersPanel{ new ArmControllersPanel{ this } }
+        , armControllers{ [this](const arm_host::ArmCommand& command)
+            {
+                presenter.Request(command);
+            } }
         , profilePanel{ new ProfilePanel{ this } }
         , virtualMotorsPanel{ new VirtualMotorsPanel{ this } }
         , disturbancesPanel{ new DisturbancesPanel{ this } }
         , disturbances{ disturbancesPanel->Form(), [this](const arm_host::ArmCommand& command)
             {
-                presenter.Disturb(command);
+                presenter.Request(command);
             } }
         , tuningPanel{ new TuningPanel{ this } }
         , tuning{ tuningPanel->Form(), host }
@@ -230,6 +235,8 @@ namespace simulator
         motor.Refresh(snapshot, events);
         motorPanel->SetState(motor.StateText(), motor.StateLevel());
         motorPanel->SetHint(motor.Hint());
+        armControllers.Refresh(snapshot);
+        armControllersPanel->Update(armControllers);
         profilePanel->Update(DescribeProfile(snapshot), profilePath);
         UpdateVirtualMotors(snapshot);
         UpdateDisturbances(snapshot);
@@ -337,6 +344,7 @@ namespace simulator
         connect(ConfigurationDock("Motor Controller", "motorControllerDock", motorControllerPanel, armDock), &QDockWidget::visibilityChanged, this,
             showing(motorController));
         connect(ConfigurationDock("Motor", "motorDock", motorPanel, armDock), &QDockWidget::visibilityChanged, this, showing(motor));
+        tabifyDockWidget(armDock, Dock("Arm Controllers", "armControllersDock", armControllersPanel, Qt::RightDockWidgetArea));
         motorController.SetShown(false);
         motor.SetShown(false);
         auto* profileDock = Dock("Profile", "profileDock", profilePanel, Qt::RightDockWidgetArea);
@@ -572,6 +580,19 @@ namespace simulator
             {
                 ConfirmDisable(prompt);
             });
+        armControllers.SetDisablePrompt([this](std::string_view prompt)
+            {
+                ConfirmControllerDisable(prompt);
+            });
+        connect(armControllersPanel, &ArmControllersPanel::chosen, this, [this](int row)
+            {
+                armControllers.Choose(row < 0 ? std::nullopt : std::optional<std::size_t>{ static_cast<std::size_t>(row) });
+                armControllersPanel->Update(armControllers);
+            });
+        connect(armControllersPanel, &ArmControllersPanel::actionTriggered, this, [this](int action)
+            {
+                armControllers.Trigger(static_cast<ArmControllerAction>(action));
+            });
     }
 
     void SimulatorWindow::ChooseTarget(int choice)
@@ -647,6 +668,16 @@ namespace simulator
         confirm.exec();
         if (confirm.clickedButton() == disableButton)
             presenter.ConfirmDisable();
+    }
+
+    void SimulatorWindow::ConfirmControllerDisable(std::string_view prompt)
+    {
+        QMessageBox confirm{ QMessageBox::Warning, "Disable Arm Controller", ui::backend::qt::ToQt(prompt), QMessageBox::NoButton, this };
+        auto* disableButton = confirm.addButton("Disable", QMessageBox::DestructiveRole);
+        confirm.setDefaultButton(confirm.addButton(QMessageBox::Cancel));
+        confirm.exec();
+        if (confirm.clickedButton() == disableButton)
+            armControllers.ConfirmDisable();
     }
 
     void SimulatorWindow::SaveLog()
@@ -757,6 +788,7 @@ namespace simulator
         strip->ApplyTheme();
         motorControllerPanel->ApplyTheme();
         motorPanel->ApplyTheme();
+        armControllersPanel->ApplyTheme();
         tool->ApplyTheme();
         virtualMotorsPanel->ApplyTheme();
         disturbancesPanel->ApplyTheme();

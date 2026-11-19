@@ -299,7 +299,7 @@ TEST_F(SimulatorPresenterTest, injects_failures_only_where_the_target_offers_the
     presenter.Refresh(simulated, {});
     EXPECT_FALSE(presenter.InjectFault(1));
     EXPECT_CALL(arm, Post(Holds(arm_host::PowerOffMotor{}))).WillOnce(Return(3));
-    presenter.Disturb(arm_host::PowerOffMotor{ 1 });
+    presenter.Request(arm_host::PowerOffMotor{ 1 });
     EXPECT_EQ("Power off motor requested…", shell.Statuses().back());
 }
 

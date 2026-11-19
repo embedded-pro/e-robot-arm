@@ -2,7 +2,7 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.30.0
+version: 0.31.0
 component: "tool-simulator"
 date: 2026-11-19
 ---
@@ -12,7 +12,7 @@ date: 2026-11-19
 | Title     | Simulator Screen Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.30.0                  |
+| Version   | 0.31.0                  |
 | Component | tool-simulator          |
 | Date      | 2026-11-19              |
 
@@ -585,6 +585,43 @@ connection to the real arm.
   on again needs no confirmation. Either way the item shows "requested…" until the arm host answers, and a refusal
   goes to the status bar and the log with its reason.
 - The Profile panel and **File → Save Profile…** show and write the profile as loaded, never the reduced copy.
+
+### Part Q — Arm Controllers dock (phase 8b)
+
+An **Arm Controllers** dock, tabbed with the Motor Controller and Motor docks, shows the arm's controller registry
+([arm-controllers.md](arm-controllers.md) Part B) from the snapshot and enables, disables and selects them through
+the arm host, which decides; the dock only shows the answer.
+
+```text
+┌ Arm Controllers ──────────────────────────────────────────────┐
+│ Controller        State      Parameters                       │
+│ gravity-pd        ● Active   ω 30.0 rad/s, ζ 0.70             │
+│ computed-torque     Enabled  ω 30.0 rad/s, ζ 0.70             │
+│ gravity-pid         Enabled  ω 20.0 rad/s, ζ 0.70             │
+│ [Select] [Enable] [Disable]                                   │
+│ Disable is unavailable: disable the arm first                 │
+│ Parameters come from the profile (File → Open Profile…)       │
+└───────────────────────────────────────────────────────────────┘
+```
+
+- **Rows** are the registry in its order: the name, **Active** (`Ok`), **Enabled** (`Neutral`) or **Disabled**
+  (`Neutral`), and the bandwidth ω and damping ratio ζ the profile gives that controller. The parameters are
+  read-only: they change with the profile.
+- **Selection:** clicking a row selects it; the buttons act on the selected row. With no row selected every button
+  is disabled with "Choose a controller".
+
+| Action  | Enabled when                                                           | Disabled reason shown                       | Does                                   |
+|---------|------------------------------------------------------------------------|---------------------------------------------|----------------------------------------|
+| Select  | The row is enabled and not active                                      | "Enable it first", "Already active"         | Selects it; a refused switch says why  |
+| Enable  | The row is disabled                                                    | "Already enabled"                           | Enables it                             |
+| Disable | The row is enabled, and not the active one while the arm drives joints | "Already disabled", "Disable the arm first" | Disables it; the active one asks first |
+
+- **Disabling the active controller** while the arm does not drive its joints asks first: "Disable `<name>`? The arm
+  then has no controller and cannot be enabled until another one is selected." with **Disable** and **Cancel**
+  (default).
+- **Feedback:** each click shows "requested…" in the status strip until the arm host answers; a refusal, such as a
+  switch to a controller that cannot take over a running move without a step, goes to the status strip and the log
+  with its reason. The log records every change of the active controller (Part F).
 
 ---
 
