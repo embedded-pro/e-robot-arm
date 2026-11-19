@@ -106,17 +106,17 @@
   shall: >
     While the arm drives its joints, when a joint's measured position stays farther from the position the arm
     commands than that joint's configured tolerance for longer than its configured time, the arm shall
-    emergency-stop all six joints and report the joint and how far it lagged.
+    protectively stop, holding the pose it had when it stopped, and report the joint and how far it lagged.
 
 - id: REQ-ARM-015
   title: Stop outside the joint limits
   shall: >
     While the arm drives its joints, when any joint's measured position leaves that joint's position limits, the
-    arm shall emergency-stop all six joints and report the joint and its position.
+    arm shall protectively stop, holding the pose it had when it stopped, and report the joint and its position.
 
 - id: REQ-ARM-016
   title: Stop on a collision
   shall: >
     While the arm drives its joints, when the external torque the arm estimates on a joint from its dynamics, the
     measured joints and the commanded torques exceeds that joint's configured collision limit, the arm shall
-    emergency-stop all six joints and report the joint and the torque.
+    protectively stop, holding the pose it had when it stopped, and report the joint and the torque.

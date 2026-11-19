@@ -118,6 +118,23 @@ The move there, in phase 8d ([#31](https://github.com/embedded-pro/e-robot-arm/i
 
 The architecture is described in [system.md](architecture/system.md#configurability).
 
+## Phase 6 — Safety
+
+The order of work for [#22](https://github.com/embedded-pro/e-robot-arm/issues/22), each step a pull request,
+designed in [safety.md](design/safety.md) 0.6.0:
+
+1. Design: stop categories, torque and speed limits, the reference rule, workspace and self-collision, the drive
+   watchdog and the hardware stop input; requirements REQ-SAF-001 to 010.
+2. Protective stop: a supervision rule holds the measured pose (category 2) instead of an emergency stop; the
+   lifecycle's Holding state; a lost hold emergency-stops.
+3. Torque limits (clamp, reported) and the speed rule; the reference rule.
+4. Drive watchdog: e-foc's command timeout written and verified on every node while configuring.
+5. Workspace and self-collision: the workspace check over the arm model, move targets and paths refused, every step
+   supervised; a capsule-box distance in robotics-toolbox if it lacks one.
+6. Hardware stop input: interface, mock, trip and re-arm rules; the circuit itself waits for phase 9.
+7. Simulator and console: the stop's rule and category in the status strip, the Holding state, the torque clamps,
+   the workspace and zones drawn in the 3-D view; a scenario per rule, including a collision on the virtual arm.
+
 ## Decisions waiting for input
 
 | Decision                                                      | Phase | Recommendation                                                                                       |

@@ -2,9 +2,9 @@
 title: "Joint Configurator Design"
 type: design
 status: draft
-version: 0.6.0
+version: 0.7.0
 component: "joint_configurator"
-date: 2026-11-16
+date: 2026-11-19
 ---
 
 | Field     | Value                     |
@@ -12,9 +12,9 @@ date: 2026-11-16
 | Title     | Joint Configurator Design |
 | Type      | design                    |
 | Status    | draft                     |
-| Version   | 0.6.0                     |
+| Version   | 0.7.0                     |
 | Component | joint_configurator        |
-| Date      | 2026-11-16                |
+| Date      | 2026-11-19                |
 
 > Applies a joint's e-foc motor controller (the algorithm of each loop and its gains) over CAN, reads it back and
 > compares it. Behaviour only; diagrams are Mermaid.
@@ -138,6 +138,14 @@ constant 1.5·p·ψ (0.274 N·m and 0.127 N·m); the overspeed limit is 1.2 time
 the peak-current time, and the Anaheim's Coulomb friction (taken as the Teknic bench value), are assumed. The
 following-error supervision is e-foc's default, off: a window depends on the gear and the load, so a profile sets it.
 
+### Part E — Drive watchdog
+
+The drive watchdog is one e-foc parameter, `commandTimeout` (s, 0 to 60, 0 off): a running drive that receives no
+start and no setpoint for that long cuts its power stage and faults ([safety.md](safety.md) Part I). It is applied
+with one set-parameter request and read back with one query, as in Part B, and compared within 10⁻⁴. Unlike the
+motor and the motor controller it is applied to every joint, whether the profile names its motor or not: the value is
+the profile's `driveWatchdogPeriods` times the control period, 0.1 s for the reference arm.
+
 ---
 
 ## Interfaces
@@ -204,7 +212,7 @@ sequenceDiagram
 
 ## Open Questions
 
-| # | Question                                           | Options                                             | Status                        |
-|---|----------------------------------------------------|-----------------------------------------------------|-------------------------------|
-| 1 | Whether to apply only the gains the algorithms use | All fourteen (simple, always verifiable), only used | decided: all fourteen         |
-| 2 | Motor characteristics and limits                   | The same configurator, a second one                 | decided: the same one, Part D |
+| #   | Question                                           | Options                                             | Status                        |
+|-----|----------------------------------------------------|-----------------------------------------------------|-------------------------------|
+| 1   | Whether to apply only the gains the algorithms use | All fourteen (simple, always verifiable), only used | decided: all fourteen         |
+| 2   | Motor characteristics and limits                   | The same configurator, a second one                 | decided: the same one, Part D |

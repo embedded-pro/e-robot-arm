@@ -2,9 +2,9 @@
 title: "Arm Profile Design"
 type: design
 status: draft
-version: 0.13.0
+version: 0.14.0
 component: "arm_profile"
-date: 2026-11-13
+date: 2026-11-19
 ---
 
 | Field     | Value              |
@@ -12,9 +12,9 @@ date: 2026-11-13
 | Title     | Arm Profile Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.13.0             |
+| Version   | 0.14.0             |
 | Component | arm_profile        |
-| Date      | 2026-11-13         |
+| Date      | 2026-11-19         |
 
 > The single description of an arm, as a JSON file: its control timing, and per joint the node, transmission,
 > limits and motor controller. Behaviour only; diagrams are Mermaid.
@@ -48,11 +48,12 @@ A profile holds what `ArmConfig` holds:
 | Item                        | JSON key                          | Unit, range                 | Default when absent |
 |-----------------------------|-----------------------------------|-----------------------------|---------------------|
 | Format marker               | `format`                          | `"e-robot-arm profile"`     | required            |
-| Format version              | `version`                         | `2` (`1` is read too)       | required            |
+| Format version              | `version`                         | `3` (`1` and `2` are read)  | required            |
 | Name                        | `name`                            | text, at most 48 characters | required            |
 | Control period              | `controlPeriodMs`                 | ms, 1 to 1000               | required            |
 | Missed telemetry allowed    | `missedRequestsBeforeSilent`      | periods, 1 to 255           | required            |
 | Command timeout             | `commandTimeoutPeriods`           | periods, 1 to 255           | 3                   |
+| Drive watchdog              | `driveWatchdogPeriods`            | periods, 2 to 255           | 10                  |
 | Enable mode                 | `enableMode`                      | `torque` only               | `torque`            |
 | `gravity-pd` bandwidth      | `gravityPd.bandwidthRadPerS`      | rad/s, above 0, at most 500 | 30                  |
 | `gravity-pd` damping        | `gravityPd.dampingRatio`          | above 0, at most 5          | 0.7                 |
@@ -65,6 +66,7 @@ A profile holds what `ArmConfig` holds:
 | Geometry                    | `geometry`                        | see below                   | the reference arm   |
 | Mass properties             | `massProperties`                  | see below                   | the reference arm   |
 | Link meshes                 | `meshes`                          | see below                   | none                |
+| Workspace, self-collision   | `safety`                          | see below                   | see below           |
 
 The arm runs its joints in torque mode only ([arm-controllers.md](arm-controllers.md) Part A). `enableMode` is
 read for older profiles and must be `torque`; a profile that names another mode is refused, and a written profile
@@ -114,14 +116,35 @@ Each joint:
 | Tracking window    | `trackingError.windowRad`           | rad, joint space, above 0                   | 0.2                 |
 | Tracking time      | `trackingError.timeS`               | s, above 0, at most 10                      | 0.2                 |
 | Collision limit    | `collisionTorqueNm`                 | N·m, joint side, above 0, at most 1000      | 20                  |
+| Speed trip         | `speedLimitRadPerS`                 | rad/s, joint space, above 0                 | 1.25 × speed limit  |
+| Torque limit       | `torqueLimitNm`                     | N·m, joint side, above 0, at most 1000      | from the motor      |
 | Motor controller   | `motorController`                   | see below                                   | not configured      |
 | Motor              | `motor`                             | see below                                   | not configured      |
 
 The tracking window and time are the safety supervisor's ([safety.md](safety.md) Part F): a joint whose tracking
 error stays above its window for its time trips the arm. So is the collision limit: an external torque on the joint,
 as the collision observer estimates it ([collision.md](collision.md)), above the limit trips the arm. The observer's
-gain, the bandwidth of its estimate, is the arm's `collisionObserverGainPerS`. All have defaults, so both checks are
-on in every profile.
+gain, the bandwidth of its estimate, is the arm's `collisionObserverGainPerS`. The speed trip stops the arm when
+the joint's measured speed exceeds it, and every torque the arm sends is clamped to the torque limit; a joint with
+neither a torque limit nor a motor is limited by its drive alone (safety.md Parts B and F). All have defaults, so
+every check is on in every profile, and every one of them ends in a protective stop: the joints keep holding.
+
+The drive watchdog is the e-foc command timeout the joint configurator writes to every node, in control periods: a
+drive that hears no setpoint for that long stops and faults ([safety.md](safety.md) Part I).
+
+`safety` holds the workspace and self-collision check ([safety.md](safety.md) Part H), in the base frame:
+
+| Item                  | JSON key                 | Unit, range                                | Default when absent                                 |
+|-----------------------|--------------------------|--------------------------------------------|-----------------------------------------------------|
+| Workspace             | `workspaceM.min`, `.max` | m, each `{ "x", "y", "z" }`, min below max | the reach in x and y, base plane to base plus reach |
+| Forbidden zones       | `forbiddenZonesM`        | at most eight boxes, as `workspaceM`       | none                                                |
+| Link radii            | `linkRadiiM`             | seven, m, above 0: links 1 to 6, then tool | all 0.04                                            |
+| Self-collision margin | `selfCollisionMarginM`   | m, 0 or above, at most 0.5                 | 0.01                                                |
+| Allowed link pairs    | `allowedLinkPairs`       | pairs of 1 to 7, not adjacent, at most 16  | none                                                |
+
+An allowed pair is never checked against each other, for links whose capsules touch by construction, a wrist for
+example. The workspace's default follows the geometry, so a profile that names no workspace keeps following its
+geometry when that changes.
 
 A joint's motor controller names one algorithm per loop and any of its fourteen gains:
 
@@ -152,7 +175,8 @@ display units:
 `preset` names a preset (`teknic-m2310p-ln-04k`, `anaheim-bly172s-24v-4000`) whose values fill every parameter the
 motor leaves out; without a preset the eleven others are required. The two following-error items are optional with or
 without a preset: left out, they keep e-foc's default, supervision off (a window of 0 and a time of 0.1 s). They came
-with format version 2; a version 1 file reads as before. Each value must lie in the e-foc contract's range, and
+with format version 2; a version 1 file reads as before. The speed trip, the torque limit, the drive watchdog and
+`safety` came with version 3; an older file takes their defaults. Each value must lie in the e-foc contract's range, and
 pole pairs must be a whole number. A joint without `motor` keeps whatever its node holds.
 
 ### Part B — Reading
@@ -165,7 +189,8 @@ written as integers or with up to nine decimals; exponents are not accepted.
 ### Part C — Writing
 
 Writing produces every item, defaults included, in the order of Part A (a motor with its preset, if it has one, and
-all eleven values), with up to nine decimals for real numbers
+all eleven values); the three items whose default follows another one, the speed trip, the torque limit and the
+workspace, are written only when the profile names them. Real numbers have up to nine decimals for real numbers
 and trailing zeros dropped. Read back, every item is the same; a gain comes back within the joint configurator's
 comparison tolerance ([joint-configurator.md](joint-configurator.md) Part C), since nine decimals hold fewer
 significant digits than a float below 0.1.
@@ -175,11 +200,12 @@ significant digits than a float below 0.1.
 ```json
 {
   "format": "e-robot-arm profile",
-  "version": 2,
+  "version": 3,
   "name": "generic six-joint",
   "controlPeriodMs": 10,
   "missedRequestsBeforeSilent": 3,
   "commandTimeoutPeriods": 3,
+  "driveWatchdogPeriods": 10,
   "joints": [
     {
       "node": 1,
@@ -263,9 +289,9 @@ sequenceDiagram
 
 ## Open Questions
 
-| # | Question                                | Options                                       | Status                                  |
-|---|-----------------------------------------|-----------------------------------------------|-----------------------------------------|
-| 1 | File format                             | JSON, binary image                            | decided: JSON                           |
-| 2 | How a loaded profile reaches the joints | Lifecycle step, operator button               | decided: lifecycle step                 |
-| 3 | How a loaded profile changes the arm    | Rebuild the arm, profile at start only        | decided: rebuild while not enabled      |
-| 4 | Motor characteristics and limits        | Added to `motorController`, a `motor` section | decided: a `motor` section with presets |
+| #   | Question                                | Options                                       | Status                                  |
+|-----|-----------------------------------------|-----------------------------------------------|-----------------------------------------|
+| 1   | File format                             | JSON, binary image                            | decided: JSON                           |
+| 2   | How a loaded profile reaches the joints | Lifecycle step, operator button               | decided: lifecycle step                 |
+| 3   | How a loaded profile changes the arm    | Rebuild the arm, profile at start only        | decided: rebuild while not enabled      |
+| 4   | Motor characteristics and limits        | Added to `motorController`, a `motor` section | decided: a `motor` section with presets |

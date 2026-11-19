@@ -2,9 +2,9 @@
 title: "Arm Lifecycle Design"
 type: design
 status: draft
-version: 0.6.0
+version: 0.7.0
 component: "lifecycle"
-date: 2026-11-13
+date: 2026-11-19
 ---
 
 | Field     | Value                |
@@ -12,9 +12,9 @@ date: 2026-11-13
 | Title     | Arm Lifecycle Design |
 | Type      | design               |
 | Status    | draft                |
-| Version   | 0.6.0                |
+| Version   | 0.7.0                |
 | Component | lifecycle            |
-| Date      | 2026-11-13           |
+| Date      | 2026-11-19           |
 
 > The arm's start-up sequence: from an arm that has not been checked to one that moves, and back after a fault.
 > Behaviour only; diagrams are Mermaid.
@@ -30,7 +30,7 @@ date: 2026-11-13
 - Allowing a move only while the arm is enabled, and one move at a time.
 - Following the arm's real state from telemetry and command outcomes, so that a joint that stops running, a
   contract that turns out incompatible or a fault moves the lifecycle as well.
-- Holding the arm tripped after a fault or a silent joint until it is re-armed.
+- Holding the arm tripped after an emergency stop, or holding its pose after a protective stop, until it is re-armed.
 
 **Is NOT responsible for:**
 
@@ -45,20 +45,21 @@ date: 2026-11-13
 
 ### Part A — States
 
-| State                 | Meaning                                                                              |
-|-----------------------|--------------------------------------------------------------------------------------|
-| Unpowered             | Nothing is known about the joints; the initial state                                 |
-| Checking              | The contract query is out; waiting for the outcome                                   |
-| Incompatible          | A joint speaks an incompatible contract; bring-up may be tried again                 |
-| WaitingForCalibration | Every contract is compatible; waiting until every joint reports ready or running     |
-| Configuring           | Every joint is calibrated; each configured motor controller is applied and verified  |
-| Misconfigured         | A motor controller could not be applied, or reads back different; the joint is named |
-| Ready                 | Every joint is calibrated and configured, and not all of them are running            |
-| Enabling              | Torque mode, then start, is being delivered to the joints                            |
-| Enabled               | Every joint is running in the configured mode; a move may start                      |
-| Moving                | A move is in progress                                                                |
-| Disabling             | Stop is being delivered to the joints                                                |
-| Tripped               | A joint faulted or went silent; the safety supervisor has stopped every joint        |
+| State                 | Meaning                                                                                         |
+|-----------------------|-------------------------------------------------------------------------------------------------|
+| Unpowered             | Nothing is known about the joints; the initial state                                            |
+| Checking              | The contract query is out; waiting for the outcome                                              |
+| Incompatible          | A joint speaks an incompatible contract; bring-up may be tried again                            |
+| WaitingForCalibration | Every contract is compatible; waiting until every joint reports ready or running                |
+| Configuring           | Every joint is calibrated; each configured motor controller is applied and verified             |
+| Misconfigured         | A motor controller could not be applied, or reads back different; the joint is named            |
+| Ready                 | Every joint is calibrated and configured, and not all of them are running                       |
+| Enabling              | Torque mode, then start, is being delivered to the joints                                       |
+| Enabled               | Every joint is running in the configured mode; a move may start                                 |
+| Moving                | A move is in progress                                                                           |
+| Disabling             | Stop is being delivered to the joints                                                           |
+| Holding               | A protective stop: the joints run and hold the pose the arm stopped at; the rule is named       |
+| Tripped               | An emergency stop: a joint faulted or went silent, the hardware stop opened, or a hold was lost |
 
 A joint counts as calibrated when it reports ready or running, and as running when it reports running. Idle,
 calibrating and partial calibration all keep the arm waiting, with no time limit: the operator calibrates the node
@@ -72,10 +73,10 @@ command aligns every joint, and it moves each motor.
 |----------|----------------------------------------|--------------------------------------------------------------------------------------------------------------------------------|
 | Bring up | Unpowered, Incompatible, Misconfigured | Queries the contracts of every joint                                                                                           |
 | Enable   | Ready                                  | Selects torque mode; once delivered, starts every joint                                                                        |
-| Disable  | Enabled                                | Stops every joint                                                                                                              |
+| Disable  | Enabled, Holding                       | Stops every joint; from Holding the arm is no longer held                                                                      |
 | Move     | Enabled                                | Starts a move through joint motion                                                                                             |
 | Step     | Enabled                                | Starts a reference step through joint motion ([joint-motion.md](joint-motion.md) Part C); Moving until it is done, like a move |
-| Re-arm   | Tripped                                | Re-arms the safety supervisor, which refuses while a joint is still in fault                                                   |
+| Re-arm   | Tripped, Holding                       | Re-arms the safety supervisor, which refuses while a joint is still in fault; from Holding the arm is Enabled again            |
 
 A command in any other state is refused and changes nothing. Enable always selects torque mode: the arm closes
 position on the host through its arm controllers ([arm-controllers.md](arm-controllers.md) Part A).
@@ -91,17 +92,20 @@ Once per control period, after the setpoint step, the lifecycle looks at the six
   calibrated.
 - **Enabling** and **Disabling** finish when every joint is running, or when none is, respectively.
 - **Enabled** and **Moving** fall back to Ready when a joint stops running; a move in progress is aborted.
+- **Holding** falls back to Ready when a joint stops running.
 
 The safety supervisor's events move it too: a compatible contract outcome reaches WaitingForCalibration from
 Unpowered, Checking or Incompatible, so a contract query issued directly also brings the arm up; an incompatible
-outcome leads to Incompatible from Unpowered, Checking, WaitingForCalibration, Configuring, Misconfigured or Ready; a joint fault or a silent joint leads to Tripped from every state. A command the
+outcome leads to Incompatible from Unpowered, Checking, WaitingForCalibration, Configuring, Misconfigured or Ready; a protective stop leads to Holding from Enabled and Moving, aborting the move ([safety.md](safety.md) Part G); a
+joint fault, a silent joint, the hardware stop or a lost hold leads to Tripped from every state. A command the
 lifecycle issued that fails to be delivered ends Checking in Unpowered and Enabling in Ready; a stop that cannot be
 delivered while disabling emergency-stops the arm and trips it.
 
 ### Part D — Configuring
 
 The configuration may name a motor and a motor controller for each joint ([arm-profile.md](arm-profile.md)). In
-Configuring the lifecycle takes the named joints in order, and for each its motor first, then its motor controller,
+Configuring the lifecycle first applies and verifies every joint's drive watchdog ([joint-configurator.md](joint-configurator.md)
+Part E), then takes the named joints in order, and for each its motor first, then its motor controller,
 since the node designs its loops from the motor: it applies the settings through the joint configurator, reads them
 back and compares them ([joint-configurator.md](joint-configurator.md) Parts C and D). When every named joint matches,
 the arm is Ready. An apply or read that fails, or a read-back that differs, ends in Misconfigured with that joint,
@@ -139,11 +143,12 @@ start, stop, align) still work for debugging, and the lifecycle shows where they
 
 ## Data Model
 
-| Entity        | Field            | Type / Unit                          | Range               | Notes                  |
-|---------------|------------------|--------------------------------------|---------------------|------------------------|
-| Configuration | controllers      | per joint, motor-controller settings | present or absent   | Absent: not configured |
-| Lifecycle     | misconfiguration | joint and reason                     | failed, differs     | Set in Misconfigured   |
-| Lifecycle     | state            | lifecycle state                      | Unpowered … Tripped | Unpowered at start     |
+| Entity        | Field            | Type / Unit                          | Range               | Notes                      |
+|---------------|------------------|--------------------------------------|---------------------|----------------------------|
+| Configuration | controllers      | per joint, motor-controller settings | present or absent   | Absent: not configured     |
+| Lifecycle     | misconfiguration | joint and reason                     | failed, differs     | Set in Misconfigured       |
+| Lifecycle     | state            | lifecycle state                      | Unpowered … Tripped | Unpowered at start         |
+| Lifecycle     | stop             | rule, joint or links, value          | Part F of safety.md | Set in Holding and Tripped |
 
 ---
 
@@ -184,8 +189,13 @@ stateDiagram-v2
     Disabling --> Tripped: stop not delivered
     Enabled --> Ready: a joint stopped
     Moving --> Ready: a joint stopped
+    Enabled --> Holding: protective stop
+    Moving --> Holding: protective stop
+    Holding --> Enabled: re-arm
+    Holding --> Disabling: disable
+    Holding --> Ready: a joint stopped
     Tripped --> WaitingForCalibration: re-arm
-    note right of Tripped: entered from every state on a joint fault or a silent joint
+    note right of Tripped: entered from every state on an emergency stop
 ```
 
 ### Bring-up
@@ -227,7 +237,7 @@ sequenceDiagram
 
 ## Open Questions
 
-| # | Question                                                          | Options                                                | Status                                                                                        |
-|---|-------------------------------------------------------------------|--------------------------------------------------------|-----------------------------------------------------------------------------------------------|
-| 1 | Whether the arm should start calibration of an uncalibrated joint | Operator calibrates on the node, the arm commands it   | closed: the operator calibrates                                                               |
-| 2 | Whether the simulator drives the lifecycle                        | Lifecycle state and bring-up controls in the simulator | closed: the Operate group and status strip follow it ([tool-simulator.md](tool-simulator.md)) |
+| #   | Question                                                          | Options                                                | Status                                                                                        |
+|-----|-------------------------------------------------------------------|--------------------------------------------------------|-----------------------------------------------------------------------------------------------|
+| 1   | Whether the arm should start calibration of an uncalibrated joint | Operator calibrates on the node, the arm commands it   | closed: the operator calibrates                                                               |
+| 2   | Whether the simulator drives the lifecycle                        | Lifecycle state and bring-up controls in the simulator | closed: the Operate group and status strip follow it ([tool-simulator.md](tool-simulator.md)) |

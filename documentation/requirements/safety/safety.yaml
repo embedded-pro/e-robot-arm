@@ -1,0 +1,64 @@
+- id: REQ-SAF-001
+  title: Protective stop holds the arm
+  shall: >
+    When a supervision rule stops the arm, the arm shall keep every joint powered, hold the pose it measured when
+    it stopped, refuse to move until it is re-armed, and report the rule that stopped it.
+
+- id: REQ-SAF-002
+  title: Emergency stop when the hold is lost
+  shall: >
+    While the arm holds a protectively stopped pose, when a joint's measured position stays farther from the held
+    pose than that joint's configured tracking tolerance for longer than its configured time, the arm shall
+    emergency-stop all six joints and report that the hold was lost.
+
+- id: REQ-SAF-003
+  title: Re-arming a protective stop
+  shall: >
+    When re-armed after a protective stop with no joint faulted, the arm shall resume driving its joints from the
+    held pose without stopping them.
+
+- id: REQ-SAF-004
+  title: Joint torque limit
+  shall: >
+    The arm shall never command a joint torque above that joint's configured torque limit, and shall report each
+    joint whose commanded torque it limited.
+
+- id: REQ-SAF-005
+  title: Stop on a joint too fast
+  shall: >
+    While the arm drives its joints, when any joint's measured speed exceeds that joint's configured speed limit,
+    the arm shall protectively stop and report the joint and its speed.
+
+- id: REQ-SAF-006
+  title: Stop on a reference beyond the motion limits
+  shall: >
+    While the arm drives its joints, when the reference it tracks moves a joint faster or accelerates it harder than
+    that joint's configured motion limits allow, other than a reference step of at most 0.2 rad, the arm shall
+    protectively stop and report the joint and the value.
+
+- id: REQ-SAF-007
+  title: Workspace
+  shall: >
+    The arm shall refuse a move whose target or path takes any link outside its configured workspace or into a
+    configured forbidden zone, and, while it drives its joints, shall protectively stop when the commanded or the
+    measured pose does so, reporting the link and the distance.
+
+- id: REQ-SAF-008
+  title: Self-collision
+  shall: >
+    The arm shall refuse a move whose target or path brings two links closer than its configured self-collision
+    margin, and, while it drives its joints, shall protectively stop when the commanded or the measured pose does
+    so, reporting the two links and their distance.
+
+- id: REQ-SAF-009
+  title: Drives stop when the arm stops commanding
+  shall: >
+    Before it can be enabled, the arm shall set every joint's drive to stop and fault on its own when it receives
+    no setpoint for the configured number of control periods, and shall refuse to enable when a drive reports a
+    different timeout.
+
+- id: REQ-SAF-010
+  title: Hardware stop
+  shall: >
+    When the arm's hardware stop opens, the arm shall emergency-stop all six joints, report the hardware stop as the
+    cause, and refuse to re-arm while it stays open.
