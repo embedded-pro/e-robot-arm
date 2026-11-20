@@ -164,12 +164,12 @@ Phase 5 ([#21](https://github.com/embedded-pro/e-robot-arm/issues/21)) adds four
 robotics-toolbox's manipulator controllers over the arm model, each with its parameters in the arm profile and each
 registered and enabled beside the others (Part B), `slotine-li` only when the profile allows it:
 
-| Name                  | Law                                                                                                      | Bumpless |
-|-----------------------|----------------------------------------------------------------------------------------------------------|----------|
+| Name                  | Law                                                                                                    | Bumpless |
+|-----------------------|--------------------------------------------------------------------------------------------------------|----------|
 | `joint-impedance`     | `τ = K·(q* − q) + D·(q̇* − q̇) + G(q)`: a spring and damper per joint around the reference, plus gravity | yes      |
-| `cartesian-impedance` | `τ = Jᵀ·(K·e + D·ė) + G(q)`: a spring and damper on the tool's pose error e, in the base frame           | yes      |
+| `cartesian-impedance` | `τ = Jᵀ·(K·e + D·ė) + G(q)`: a spring and damper on the tool's pose error e, in the base frame         | yes      |
 | `operational-space`   | `τ = Jᵀ·Λ·(ẍ* + Kd·ė + Kp·e − J̇·q̇) + C + G`: the tool follows the reference as a decoupled system      | yes      |
-| `slotine-li`          | `τ = Y·â − Kd·s, with s = q̇ − q̇r and â adapted as â̇ = −Γ·Yᵀ·s`: learns the arm's inertial parameters  | yes      |
+| `slotine-li`          | `τ = Y·â − Kd·s, with s = q̇ − q̇r and â adapted as â̇ = −Γ·Yᵀ·s`: learns the arm's inertial parameters   | yes      |
 
 **Joint impedance.** The arm yields to a push as a spring of stiffness K and a damper D per joint, centred on the
 reference, with gravity compensated so it holds its own weight; nothing else is cancelled, so a move lags the
