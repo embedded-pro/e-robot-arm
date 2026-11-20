@@ -208,6 +208,26 @@ TEST_F(ArmConsoleTest, motion_prints_the_profile_and_posts_a_choice_of_profile)
     EXPECT_THAT(Run("motion s-curve now"), StartsWith("usage:"));
 }
 
+TEST_F(ArmConsoleTest, jog_holds_a_joint_or_tool_jog_for_a_time)
+{
+    using namespace std::chrono_literals;
+    EXPECT_CALL(arm, Post(VariantWith<arm_host::HoldJog>(AllOf(Field(&arm_host::HoldJog::jog, VariantWith<arm::JointJog>(Field(&arm::JointJog::joint, 2u))),
+                         Field(&arm_host::HoldJog::duration, infra::Duration{ 1s })))))
+        .WillOnce(Return(8));
+    EXPECT_EQ(8u, console.Execute("jog 3 -0.2").command);
+
+    EXPECT_CALL(arm, Post(VariantWith<arm_host::HoldJog>(AllOf(Field(&arm_host::HoldJog::jog, VariantWith<arm::ToolJog>(AllOf(Field(&arm::ToolJog::frame, arm::JogFrame::tool),
+                                                                                                  Field(&arm::ToolJog::axis, arm::ToolAxis::rz), Field(&arm::ToolJog::speed, 0.5f)))),
+                         Field(&arm_host::HoldJog::duration, infra::Duration{ 2500ms })))))
+        .WillOnce(Return(9));
+    EXPECT_EQ(9u, console.Execute("jog tool rz 0.5 2.5").command);
+
+    EXPECT_THAT(Run("jog 7 0.2"), StartsWith("usage:"));
+    EXPECT_THAT(Run("jog base w 0.1"), StartsWith("usage:"));
+    EXPECT_THAT(Run("jog 1"), StartsWith("usage:"));
+    EXPECT_THAT(Run("jog 1 0.2 1 extra"), StartsWith("usage:"));
+}
+
 TEST_F(ArmConsoleTest, quit_ends_the_console)
 {
     EXPECT_EQ(arm_console::Outcome::quit, console.Execute("quit").outcome);

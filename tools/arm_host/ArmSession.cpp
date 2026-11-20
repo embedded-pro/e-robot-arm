@@ -12,7 +12,7 @@ namespace arm_host
             return std::holds_alternative<SelectMode>(command) || std::holds_alternative<StartJoints>(command) || std::holds_alternative<AlignJoints>(command) ||
                    std::holds_alternative<MoveTo>(command) || std::holds_alternative<StepTo>(command) || std::holds_alternative<MoveThrough>(command) ||
                    std::holds_alternative<MoveLine>(command) || std::holds_alternative<JogJoint>(command) ||
-                   std::holds_alternative<JogTool>(command);
+                   std::holds_alternative<JogTool>(command) || std::holds_alternative<HoldJog>(command);
         }
 
         bool DeliveredByTheJoints(const ArmCommand& command)
@@ -182,6 +182,7 @@ namespace arm_host
 
     void ArmSession::Execute(uint32_t id, const ArmCommand& command)
     {
+        holdTimer.Cancel();
         if (DeliveredByTheJoints(command))
             Deliver(id, command);
         else if (Run(command))
@@ -231,6 +232,7 @@ namespace arm_host
         arm.Safety().Stop();
         arm.Loop().Stop();
         publishTimer.Cancel();
+        holdTimer.Cancel();
         held.reset();
     }
 
@@ -323,6 +325,11 @@ namespace arm_host
         bool operator()(const JogTool& jog) const
         {
             return session.arm.Lifecycle().Jog(jog.jog);
+        }
+
+        bool operator()(const HoldJog& hold) const
+        {
+            return session.Hold(hold);
         }
 
         bool operator()(const AbortMove&) const
@@ -520,6 +527,8 @@ namespace arm_host
             return JogRefusal(jog->joint < arm::jointCount, jog->speed.Value());
         if (const auto* jog = std::get_if<JogTool>(&command))
             return JogRefusal(true, jog->jog.speed);
+        if (const auto* hold = std::get_if<HoldJog>(&command))
+            return hold->duration > infra::Duration::zero() && hold->duration <= maxHeldJog ? JogRefusal(hold->jog) : "a held jog lasts more than 0 s and at most 10 s";
         if (std::holds_alternative<MoveTo>(command) || std::holds_alternative<StepTo>(command))
             return MoveRefusal(command);
         if (DeliveredByTheJoints(command))
@@ -594,6 +603,46 @@ namespace arm_host
         if (state == arm::ArmState::moving)
             return "another move runs";
         return "a joint's reading is stale";
+    }
+
+    std::string_view ArmSession::JogRefusal(const AnyJog& jog) const
+    {
+        if (const auto* joint = std::get_if<arm::JointJog>(&jog))
+            return JogRefusal(joint->joint < arm::jointCount, joint->speed.Value());
+        return JogRefusal(true, std::get<arm::ToolJog>(jog).speed);
+    }
+
+    bool ArmSession::Hold(const HoldJog& hold)
+    {
+        if (!(hold.duration > infra::Duration::zero() && hold.duration <= maxHeldJog) || !JogOnce(hold.jog))
+            return false;
+
+        heldJog = hold.jog;
+        holdUntil = infra::Now() + hold.duration;
+        holdTimer.Start(profile.config.controlPeriod * heldJogRefreshPeriods, [this]()
+            {
+                RefreshHold();
+            });
+        return true;
+    }
+
+    bool ArmSession::JogOnce(const AnyJog& jog)
+    {
+        return std::visit([this](const auto& any)
+            {
+                return arm.Lifecycle().Jog(any);
+            },
+            jog);
+    }
+
+    void ArmSession::RefreshHold()
+    {
+        if (infra::Now() >= holdUntil || !arm.Motion().Moving() || !heldJog.has_value())
+        {
+            holdTimer.Cancel();
+            return;
+        }
+        JogOnce(*heldJog);
     }
 
     std::string_view ArmSession::LineRefusal() const

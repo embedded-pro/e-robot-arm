@@ -46,6 +46,36 @@ namespace arm_console
         }
 
         constexpr std::array<std::string_view, 2> motionProfileNames{ "trapezoid", "s-curve" };
+        constexpr std::array<std::string_view, 2> frameNames{ "base", "tool" };
+        constexpr std::array<std::string_view, 6> axisNames{ "x", "y", "z", "rx", "ry", "rz" };
+
+        std::optional<infra::Duration> HeldFor(std::istringstream& arguments)
+        {
+            float seconds{ 1.0f };
+            std::string rest;
+            if (!(arguments >> seconds))
+            {
+                if (!arguments.eof())
+                    return std::nullopt;
+                seconds = 1.0f;
+            }
+            else if (arguments >> rest)
+                return std::nullopt;
+            return std::chrono::duration_cast<infra::Duration>(std::chrono::duration<float>(seconds));
+        }
+
+        std::optional<arm_host::AnyJog> ToolJogOf(std::string_view frame, std::istringstream& arguments)
+        {
+            std::string axis;
+            float speed{ 0.0f };
+            if (!(arguments >> axis >> speed))
+                return std::nullopt;
+            const auto foundAxis = std::ranges::find(axisNames, axis);
+            if (foundAxis == axisNames.end())
+                return std::nullopt;
+            const auto chosenFrame = frame == frameNames[0] ? arm::JogFrame::base : arm::JogFrame::tool;
+            return arm::ToolJog{ chosenFrame, static_cast<arm::ToolAxis>(foundAxis - axisNames.begin()), speed };
+        }
 
         std::string JointList(const arm::JointFlags& joints)
         {
@@ -92,6 +122,9 @@ namespace arm_console
 
         if (command == "motion")
             return MotionProfile(arguments);
+
+        if (command == "jog")
+            return Jog(arguments);
 
         if (command == "tune")
             return Tune(arguments);
@@ -233,6 +266,32 @@ namespace arm_console
         return { Outcome::posted, arm.Post(arm_host::SelectMotionProfile{ static_cast<arm::MotionProfile>(found - motionProfileNames.begin()) }) };
     }
 
+    ExecuteResult ArmConsole::Jog(std::istringstream& arguments)
+    {
+        std::string first;
+        std::optional<arm_host::AnyJog> jog;
+        if (arguments >> first)
+        {
+            if (std::ranges::find(frameNames, first) != frameNames.end())
+                jog = ToolJogOf(first, arguments);
+            else if (first.size() == 1 && first[0] >= '1' && first[0] <= '6')
+            {
+                float speed{ 0.0f };
+                if (arguments >> speed)
+                    jog = arm::JointJog{ static_cast<std::size_t>(first[0] - '1'), foc::RadiansPerSecond{ speed } };
+            }
+        }
+
+        const auto duration = jog.has_value() ? HeldFor(arguments) : std::nullopt;
+        if (!duration.has_value())
+        {
+            Usage();
+            return { Outcome::done };
+        }
+
+        return { Outcome::posted, arm.Post(arm_host::HoldJog{ *jog, *duration }) };
+    }
+
     void ArmConsole::Kinematics(std::string_view command, std::istringstream& arguments)
     {
         const auto snapshot = arm.Snapshot();
@@ -350,7 +409,7 @@ namespace arm_console
 
     void ArmConsole::Usage()
     {
-        output << "usage: bringup | enable | disable | move q1 q2 q3 q4 q5 q6 | step q1 q2 q3 q4 q5 q6 | tune step|move <joint> <rad> [csv] | rearm | contracts | mode torque|speed|position | start | stop | estop | clear | align | abort | load <file> | save <file> | controllers | controller enable|disable|select <name> | motion [trapezoid|s-curve] | pose | gravity | fk q1..q6 | ik x y z roll pitch yaw | status | quit\n";
+        output << "usage: bringup | enable | disable | move q1 q2 q3 q4 q5 q6 | step q1 q2 q3 q4 q5 q6 | tune step|move <joint> <rad> [csv] | rearm | contracts | mode torque|speed|position | start | stop | estop | clear | align | abort | load <file> | save <file> | controllers | controller enable|disable|select <name> | motion [trapezoid|s-curve] | jog <joint> <rad/s> [s] | jog base|tool x|y|z|rx|ry|rz <speed> [s] | pose | gravity | fk q1..q6 | ik x y z roll pitch yaw | status | quit\n";
     }
 
     ExecuteResult ArmConsole::Tune(std::istringstream& arguments)
