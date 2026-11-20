@@ -5,7 +5,9 @@
 #include "e-foc-protocol/client/FocMotorCanClient.hpp"
 #include "infra/timer/test_helper/ClockFixture.hpp"
 #include "tools/simulated_arm/SimulatedArm.hpp"
+#include <map>
 #include <optional>
+#include <string>
 #include <vector>
 
 namespace integration
@@ -72,6 +74,10 @@ namespace integration
         bool lastAccepted{ false };
         uint32_t movesDoneBefore{ 0 };
         uint32_t movesAbortedBefore{ 0 };
+        std::vector<arm::JointPositions> waypoints;
+        std::map<std::string, arm::JointPositions> points;
+        arm::ToolPose lineFrom{};
+        arm::ToolPose lineTo{};
     };
 }
 
