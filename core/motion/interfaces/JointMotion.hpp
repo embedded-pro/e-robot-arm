@@ -5,6 +5,8 @@
 #include "e-foc-protocol/foc/Units.hpp"
 #include "infra/util/Observer.hpp"
 #include <array>
+#include <cstdint>
+#include <optional>
 
 namespace arm
 {
@@ -15,6 +17,13 @@ namespace arm
     };
 
     using JointMotionLimits = std::array<JointMotionLimit, jointCount>;
+    using JointJerkLimits = std::array<std::optional<foc::RadiansPerSecondCubed>, jointCount>;
+
+    enum class MotionProfile : uint8_t
+    {
+        trapezoid,
+        sCurve
+    };
 
     class JointMotion;
 
@@ -45,6 +54,8 @@ namespace arm
         virtual bool StepTo(const JointPositions& target) = 0;
         virtual void Abort() = 0;
         virtual bool Moving() const = 0;
+        virtual bool SelectProfile(MotionProfile profile) = 0;
+        virtual MotionProfile Profile() const = 0;
 
     protected:
         ~JointMotion() = default;

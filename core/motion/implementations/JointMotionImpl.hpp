@@ -18,12 +18,15 @@ namespace arm
         static constexpr float pathSampleSpacing{ 0.05f };
         static constexpr std::size_t maxPathSamples{ 64 };
 
-        JointMotionImpl(JointBus& bus, const JointLimits& positionLimits, const JointMotionLimits& limits, infra::Duration period, const PoseGuard* guard = nullptr);
+        JointMotionImpl(JointBus& bus, const JointLimits& positionLimits, const JointMotionLimits& limits, infra::Duration period, const PoseGuard* guard = nullptr,
+            const JointJerkLimits& jerks = {});
 
         bool MoveTo(const JointPositions& target) override;
         bool StepTo(const JointPositions& target) override;
         void Abort() override;
         bool Moving() const override;
+        bool SelectProfile(MotionProfile newProfile) override;
+        MotionProfile Profile() const override;
 
         std::optional<JointReference> Step();
 
@@ -38,6 +41,8 @@ namespace arm
         JointBus& bus;
         JointLimits positionLimits;
         JointMotionLimits limits;
+        JointJerkLimits jerks;
+        MotionProfile profile{ MotionProfile::trapezoid };
         infra::Duration period;
         const PoseGuard* guard;
         JointMovePlan plan;

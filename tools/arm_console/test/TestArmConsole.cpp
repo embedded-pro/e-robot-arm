@@ -194,6 +194,20 @@ TEST_F(ArmConsoleTest, controllers_lists_the_arm_controllers_and_controller_post
     EXPECT_EQ("arm controller: computed-torque\n", Printed({ .kind = ArmEventKind::armControllerChanged, .armController = "computed-torque" }));
 }
 
+TEST_F(ArmConsoleTest, motion_prints_the_profile_and_posts_a_choice_of_profile)
+{
+    arm_host::ArmSnapshot snapshot;
+    snapshot.config.motionProfile = arm::MotionProfile::sCurve;
+    EXPECT_CALL(arm, Snapshot()).WillOnce(Return(snapshot));
+    EXPECT_EQ("motion profile: s-curve\n", Run("motion"));
+
+    EXPECT_CALL(arm, Post(VariantWith<arm_host::SelectMotionProfile>(Field(&arm_host::SelectMotionProfile::profile, arm::MotionProfile::trapezoid)))).WillOnce(Return(7));
+    EXPECT_EQ(7u, console.Execute("motion trapezoid").command);
+
+    EXPECT_THAT(Run("motion smooth"), StartsWith("usage:"));
+    EXPECT_THAT(Run("motion s-curve now"), StartsWith("usage:"));
+}
+
 TEST_F(ArmConsoleTest, quit_ends_the_console)
 {
     EXPECT_EQ(arm_console::Outcome::quit, console.Execute("quit").outcome);

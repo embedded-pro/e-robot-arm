@@ -42,6 +42,8 @@ namespace arm
         std::array<std::optional<foc::NewtonMeter>, jointCount> torqueLimits{};
         WorkspaceConfig workspace{};
         float collisionObserverGain{ 25.0f };
+        JointJerkLimits jerkLimits{};
+        MotionProfile motionProfile{ MotionProfile::trapezoid };
     };
 
     inline constexpr float defaultSpeedTripShare{ 4.0f };

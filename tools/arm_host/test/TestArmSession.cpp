@@ -58,6 +58,30 @@ namespace
         arm_host::test::RecordingSink sink;
         arm_host::ArmSession session{ simulatedArm.ArmSide(), arm_host::test::Profile(), target, sink, &simulatedArm, arm_host::SessionOptions{ .commissioning = true } };
     };
+
+    arm::ArmConfig JerkLimited()
+    {
+        auto config = arm_host::test::Config();
+        config.jerkLimits.fill(foc::RadiansPerSecondCubed{ 40.0f });
+        return config;
+    }
+
+    class JerkLimitedSessionTest
+        : public testing::Test
+        , public infra::ClockFixture
+    {
+    public:
+        void Execute(uint32_t id, const arm_host::ArmCommand& command)
+        {
+            session.Execute(id, command);
+            ForwardTime(30ms);
+        }
+
+        arm_host::ArmTarget target{ arm_host::TargetKind::simulated, "" };
+        simulation::SimulatedArm simulatedArm{ arm_host::test::nodes, 50ms, arm_host::PlantFor(arm_host::test::Config()) };
+        arm_host::test::RecordingSink sink;
+        arm_host::ArmSession session{ simulatedArm.ArmSide(), arm_host::test::Profile(JerkLimited()), target, sink, &simulatedArm };
+    };
 }
 
 TEST_F(CommissioningSessionTest, moves_at_a_quarter_of_the_profiles_speed_and_reports_the_profile_as_loaded)
@@ -687,4 +711,29 @@ TEST_F(SoftTorqueArmSessionTest, a_held_arm_keeps_its_pose_refuses_moves_and_dri
     Execute(6, arm_host::MoveTo{ { held, foc::Radians{ 0.0f }, foc::Radians{ 0.0f }, foc::Radians{ 0.0f }, foc::Radians{ 0.0f }, foc::Radians{ 0.0f } } });
     ForwardTime(1s);
     EXPECT_NE(nullptr, sink.Find(ArmEventKind::moveDone));
+}
+
+TEST_F(ArmSessionTest, refuses_the_s_curve_without_a_jerk_limit_on_every_joint)
+{
+    Execute(1, arm_host::SelectMotionProfile{ arm::MotionProfile::sCurve });
+
+    EXPECT_EQ("a joint has no jerk limit", sink.Last()->reason);
+    EXPECT_EQ(arm::MotionProfile::trapezoid, sink.snapshot.config.motionProfile);
+}
+
+TEST_F(JerkLimitedSessionTest, selects_the_motion_profile_at_rest_and_refuses_it_while_moving)
+{
+    Execute(1, arm_host::SelectMotionProfile{ arm::MotionProfile::sCurve });
+    EXPECT_EQ(ArmEventKind::accepted, sink.Last()->kind);
+    EXPECT_EQ(arm::MotionProfile::sCurve, sink.snapshot.config.motionProfile);
+
+    Execute(2, arm_host::BringUp{});
+    Execute(3, arm_host::Enable{});
+    arm::JointPositions target{};
+    target[0] = foc::Radians{ 1.0f };
+    Execute(4, arm_host::MoveTo{ target });
+    Execute(5, arm_host::SelectMotionProfile{ arm::MotionProfile::trapezoid });
+
+    EXPECT_EQ("moving", sink.Last()->reason);
+    EXPECT_EQ(arm::MotionProfile::sCurve, sink.snapshot.config.motionProfile);
 }

@@ -2,9 +2,9 @@
 title: "Joint Bus Design"
 type: design
 status: draft
-version: 0.13.0
+version: 0.14.0
 component: "joint_bus"
-date: 2026-11-17
+date: 2026-11-20
 ---
 
 | Field     | Value            |
@@ -12,9 +12,9 @@ date: 2026-11-17
 | Title     | Joint Bus Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.13.0           |
+| Version   | 0.14.0           |
 | Component | joint_bus        |
-| Date      | 2026-11-17       |
+| Date      | 2026-11-20       |
 
 > The six joints of the arm as one set of commands and readings. Behaviour only; diagrams are Mermaid.
 
@@ -279,8 +279,8 @@ sequenceDiagram
 
 ## Open Questions
 
-| # | Question                                                                                                                                                                                                                                                                         | Options                                                                                                                                 | Status                                                                                  |
-|---|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------|
-| 1 | How the bus detects a silent node                                                                                                                                                                                                                                                | Requests missed in a row, counted per joint                                                                                             | closed                                                                                  |
-| 2 | Whether setpoints carry speed and torque as well                                                                                                                                                                                                                                 | Position only, combined command (contract 4.x)                                                                                          | open                                                                                    |
-| 3 | A command issued while a control-loop burst is queued reaches only some joints: can-lite gives ordinary frames six of its eight queue slots, so a second six-frame burst is refused until the first drains (an emergency stop displaces ordinary frames and always gets through) | Queue commands in the joint bus until the burst drains, send commands only in a control-loop phase, a deeper transmit queue in can-lite | closed: the joint bus holds one command and retries the joints that refused it (Part B) |
+| # | Question                                                                                                                                                                                                                                                                         | Options                                                                                                                                 | Status                                                                                                                                       |
+|---|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------|
+| 1 | How the bus detects a silent node                                                                                                                                                                                                                                                | Requests missed in a row, counted per joint                                                                                             | closed                                                                                                                                       |
+| 2 | Whether setpoints carry speed and torque as well                                                                                                                                                                                                                                 | Position only, combined command (contract 4.x)                                                                                          | closed: neither; setpoints are torques, and the arm controllers hold the position and speed loops ([arm-controllers.md](arm-controllers.md)) |
+| 3 | A command issued while a control-loop burst is queued reaches only some joints: can-lite gives ordinary frames six of its eight queue slots, so a second six-frame burst is refused until the first drains (an emergency stop displaces ordinary frames and always gets through) | Queue commands in the joint bus until the burst drains, send commands only in a control-loop phase, a deeper transmit queue in can-lite | closed: the joint bus holds one command and retries the joints that refused it (Part B)                                                      |

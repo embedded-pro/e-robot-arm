@@ -45,6 +45,13 @@ namespace
         R"( "motorController": { "current": "slidingMode", "speed": "adrc", "position": "lqr", "gains": { "positionBandwidth": 25, "speedErrorWeight": 1.5 } },)"
         R"( "motor": { "preset": "teknic-m2310p-ln-04k", "inertiaGramCm2": 120.5 }, "trackingError": { "windowRad": 0.1, "timeS": 0.35 }, "collisionTorqueNm": 7.5)") };
 
+    std::string WithFirstJerk(std::string text, const std::string& jerk)
+    {
+        const std::string acceleration{ R"("accelerationRadPerS2": 2.5)" };
+        text.insert(text.find(acceleration) + acceleration.size(), R"(, "jerkRadPerS3": )" + jerk);
+        return text;
+    }
+
     std::size_t Count(const std::string& text, const std::string& part)
     {
         std::size_t count{ 0 };
@@ -361,7 +368,7 @@ TEST_F(ArmProfileTest, a_profile_without_a_workspace_leaves_it_to_the_geometry_a
     EXPECT_EQ(1u, Count(written, R"("linkRadiiM": [ 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04 ])"));
 }
 
-TEST_F(ArmProfileTest, reads_a_version_1_profile_and_writes_version_3)
+TEST_F(ArmProfileTest, reads_a_version_1_profile_and_writes_version_4)
 {
     const auto version1 = Read(Profile(Joint(1)));
     ASSERT_TRUE(version1.has_value()) << Problem();
@@ -369,18 +376,49 @@ TEST_F(ArmProfileTest, reads_a_version_1_profile_and_writes_version_3)
     infra::StringOutputStream::WithStorage<16384> stream;
     arm::WriteArmProfile(*version1, stream);
     const std::string written{ stream.Storage().begin(), stream.Storage().end() };
-    EXPECT_NE(std::string::npos, written.find(R"("version": 3,)"));
+    EXPECT_NE(std::string::npos, written.find(R"("version": 4,)"));
 
-    auto version4{ Profile(Joint(1)) };
-    version4.replace(version4.find(R"("version": 1)"), 12, R"("version": 4)");
-    EXPECT_FALSE(Read(version4).has_value());
+    auto version5{ Profile(Joint(1)) };
+    version5.replace(version5.find(R"("version": 1)"), 12, R"("version": 5)");
+    EXPECT_FALSE(Read(version5).has_value());
     EXPECT_EQ("version: is not a version this reader knows", Problem());
+}
+
+TEST_F(ArmProfileTest, reads_the_s_curve_and_each_joints_jerk_limit_and_writes_them_back)
+{
+    auto text = Profile(Joint(1), R"( "motionProfile": "s-curve",)");
+    const std::string acceleration{ R"("accelerationRadPerS2": 2.5)" };
+    for (auto at = text.find(acceleration); at != std::string::npos; at = text.find(acceleration, at + 1))
+        text.insert(at + acceleration.size(), R"(, "jerkRadPerS3": 12.5)");
+
+    const auto profile = Read(text);
+    ASSERT_TRUE(profile.has_value()) << Problem();
+    EXPECT_EQ(arm::MotionProfile::sCurve, profile->config.motionProfile);
+    for (const auto& jerk : profile->config.jerkLimits)
+    {
+        ASSERT_TRUE(jerk.has_value());
+        EXPECT_NEAR(12.5f, jerk->Value(), 1.0e-6f);
+    }
+
+    infra::StringOutputStream::WithStorage<16384> stream;
+    arm::WriteArmProfile(*profile, stream);
+    const std::string written{ stream.Storage().begin(), stream.Storage().end() };
+    EXPECT_EQ(1u, Count(written, R"("motionProfile": "s-curve")"));
+    EXPECT_EQ(6u, Count(written, R"("jerkRadPerS3": 12.5)"));
+
+    const auto trapezoid = Read(Profile(Joint(1)));
+    ASSERT_TRUE(trapezoid.has_value()) << Problem();
+    EXPECT_EQ(arm::MotionProfile::trapezoid, trapezoid->config.motionProfile);
+    EXPECT_FALSE(trapezoid->config.jerkLimits[0].has_value());
 }
 
 TEST_F(ArmProfileTest, refuses_a_profile_and_names_the_first_problem)
 {
     const std::vector<std::pair<std::string, std::string>> cases{
         { Profile(Joint(1), R"( "colour": "red",)"), "colour: is not a profile item" },
+        { Profile(Joint(1), R"( "motionProfile": "smooth",)"), "motionProfile: must be trapezoid or s-curve" },
+        { WithFirstJerk(Profile(Joint(1)), "0"), "joints[0].motionLimits.jerkRadPerS3: must be above 0" },
+        { Profile(Joint(1), R"( "motionProfile": "s-curve",)"), "motionProfile: s-curve needs a jerk limit on every joint" },
         { Profile(Joint(1, R"(, "transmission": { "ratio": 0 })")), "joints[0].transmission.ratio: must be above 0" },
         { Profile(Joint(4)), "joints[3].node: repeats the node of joints[0]" },
         { Profile(Joint(1), {}, 5), "joints: must list six joints" },
@@ -428,7 +466,7 @@ TEST_F(ArmProfileTest, refuses_a_profile_and_names_the_first_problem)
         { Profile(Joint(1), R"( "meshes": { "link1": "arm.stl" },)"), "meshes.link1: must name a .gltf or .glb file" },
         { Profile(Joint(1), R"( "meshes": { "base": "" },)"), "meshes.base: must be a path of 1 to 96 characters" },
         { Profile(Joint(1), R"( "meshes": { "base": 3 },)"), "meshes.base: must be a path of 1 to 96 characters" },
-        { R"({ "format": "e-robot-arm profile", "version": 4 })", "version: is not a version this reader knows" },
+        { R"({ "format": "e-robot-arm profile", "version": 5 })", "version: is not a version this reader knows" },
         { Profile(Joint(1), R"( "driveWatchdogPeriods": 1,)"), "driveWatchdogPeriods: must be a whole number from 2 to 255" },
         { Profile(Joint(1), R"( "safety": { "workspaceM": { "min": { "x": 1 }, "max": { "x": 0.5, "y": 1, "z": 1 } } },)"), "safety.workspaceM: min must be below max on every axis" },
         { Profile(Joint(1), R"( "safety": { "linkRadiiM": [ 0.1, 0.1 ] },)"), "safety.linkRadiiM: must be a list of seven radii" },
