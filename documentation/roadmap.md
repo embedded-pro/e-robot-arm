@@ -51,7 +51,7 @@ The simulator comes first: phase 8a starts the roadmap, and every later phase br
 | 2     | [#18](https://github.com/embedded-pro/e-robot-arm/issues/18) | Done. Configurable arm: arm profile, motor controller and motor per joint applied over CAN, arm-controller registry with enable, disable and switch                                                                                                                                                                                                                         | 1                                   |
 | 3     | [#19](https://github.com/embedded-pro/e-robot-arm/issues/19) | Done. Arm model: OPW geometry, forward and inverse kinematics, Jacobian, gravity torque, inverse dynamics and mass matrix from robotics-toolbox; numerical inverse kinematics waits for an arm outside the OPW family                                                                                                                                                       | 2                                   |
 | 4     | [#20](https://github.com/embedded-pro/e-robot-arm/issues/20) | Done. Motion: S-curve, replacing a running move, waypoint paths, Cartesian moves, jogging, teach points                                                                                                                                                                                                                                                                     | 2, 3                                |
-| 5     | [#21](https://github.com/embedded-pro/e-robot-arm/issues/21) | Arm controllers and the setpoint contract: combined setpoints in e-foc-protocol and e-foc, controller catalogue from robotics-toolbox                                                                                                                                                                                                                                       | 2, 3                                |
+| 5     | [#21](https://github.com/embedded-pro/e-robot-arm/issues/21) | Arm controllers: the catalogue from robotics-toolbox; setpoints stay torques, so the combined setpoint is dropped                                                                                                                                                                                                                                                           | 2, 3                                |
 | 6     | [#22](https://github.com/embedded-pro/e-robot-arm/issues/22) | Done. Safety: speed, acceleration and torque limits, following error, collision detection, workspace, watchdog, hardware stop (its circuit in phase 9)                                                                                                                                                                                                                      | 3, 5                                |
 | 7     | [#23](https://github.com/embedded-pro/e-robot-arm/issues/23) | Done. Simulation with e-foc virtual motors: selectable motor characteristics per joint, coupling to arm dynamics, `@virtual` scenarios (tracking under gravity, a collision caught by the arm's tracking-error supervision, a silent joint) in a CI job of their own                                                                                                        | 1, 2, 3                             |
 | 8     | [#24](https://github.com/embedded-pro/e-robot-arm/issues/24) | Qt simulator: 8a foundation ([#28](https://github.com/embedded-pro/e-robot-arm/issues/28)), 8b configuration panels ([#29](https://github.com/embedded-pro/e-robot-arm/issues/29)), 8c real geometry and jog ([#30](https://github.com/embedded-pro/e-robot-arm/issues/30)), 8d virtual and real arm, tuning ([#31](https://github.com/embedded-pro/e-robot-arm/issues/31)) | 8a: none; 8b: 2; 8c: 3, 4; 8d: 7, 9 |
@@ -136,6 +136,22 @@ designed in [joint-motion.md](design/joint-motion.md) 0.9.0:
 7. Done: teach points in the profile; console `teach` and `goto`; console `movej` with waypoints and `movel`.
 8. Done: scenarios per generator on the simulated arm (`motion.feature`), requirements REQ-MOT-001 to 003, and the
    teach-two-points-and-line run the issue asks for.
+
+## Phase 5 — Arm controllers
+
+The order of work for [#21](https://github.com/embedded-pro/e-robot-arm/issues/21), each step a pull request,
+designed in [arm-controllers.md](design/arm-controllers.md) 0.14.0 Part D. `gravity-pd`, `computed-torque` and
+`gravity-pid` are done.
+
+1. Design: joint and Cartesian impedance, operational space, Slotine–Li adaptive.
+2. `joint-impedance`: per-joint stiffness and a damping ratio in the profile, stiffness changed at run time within
+   the profile's; console and host.
+3. The arm model as robotics-toolbox's `JacobianProvider`; `cartesian-impedance`.
+4. `operational-space`.
+5. `slotine-li` behind the profile's `experimental` flag, its parameters kept across switches and reset on demand.
+6. Open questions: gains away from home (measured on the virtual arm, Part D) and whether the profile keeps the
+   enabled and active controllers.
+7. A scenario per controller (switch at rest and during a hold), theory notes, and requirements REQ-CTL-001 and 002.
 
 ## Phase 6 — Safety
 
