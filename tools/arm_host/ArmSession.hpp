@@ -104,6 +104,7 @@ namespace arm_host
         std::string_view LineRefusal() const;
         std::string_view JogRefusal(bool known, float speed) const;
         std::string_view JogRefusal(const AnyJog& jog) const;
+        std::optional<std::string_view> GeneratorRefusal(const ArmCommand& command) const;
         bool Hold(const HoldJog& hold);
         bool JogOnce(const AnyJog& jog);
         void RefreshHold();
