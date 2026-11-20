@@ -14,6 +14,7 @@
 #include <QImage>
 #include <QKeyEvent>
 #include <QLabel>
+#include <QLineEdit>
 #include <QMenu>
 #include <QMenuBar>
 #include <QMessageBox>
@@ -289,6 +290,99 @@ TEST_F(SimulatorWindowTest, the_arm_controllers_dock_selects_a_controller_from_i
         {
             const auto controllers = host.Snapshot().armControllers;
             return controllers.size() >= 2 && controllers[1].active;
+        }))
+        << LogText(window.Presenter());
+}
+
+TEST_F(SimulatorWindowTest, the_jog_dock_moves_a_joint_while_its_button_is_held_and_stops_it_on_release)
+{
+    auto* dock = window.findChild<QDockWidget*>("jogDock");
+    ASSERT_NE(nullptr, dock);
+    dock->raise();
+    auto* plus = Button(*dock, "+");
+    ASSERT_NE(nullptr, plus);
+    EXPECT_FALSE(plus->isEnabled());
+
+    host.Post(arm_host::BringUp{});
+    ASSERT_TRUE(Eventually([this]()
+        {
+            return window.Presenter().State(simulator::Control::enable).enabled;
+        }));
+    host.Post(arm_host::Enable{});
+    ASSERT_TRUE(Eventually([plus]()
+        {
+            return plus->isEnabled();
+        }))
+        << LogText(window.Presenter());
+
+    emit plus->pressed();
+    EXPECT_TRUE(Eventually([this]()
+        {
+            return host.Snapshot().readings[0].position.Value() > 0.05f;
+        }))
+        << LogText(window.Presenter());
+    EXPECT_TRUE(host.Snapshot().moving);
+
+    emit plus->released();
+    EXPECT_TRUE(Eventually([this]()
+        {
+            return !host.Snapshot().moving;
+        }))
+        << LogText(window.Presenter());
+    const auto stopped = host.Snapshot().readings[0].position.Value();
+    Eventually([]()
+        {
+            return false;
+        },
+        300);
+    EXPECT_NEAR(stopped, host.Snapshot().readings[0].position.Value(), 0.01f);
+}
+
+TEST_F(SimulatorWindowTest, the_teach_points_dock_teaches_a_pose_and_goes_back_to_it)
+{
+    auto* dock = window.findChild<QDockWidget*>("teachPointsDock");
+    ASSERT_NE(nullptr, dock);
+    dock->raise();
+    auto* name = dock->findChild<QLineEdit*>();
+    ASSERT_NE(nullptr, name);
+    auto* teachButton = Button(*dock, "Teach");
+    auto* goTo = Button(*dock, "Go To");
+    ASSERT_NE(nullptr, teachButton);
+    ASSERT_NE(nullptr, goTo);
+
+    name->setText("home");
+    emit name->textEdited("home");
+    ASSERT_TRUE(Eventually([teachButton]()
+        {
+            return teachButton->isEnabled();
+        }))
+        << teachButton->toolTip().toStdString();
+    teachButton->click();
+    auto* table = dock->findChild<QTableWidget*>("teachPointsTable");
+    ASSERT_TRUE(Eventually([table]()
+        {
+            return table->rowCount() == 1;
+        }))
+        << LogText(window.Presenter());
+
+    arm::JointPositions target{};
+    target[0] = foc::Radians{ 0.3f };
+    BringUpAndMove(target);
+    ASSERT_TRUE(Eventually([this]()
+        {
+            return Logged(window.Presenter(), "Move done");
+        }));
+
+    table->selectRow(0);
+    ASSERT_TRUE(Eventually([goTo]()
+        {
+            return goTo->isEnabled();
+        }))
+        << goTo->toolTip().toStdString();
+    goTo->click();
+    EXPECT_TRUE(Eventually([this]()
+        {
+            return std::abs(host.Snapshot().readings[0].position.Value()) < 0.01f && !host.Snapshot().moving;
         }))
         << LogText(window.Presenter());
 }

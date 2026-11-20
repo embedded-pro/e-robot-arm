@@ -37,6 +37,8 @@ target_sources(e_robot_arm.tool.simulator.view_models PRIVATE
     FrameStatistics.hpp
     JointRows.cpp
     JointRows.hpp
+    JogPresenter.cpp
+    JogPresenter.hpp
     MotorControllerPresenter.cpp
     MotorControllerPresenter.hpp
     MotorPresenter.cpp
@@ -47,6 +49,8 @@ target_sources(e_robot_arm.tool.simulator.view_models PRIVATE
     RecentProfiles.hpp
     SimulatorPresenter.cpp
     SimulatorPresenter.hpp
+    TeachPresenter.cpp
+    TeachPresenter.hpp
     ToolReadout.cpp
     TuningPresenter.cpp
     TuningPresenter.hpp

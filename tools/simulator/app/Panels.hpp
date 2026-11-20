@@ -4,7 +4,9 @@
 #include "tools/arm_host/ArmSnapshot.hpp"
 #include "tools/simulator/view_models/ArmControllersPresenter.hpp"
 #include "tools/simulator/view_models/EventLog.hpp"
+#include "tools/simulator/view_models/JogPresenter.hpp"
 #include "tools/simulator/view_models/ProfileView.hpp"
+#include "tools/simulator/view_models/TeachPresenter.hpp"
 #include "tools/simulator/view_models/ToolReadout.hpp"
 #include "tools/simulator/view_models/TuningPresenter.hpp"
 #include "tools/simulator/view_models/VirtualMotorRows.hpp"
@@ -19,6 +21,11 @@
 #include <span>
 
 class QComboBox;
+class QKeyEvent;
+class QVBoxLayout;
+class QLineEdit;
+class QRadioButton;
+class QSlider;
 class QLabel;
 class QPlainTextEdit;
 class QPushButton;
@@ -78,6 +85,69 @@ namespace simulator
         std::array<QPushButton*, armControllerActionCount> buttons{};
         QLabel* hint;
         std::vector<ArmControllerRow> shown;
+    };
+
+    class JogPanel
+        : public QWidget
+    {
+        Q_OBJECT
+
+    public:
+        explicit JogPanel(QWidget* parent);
+
+        void Update(const JogPresenter& presenter);
+        void ApplyTheme();
+
+    signals:
+        void spaceChosen(int space);
+        void shareChanged(int percent);
+        void axisChosen(int axis);
+        void pressed(int axis, int direction);
+        void released();
+
+    protected:
+        bool eventFilter(QObject* watched, QEvent* event) override;
+
+    private:
+        void BuildSpace(QVBoxLayout& layout);
+        void BuildRows(QVBoxLayout& layout);
+        bool Key(const QKeyEvent& key, bool down);
+
+        std::array<QRadioButton*, 3> spaces{};
+        QSlider* share;
+        QLabel* shareText;
+        std::array<QLabel*, jogAxisCount> labels{};
+        std::array<std::array<QPushButton*, 2>, jogAxisCount> buttons{};
+        std::array<QLabel*, jogAxisCount> speeds{};
+        QLabel* hint;
+        QLabel* status;
+        int keyAxis{ -1 };
+    };
+
+    class TeachPanel
+        : public QWidget
+    {
+        Q_OBJECT
+
+    public:
+        explicit TeachPanel(QWidget* parent);
+
+        void Update(const TeachPresenter& presenter);
+        void ApplyTheme();
+
+    signals:
+        void chosen(int row);
+        void nameEdited(const QString& name);
+        void teach();
+        void goTo();
+
+    private:
+        QTableWidget* table;
+        QLineEdit* name;
+        QPushButton* teachButton;
+        QPushButton* goToButton;
+        QLabel* hint;
+        std::vector<TeachRow> shown;
     };
 
     class DisturbancesPanel
