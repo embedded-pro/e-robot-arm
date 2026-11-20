@@ -2,30 +2,35 @@
 #define TOOLS_VIRTUAL_ARM_ARM_COUPLING_HPP
 
 #include "core/arm/ArmConfig.hpp"
-#include "core/arm_model/ArmModel.hpp"
+#include "tools/simulated_arm/ArmDynamics.hpp"
+#include "tools/virtual_arm/plant_port/PlantPortCodec.hpp"
 #include <array>
+#include <optional>
 
 namespace virtual_arm
 {
-    struct MotorState
+    struct MotorSample
     {
         float angle{ 0.0f };
-        float speed{ 0.0f };
+        float torque{ 0.0f };
+        uint64_t period{ 0 };
     };
 
-    using MotorStates = std::array<MotorState, arm::jointCount>;
-    using MotorTorques = std::array<float, arm::jointCount>;
+    using MotorSamples = std::array<std::optional<MotorSample>, arm::jointCount>;
+    using ShaftSpeeds = std::array<std::optional<plant_port::ShaftDrive>, arm::jointCount>;
 
     class ArmCoupling
     {
     public:
         explicit ArmCoupling(const arm::ArmConfig& config);
 
-        MotorTorques ShaftTorques(const MotorStates& motors, const arm::JointTorques& collision = {}) const;
+        ShaftSpeeds Step(const MotorSamples& motors, const arm::JointTorques& collision, float seconds);
+        bool Engaged() const;
 
     private:
-        arm::ArmModel model;
         arm::JointTransmissions transmissions;
+        simulation::ArmDynamics dynamics;
+        bool engaged{ false };
     };
 }
 

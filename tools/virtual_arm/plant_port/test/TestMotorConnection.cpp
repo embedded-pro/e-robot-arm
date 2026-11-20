@@ -23,7 +23,7 @@ namespace
     };
 }
 
-TEST_F(MotorConnectionTest, accepts_a_version_2_hello_and_fails_on_another)
+TEST_F(MotorConnectionTest, accepts_a_version_3_hello_and_fails_on_another)
 {
     Receive(test::HelloFrame());
     ASSERT_TRUE(connection.Introduction().has_value());
@@ -31,9 +31,9 @@ TEST_F(MotorConnectionTest, accepts_a_version_2_hello_and_fails_on_another)
     EXPECT_FALSE(connection.Failure().has_value());
 
     MotorConnection other;
-    other.Receive(test::HelloFrame(3));
+    other.Receive(test::HelloFrame(2));
     EXPECT_FALSE(other.Introduction().has_value());
-    EXPECT_EQ("plant port protocol version 3, expected 2", other.Failure());
+    EXPECT_EQ("plant port protocol version 2, expected 3", other.Failure());
 }
 
 TEST_F(MotorConnectionTest, fails_on_a_frame_before_hello_or_a_malformed_frame)
@@ -47,14 +47,17 @@ TEST_F(MotorConnectionTest, fails_on_a_frame_before_hello_or_a_malformed_frame)
     EXPECT_EQ("malformed frame 0x02", other.Failure());
 }
 
-TEST_F(MotorConnectionTest, follows_the_rotor_across_turns)
+TEST_F(MotorConnectionTest, follows_the_rotor_across_turns_and_its_electrical_torque)
 {
     Receive(test::HelloFrame());
     EXPECT_FALSE(connection.RotorAngle().has_value());
+    EXPECT_FALSE(connection.ElectricalTorque().has_value());
 
     Receive(test::WindowFrame(6.2f, 3.0f));
-    Receive(test::WindowFrame(0.05f, 3.5f));
+    Receive(test::WindowFrame(0.05f, 3.5f, 0.25f));
     ASSERT_TRUE(connection.RotorAngle().has_value());
+    EXPECT_NEAR(0.25f, *connection.ElectricalTorque(), tolerance);
+    EXPECT_EQ(std::optional<uint64_t>{ 149 }, connection.LastPeriod());
     EXPECT_NEAR(0.05f + 2.0f * std::numbers::pi_v<float>, *connection.RotorAngle(), tolerance);
     EXPECT_NEAR(3.5f, *connection.RotorSpeed(), tolerance);
 
@@ -84,13 +87,15 @@ TEST_F(MotorConnectionTest, keeps_status_refusal_and_the_newest_log_lines_and_sk
 TEST_F(MotorConnectionTest, queues_requests_in_order_until_taken)
 {
     connection.Stream(true);
-    connection.ExternalTorque(1.5f);
+    connection.ShaftSpeed(ShaftDrive{ 1.5f, 7, 0.1f, 2.0e-4f });
     connection.Pause();
+    EXPECT_TRUE(connection.Paused());
     connection.Resume();
+    EXPECT_FALSE(connection.Paused());
     connection.ClearAll();
 
     auto expected = EncodeStream(true);
-    for (const auto& frame : { EncodeConstantExternalTorque(1.5f), EncodeFrame(MessageType::pause), EncodeFrame(MessageType::resume), EncodeFrame(MessageType::clearAll) })
+    for (const auto& frame : { EncodeShaftSpeed(ShaftDrive{ 1.5f, 7, 0.1f, 2.0e-4f }), EncodeFrame(MessageType::pause), EncodeFrame(MessageType::resume), EncodeFrame(MessageType::clearAll) })
         expected.insert(expected.end(), frame.begin(), frame.end());
     EXPECT_EQ(expected, connection.TakeOutgoing());
     EXPECT_TRUE(connection.TakeOutgoing().empty());

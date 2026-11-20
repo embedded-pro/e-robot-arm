@@ -22,6 +22,12 @@ namespace virtual_arm::plant_port
             bytes.push_back(static_cast<uint8_t>(value >> 8));
         }
 
+        void PutU64(std::vector<uint8_t>& bytes, uint64_t value)
+        {
+            for (std::size_t index = 0; index != 8; ++index)
+                bytes.push_back(static_cast<uint8_t>(value >> (8 * index)));
+        }
+
         void PutF32(std::vector<uint8_t>& bytes, float value)
         {
             const auto raw = std::bit_cast<uint32_t>(value);
@@ -192,13 +198,15 @@ namespace virtual_arm::plant_port
         return bytes;
     }
 
-    std::vector<uint8_t> EncodeConstantExternalTorque(float newtonMeter)
+    std::vector<uint8_t> EncodeShaftSpeed(const std::optional<ShaftDrive>& drive)
     {
-        std::vector payload{ static_cast<uint8_t>(TorqueForm::constant) };
-        PutF32(payload, newtonMeter);
-        for (int unused = 0; unused != 3; ++unused)
-            PutF32(payload, 0.0f);
-        return EncodeFrame(MessageType::externalTorque, payload);
+        const auto sent = drive.value_or(ShaftDrive{});
+        std::vector payload{ static_cast<uint8_t>(drive.has_value() ? 1 : 0) };
+        PutF32(payload, sent.speed);
+        PutU64(payload, sent.period);
+        PutF32(payload, sent.torque);
+        PutF32(payload, sent.inertia);
+        return EncodeFrame(MessageType::shaftSpeed, payload);
     }
 
     std::vector<uint8_t> EncodeStream(bool on)

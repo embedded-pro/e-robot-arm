@@ -202,6 +202,53 @@ TEST_F(ArmLifecycleImplTest, enable_selects_torque_mode_then_starts_the_joints)
     EXPECT_EQ(ArmState::enabled, lifecycle.State());
 }
 
+TEST_F(ArmLifecycleImplTest, while_a_joint_does_not_run_enabling_starts_the_joints_again_every_20_periods)
+{
+    BringToReady();
+    EXPECT_CALL(safety, SelectMode(can::FocMotorMode::torque)).WillOnce(Return(true));
+    EXPECT_TRUE(lifecycle.Enable());
+    EXPECT_CALL(safety, Start()).WillOnce(Return(true));
+    Deliver(arm::JointCommand::selectMode);
+    SetAll(can::FocMotorState::running);
+    readings[1].state = can::FocMotorState::ready;
+
+    for (int period = 0; period != 19; ++period)
+        lifecycle.Step();
+    EXPECT_CALL(safety, Start()).WillOnce(Return(true));
+    lifecycle.Step();
+    EXPECT_EQ(ArmState::enabling, lifecycle.State());
+
+    Observe(can::FocMotorState::running);
+    EXPECT_EQ(ArmState::enabled, lifecycle.State());
+    EXPECT_EQ(std::nullopt, lifecycle.UnstartedJoint());
+}
+
+TEST_F(ArmLifecycleImplTest, enabling_gives_up_after_200_periods_names_the_joint_and_stops_the_joints)
+{
+    BringToReady();
+    EXPECT_CALL(safety, SelectMode(can::FocMotorMode::torque)).WillOnce(Return(true));
+    EXPECT_TRUE(lifecycle.Enable());
+    EXPECT_CALL(safety, Start()).Times(10).WillRepeatedly(Return(true));
+    Deliver(arm::JointCommand::selectMode);
+    SetAll(can::FocMotorState::running);
+    readings[1].state = can::FocMotorState::ready;
+
+    for (int period = 0; period != 199; ++period)
+        lifecycle.Step();
+    EXPECT_EQ(ArmState::enabling, lifecycle.State());
+    EXPECT_CALL(safety, Stop()).WillOnce(Return(true));
+    lifecycle.Step();
+
+    EXPECT_EQ(ArmState::disabling, lifecycle.State());
+    EXPECT_EQ(std::optional<std::size_t>{ 1 }, lifecycle.UnstartedJoint());
+    Observe(can::FocMotorState::ready);
+    EXPECT_EQ(ArmState::ready, lifecycle.State());
+
+    EXPECT_CALL(safety, SelectMode(can::FocMotorMode::torque)).WillOnce(Return(true));
+    EXPECT_TRUE(lifecycle.Enable());
+    EXPECT_EQ(std::nullopt, lifecycle.UnstartedJoint());
+}
+
 TEST_F(ArmLifecycleImplTest, enable_falls_back_to_ready_when_the_start_is_not_delivered)
 {
     BringToReady();

@@ -211,6 +211,38 @@ TEST_F(ArmTest, enables_the_joints_in_torque_mode_and_streams_the_gravity_compen
     EXPECT_EQ(0u, SentOf(can::SetpointCommandId(can::FocSetpointKind::position)));
 }
 
+TEST_F(ArmTest, setpoints_stream_while_the_joints_enable_so_a_joint_running_first_is_held)
+{
+    arm.Loop().Start();
+    EXPECT_TRUE(arm.Lifecycle().BringUp());
+    AnswerCompatibleContracts();
+    for (int period = 0; period != 4; ++period)
+    {
+        for (const auto node : nodes)
+            ReportStatus(node, can::FocMotorState::ready, can::FocFaultCode::none);
+        ReportMotionFromEveryJoint();
+        AnswerParameterRequests();
+        ForwardTime(10ms);
+    }
+    ASSERT_EQ(arm::ArmState::ready, arm.Lifecycle().State());
+
+    ASSERT_TRUE(arm.Lifecycle().Enable());
+    for (const auto node : nodes)
+        Receive(node, can::focSelectControlModeResponseId, services::CanPayloadWriter{}.WriteUInt8(static_cast<uint8_t>(can::FocMotorMode::torque)));
+    ForwardTime(10ms);
+    const auto streamed = SentOf(can::SetpointCommandId(can::FocSetpointKind::torqueNewtonMeter));
+    for (int period = 0; period != 3; ++period)
+    {
+        for (const auto node : nodes)
+            ReportStatus(node, node == nodes[0] ? can::FocMotorState::running : can::FocMotorState::ready, can::FocFaultCode::none);
+        ReportMotionFromEveryJoint();
+        ForwardTime(10ms);
+    }
+
+    EXPECT_EQ(arm::ArmState::enabling, arm.Lifecycle().State());
+    EXPECT_EQ(streamed + 3 * arm::jointCount, SentOf(can::SetpointCommandId(can::FocSetpointKind::torqueNewtonMeter)));
+}
+
 TEST_F(ArmTest, gravity_pd_gains_follow_the_arms_inertia_with_each_rotor_through_its_gear)
 {
     auto config = Config();

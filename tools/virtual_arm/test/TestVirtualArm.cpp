@@ -116,31 +116,31 @@ namespace
     };
 }
 
-TEST_F(VirtualArmTest, brings_up_six_motors_and_pushes_each_links_load_on_its_shaft)
+TEST_F(VirtualArmTest, brings_up_six_motors_and_drives_each_shaft_with_the_arms_dynamics)
 {
     virtual_arm::VirtualArm arm{ config, Options() };
     ASSERT_EQ(std::nullopt, arm.Start());
     EXPECT_TRUE(arm.Up());
 
-    const virtual_arm::ArmCoupling coupling{ config };
-    virtual_arm::MotorStates states{};
+    virtual_arm::ArmCoupling coupling{ config };
+    virtual_arm::MotorSamples samples{};
     for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
-        states[joint] = { 0.1f * static_cast<float>(joint + 1), 0.0f };
-    const auto expected = coupling.ShaftTorques(states);
+        samples[joint] = virtual_arm::MotorSample{ 0.1f * static_cast<float>(joint + 1), 0.0f, 0 };
+    const auto falling = coupling.Step(samples, {}, 1.0e-3f)[1]->speed;
+    ASSERT_GT(std::abs(falling), 1.0e-3f);
 
     EXPECT_TRUE(Eventually([&]()
         {
-            const auto torque = Recorded(directory / "joint2.mem.torque");
-            return torque.has_value() && std::abs(*torque - expected[1]) < 1.0e-4f;
+            const auto shaft = Recorded(directory / "joint2.mem.shaft");
+            return shaft.has_value() && *shaft * falling > 0.0f;
         }));
-    EXPECT_GT(std::abs(expected[1]), 0.1f);
 
     EXPECT_EQ(std::nullopt, arm.Problem());
-    arm.Collide(1, foc::NewtonMeter{ 2.0f });
+    arm.Collide(1, foc::NewtonMeter{ falling > 0.0f ? -500.0f : 500.0f });
     EXPECT_TRUE(Eventually([&]()
         {
-            const auto torque = Recorded(directory / "joint2.mem.torque");
-            return torque.has_value() && std::abs(*torque - (expected[1] + 2.0f)) < 1.0e-4f;
+            const auto shaft = Recorded(directory / "joint2.mem.shaft");
+            return shaft.has_value() && *shaft * falling < 0.0f;
         }));
 
     arm.Silence(4, true);
@@ -161,10 +161,10 @@ TEST_F(VirtualArmTest, brings_up_six_motors_and_pushes_each_links_load_on_its_sh
 
 TEST_F(VirtualArmTest, refuses_motors_of_another_protocol_version_and_names_the_reason)
 {
-    setenv("FAKE_MOTOR_VERSION", "3", 1);
+    setenv("FAKE_MOTOR_VERSION", "2", 1);
     virtual_arm::VirtualArm arm{ config, Options() };
 
-    EXPECT_EQ("a motor's plant port failed: plant port protocol version 3, expected 2", arm.Start());
+    EXPECT_EQ("a motor's plant port failed: plant port protocol version 2, expected 3", arm.Start());
     EXPECT_FALSE(arm.Up());
 }
 

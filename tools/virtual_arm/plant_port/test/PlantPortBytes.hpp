@@ -2,6 +2,7 @@
 #define TOOLS_VIRTUAL_ARM_PLANT_PORT_TEST_PLANT_PORT_BYTES_HPP
 
 #include "tools/virtual_arm/plant_port/PlantPortCodec.hpp"
+#include <array>
 #include <bit>
 #include <cstdint>
 #include <string>
@@ -66,15 +67,19 @@ namespace virtual_arm::plant_port::test
         return Bytes{}.U16(version).U8(20).Text("arm").Text("teknic").U32(20000).Frame(MessageType::hello);
     }
 
-    inline std::vector<uint8_t> WindowFrame(float angle, float speed)
+    inline std::vector<uint8_t> WindowFrame(float angle, float speed, float torque = 0.0f)
     {
+        std::array<float, signalCount> last{};
+        last[rotorAngleSignal] = angle;
+        last[rotorSpeedSignal] = speed;
+        last[electricalTorqueSignal] = torque;
+
         Bytes payload;
         payload.U32(7).U64(140).U8(10);
         for (std::size_t signal = 0; signal != 2 * signalCount; ++signal)
             payload.F32(0.0f);
-        for (std::size_t signal = 0; signal != signalCount; ++signal)
-            payload.F32(signal == rotorAngleSignal ? angle : signal == rotorSpeedSignal ? speed
-                                                                                        : 0.0f);
+        for (const auto value : last)
+            payload.F32(value);
         return payload.Frame(MessageType::window);
     }
 }

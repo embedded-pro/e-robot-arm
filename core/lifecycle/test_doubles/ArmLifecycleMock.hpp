@@ -18,6 +18,7 @@ namespace arm
         MOCK_METHOD(bool, StepTo, (const JointPositions& target), (override));
         MOCK_METHOD(ArmState, State, (), (const, override));
         MOCK_METHOD(std::optional<Misconfiguration>, MisconfiguredJoint, (), (const, override));
+        MOCK_METHOD(std::optional<std::size_t>, UnstartedJoint, (), (const, override));
     };
 
     class ArmLifecycleObserverMock

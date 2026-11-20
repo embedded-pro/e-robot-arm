@@ -1,10 +1,8 @@
 #ifndef TOOLS_SIMULATED_ARM_ARM_PLANT_HPP
 #define TOOLS_SIMULATED_ARM_ARM_PLANT_HPP
 
-#include "core/arm_model/ArmModel.hpp"
-#include "core/joint_bus/interfaces/JointBus.hpp"
-#include "core/joint_configurator/interfaces/MotorSettings.hpp"
 #include "infra/timer/Timer.hpp"
+#include "tools/simulated_arm/ArmDynamics.hpp"
 #include "tools/simulated_arm/JointPlant.hpp"
 #include "tools/simulated_arm/SimulatedJoint.hpp"
 #include <array>
@@ -12,17 +10,6 @@
 
 namespace simulation
 {
-    struct PlantConfig
-    {
-        arm::JointTransmissions transmissions{};
-        arm::ArmGeometry geometry{ arm::ReferenceGeometry() };
-        arm::ArmMass mass{ arm::ReferenceMass() };
-        std::array<float, arm::jointCount> rotorInertia{};
-        std::array<float, arm::jointCount> motorFriction{};
-    };
-
-    PlantConfig PlantFor(const arm::JointTransmissions& transmissions, const arm::ArmGeometry& geometry, const arm::ArmMass& mass, const arm::JointMotors& motors);
-
     class ArmPlant
         : public JointPlant
     {
@@ -37,20 +24,11 @@ namespace simulation
         foc::RadiansPerSecond MotorSpeed(std::size_t joint) const override;
 
     private:
-        using JointVector = arm::ArmModel::JointVector;
-        using Torques = std::array<std::optional<foc::NewtonMeter>, arm::jointCount>;
-
-        void Step(const Torques& torques);
-        void TakeKinematicJoints(const Torques& torques);
-        JointVector ModelTorques(const Torques& torques) const;
+        void TakeKinematicJoints(const DrivingTorques& torques);
 
         arm::JointTransmissions transmissions;
-        std::array<float, arm::jointCount> armature{};
-        std::array<float, arm::jointCount> friction{};
         std::array<SimulatedJoint*, arm::jointCount> joints;
-        arm::ArmModel model;
-        JointVector q{};
-        JointVector qDot{};
+        ArmDynamics dynamics;
         infra::TimePoint simulated{ infra::Now() };
     };
 }

@@ -6,6 +6,7 @@ target_include_directories(e_robot_arm.tool.virtual_arm PUBLIC
 
 target_link_libraries(e_robot_arm.tool.virtual_arm PUBLIC
     e_robot_arm.arm
+    e_robot_arm.tool.simulated_arm
     e_robot_arm.tool.virtual_arm.plant_port
 )
 

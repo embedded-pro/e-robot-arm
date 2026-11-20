@@ -103,6 +103,12 @@ endif()
 e_robot_arm_mark_includes_system("${CMAKE_CURRENT_SOURCE_DIR}")
 e_robot_arm_enable_project_warnings()
 
+# Several threads run the same code (the virtual arm's worker, the arm host): plain gcov counter updates race and leave
+# negative hit counts, which gcovr refuses.
+if (EMIL_ENABLE_COVERAGE AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    add_compile_options(-fprofile-update=atomic)
+endif()
+
 add_subdirectory(core)
 add_subdirectory(targets)
 

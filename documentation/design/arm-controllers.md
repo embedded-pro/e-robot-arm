@@ -2,7 +2,7 @@
 title: "Arm Controllers Design"
 type: design
 status: draft
-version: 0.12.0
+version: 0.13.0
 component: "arm-controllers"
 date: 2026-11-19
 ---
@@ -12,7 +12,7 @@ date: 2026-11-19
 | Title     | Arm Controllers Design |
 | Type      | design                 |
 | Status    | draft                  |
-| Version   | 0.12.0                 |
+| Version   | 0.13.0                 |
 | Component | arm-controllers        |
 | Date      | 2026-11-19             |
 
@@ -37,8 +37,8 @@ date: 2026-11-19
 
 - Generating the reference: joint motion plans and samples it ([joint-motion.md](joint-motion.md)).
 - Guarding the setpoints: the safety supervisor checks every set it is sent ([safety.md](safety.md)).
-- Deciding when setpoints stream: the arm starts and stops the streaming with the lifecycle's `Enabled` and `Moving`
-  states ([arm-lifecycle.md](arm-lifecycle.md)).
+- Deciding when setpoints stream: the arm starts and stops the streaming with the lifecycle's `Enabling`, `Enabled`,
+  `Moving` and `Holding` states ([arm-lifecycle.md](arm-lifecycle.md)).
 - The rest of the controller catalogue from robotics-toolbox and numerical-toolbox (computed torque, a per-joint
   PID with gravity feed-forward): phase 8d step 6 ([#31](https://github.com/embedded-pro/e-robot-arm/issues/31)).
 - Saving which controllers are enabled and active in the arm profile: a later item of the profile format
@@ -132,7 +132,7 @@ registration order. A controller is registered disabled; the arm then enables `g
 | select *id*  | *id* is enabled, and no move runs or the controller is bumpless                         | It is `Reset` from the measured joints and becomes active; reported |
 
 Selecting the active controller again is accepted and changes nothing. In torque mode nothing but the active
-controller holds the joints, so it cannot be disabled while the arm streams (`Enabled` or `Moving`): the request is
+controller holds the joints, so it cannot be disabled while the arm streams (`Enabling`, `Enabled`, `Moving` or `Holding`): the request is
 refused with "disable the arm first". Disabled once the arm is disabled, it leaves the arm unable to stream: enabling
 then aborts at the first period, until a controller is selected again. The simulator's Arm Controllers dock offers
 these requests and shows each refusal ([tool-simulator.md](tool-simulator.md) Part Q), as the console's `controller`
@@ -151,9 +151,12 @@ after joint motion has advanced its reference:
    active controller, stops the streaming and aborts the running move. A set the transmit queue could not take in
    full is a missed period, not a refusal ([safety.md](safety.md) Part B): streaming goes on.
 
-Streaming starts when the arm becomes `Enabled` (the active controller is `Reset` from the measured joints) and stops
-when it leaves `Enabled` and `Moving`. So setpoints go out every period while the arm is enabled, not only during a
-move: a controller holds the joints on the last reference against gravity between moves.
+Streaming starts when the arm starts `Enabling` (the active controller is `Reset` from the measured joints) and stops
+when it leaves `Enabling`, `Enabled`, `Moving` and `Holding`. So setpoints go out every period while the arm is enabled,
+not only during a move: a controller holds the joints on the last reference against gravity between moves. They
+already go out while the joints enable: each drive enables on its own, after its rotor has come to rest, and a joint
+that runs before the others would otherwise wait without setpoints and stop on its command timeout. A drive that is
+not running yet keeps the setpoint without acting on it.
 
 ---
 

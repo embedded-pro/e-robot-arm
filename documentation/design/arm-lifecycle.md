@@ -2,7 +2,7 @@
 title: "Arm Lifecycle Design"
 type: design
 status: draft
-version: 0.7.0
+version: 0.8.0
 component: "lifecycle"
 date: 2026-11-19
 ---
@@ -12,7 +12,7 @@ date: 2026-11-19
 | Title     | Arm Lifecycle Design |
 | Type      | design               |
 | Status    | draft                |
-| Version   | 0.7.0                |
+| Version   | 0.8.0                |
 | Component | lifecycle            |
 | Date      | 2026-11-19           |
 
@@ -90,7 +90,11 @@ Once per control period, after the setpoint step, the lifecycle looks at the six
 - **Configuring** goes back to WaitingForCalibration if a joint is no longer calibrated.
 - **Ready** moves to Enabled once every joint is running, and back to WaitingForCalibration if one is no longer
   calibrated.
-- **Enabling** and **Disabling** finish when every joint is running, or when none is, respectively.
+- **Enabling** and **Disabling** finish when every joint is running, or when none is, respectively. A drive can
+  refuse to enable after the start reached it, for instance when its current offsets cannot be measured because its
+  rotor was moved; it then stays ready and says nothing on the bus. So while a joint is not running, Enabling sends the
+  start again every 20 control periods (200 ms at the 10 ms period); after 200 periods (2 s) it gives up: it names the
+  first joint that is not running, stops the joints, and goes to Disabling, which ends in Ready.
 - **Enabled** and **Moving** fall back to Ready when a joint stops running; a move in progress is aborted.
 - **Holding** falls back to Ready when a joint stops running.
 
@@ -143,12 +147,13 @@ start, stop, align) still work for debugging, and the lifecycle shows where they
 
 ## Data Model
 
-| Entity        | Field            | Type / Unit                          | Range               | Notes                      |
-|---------------|------------------|--------------------------------------|---------------------|----------------------------|
-| Configuration | controllers      | per joint, motor-controller settings | present or absent   | Absent: not configured     |
-| Lifecycle     | misconfiguration | joint and reason                     | failed, differs     | Set in Misconfigured       |
-| Lifecycle     | state            | lifecycle state                      | Unpowered … Tripped | Unpowered at start         |
-| Lifecycle     | stop             | rule, joint or links, value          | Part F of safety.md | Set in Holding and Tripped |
+| Entity        | Field            | Type / Unit                          | Range               | Notes                                                  |
+|---------------|------------------|--------------------------------------|---------------------|--------------------------------------------------------|
+| Configuration | controllers      | per joint, motor-controller settings | present or absent   | Absent: not configured                                 |
+| Lifecycle     | misconfiguration | joint and reason                     | failed, differs     | Set in Misconfigured                                   |
+| Lifecycle     | unstarted joint  | joint                                | 0–5                 | Set when Enabling gives up; cleared by the next enable |
+| Lifecycle     | state            | lifecycle state                      | Unpowered … Tripped | Unpowered at start                                     |
+| Lifecycle     | stop             | rule, joint or links, value          | Part F of safety.md | Set in Holding and Tripped                             |
 
 ---
 
@@ -182,6 +187,7 @@ stateDiagram-v2
     Ready --> Enabled: every joint running
     Enabling --> Enabled: every joint running
     Enabling --> Ready: mode or start not delivered
+    Enabling --> Disabling: a joint not running after 200 periods
     Enabled --> Moving: move
     Moving --> Enabled: move done or aborted
     Enabled --> Disabling: disable

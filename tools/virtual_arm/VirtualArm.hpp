@@ -97,6 +97,7 @@ namespace virtual_arm
         std::vector<Arrival> arrivals;
         arm::JointTorques collision{};
         std::chrono::steady_clock::time_point nextCoupling{};
+        std::chrono::steady_clock::time_point lastCoupling{};
 
         mutable std::mutex mutex;
         std::condition_variable changed;

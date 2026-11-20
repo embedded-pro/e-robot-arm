@@ -2,7 +2,7 @@
 title: "Virtual Arm Design"
 type: design
 status: draft
-version: 0.19.0
+version: 0.20.0
 component: "virtual-arm"
 date: 2026-11-19
 ---
@@ -12,7 +12,7 @@ date: 2026-11-19
 | Title     | Virtual Arm Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.19.0             |
+| Version   | 0.20.0             |
 | Component | virtual-arm        |
 | Date      | 2026-11-19         |
 
@@ -135,8 +135,7 @@ carries the joint's links as load inertia (Part C).
 
 Changing a joint's motor in the profile and restarting that joint is enough: the virtual arm stops the motor, and
 starts it again with the new plant and a fresh calibrated memory. Restarting it with the same plant keeps its memory
-file, as a power cycle does. While a joint restarts the coupling holds every motor's last torque, since it needs all
-six joints' states. A restart is refused, with the reason, when:
+file, as a power cycle does. While a joint restarts the coupling holds it still (Part C). A restart is refused, with the reason, when:
 
 - the virtual arm is not up;
 - the joint's motor hosts the bus: its hub would close under the other five, so the whole virtual arm restarts
@@ -149,44 +148,66 @@ needs the whole virtual arm restarted.
 
 ### Part C — Coupling to the arm's dynamics
 
-Each motor's plant has its own rotor; nothing on its shaft but what the plant port pushes. The virtual arm closes
-that loop with the arm model ([arm-model.md](arm-model.md) Part F):
+Each motor's plant has its own rotor and nothing else. The virtual arm puts the links on all six together: it
+integrates the arm's dynamics itself and drives every motor's shaft at the speed it computes (`virtual-motor.md`
+Part E, *Shaft drive*). Each motor still runs its own electrical model, its current control and its encoder, and
+reports the torque it produces.
 
 1. Each motor streams its plant signals through the plant port (`virtual-motor.md` Part F), a window every 10
-   control periods (2 kHz). From each window the virtual arm takes the last period's true rotor angle and speed,
-   unwraps the angle across turns, and converts both to joint space through the joint's transmission
+   control periods (2 kHz). From each window the virtual arm takes the last period's true rotor angle and electrical
+   torque, unwraps the angle across turns, and converts the angle to joint space through the joint's transmission
    ([joint-bus.md](joint-bus.md) Part F).
-2. Every millisecond it computes, at the latest joint positions q and speeds q̇ of all six joints, the torque each
-   joint must supply to hold the links against gravity and their speed-dependent coupling: the arm model's inverse
-   dynamics at zero acceleration, τ = M(q)·0 + C(q, q̇)·q̇ + G(q).
-3. The links push back with −τ. Each joint's share goes to its motor's shaft through the transmission,
-   motor torque = −τ / (direction · ratio), as a constant external torque (`virtual-motor.md` Part E), which the
-   motor applies from its next control period.
+2. Every quarter of a millisecond it solves the arm's dynamics for the joint accelerations, with the same solver as the
+   simulated arm ([simulator.md](simulator.md) Part D):
+   (M(q) + diag(Jᵣ·N²))·q̈ = N·τₑ − b·N²·q̇ − c·N·sign(q̇) − C(q, q̇)·q̇ − G(q) + τ꜀.
+   Here q is the joint positions the motors report, q̇ the joint speeds the virtual arm integrates, τₑ each motor's
+   electrical torque, N its transmission (direction · ratio), and Jᵣ, b and c its rotor inertia and viscous and
+   Coulomb friction from the joint's motor in the profile (Teknic's when it names none). τ꜀ is an injected collision
+   torque (Part D). Coulomb friction never reverses a joint: a joint whose speed would change sign stops.
+3. It advances each joint's speed by q̈ over the time since its last step (at most 2 ms) and sends each motor its new
+   shaft speed, q̇ · N, with the control period of the window it used, the torque it used, and the shaft's apparent
+   inertia: 1 / (M + diag(Jᵣ·N²))⁻¹ᵢᵢ / N², what the joint weighs against a torque of its own while the others move
+   freely. The motor integrates its angle from that speed, so the positions stay the motors' own and never drift
+   from what the encoders read.
+4. The motor drives its shaft at that speed plus what its own torque did since the period the arm used, beyond the
+   torque the arm assumed, over that inertia (`virtual-motor.md` Part E, *Shaft drive*). Its fast local reactions, the
+   alignment's electrical spring among them, so see no lag; the arm's next speed replaces the estimate with the full
+   dynamics.
 
 ```mermaid
 sequenceDiagram
     participant M as Virtual motors (x6)
     participant V as Virtual arm
-    participant A as Arm model
-    M-->>V: plant windows (rotor angle, speed), 2 kHz each
-    loop every millisecond
+    participant A as Arm dynamics
+    M-->>V: plant windows (rotor angle, electrical torque), 2 kHz each
+    loop every 0.25 ms
         V->>V: unwrap, to joint space
-        V->>A: inverse dynamics at q, q̇, zero acceleration
-        A-->>V: joint torques τ
-        V->>M: external torque −τ / (direction · ratio) per motor
+        V->>A: q from the motors, q̇, motor torques, collision
+        A-->>V: q̈ from the full mass matrix at q
+        V->>V: q̇ ← q̇ + q̈·Δt
+        V->>M: shaft speed q̇ · N, window period, torque used, apparent inertia
+        M->>M: speed + ∫(τₑ − τ used) / inertia since that period
     end
 ```
 
-**The links' inertia.** Each motor's plant carries, as load inertia, its joint's diagonal entry of the arm's mass
-matrix at the home position, reflected through the gear: M(0)ᵢᵢ / ratio². A motor so accelerates the links it
-drives as well as its own rotor. Feeding the inertia through measured accelerations instead would close an
-algebraic loop one window late.
+**Engaging.** The virtual arm drives no shaft until all six motors stream; it then starts every joint at rest.
+Until then each motor's plant moves its rotor alone, with the joint's links as load inertia at the home position,
+M(0)ᵢᵢ / N², so a motor that runs before the others are up does not spin freely.
 
-**What the coupling captures, and what it leaves out.** Gravity, the full load of the links and the payload on
-every joint, and the centrifugal and Coriolis torques between joints, all from the measured state of all six; the
-links' inertia through the plants, as above. It leaves out how that inertia changes as the arm moves away from
-home, and the off-diagonal terms: one joint's acceleration puts no torque on another. The torque reaches a motor at
-most 1 ms plus one window late; at the arm's speeds that lag is below what the scenarios measure.
+**A joint without its motor.** A joint whose motor is silenced, powered off or restarting is held as on a brake: its
+speed is zero and its acceleration is zero in the solve, so the other joints feel it as a constraint. A motor still
+connected, silenced for instance, has its shaft driven at zero until the joint comes back.
+
+**What the coupling captures.** Gravity, the payload, the full pose-dependent mass matrix with every off-diagonal
+term, the centrifugal and Coriolis torques and the motors' rotors and friction, all at the measured positions.
+
+**Why the motor compensates, and a quarter of a millisecond.** The coupling sits inside each motor's fastest
+mechanical loop: the alignment holds the rotor on a stiff electrical spring, and the drive waits for the rotor to rest
+before it enables. A motor's torque reaches the solve a window (0.5 ms) late at most, the motor reads the plant port
+once a millisecond, and every step adds its own period. Uncompensated, that lag outweighed the motor's friction and
+left the rotors ringing after alignment, long enough for an alignment to fail or for the joints that enabled first
+to time out waiting for setpoints. The motor's own correction removes the lag for what the joint does alone; the
+quarter-millisecond step keeps the coupling between joints close behind.
 
 ### Part D — Faults on demand
 
@@ -261,15 +282,15 @@ align, bring-up and enable. The motors start calibrated but not aligned. Each sc
 directory of its own (`scenario<n>` under the fixture's directory), so the logs CI uploads keep every scenario, and a
 failed step prints each motor's real-time factor and overrun count from its last status report.
 
-| Scenario               | Checks                                                                                                                                                                                                                                                                                          |
-|------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Tracking under gravity | The largest difference between commanded and measured position while the shoulder lifts, and the largest external torque the collision observer estimates on any joint, each as a `[METRIC]` line held to a limit pinned from it                                                                |
-| Computed torque        | The same move under `computed-torque`, with the reference speed and acceleration: a tighter tracking limit, pinned from its own `[METRIC]` line                                                                                                                                                 |
-| PID with gravity       | The same move under `gravity-pid`: every joint settles within 0.015 rad despite the drives' friction, and a tracking limit pinned from its `[METRIC]` line                                                                                                                                      |
-| Step test              | A 0.05 rad reference step on the elbow under `gravity-pid` through the tuning runner ([tuning.md](tuning.md)): rise time and overshoot as `[METRIC]` lines held to limits pinned from them                                                                                                      |
-| Collision              | A 30 N·m torque against the shoulder while it moves, about the drive's peak torque through the gear, stops the arm protectively on that joint's collision within 300 ms (REQ-ARM-016); the push goes on, the hold cannot resist it, and the arm trips on the lost hold within 2 s (REQ-SAF-002) |
-| Held back              | The same collision with every joint's collision limit at 1000 N·m and speed limit at 100 rad/s, out of reach, stops the arm protectively on a joint's tracking error instead (REQ-ARM-014); without either supervision the drive holds on and nothing stops                                     |
-| Silent joint           | A paused motor trips the arm as a silent joint (REQ-ARM-005)                                                                                                                                                                                                                                    |
+| Scenario               | Checks                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+|------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Tracking under gravity | The largest difference between commanded and measured position while the shoulder lifts, and the largest external torque the collision observer estimates on any joint, each as a `[METRIC]` line held to a limit pinned from it                                                                                                                                                                                                                                                                        |
+| Computed torque        | The same move under `computed-torque`, with the reference speed and acceleration: a tighter tracking limit, pinned from its own `[METRIC]` line                                                                                                                                                                                                                                                                                                                                                         |
+| PID with gravity       | The same move under `gravity-pid`: every joint settles within 0.015 rad despite the drives' friction, and a tracking limit pinned from its `[METRIC]` line                                                                                                                                                                                                                                                                                                                                              |
+| Step test              | A 0.05 rad reference step on the elbow under `gravity-pid` through the tuning runner ([tuning.md](tuning.md)): rise time and overshoot as `[METRIC]` lines held to limits pinned from them                                                                                                                                                                                                                                                                                                              |
+| Collision              | With every joint's speed limit out of reach and its collision limit at 10 N·m, a 30 N·m torque against the shoulder while it moves, about the drive's peak torque through the gear, stops the arm protectively on that joint's collision within 300 ms (REQ-ARM-016); the push goes on, the hold cannot resist it, and the arm trips on the lost hold within 2 s (REQ-SAF-002). With the speed rule in reach the shoulder, which the elbow no longer outweighs (Part C), can pass its speed limit first |
+| Held back              | The same collision with every joint's collision limit at 1000 N·m and speed limit at 100 rad/s, out of reach, stops the arm protectively on a joint's tracking error instead (REQ-ARM-014); without either supervision the drive holds on and nothing stops                                                                                                                                                                                                                                             |
+| Silent joint           | A paused motor trips the arm as a silent joint (REQ-ARM-005)                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 
 CI runs them in a job of its own after building the engine (Part F). A torque well beyond the drive's peak is no
 collision to detect: it drives the joint backwards until the drive's overspeed protection trips. Tracking error with
@@ -285,7 +306,7 @@ drive one (open question 3).
 | Interface        | Purpose                                           | Contract                                       |
 |------------------|---------------------------------------------------|------------------------------------------------|
 | Virtual arm tool | Six virtual motors from a profile, on one bus     | Up within 10 s or stopped and reported; Part A |
-| Coupling         | Arm-dynamics torque on every motor's shaft        | Every millisecond while up; Part C             |
+| Coupling         | Arm-dynamics speed on every motor's shaft         | Every 0.25 ms while up; Part C                 |
 | Faults           | Silent joint, collision torque, joint powered off | Part D; each reversible                        |
 | Motor states     | Each joint's plant and process state              | Part A; safe to read from any thread           |
 | Restart a joint  | Same plant: power cycle; another: fresh memory    | Part B; refused with the reason                |
@@ -294,24 +315,25 @@ drive one (open question 3).
 
 | Interface                   | Purpose                                      | Contract                                                                                 |
 |-----------------------------|----------------------------------------------|------------------------------------------------------------------------------------------|
-| `e-foc-virtual-motor`       | One joint's drive                            | e-foc's release; start options and plant port per `virtual-motor.md`, protocol version 2 |
+| `e-foc-virtual-motor`       | One joint's drive                            | e-foc's release; start options and plant port per `virtual-motor.md`, protocol version 3 |
 | Arm profile                 | Nodes, transmissions, motors, geometry, mass | [arm-profile.md](arm-profile.md)                                                         |
-| Arm model                   | Inverse dynamics                             | [arm-model.md](arm-model.md)                                                             |
+| Arm model                   | Mass matrix, Coriolis and gravity terms      | [arm-model.md](arm-model.md)                                                             |
 | can-lite `virtual:` adapter | The arm's side of the bus                    | Unchanged                                                                                |
 
 ---
 
 ## Data Model
 
-| Entity      | Field       | Type / Unit | Range                     | Notes                                              |
-|-------------|-------------|-------------|---------------------------|----------------------------------------------------|
-| Virtual arm | bus         | name        | letters, digits, `-`, `_` | `arm` by default                                   |
-| Virtual arm | plant port  | TCP port    | loopback                  | Chosen by the system unless given                  |
-| Joint       | node        | integer     | 1–256                     | From the profile; the motor's board ID is node − 1 |
-| Joint       | plant       | text file   | `jointN.plant`            | From the profile's motor and mass (Parts B, C)     |
-| Coupling    | period      | duration    | 1 ms                      | Torques computed from the latest windows           |
-| Coupling    | joint state | rad, rad/s  | unwrapped                 | From each motor's true rotor angle and speed       |
-| Collision   | torque      | N·m         | finite                    | Joint-side; added to the coupling until cleared    |
+| Entity      | Field      | Type / Unit | Range                     | Notes                                              |
+|-------------|------------|-------------|---------------------------|----------------------------------------------------|
+| Virtual arm | bus        | name        | letters, digits, `-`, `_` | `arm` by default                                   |
+| Virtual arm | plant port | TCP port    | loopback                  | Chosen by the system unless given                  |
+| Joint       | node       | integer     | 1–256                     | From the profile; the motor's board ID is node − 1 |
+| Joint       | plant      | text file   | `jointN.plant`            | From the profile's motor and mass (Parts B, C)     |
+| Coupling    | period     | duration    | 0.25 ms                   | Speeds computed from the latest windows            |
+| Coupling    | position   | rad         | unwrapped                 | From each motor's true rotor angle                 |
+| Coupling    | speed      | rad/s       | finite                    | Integrated by the virtual arm; zero when held      |
+| Collision   | torque     | N·m         | finite                    | Joint-side; added to the coupling until cleared    |
 
 ---
 
@@ -322,7 +344,7 @@ stateDiagram-v2
     [*] --> Starting : profile accepted
     Starting --> Up : six motors said Hello
     Starting --> Stopped : a motor did not come up within 10 s / stop the others, report it
-    Up --> Up : coupling every millisecond
+    Up --> Up : coupling every 0.25 ms
     Up --> Up : fault injected or cleared
     Up --> Restarting : restart a joint
     Restarting --> Up : that motor said Hello and sent its status
@@ -337,7 +359,7 @@ stateDiagram-v2
 
 | Constraint | Value / Description                                                                                                                                                                                                                                                                    |
 |------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Coupling   | Gravity, payload and speed-dependent terms; the links' inertia as each motor's load at the home position (Part C)                                                                                                                                                                      |
+| Coupling   | The arm's full dynamics, integrated by the virtual arm; each motor's shaft driven at its joint's speed (Part C)                                                                                                                                                                        |
 | Motors     | The motor model's values; e-foc's other plant values (encoder, noise, supply limits) are the preset's                                                                                                                                                                                  |
 | Time       | Real time: virtual motors run on the wall clock                                                                                                                                                                                                                                        |
 | Platform   | Linux first, as CI; Windows when e-foc's Windows archive is wired the same way                                                                                                                                                                                                         |
@@ -351,6 +373,6 @@ stateDiagram-v2
 | # | Question                         | Options                                                                     | Status |
 |---|----------------------------------|-----------------------------------------------------------------------------|--------|
 | 1 | Custom motors on a virtual joint | Decided: e-foc reads a text plant description                               | closed |
-| 2 | The links' inertia               | Decided: reflected inertia at home added to each plant                      | closed |
+| 2 | The links' inertia               | Decided: the virtual arm integrates the full dynamics and drives the shafts | closed |
 | 3 | A start-up through calibration   | The lifecycle drives calibration; start factory-fresh and calibrate by hand | open   |
 | 4 | Where the plant-port codec lives | In e-robot-arm (chosen for now); a library e-foc publishes                  | open   |
