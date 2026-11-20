@@ -2,6 +2,7 @@
 #define CORE_MOTION_IMPLEMENTATIONS_JOINT_MOTION_IMPL_HPP
 
 #include "core/joint_bus/interfaces/JointBus.hpp"
+#include "core/motion/implementations/JointJogger.hpp"
 #include "core/motion/implementations/JointLinePlan.hpp"
 #include "core/motion/implementations/JointMovePlan.hpp"
 #include "core/motion/implementations/JointPathPlan.hpp"
@@ -34,6 +35,7 @@ namespace arm
         bool StepTo(const JointPositions& target) override;
         bool MoveThrough(const JointWaypoints& waypoints) override;
         bool MoveLine(const ToolPose& target) override;
+        bool Jog(const JointJog& jog) override;
         std::optional<LineRefusal> LineRefused() const override;
         void Abort() override;
         bool Moving() const override;
@@ -49,7 +51,8 @@ namespace arm
             pointToPoint,
             step,
             path,
-            line
+            line,
+            jog
         };
 
         bool Accepts(const JointPositions& target) const;
@@ -65,6 +68,7 @@ namespace arm
         JointPositions LatestPositions() const;
         JointReference Sampled(float elapsed) const;
         std::optional<JointReference> StepLine();
+        JointReference StepJog();
         void Arrive();
         void Finish();
 
@@ -79,6 +83,7 @@ namespace arm
         JointPathPlan path;
         std::optional<JointLinePlan> line;
         std::optional<LineRefusal> lineRefusal;
+        JointJogger jogger;
         JointPositions target{};
         uint32_t periodsElapsed{ 0 };
         Generator generator{ Generator::none };

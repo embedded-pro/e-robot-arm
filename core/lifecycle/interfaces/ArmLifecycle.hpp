@@ -79,6 +79,7 @@ namespace arm
         virtual bool StepTo(const JointPositions& target) = 0;
         virtual bool MoveThrough(const JointWaypoints& waypoints) = 0;
         virtual bool MoveLine(const ToolPose& target) = 0;
+        virtual bool Jog(const JointJog& jog) = 0;
         virtual ArmState State() const = 0;
         virtual std::optional<Misconfiguration> MisconfiguredJoint() const = 0;
         virtual std::optional<std::size_t> UnstartedJoint() const = 0;

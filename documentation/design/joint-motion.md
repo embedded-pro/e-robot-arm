@@ -2,7 +2,7 @@
 title: "Joint Motion Design"
 type: design
 status: draft
-version: 0.11.0
+version: 0.12.0
 component: "motion"
 date: 2026-11-20
 ---
@@ -12,7 +12,7 @@ date: 2026-11-20
 | Title     | Joint Motion Design |
 | Type      | design              |
 | Status    | draft               |
-| Version   | 0.11.0              |
+| Version   | 0.12.0              |
 | Component | motion              |
 | Date      | 2026-11-20          |
 
@@ -175,6 +175,13 @@ and refreshes the **dead-man**: when no jog command arrives for 20 control perio
 jog ramps to rest and ends; a jog command of speed zero ends it the same way. A jog also ramps to rest before a joint
 reaches its position limit, and a tool jog holds instead of stepping into a sample a line would refuse (Part H). A
 jog while another generator runs is refused; a different jog kind ends the running jog first.
+
+A joint jog's commanded speed is clamped to the joint's speed limit. Each period the speed moves toward the commanded
+one by at most the acceleration limit times the period, and never above the speed from which the joint can still stop
+at its position limit at that acceleration; the other joints hold where they were when the jog started. The jog ends,
+with a done event, when it is at rest with nothing commanded: after the dead-man, a jog of speed zero, or at a limit.
+A jog of another joint while one runs ramps the running joint to rest and then starts the new one, if the dead-man has
+not expired meanwhile; a first jog of speed zero is refused.
 
 ### Part J — Teach points
 

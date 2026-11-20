@@ -270,6 +270,13 @@ namespace arm
         return fsm.Is<Enabled>() && motion.MoveThrough(waypoints) && Accepted(MoveStarted{});
     }
 
+    bool ArmLifecycleImpl::Jog(const JointJog& jog)
+    {
+        if (fsm.Is<Moving>())
+            return motion.Jog(jog);
+        return fsm.Is<Enabled>() && motion.Jog(jog) && Accepted(MoveStarted{});
+    }
+
     bool ArmLifecycleImpl::MoveLine(const ToolPose& target)
     {
         return fsm.Is<Enabled>() && motion.MoveLine(target) && Accepted(MoveStarted{});
