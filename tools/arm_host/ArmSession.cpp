@@ -11,7 +11,8 @@ namespace arm_host
         {
             return std::holds_alternative<SelectMode>(command) || std::holds_alternative<StartJoints>(command) || std::holds_alternative<AlignJoints>(command) ||
                    std::holds_alternative<MoveTo>(command) || std::holds_alternative<StepTo>(command) || std::holds_alternative<MoveThrough>(command) ||
-                   std::holds_alternative<MoveLine>(command) || std::holds_alternative<JogJoint>(command);
+                   std::holds_alternative<MoveLine>(command) || std::holds_alternative<JogJoint>(command) ||
+                   std::holds_alternative<JogTool>(command);
         }
 
         bool DeliveredByTheJoints(const ArmCommand& command)
@@ -319,6 +320,11 @@ namespace arm_host
             return session.arm.Lifecycle().Jog(arm::JointJog{ jog.joint, jog.speed });
         }
 
+        bool operator()(const JogTool& jog) const
+        {
+            return session.arm.Lifecycle().Jog(jog.jog);
+        }
+
         bool operator()(const AbortMove&) const
         {
             session.arm.Motion().Abort();
@@ -511,7 +517,9 @@ namespace arm_host
         if (std::holds_alternative<MoveLine>(command))
             return LineRefusal();
         if (const auto* jog = std::get_if<JogJoint>(&command))
-            return JogRefusal(*jog);
+            return JogRefusal(jog->joint < arm::jointCount, jog->speed.Value());
+        if (const auto* jog = std::get_if<JogTool>(&command))
+            return JogRefusal(true, jog->jog.speed);
         if (std::holds_alternative<MoveTo>(command) || std::holds_alternative<StepTo>(command))
             return MoveRefusal(command);
         if (DeliveredByTheJoints(command))
@@ -572,16 +580,16 @@ namespace arm_host
         return "the path leaves the joint limits or the workspace, meets the arm itself, or repeats a waypoint";
     }
 
-    std::string_view ArmSession::JogRefusal(const JogJoint& jog) const
+    std::string_view ArmSession::JogRefusal(bool known, float speed) const
     {
         const auto state = arm.Lifecycle().State();
         if (state == arm::ArmState::holding)
             return "holding after a protective stop: re-arm first";
         if (state != arm::ArmState::enabled && state != arm::ArmState::moving)
             return "the arm is not enabled";
-        if (jog.joint >= arm::jointCount)
+        if (!known)
             return "no such joint";
-        if (!std::isfinite(jog.speed.Value()) || (state == arm::ArmState::enabled && !(std::abs(jog.speed.Value()) > 0.0f)))
+        if (!std::isfinite(speed) || (state == arm::ArmState::enabled && !(std::abs(speed) > 0.0f)))
             return "a jog needs a speed";
         if (state == arm::ArmState::moving)
             return "another move runs";

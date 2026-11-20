@@ -35,6 +35,12 @@ namespace arm
             pending = jog;
     }
 
+    void JointJogger::Stop()
+    {
+        commanded = 0.0f;
+        pending.reset();
+    }
+
     JointReference JointJogger::Advance()
     {
         ++silentPeriods;
@@ -78,10 +84,10 @@ namespace arm
         const auto maximum = limits[joint].maxSpeed.Value();
         const auto wanted = std::clamp(commanded, -maximum, maximum);
         const auto direction = wanted < 0.0f ? -1.0f : 1.0f;
-        const auto capped = std::min(math::Abs(wanted), StoppingSpeed(direction));
-        if (capped < 0.5f * limits[joint].maxAcceleration.Value() * period)
+        const auto stopping = StoppingSpeed(direction);
+        if (stopping < math::Abs(wanted) && stopping < 0.5f * limits[joint].maxAcceleration.Value() * period)
             return 0.0f;
-        return direction * capped;
+        return direction * std::min(math::Abs(wanted), stopping);
     }
 
     float JointJogger::StoppingSpeed(float direction) const

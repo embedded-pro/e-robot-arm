@@ -32,7 +32,10 @@ namespace arm
         really_assert(std::ranges::all_of(limits, ValidLimit));
         really_assert(period > infra::Duration::zero());
         if (lines.model != nullptr)
+        {
             line.emplace(*lines.model, lines.limits, limits, guard, PeriodSeconds());
+            toolJogger.emplace(*lines.model, lines.limits, limits, guard, PeriodSeconds());
+        }
     }
 
     bool JointMotionImpl::MoveLine(const ToolPose& newTarget)
@@ -61,12 +64,58 @@ namespace arm
             return true;
         }
 
+        if (generator == Generator::toolJog)
+        {
+            toolJogger->Stop();
+            pendingJog = jog;
+            pendingAge = 0;
+            return true;
+        }
+
+        return StartJog(jog, LatestPositions());
+    }
+
+    bool JointMotionImpl::Jog(const ToolJog& jog)
+    {
+        if (!toolJogger.has_value() || !math::IsFinite(jog.speed) || jog.axis > ToolAxis::rz || jog.frame > JogFrame::tool)
+            return false;
+
+        if (generator == Generator::toolJog)
+        {
+            toolJogger->Command(jog);
+            return true;
+        }
+
+        if (generator == Generator::jog)
+        {
+            jogger.Stop();
+            pendingJog = jog;
+            pendingAge = 0;
+            return true;
+        }
+
+        return StartJog(jog, LatestPositions());
+    }
+
+    bool JointMotionImpl::StartJog(const JointJog& jog, const JointPositions& from)
+    {
         if (Moving() || AnyReadingStale() || !(math::Abs(jog.speed.Value()) > 0.0f))
             return false;
 
-        jogger.Start(LatestPositions(), jog);
+        jogger.Start(from, jog);
         periodsElapsed = 0;
         generator = Generator::jog;
+        return true;
+    }
+
+    bool JointMotionImpl::StartJog(const ToolJog& jog, const JointPositions& from)
+    {
+        if (Moving() || AnyReadingStale() || !(math::Abs(jog.speed) > 0.0f))
+            return false;
+
+        toolJogger->Start(from, jog);
+        periodsElapsed = 0;
+        generator = Generator::toolJog;
         return true;
     }
 
@@ -267,6 +316,8 @@ namespace arm
             return StepLine();
         if (generator == Generator::jog)
             return StepJog();
+        if (generator == Generator::toolJog)
+            return StepToolJog();
 
         const auto elapsed = Elapsed();
         const auto duration = generator == Generator::path ? path.Duration() : plan.Duration();
@@ -296,10 +347,34 @@ namespace arm
 
     JointReference JointMotionImpl::StepJog()
     {
+        ++pendingAge;
         const auto reference = jogger.Advance();
         if (jogger.Done())
-            Arrive();
+            EndJog(reference.positions);
         return reference;
+    }
+
+    JointReference JointMotionImpl::StepToolJog()
+    {
+        ++pendingAge;
+        const auto reference = toolJogger->Advance();
+        if (toolJogger->Done())
+            EndJog(reference.positions);
+        return reference;
+    }
+
+    void JointMotionImpl::EndJog(const JointPositions& last)
+    {
+        const auto next = pendingJog;
+        pendingJog.reset();
+        generator = Generator::none;
+        if (next.has_value() && pendingAge <= jogDeadManPeriods && std::visit([this, &last](const auto& jog)
+                                                                       {
+                                                                           return StartJog(jog, last);
+                                                                       },
+                                                                       *next))
+            return;
+        Arrive();
     }
 
     void JointMotionImpl::Arrive()

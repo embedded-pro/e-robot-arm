@@ -59,6 +59,29 @@ namespace arm
         foc::RadiansPerSecond speed{};
     };
 
+    enum class JogFrame : uint8_t
+    {
+        base,
+        tool
+    };
+
+    enum class ToolAxis : uint8_t
+    {
+        x,
+        y,
+        z,
+        rx,
+        ry,
+        rz
+    };
+
+    struct ToolJog
+    {
+        JogFrame frame{ JogFrame::base };
+        ToolAxis axis{ ToolAxis::x };
+        float speed{ 0.0f };
+    };
+
     constexpr uint32_t jogDeadManPeriods{ 20 };
     constexpr std::size_t maxWaypoints{ 8 };
     using JointWaypoints = infra::BoundedVector<JointPositions>;
@@ -99,6 +122,7 @@ namespace arm
         virtual bool MoveThrough(const JointWaypoints& waypoints) = 0;
         virtual bool MoveLine(const ToolPose& target) = 0;
         virtual bool Jog(const JointJog& jog) = 0;
+        virtual bool Jog(const ToolJog& jog) = 0;
         virtual std::optional<LineRefusal> LineRefused() const = 0;
         virtual void Abort() = 0;
         virtual bool Moving() const = 0;

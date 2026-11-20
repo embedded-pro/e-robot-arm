@@ -26,6 +26,8 @@ target_sources(e_robot_arm.motion.implementations PRIVATE
     JointMovePlan.hpp
     JointPathPlan.cpp
     JointPathPlan.hpp
+    ToolJogger.cpp
+    ToolJogger.hpp
 )
 
 add_subdirectory(test)
