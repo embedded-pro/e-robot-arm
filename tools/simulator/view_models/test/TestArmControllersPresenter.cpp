@@ -47,6 +47,29 @@ TEST_F(ArmControllersPresenterTest, lists_the_registry_with_its_state_and_the_pr
     EXPECT_EQ(ui::theme::StatusLevel::Neutral, rows[2].level);
 }
 
+TEST_F(ArmControllersPresenterTest, shows_the_profiles_tuning_of_the_impedance_operational_space_and_adaptive_controllers)
+{
+    auto snapshot = simulator::test::Compatible();
+    snapshot.armControllers = { { "joint-impedance", true, true }, { "joint-impedance", true, false }, { "cartesian-impedance", true, false },
+        { "operational-space", true, false }, { "slotine-li", true, false } };
+    snapshot.config.jointImpedance = { std::nullopt, 0.7f };
+    presenter.Refresh(snapshot);
+    const auto defaultStiffness = presenter.Rows()[0].parameters;
+
+    snapshot.config.jointImpedance = { arm::JointStiffnesses{ 120.0f, 80.0f, 60.0f, 5.0f, 2.0f, 0.5f }, 0.8f };
+    snapshot.config.cartesianImpedance = { 50.0f, 0.07f, 0.7f };
+    snapshot.config.operationalSpace = { 30.0f, 0.7f, 0.01f };
+    snapshot.config.slotineLi = { 10.0f, 20.0f, 10.0f };
+    presenter.Refresh(snapshot);
+
+    const auto& rows = presenter.Rows();
+    EXPECT_EQ("K at 10 rad/s, ζ 0.70", defaultStiffness);
+    EXPECT_EQ("K 120, 80, 60, 5, 2, 0.5 N·m/rad, ζ 0.80", rows[1].parameters);
+    EXPECT_EQ("K 50 N/m, 0.07 N·m/rad, ζ 0.70", rows[2].parameters);
+    EXPECT_EQ("ω 30.0 rad/s, ζ 0.70, σ 0.01", rows[3].parameters);
+    EXPECT_EQ("λ 10.0 1/s, ω 20.0 rad/s, γ 10.0", rows[4].parameters);
+}
+
 TEST_F(ArmControllersPresenterTest, without_a_chosen_row_every_action_says_to_choose_one)
 {
     presenter.Refresh(WithControllers(simulator::test::Compatible()));
