@@ -368,7 +368,7 @@ TEST_F(ArmProfileTest, a_profile_without_a_workspace_leaves_it_to_the_geometry_a
     EXPECT_EQ(1u, Count(written, R"("linkRadiiM": [ 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04 ])"));
 }
 
-TEST_F(ArmProfileTest, reads_a_version_1_profile_and_writes_version_4)
+TEST_F(ArmProfileTest, reads_a_version_1_profile_and_writes_version_5)
 {
     const auto version1 = Read(Profile(Joint(1)));
     ASSERT_TRUE(version1.has_value()) << Problem();
@@ -376,11 +376,11 @@ TEST_F(ArmProfileTest, reads_a_version_1_profile_and_writes_version_4)
     infra::StringOutputStream::WithStorage<16384> stream;
     arm::WriteArmProfile(*version1, stream);
     const std::string written{ stream.Storage().begin(), stream.Storage().end() };
-    EXPECT_NE(std::string::npos, written.find(R"("version": 4,)"));
+    EXPECT_NE(std::string::npos, written.find(R"("version": 5,)"));
 
-    auto version5{ Profile(Joint(1)) };
-    version5.replace(version5.find(R"("version": 1)"), 12, R"("version": 5)");
-    EXPECT_FALSE(Read(version5).has_value());
+    auto version6{ Profile(Joint(1)) };
+    version6.replace(version6.find(R"("version": 1)"), 12, R"("version": 6)");
+    EXPECT_FALSE(Read(version6).has_value());
     EXPECT_EQ("version: is not a version this reader knows", Problem());
 }
 
@@ -410,6 +410,26 @@ TEST_F(ArmProfileTest, reads_the_s_curve_and_each_joints_jerk_limit_and_writes_t
     ASSERT_TRUE(trapezoid.has_value()) << Problem();
     EXPECT_EQ(arm::MotionProfile::trapezoid, trapezoid->config.motionProfile);
     EXPECT_FALSE(trapezoid->config.jerkLimits[0].has_value());
+}
+
+TEST_F(ArmProfileTest, reads_the_tool_limits_defaults_the_rest_and_writes_them_back)
+{
+    const auto defaults = Read(Profile(Joint(1)));
+    ASSERT_TRUE(defaults.has_value()) << Problem();
+    EXPECT_EQ(arm::ToolLimits{}, defaults->config.toolLimits);
+    EXPECT_NEAR(0.25f, defaults->config.toolLimits.speedMPerS, 1.0e-6f);
+    EXPECT_NEAR(0.001f, defaults->config.toolLimits.manipulabilityMin, 1.0e-6f);
+
+    const auto profile = Read(Profile(Joint(1), R"( "toolLimits": { "speedMPerS": 0.5, "accelerationMPerS2": 2, "jerkMPerS3": 20, "angularSpeedRadPerS": 1.5, "angularAccelerationRadPerS2": 6, "angularJerkRadPerS3": 60, "manipulabilityMin": 0.01 },)"));
+    ASSERT_TRUE(profile.has_value()) << Problem();
+    const arm::ToolLimits expected{ 0.5f, 2.0f, 20.0f, 1.5f, 6.0f, 60.0f, 0.01f };
+    EXPECT_EQ(expected, profile->config.toolLimits);
+
+    infra::StringOutputStream::WithStorage<16384> stream;
+    arm::WriteArmProfile(*profile, stream);
+    const auto back = Read(std::string{ stream.Storage().begin(), stream.Storage().end() });
+    ASSERT_TRUE(back.has_value()) << Problem();
+    EXPECT_EQ(expected, back->config.toolLimits);
 }
 
 TEST_F(ArmProfileTest, refuses_a_profile_and_names_the_first_problem)
@@ -466,7 +486,10 @@ TEST_F(ArmProfileTest, refuses_a_profile_and_names_the_first_problem)
         { Profile(Joint(1), R"( "meshes": { "link1": "arm.stl" },)"), "meshes.link1: must name a .gltf or .glb file" },
         { Profile(Joint(1), R"( "meshes": { "base": "" },)"), "meshes.base: must be a path of 1 to 96 characters" },
         { Profile(Joint(1), R"( "meshes": { "base": 3 },)"), "meshes.base: must be a path of 1 to 96 characters" },
-        { R"({ "format": "e-robot-arm profile", "version": 5 })", "version: is not a version this reader knows" },
+        { R"({ "format": "e-robot-arm profile", "version": 6 })", "version: is not a version this reader knows" },
+        { Profile(Joint(1), R"( "toolLimits": { "speedMPerS": 0 },)"), "toolLimits.speedMPerS: must be above 0" },
+        { Profile(Joint(1), R"( "toolLimits": { "manipulabilityMin": 2 },)"), "toolLimits.manipulabilityMin: must be 0 or above and at most 1" },
+        { Profile(Joint(1), R"( "toolLimits": { "spin": 1 },)"), "toolLimits.spin: is not a profile item" },
         { Profile(Joint(1), R"( "driveWatchdogPeriods": 1,)"), "driveWatchdogPeriods: must be a whole number from 2 to 255" },
         { Profile(Joint(1), R"( "safety": { "workspaceM": { "min": { "x": 1 }, "max": { "x": 0.5, "y": 1, "z": 1 } } },)"), "safety.workspaceM: min must be below max on every axis" },
         { Profile(Joint(1), R"( "safety": { "linkRadiiM": [ 0.1, 0.1 ] },)"), "safety.linkRadiiM: must be a list of seven radii" },

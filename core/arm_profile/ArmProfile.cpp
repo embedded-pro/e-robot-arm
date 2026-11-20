@@ -6,6 +6,7 @@
 #include <array>
 #include <chrono>
 #include <iterator>
+#include <utility>
 
 namespace arm
 {
@@ -14,6 +15,14 @@ namespace arm
         constexpr const char* formatMarker{ "e-robot-arm profile" };
         constexpr std::array<const char*, 1> modeNames{ "torque" };
         constexpr std::array<const char*, 2> motionProfileNames{ "trapezoid", "s-curve" };
+
+        std::array<std::pair<const char*, float*>, 6> ToolLimitFields(ToolLimits& limits)
+        {
+            return { { { "speedMPerS", &limits.speedMPerS }, { "accelerationMPerS2", &limits.accelerationMPerS2 }, { "jerkMPerS3", &limits.jerkMPerS3 },
+                { "angularSpeedRadPerS", &limits.angularSpeedRadPerS }, { "angularAccelerationRadPerS2", &limits.angularAccelerationRadPerS2 },
+                { "angularJerkRadPerS3", &limits.angularJerkRadPerS3 } } };
+        }
+
         constexpr std::array<const char*, 4> currentNames{ "pid", "decoupledPid", "deadbeat", "slidingMode" };
         constexpr std::array<const char*, 4> speedNames{ "pid", "lqi", "adrc", "twoDof" };
         constexpr std::array<const char*, 5> positionNames{ "pid", "cascadeP", "lqr", "lqi", "twoDof" };
@@ -252,6 +261,8 @@ namespace arm
                     return ReadMode(path, value);
                 if (key == "motionProfile")
                     return ReadMotionProfile(path, value, profile.config.motionProfile);
+                if (key == "toolLimits")
+                    return ReadToolLimits(path, value, profile.config.toolLimits);
                 if (key == "joints")
                     return Mark(seen.joints, ReadJoints(path, value, profile.config));
                 if (key == "geometry")
@@ -271,6 +282,30 @@ namespace arm
                 if (key == "safety")
                     return ReadSafety(path, value, profile.config.workspace);
                 return Unknown(path);
+            }
+
+            bool ReadToolLimits(const Path& path, const Value& value, ToolLimits& limits)
+            {
+                return ReadMembers(path, value, [this, &limits](const Path& item, infra::JsonString key, const Value& member)
+                    {
+                        if (key == "manipulabilityMin")
+                            return ReadManipulability(item, member, limits.manipulabilityMin);
+                        for (const auto& [name, field] : ToolLimitFields(limits))
+                            if (key == name)
+                                return ReadPositive(item, member, *field);
+                        return Unknown(item);
+                    });
+            }
+
+            bool ReadManipulability(const Path& path, const Value& value, float& result)
+            {
+                float number{ 0.0f };
+                if (!ReadReal(path, value, number))
+                    return false;
+                if (!(number >= 0.0f && number <= 1.0f))
+                    return Fail(path, "must be 0 or above and at most 1");
+                result = number;
+                return true;
             }
 
             bool ReadTuning(const Path& path, const Value& value, BandwidthTuning& tuning)
@@ -1072,6 +1107,17 @@ namespace arm
                 stream << ",\n  \"collisionObserverGainPerS\": ";
                 Number(config.collisionObserverGain);
                 stream << ",\n  \"motionProfile\": \"" << motionProfileNames[static_cast<std::size_t>(config.motionProfile)] << "\"";
+                stream << ",\n  \"toolLimits\": {";
+                auto limits = config.toolLimits;
+                for (const auto& [name, field] : ToolLimitFields(limits))
+                {
+                    stream << " \"" << name << "\": ";
+                    Number(*field);
+                    stream << ",";
+                }
+                stream << " \"manipulabilityMin\": ";
+                Number(config.toolLimits.manipulabilityMin);
+                stream << " }";
                 stream << ",\n  \"joints\": [";
 
                 for (std::size_t joint = 0; joint != jointCount; ++joint)
