@@ -20,6 +20,19 @@ namespace arm
     using JointMotionLimits = std::array<JointMotionLimit, jointCount>;
     using JointJerkLimits = std::array<std::optional<foc::RadiansPerSecondCubed>, jointCount>;
 
+    struct ToolLimits
+    {
+        float speedMPerS{ 0.25f };
+        float accelerationMPerS2{ 1.0f };
+        float jerkMPerS3{ 10.0f };
+        float angularSpeedRadPerS{ 1.0f };
+        float angularAccelerationRadPerS2{ 4.0f };
+        float angularJerkRadPerS3{ 40.0f };
+        float manipulabilityMin{ 0.001f };
+
+        bool operator==(const ToolLimits& other) const = default;
+    };
+
     constexpr std::size_t maxWaypoints{ 8 };
     using JointWaypoints = infra::BoundedVector<JointPositions>;
 

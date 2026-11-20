@@ -44,6 +44,7 @@ namespace arm
         float collisionObserverGain{ 25.0f };
         JointJerkLimits jerkLimits{};
         MotionProfile motionProfile{ MotionProfile::trapezoid };
+        ToolLimits toolLimits{};
     };
 
     inline constexpr float defaultSpeedTripShare{ 4.0f };
