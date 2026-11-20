@@ -315,6 +315,19 @@ TEST_F(SlowToolSessionTest, jogs_the_tool_along_a_base_axis_until_the_dead_man_e
     EXPECT_NEAR(before.x, sink.snapshot.toolPose.x, 1.0e-3f);
 }
 
+TEST_F(ArmSessionTest, names_why_a_tool_jog_a_held_jog_or_a_step_is_refused_before_the_arm_is_enabled)
+{
+    Execute(1, arm_host::CheckContracts{});
+    Execute(2, arm_host::JogTool{ { arm::JogFrame::base, arm::ToolAxis::y, 0.1f } });
+    EXPECT_EQ("the arm is not enabled", sink.Last()->reason);
+    Execute(3, arm_host::HoldJog{ arm::ToolJog{ arm::JogFrame::tool, arm::ToolAxis::rz, 0.1f }, 0s });
+    EXPECT_EQ("a held jog lasts more than 0 s and at most 10 s", sink.Last()->reason);
+    Execute(4, arm_host::HoldJog{ arm::ToolJog{ arm::JogFrame::tool, arm::ToolAxis::rz, 0.1f }, 1s });
+    EXPECT_EQ("the arm is not enabled", sink.Last()->reason);
+    Execute(5, arm_host::StepTo{ Target(0.05f) });
+    EXPECT_EQ("the arm is not enabled", sink.Last()->reason);
+}
+
 TEST_F(ArmSessionTest, holds_a_joint_jog_for_its_time_and_lets_it_ramp_to_rest_after)
 {
     BringUp();
