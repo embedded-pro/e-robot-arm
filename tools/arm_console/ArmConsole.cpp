@@ -126,6 +126,15 @@ namespace arm_console
         if (command == "jog")
             return Jog(arguments);
 
+        if (command == "teach" || command == "goto")
+            return TeachPoint(command, arguments);
+
+        if (command == "points")
+        {
+            Points();
+            return { Outcome::done };
+        }
+
         if (command == "tune")
             return Tune(arguments);
 
@@ -292,6 +301,36 @@ namespace arm_console
         return { Outcome::posted, arm.Post(arm_host::HoldJog{ *jog, *duration }) };
     }
 
+    ExecuteResult ArmConsole::TeachPoint(std::string_view command, std::istringstream& arguments)
+    {
+        std::string name;
+        std::string rest;
+        if (!(arguments >> name) || (arguments >> rest))
+        {
+            Usage();
+            return { Outcome::done };
+        }
+
+        if (command == "teach")
+            return { Outcome::posted, arm.Post(arm_host::Teach{ name }) };
+        return { Outcome::posted, arm.Post(arm_host::GoTo{ name }) };
+    }
+
+    void ArmConsole::Points()
+    {
+        const auto config = arm.Snapshot().config;
+        if (config.teachPointCount == 0)
+            output << "no teach points\n";
+        for (std::size_t point = 0; point != config.teachPointCount; ++point)
+        {
+            const auto& taught = config.teachPoints[point];
+            output << std::string_view{ taught.name.data(), taught.name.size() } << ":";
+            for (const auto& joint : taught.joints)
+                output << std::format(" {:.3f}", joint.Value());
+            output << " rad\n";
+        }
+    }
+
     void ArmConsole::Kinematics(std::string_view command, std::istringstream& arguments)
     {
         const auto snapshot = arm.Snapshot();
@@ -409,7 +448,7 @@ namespace arm_console
 
     void ArmConsole::Usage()
     {
-        output << "usage: bringup | enable | disable | move q1 q2 q3 q4 q5 q6 | step q1 q2 q3 q4 q5 q6 | tune step|move <joint> <rad> [csv] | rearm | contracts | mode torque|speed|position | start | stop | estop | clear | align | abort | load <file> | save <file> | controllers | controller enable|disable|select <name> | motion [trapezoid|s-curve] | jog <joint> <rad/s> [s] | jog base|tool x|y|z|rx|ry|rz <speed> [s] | pose | gravity | fk q1..q6 | ik x y z roll pitch yaw | status | quit\n";
+        output << "usage: bringup | enable | disable | move q1 q2 q3 q4 q5 q6 | step q1 q2 q3 q4 q5 q6 | tune step|move <joint> <rad> [csv] | rearm | contracts | mode torque|speed|position | start | stop | estop | clear | align | abort | load <file> | save <file> | controllers | controller enable|disable|select <name> | motion [trapezoid|s-curve] | jog <joint> <rad/s> [s] | jog base|tool x|y|z|rx|ry|rz <speed> [s] | teach <name> | goto <name> | points | pose | gravity | fk q1..q6 | ik x y z roll pitch yaw | status | quit\n";
     }
 
     ExecuteResult ArmConsole::Tune(std::istringstream& arguments)

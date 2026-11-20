@@ -368,7 +368,7 @@ TEST_F(ArmProfileTest, a_profile_without_a_workspace_leaves_it_to_the_geometry_a
     EXPECT_EQ(1u, Count(written, R"("linkRadiiM": [ 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04 ])"));
 }
 
-TEST_F(ArmProfileTest, reads_a_version_1_profile_and_writes_version_5)
+TEST_F(ArmProfileTest, reads_a_version_1_profile_and_writes_version_6)
 {
     const auto version1 = Read(Profile(Joint(1)));
     ASSERT_TRUE(version1.has_value()) << Problem();
@@ -376,11 +376,11 @@ TEST_F(ArmProfileTest, reads_a_version_1_profile_and_writes_version_5)
     infra::StringOutputStream::WithStorage<16384> stream;
     arm::WriteArmProfile(*version1, stream);
     const std::string written{ stream.Storage().begin(), stream.Storage().end() };
-    EXPECT_NE(std::string::npos, written.find(R"("version": 5,)"));
+    EXPECT_NE(std::string::npos, written.find(R"("version": 6,)"));
 
-    auto version6{ Profile(Joint(1)) };
-    version6.replace(version6.find(R"("version": 1)"), 12, R"("version": 6)");
-    EXPECT_FALSE(Read(version6).has_value());
+    auto version7{ Profile(Joint(1)) };
+    version7.replace(version7.find(R"("version": 1)"), 12, R"("version": 7)");
+    EXPECT_FALSE(Read(version7).has_value());
     EXPECT_EQ("version: is not a version this reader knows", Problem());
 }
 
@@ -430,6 +430,28 @@ TEST_F(ArmProfileTest, reads_the_tool_limits_defaults_the_rest_and_writes_them_b
     const auto back = Read(std::string{ stream.Storage().begin(), stream.Storage().end() });
     ASSERT_TRUE(back.has_value()) << Problem();
     EXPECT_EQ(expected, back->config.toolLimits);
+}
+
+TEST_F(ArmProfileTest, reads_the_teach_points_and_writes_them_back)
+{
+    const auto none = Read(Profile(Joint(1)));
+    ASSERT_TRUE(none.has_value()) << Problem();
+    EXPECT_EQ(0u, none->config.teachPointCount);
+
+    const auto profile = Read(Profile(Joint(1), R"( "teachPoints": [ { "name": "home", "jointsRad": [ 0, 0.5, -0.5, 0, 1, 0 ] }, { "name": "pick", "jointsRad": [ 0.25, 0, 0, 0, 0, -1 ] } ],)"));
+    ASSERT_TRUE(profile.has_value()) << Problem();
+    ASSERT_EQ(2u, profile->config.teachPointCount);
+    EXPECT_EQ("home", (std::string{ profile->config.teachPoints[0].name.begin(), profile->config.teachPoints[0].name.end() }));
+    EXPECT_NEAR(-0.5f, profile->config.teachPoints[0].joints[2].Value(), 1.0e-6f);
+    EXPECT_NEAR(-1.0f, profile->config.teachPoints[1].joints[5].Value(), 1.0e-6f);
+
+    infra::StringOutputStream::WithStorage<16384> stream;
+    arm::WriteArmProfile(*profile, stream);
+    const auto back = Read(std::string{ stream.Storage().begin(), stream.Storage().end() });
+    ASSERT_TRUE(back.has_value()) << Problem();
+    ASSERT_EQ(2u, back->config.teachPointCount);
+    EXPECT_EQ("pick", (std::string{ back->config.teachPoints[1].name.begin(), back->config.teachPoints[1].name.end() }));
+    EXPECT_NEAR(0.25f, back->config.teachPoints[1].joints[0].Value(), 1.0e-6f);
 }
 
 TEST_F(ArmProfileTest, refuses_a_profile_and_names_the_first_problem)
@@ -486,7 +508,11 @@ TEST_F(ArmProfileTest, refuses_a_profile_and_names_the_first_problem)
         { Profile(Joint(1), R"( "meshes": { "link1": "arm.stl" },)"), "meshes.link1: must name a .gltf or .glb file" },
         { Profile(Joint(1), R"( "meshes": { "base": "" },)"), "meshes.base: must be a path of 1 to 96 characters" },
         { Profile(Joint(1), R"( "meshes": { "base": 3 },)"), "meshes.base: must be a path of 1 to 96 characters" },
-        { R"({ "format": "e-robot-arm profile", "version": 6 })", "version: is not a version this reader knows" },
+        { R"({ "format": "e-robot-arm profile", "version": 7 })", "version: is not a version this reader knows" },
+        { Profile(Joint(1), R"( "teachPoints": [ { "name": "", "jointsRad": [ 0, 0, 0, 0, 0, 0 ] } ],)"), "teachPoints[0].name: must be text of 1 to 16 characters" },
+        { Profile(Joint(1), R"( "teachPoints": [ { "name": "a", "jointsRad": [ 0, 0, 0 ] } ],)"), "teachPoints[0].jointsRad: must be a list of six angles" },
+        { Profile(Joint(1), R"( "teachPoints": [ { "name": "a" } ],)"), "teachPoints[0]: needs a name and jointsRad" },
+        { Profile(Joint(1), R"( "teachPoints": [ { "name": "a", "jointsRad": [ 0, 0, 0, 0, 0, 0 ] }, { "name": "a", "jointsRad": [ 1, 0, 0, 0, 0, 0 ] } ],)"), "teachPoints: names must be unique" },
         { Profile(Joint(1), R"( "toolLimits": { "speedMPerS": 0 },)"), "toolLimits.speedMPerS: must be above 0" },
         { Profile(Joint(1), R"( "toolLimits": { "manipulabilityMin": 2 },)"), "toolLimits.manipulabilityMin: must be 0 or above and at most 1" },
         { Profile(Joint(1), R"( "toolLimits": { "spin": 1 },)"), "toolLimits.spin: is not a profile item" },

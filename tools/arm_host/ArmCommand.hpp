@@ -9,6 +9,7 @@
 #include "core/lifecycle/interfaces/ArmLifecycle.hpp"
 #include "core/motion/interfaces/JointMotion.hpp"
 #include <cstddef>
+#include <string>
 #include <string_view>
 #include <variant>
 
@@ -80,6 +81,16 @@ namespace arm_host
     {
         AnyJog jog;
         infra::Duration duration;
+    };
+
+    struct Teach
+    {
+        std::string name;
+    };
+
+    struct GoTo
+    {
+        std::string name;
     };
 
     struct AbortMove
@@ -169,7 +180,7 @@ namespace arm_host
     };
 
     using ArmCommand = std::variant<CheckContracts, SelectMode, StartJoints, StopJoints, ClearFaults, EmergencyStop, Rearm, MoveTo, AbortMove, InjectFault, SilenceJoint,
-        BringUp, Enable, Disable, ApplyController, ReadController, ApplyMotor, ReadMotor, EnableArmController, DisableArmController, SelectArmController, AlignJoints, RestartMotor, ResumeJoint, CollideJoint, PowerOffMotor, StepTo, SelectMotionProfile, MoveThrough, MoveLine, JogJoint, JogTool, HoldJog>;
+        BringUp, Enable, Disable, ApplyController, ReadController, ApplyMotor, ReadMotor, EnableArmController, DisableArmController, SelectArmController, AlignJoints, RestartMotor, ResumeJoint, CollideJoint, PowerOffMotor, StepTo, SelectMotionProfile, MoveThrough, MoveLine, JogJoint, JogTool, HoldJog, Teach, GoTo>;
 
     std::string_view CommandName(const ArmCommand& command);
     std::string_view StateName(arm::ArmState state);

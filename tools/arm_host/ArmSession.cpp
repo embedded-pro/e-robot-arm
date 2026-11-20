@@ -12,7 +12,8 @@ namespace arm_host
             return std::holds_alternative<SelectMode>(command) || std::holds_alternative<StartJoints>(command) || std::holds_alternative<AlignJoints>(command) ||
                    std::holds_alternative<MoveTo>(command) || std::holds_alternative<StepTo>(command) || std::holds_alternative<MoveThrough>(command) ||
                    std::holds_alternative<MoveLine>(command) || std::holds_alternative<JogJoint>(command) ||
-                   std::holds_alternative<JogTool>(command) || std::holds_alternative<HoldJog>(command);
+                   std::holds_alternative<JogTool>(command) || std::holds_alternative<HoldJog>(command) ||
+                   std::holds_alternative<GoTo>(command);
         }
 
         bool DeliveredByTheJoints(const ArmCommand& command)
@@ -332,6 +333,17 @@ namespace arm_host
             return session.Hold(hold);
         }
 
+        bool operator()(const Teach& teach) const
+        {
+            return session.TeachPoint(teach.name);
+        }
+
+        bool operator()(const GoTo& go) const
+        {
+            const auto* point = session.FindPoint(go.name);
+            return point != nullptr && session.arm.Lifecycle().MoveTo(point->joints);
+        }
+
         bool operator()(const AbortMove&) const
         {
             session.arm.Motion().Abort();
@@ -597,6 +609,10 @@ namespace arm_host
 
     std::optional<std::string_view> ArmSession::GeneratorRefusal(const ArmCommand& command) const
     {
+        if (std::holds_alternative<Teach>(command))
+            return refusal;
+        if (const auto* go = std::get_if<GoTo>(&command))
+            return GoToRefusal(*go);
         if (const auto* path = std::get_if<MoveThrough>(&command))
             return PathRefusal(*path);
         if (std::holds_alternative<MoveLine>(command))
@@ -610,6 +626,48 @@ namespace arm_host
         if (std::holds_alternative<MoveTo>(command) || std::holds_alternative<StepTo>(command))
             return MoveRefusal(command);
         return std::nullopt;
+    }
+
+    bool ArmSession::TeachPoint(const std::string& name)
+    {
+        if (name.empty() || name.size() > arm::teachPointNameSize)
+            return Refuse("a name of 1 to 16 characters");
+        if (Moving())
+            return Refuse("moving");
+
+        auto& config = profile.config;
+        auto found = std::find_if(config.teachPoints.begin(), config.teachPoints.begin() + config.teachPointCount, [&name](const arm::TeachPoint& point)
+            {
+                return std::string_view{ point.name.data(), point.name.size() } == name;
+            });
+        if (found == config.teachPoints.begin() + config.teachPointCount)
+        {
+            if (config.teachPointCount == arm::maxTeachPoints)
+                return Refuse("16 points already");
+            ++config.teachPointCount;
+            found->name.assign(name.data(), name.size());
+        }
+
+        for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+            found->joints[joint] = arm.Safety().Reading(joint).position;
+        return true;
+    }
+
+    const arm::TeachPoint* ArmSession::FindPoint(const std::string& name) const
+    {
+        const auto& config = profile.config;
+        for (std::size_t point = 0; point != config.teachPointCount; ++point)
+            if (std::string_view{ config.teachPoints[point].name.data(), config.teachPoints[point].name.size() } == name)
+                return &config.teachPoints[point];
+        return nullptr;
+    }
+
+    std::string_view ArmSession::GoToRefusal(const GoTo& go) const
+    {
+        const auto* point = FindPoint(go.name);
+        if (point == nullptr)
+            return "no such teach point";
+        return MoveRefusal(ArmCommand{ MoveTo{ point->joints } });
     }
 
     std::string_view ArmSession::JogRefusal(const AnyJog& jog) const

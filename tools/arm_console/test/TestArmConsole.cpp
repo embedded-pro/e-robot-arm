@@ -228,6 +228,26 @@ TEST_F(ArmConsoleTest, jog_holds_a_joint_or_tool_jog_for_a_time)
     EXPECT_THAT(Run("jog 1 0.2 1 extra"), StartsWith("usage:"));
 }
 
+TEST_F(ArmConsoleTest, teach_goto_and_points_name_the_teach_points)
+{
+    arm_host::ArmSnapshot snapshot;
+    EXPECT_CALL(arm, Snapshot()).WillOnce(Return(snapshot));
+    EXPECT_EQ("no teach points\n", Run("points"));
+
+    snapshot.config.teachPointCount = 1;
+    snapshot.config.teachPoints[0].name.assign("home");
+    snapshot.config.teachPoints[0].joints[1] = foc::Radians{ 0.5f };
+    EXPECT_CALL(arm, Snapshot()).WillOnce(Return(snapshot));
+    EXPECT_EQ("home: 0.000 0.500 0.000 0.000 0.000 0.000 rad\n", Run("points"));
+
+    EXPECT_CALL(arm, Post(VariantWith<arm_host::Teach>(Field(&arm_host::Teach::name, "pick")))).WillOnce(Return(10));
+    EXPECT_EQ(10u, console.Execute("teach pick").command);
+    EXPECT_CALL(arm, Post(VariantWith<arm_host::GoTo>(Field(&arm_host::GoTo::name, "home")))).WillOnce(Return(11));
+    EXPECT_EQ(11u, console.Execute("goto home").command);
+    EXPECT_THAT(Run("goto"), StartsWith("usage:"));
+    EXPECT_THAT(Run("teach a b"), StartsWith("usage:"));
+}
+
 TEST_F(ArmConsoleTest, quit_ends_the_console)
 {
     EXPECT_EQ(arm_console::Outcome::quit, console.Execute("quit").outcome);

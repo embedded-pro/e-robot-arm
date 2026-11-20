@@ -12,6 +12,7 @@
 #include "core/workspace/WorkspaceConfig.hpp"
 #include "e-foc-protocol/contract/FocMotorMessages.hpp"
 #include "infra/timer/Timer.hpp"
+#include "infra/util/BoundedString.hpp"
 #include <array>
 #include <chrono>
 #include <cstdint>
@@ -19,6 +20,15 @@
 
 namespace arm
 {
+    inline constexpr std::size_t maxTeachPoints{ 16 };
+    inline constexpr std::size_t teachPointNameSize{ 16 };
+
+    struct TeachPoint
+    {
+        infra::BoundedString::WithStorage<teachPointNameSize> name;
+        JointPositions joints{};
+    };
+
     struct ArmConfig
     {
         JointNodeIds nodes;
@@ -45,6 +55,8 @@ namespace arm
         JointJerkLimits jerkLimits{};
         MotionProfile motionProfile{ MotionProfile::trapezoid };
         ToolLimits toolLimits{};
+        std::array<TeachPoint, maxTeachPoints> teachPoints{};
+        uint8_t teachPointCount{ 0 };
     };
 
     inline constexpr float defaultSpeedTripShare{ 4.0f };
