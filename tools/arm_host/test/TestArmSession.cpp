@@ -658,6 +658,11 @@ TEST_F(ArmSessionTest, lists_the_arm_controllers_and_reports_each_change_of_the_
     Execute(5, arm_host::EnableArmController{ 0 });
     Execute(6, arm_host::SelectArmController{ 0 });
     EXPECT_TRUE(sink.snapshot.armControllers[0].active);
+    EXPECT_EQ(arm::ArmControllerKind::gravityPd, sink.snapshot.config.activeController);
+
+    Execute(7, arm_host::SelectArmController{ 5 });
+    EXPECT_TRUE(sink.snapshot.armControllers[5].active);
+    EXPECT_EQ(arm::ArmControllerKind::operationalSpace, sink.snapshot.config.activeController);
 }
 
 TEST_F(ArmSessionTest, sets_the_joint_impedance_stiffness_share_and_refuses_one_outside_a_tenth_to_all)

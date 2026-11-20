@@ -12,7 +12,7 @@ namespace arm
 {
     inline constexpr std::size_t profileNameSize{ 48 };
     inline constexpr std::size_t profileProblemSize{ 128 };
-    inline constexpr int32_t profileVersion{ 10 };
+    inline constexpr int32_t profileVersion{ 11 };
     inline constexpr std::size_t meshPathSize{ 96 };
     inline constexpr std::size_t meshCount{ jointCount + 1 };
     inline constexpr std::array<const char*, meshCount> meshNames{ "base", "link1", "link2", "link3", "link4", "link5", "link6" };

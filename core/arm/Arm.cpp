@@ -66,16 +66,16 @@ namespace arm
                   Step();
               })
     {
-        const auto gravityPdId = controllers.Register("gravity-pd", gravityPd);
+        const auto gravityPdId = controllers.Register(ArmControllerName(ArmControllerKind::gravityPd), gravityPd);
         controllers.Enable(gravityPdId);
-        controllers.Enable(controllers.Register("computed-torque", computedTorque));
-        controllers.Enable(controllers.Register("gravity-pid", gravityPid));
-        controllers.Enable(controllers.Register("joint-impedance", jointImpedance));
-        controllers.Enable(controllers.Register("cartesian-impedance", cartesianImpedance));
-        controllers.Enable(controllers.Register("operational-space", operationalSpace));
+        controllers.Enable(controllers.Register(ArmControllerName(ArmControllerKind::computedTorque), computedTorque));
+        controllers.Enable(controllers.Register(ArmControllerName(ArmControllerKind::gravityPid), gravityPid));
+        controllers.Enable(controllers.Register(ArmControllerName(ArmControllerKind::jointImpedance), jointImpedance));
+        controllers.Enable(controllers.Register(ArmControllerName(ArmControllerKind::cartesianImpedance), cartesianImpedance));
+        controllers.Enable(controllers.Register(ArmControllerName(ArmControllerKind::operationalSpace), operationalSpace));
         if (experimental)
-            controllers.Enable(controllers.Register("slotine-li", slotineLi));
-        controllers.Select(gravityPdId);
+            controllers.Enable(controllers.Register(ArmControllerName(ArmControllerKind::slotineLi), slotineLi));
+        controllers.Select(controllers.Find(ArmControllerName(config.activeController)).value_or(gravityPdId));
         motion.SelectProfile(config.motionProfile);
     }
 

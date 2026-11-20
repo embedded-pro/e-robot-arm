@@ -122,6 +122,7 @@ namespace
     {
         auto config = Config();
         config.experimental = true;
+        config.activeController = arm::ArmControllerKind::slotineLi;
         return config;
     }
 
@@ -142,6 +143,7 @@ namespace
 
 TEST_F(ExperimentalArmTest, offers_the_adaptive_controller_only_with_the_experimental_flag_and_resets_what_it_learnt)
 {
+    EXPECT_EQ(arm.Controllers().Find("slotine-li"), arm.Controllers().Active());
     const auto adaptive = arm.Controllers().Find("slotine-li");
     ASSERT_TRUE(adaptive.has_value());
     EXPECT_TRUE(arm.Controllers().Enabled(*adaptive));

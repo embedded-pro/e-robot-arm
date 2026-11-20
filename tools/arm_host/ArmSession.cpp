@@ -427,7 +427,13 @@ namespace arm_host
 
         bool operator()(const SelectArmController& select) const
         {
-            return session.arm.Controllers().Select(select.id);
+            if (!session.arm.Controllers().Select(select.id))
+                return false;
+            const auto name = session.arm.Controllers().Name(select.id);
+            for (std::size_t kind = 0; kind != arm::armControllerNames.size(); ++kind)
+                if (name == arm::armControllerNames[kind])
+                    session.profile.config.activeController = static_cast<arm::ArmControllerKind>(kind);
+            return true;
         }
 
         bool operator()(const ResetAdaptation&) const
