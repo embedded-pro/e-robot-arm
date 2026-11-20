@@ -101,6 +101,7 @@ namespace arm_host
         std::optional<std::string_view> MotionPermissionRefusal() const;
         std::string_view MoveRefusal(const ArmCommand& command) const;
         std::string_view PathRefusal(const MoveThrough& path) const;
+        std::string_view LineRefusal() const;
         void ReportTrip(std::size_t joint, can::FocFaultCode fault, std::string reason = {});
         void Emit(ArmEvent event);
         void Publish();
@@ -117,6 +118,7 @@ namespace arm_host
         VirtualMotors* virtualMotors;
         std::string refusal;
         mutable std::string workspaceRefusal;
+        mutable std::string lineRefusal;
         Events events{ *this, arm };
         infra::TimerRepeating publishTimer;
         std::optional<Pending> issuing;

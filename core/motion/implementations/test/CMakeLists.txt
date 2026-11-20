@@ -13,5 +13,6 @@ target_link_libraries(e_robot_arm.motion_test PUBLIC
 target_sources(e_robot_arm.motion_test PRIVATE
     TestJointMotionImpl.cpp
     TestJointMovePlan.cpp
+    TestJointLine.cpp
     TestJointPathPlan.cpp
 )

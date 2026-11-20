@@ -130,7 +130,7 @@ designed in [joint-motion.md](design/joint-motion.md) 0.9.0:
    (console `motion`).
 3. Done: replacing a running point-to-point move from its latest sample.
 4. Done: waypoint paths: cubic spline through up to 8 joint waypoints, timed by the time-optimal parameterisation.
-5. Tool lines: straight line and slerp, checked in full before they start; tool limits and the manipulability
+5. Done: tool lines: straight line and slerp, checked in full before they start; tool limits and the manipulability
    threshold in the profile.
 6. Jogging: joint and tool jog with the dead-man; console `jog`.
 7. Teach points in the profile; console `teach` and `goto`; console `movej` with waypoints and `movel`.

@@ -7,6 +7,7 @@ target_include_directories(e_robot_arm.motion.interfaces INTERFACE
 
 target_link_libraries(e_robot_arm.motion.interfaces INTERFACE
     e_robot_arm.joint_bus.interfaces
+    numerical.math
 )
 
 target_sources(e_robot_arm.motion.interfaces PRIVATE

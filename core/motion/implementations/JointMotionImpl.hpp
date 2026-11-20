@@ -2,6 +2,7 @@
 #define CORE_MOTION_IMPLEMENTATIONS_JOINT_MOTION_IMPL_HPP
 
 #include "core/joint_bus/interfaces/JointBus.hpp"
+#include "core/motion/implementations/JointLinePlan.hpp"
 #include "core/motion/implementations/JointMovePlan.hpp"
 #include "core/motion/implementations/JointPathPlan.hpp"
 #include "core/motion/interfaces/JointMotion.hpp"
@@ -13,6 +14,12 @@
 
 namespace arm
 {
+    struct ToolLineSetup
+    {
+        const ArmModel* model{ nullptr };
+        ToolLimits limits{};
+    };
+
     class JointMotionImpl
         : public JointMotion
     {
@@ -21,11 +28,13 @@ namespace arm
         static constexpr std::size_t maxPathSamples{ 64 };
 
         JointMotionImpl(JointBus& bus, const JointLimits& positionLimits, const JointMotionLimits& limits, infra::Duration period, const PoseGuard* guard = nullptr,
-            const JointJerkLimits& jerks = {});
+            const JointJerkLimits& jerks = {}, const ToolLineSetup& lines = {});
 
         bool MoveTo(const JointPositions& target) override;
         bool StepTo(const JointPositions& target) override;
         bool MoveThrough(const JointWaypoints& waypoints) override;
+        bool MoveLine(const ToolPose& target) override;
+        std::optional<LineRefusal> LineRefused() const override;
         void Abort() override;
         bool Moving() const override;
         bool SelectProfile(MotionProfile newProfile) override;
@@ -39,7 +48,8 @@ namespace arm
             none,
             pointToPoint,
             step,
-            path
+            path,
+            line
         };
 
         bool Accepts(const JointPositions& target) const;
@@ -54,6 +64,8 @@ namespace arm
         bool AnyReadingStale() const;
         JointPositions LatestPositions() const;
         JointReference Sampled(float elapsed) const;
+        std::optional<JointReference> StepLine();
+        void Arrive();
         void Finish();
 
         JointBus& bus;
@@ -65,6 +77,8 @@ namespace arm
         const PoseGuard* guard;
         JointMovePlan plan;
         JointPathPlan path;
+        std::optional<JointLinePlan> line;
+        std::optional<LineRefusal> lineRefusal;
         JointPositions target{};
         uint32_t periodsElapsed{ 0 };
         Generator generator{ Generator::none };

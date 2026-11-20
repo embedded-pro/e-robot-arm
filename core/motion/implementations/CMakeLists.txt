@@ -12,10 +12,13 @@ target_link_libraries(e_robot_arm.motion.implementations PUBLIC
     numerical.math
     numerical.motion_profiles
     robotics.trajectory
+    e_robot_arm.arm_model
 )
 
 target_sources(e_robot_arm.motion.implementations PRIVATE
     JointMotionImpl.cpp
+    JointLinePlan.cpp
+    JointLinePlan.hpp
     JointMotionImpl.hpp
     JointMovePlan.cpp
     JointMovePlan.hpp

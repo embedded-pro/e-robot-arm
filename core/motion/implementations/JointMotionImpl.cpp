@@ -20,7 +20,7 @@ namespace arm
     }
 
     JointMotionImpl::JointMotionImpl(JointBus& bus, const JointLimits& positionLimits, const JointMotionLimits& limits, infra::Duration period, const PoseGuard* guard,
-        const JointJerkLimits& jerks)
+        const JointJerkLimits& jerks, const ToolLineSetup& lines)
         : bus(bus)
         , positionLimits(positionLimits)
         , limits(limits)
@@ -30,6 +30,28 @@ namespace arm
     {
         really_assert(std::ranges::all_of(limits, ValidLimit));
         really_assert(period > infra::Duration::zero());
+        if (lines.model != nullptr)
+            line.emplace(*lines.model, lines.limits, limits, guard, PeriodSeconds());
+    }
+
+    bool JointMotionImpl::MoveLine(const ToolPose& newTarget)
+    {
+        lineRefusal.reset();
+        if (!line.has_value() || Moving() || AnyReadingStale())
+            return false;
+
+        lineRefusal = line->Plan(LatestPositions(), newTarget);
+        if (lineRefusal.has_value())
+            return false;
+
+        periodsElapsed = 0;
+        generator = Generator::line;
+        return true;
+    }
+
+    std::optional<LineRefusal> JointMotionImpl::LineRefused() const
+    {
+        return lineRefusal;
     }
 
     bool JointMotionImpl::MoveTo(const JointPositions& newTarget)
@@ -220,21 +242,42 @@ namespace arm
             return std::nullopt;
 
         ++periodsElapsed;
+        if (generator == Generator::line)
+            return StepLine();
+
         const auto elapsed = Elapsed();
         const auto duration = generator == Generator::path ? path.Duration() : plan.Duration();
         const bool arrived = generator == Generator::step || elapsed >= duration;
         const auto reference = arrived ? AtRest(target) : Sampled(elapsed);
-
         if (arrived)
+            Arrive();
+        return reference;
+    }
+
+    std::optional<JointReference> JointMotionImpl::StepLine()
+    {
+        const auto sample = line->Advance();
+        if (!sample.reference.has_value())
         {
-            Finish();
-            NotifyObservers([](auto& observer)
-                {
-                    observer.OnMoveDone();
-                });
+            Abort();
+            return std::nullopt;
         }
 
-        return reference;
+        if (!line->Done())
+            return sample.reference;
+
+        target = sample.reference->positions;
+        Arrive();
+        return AtRest(target);
+    }
+
+    void JointMotionImpl::Arrive()
+    {
+        Finish();
+        NotifyObservers([](auto& observer)
+            {
+                observer.OnMoveDone();
+            });
     }
 
     JointReference JointMotionImpl::Sampled(float elapsed) const

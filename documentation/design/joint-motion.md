@@ -2,7 +2,7 @@
 title: "Joint Motion Design"
 type: design
 status: draft
-version: 0.10.0
+version: 0.11.0
 component: "motion"
 date: 2026-11-20
 ---
@@ -12,7 +12,7 @@ date: 2026-11-20
 | Title     | Joint Motion Design |
 | Type      | design              |
 | Status    | draft               |
-| Version   | 0.10.0              |
+| Version   | 0.11.0              |
 | Component | motion              |
 | Date      | 2026-11-20          |
 
@@ -151,13 +151,16 @@ orientation by spherical interpolation, robotics-toolbox's Cartesian slerp inter
 1 runs along an S-curve whose length and limits are the larger of the line's linear distance under the profile's tool
 speed, acceleration and jerk, and its rotation angle under the tool's angular limits; the line starts and ends at
 rest. Every control period the sampled pose goes through the arm model's inverse kinematics, the solution nearest
-the previous sample, and the joint reference is that solution with speeds and accelerations by differences.
+the previous sample, and the joint reference is that solution with speeds and accelerations by differences; the
+last sample is the target's solution at rest. The tool limits are the profile's `toolLimits`
+([arm-profile.md](arm-profile.md)); a line to the pose the tool already has is done at once.
 
 Before the line starts it is planned in full: every period's pose must have an inverse-kinematics solution within
 the joint limits, a manipulability above the profile's threshold, joint speeds and accelerations within the joint
 limits, and a pose the workspace check accepts. A line that fails any of them is refused, and the refusal names the
-first failing sample's time and the reason; nothing is sent. The run computes the same samples again, so what runs is
-what was checked.
+first failing sample's time and the reason: unreachable, outside the joint limits, near a singularity, too fast for a
+joint, or outside the workspace; nothing is sent. The run computes the same samples again, so what runs is what was
+checked. A line runs alone, as a path does: a new target, path or line is refused until it is done or aborted.
 
 ### Part I — Jogging
 

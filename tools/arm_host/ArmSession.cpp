@@ -10,7 +10,8 @@ namespace arm_host
         bool NeedsMotionPermission(const ArmCommand& command)
         {
             return std::holds_alternative<SelectMode>(command) || std::holds_alternative<StartJoints>(command) || std::holds_alternative<AlignJoints>(command) ||
-                   std::holds_alternative<MoveTo>(command) || std::holds_alternative<StepTo>(command) || std::holds_alternative<MoveThrough>(command);
+                   std::holds_alternative<MoveTo>(command) || std::holds_alternative<StepTo>(command) || std::holds_alternative<MoveThrough>(command) ||
+                   std::holds_alternative<MoveLine>(command);
         }
 
         bool DeliveredByTheJoints(const ArmCommand& command)
@@ -308,6 +309,11 @@ namespace arm_host
             return session.arm.Lifecycle().MoveThrough(path.waypoints);
         }
 
+        bool operator()(const MoveLine& line) const
+        {
+            return session.arm.Lifecycle().MoveLine(arm::ToTransform(line.target));
+        }
+
         bool operator()(const AbortMove&) const
         {
             session.arm.Motion().Abort();
@@ -497,6 +503,8 @@ namespace arm_host
             return *reason;
         if (const auto* path = std::get_if<MoveThrough>(&command))
             return PathRefusal(*path);
+        if (std::holds_alternative<MoveLine>(command))
+            return LineRefusal();
         if (std::holds_alternative<MoveTo>(command) || std::holds_alternative<StepTo>(command))
             return MoveRefusal(command);
         if (DeliveredByTheJoints(command))
@@ -555,6 +563,22 @@ namespace arm_host
                 }))
             return "a waypoint is outside the joint limits";
         return "the path leaves the joint limits or the workspace, meets the arm itself, or repeats a waypoint";
+    }
+
+    std::string_view ArmSession::LineRefusal() const
+    {
+        static constexpr std::array<std::string_view, 5> faults{ "unreachable", "outside the joint limits", "near a singularity", "too fast for a joint",
+            "outside the workspace" };
+        const auto state = arm.Lifecycle().State();
+        if (state == arm::ArmState::holding)
+            return "holding after a protective stop: re-arm first";
+        if (state != arm::ArmState::enabled)
+            return Moving() ? "moving" : "the arm is not enabled";
+        const auto refusal = arm.Motion().LineRefused();
+        if (!refusal.has_value())
+            return "a joint's reading is stale";
+        lineRefusal = std::format("{} at {:.2f} s", faults[static_cast<std::size_t>(refusal->fault)], refusal->timeS);
+        return lineRefusal;
     }
 
     std::string_view ArmSession::ArmControllerRefusal(arm::ArmControllerId id) const

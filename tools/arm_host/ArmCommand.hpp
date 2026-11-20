@@ -2,6 +2,7 @@
 #define TOOLS_ARM_HOST_ARM_COMMAND_HPP
 
 #include "core/arm_controllers/interfaces/ArmControllers.hpp"
+#include "core/arm_model/ArmGeometry.hpp"
 #include "core/joint_bus/interfaces/JointBus.hpp"
 #include "core/joint_configurator/interfaces/ControllerSettings.hpp"
 #include "core/joint_configurator/interfaces/MotorSettings.hpp"
@@ -52,6 +53,11 @@ namespace arm_host
     struct MoveThrough
     {
         arm::JointWaypoints::WithMaxSize<arm::maxWaypoints> waypoints;
+    };
+
+    struct MoveLine
+    {
+        arm::Placement target;
     };
 
     struct AbortMove
@@ -141,7 +147,7 @@ namespace arm_host
     };
 
     using ArmCommand = std::variant<CheckContracts, SelectMode, StartJoints, StopJoints, ClearFaults, EmergencyStop, Rearm, MoveTo, AbortMove, InjectFault, SilenceJoint,
-        BringUp, Enable, Disable, ApplyController, ReadController, ApplyMotor, ReadMotor, EnableArmController, DisableArmController, SelectArmController, AlignJoints, RestartMotor, ResumeJoint, CollideJoint, PowerOffMotor, StepTo, SelectMotionProfile, MoveThrough>;
+        BringUp, Enable, Disable, ApplyController, ReadController, ApplyMotor, ReadMotor, EnableArmController, DisableArmController, SelectArmController, AlignJoints, RestartMotor, ResumeJoint, CollideJoint, PowerOffMotor, StepTo, SelectMotionProfile, MoveThrough, MoveLine>;
 
     std::string_view CommandName(const ArmCommand& command);
     std::string_view StateName(arm::ArmState state);
