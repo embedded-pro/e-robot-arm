@@ -1,6 +1,7 @@
 #ifndef CORE_ARM_ARM_CONFIG_HPP
 #define CORE_ARM_ARM_CONFIG_HPP
 
+#include "core/arm_controllers/implementations/CartesianImpedance.hpp"
 #include "core/arm_controllers/implementations/GravityCompensatedPd.hpp"
 #include "core/arm_controllers/implementations/JointImpedance.hpp"
 #include "core/arm_model/ArmGeometry.hpp"
@@ -48,6 +49,7 @@ namespace arm
         BandwidthTuning computedTorque{};
         BandwidthTuning gravityPid{ 20.0f, 0.7f };
         JointImpedanceTuning jointImpedance{};
+        CartesianImpedanceTuning cartesianImpedance{};
         TrackingLimits tracking{};
         CollisionLimits collision{ DefaultCollisionLimits() };
         std::array<std::optional<foc::RadiansPerSecond>, jointCount> speedTrips{};

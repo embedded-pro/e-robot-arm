@@ -281,6 +281,8 @@ namespace arm
                     return ReadTuning(path, value, profile.config.gravityPid);
                 if (key == "jointImpedance")
                     return ReadImpedance(path, value, profile.config.jointImpedance);
+                if (key == "cartesianImpedance")
+                    return ReadCartesianImpedance(path, value, profile.config.cartesianImpedance);
                 if (key == "collisionObserverGainPerS")
                     return ReadBounded(path, value, 1000.0f, "must be above 0 and at most 1000", profile.config.collisionObserverGain);
                 if (key == "safety")
@@ -393,6 +395,20 @@ namespace arm
                             tuning.stiffness = stiffness;
                             return true;
                         }
+                        if (key == "dampingRatio")
+                            return ReadBounded(item, member, 5.0f, "must be above 0 and at most 5", tuning.dampingRatio);
+                        return Unknown(item);
+                    });
+            }
+
+            bool ReadCartesianImpedance(const Path& path, const Value& value, CartesianImpedanceTuning& tuning)
+            {
+                return ReadMembers(path, value, [this, &tuning](const Path& item, infra::JsonString key, const Value& member)
+                    {
+                        if (key == "translationalStiffnessNPerM")
+                            return ReadPositive(item, member, tuning.translationalStiffness);
+                        if (key == "rotationalStiffnessNmPerRad")
+                            return ReadPositive(item, member, tuning.rotationalStiffness);
                         if (key == "dampingRatio")
                             return ReadBounded(item, member, 5.0f, "must be above 0 and at most 5", tuning.dampingRatio);
                         return Unknown(item);
@@ -1185,6 +1201,13 @@ namespace arm
                 Tuning(config.gravityPid);
                 stream << ",\n  \"jointImpedance\": ";
                 Impedance(config.jointImpedance);
+                stream << ",\n  \"cartesianImpedance\": { \"translationalStiffnessNPerM\": ";
+                Number(config.cartesianImpedance.translationalStiffness);
+                stream << ", \"rotationalStiffnessNmPerRad\": ";
+                Number(config.cartesianImpedance.rotationalStiffness);
+                stream << ", \"dampingRatio\": ";
+                Number(config.cartesianImpedance.dampingRatio);
+                stream << " }";
                 stream << ",\n  \"collisionObserverGainPerS\": ";
                 Number(config.collisionObserverGain);
                 stream << ",\n  \"motionProfile\": \"" << motionProfileNames[static_cast<std::size_t>(config.motionProfile)] << "\"";

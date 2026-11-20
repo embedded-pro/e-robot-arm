@@ -56,7 +56,8 @@ namespace arm
         , gravityPd(model, GravityPdGains(model, config))
         , computedTorque(model, ReflectedRotors(config), config.computedTorque)
         , gravityPid(model, ReflectedRotors(config), config.gravityPid, config.controlPeriod)
-        , jointImpedance(model, HomeInertias(model, ReflectedRotors(config)), config.jointImpedance)
+        , jointImpedance(model, ReflectedRotors(config), config.jointImpedance)
+        , cartesianImpedance(model, ReflectedRotors(config), config.cartesianImpedance)
         , collision(model, ReflectedRotors(config), config.collisionObserverGain)
         , period(config.controlPeriod)
         , torqueLimits(Supervision(config).torque)
@@ -72,6 +73,7 @@ namespace arm
         controllers.Enable(controllers.Register("computed-torque", computedTorque));
         controllers.Enable(controllers.Register("gravity-pid", gravityPid));
         controllers.Enable(controllers.Register("joint-impedance", jointImpedance));
+        controllers.Enable(controllers.Register("cartesian-impedance", cartesianImpedance));
         controllers.Select(gravityPdId);
         motion.SelectProfile(config.motionProfile);
     }
@@ -126,14 +128,17 @@ namespace arm
         return controllers;
     }
 
-    JointImpedance& Arm::Impedance()
+    bool Arm::SetImpedanceShare(float share)
     {
-        return jointImpedance;
+        if (!jointImpedance.SetStiffnessShare(share))
+            return false;
+        cartesianImpedance.SetStiffnessShare(share);
+        return true;
     }
 
-    const JointImpedance& Arm::Impedance() const
+    float Arm::ImpedanceShare() const
     {
-        return jointImpedance;
+        return jointImpedance.StiffnessShare();
     }
 
     const std::optional<JointTorques>& Arm::EstimatedExternalTorques() const

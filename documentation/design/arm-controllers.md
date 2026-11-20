@@ -2,7 +2,7 @@
 title: "Arm Controllers Design"
 type: design
 status: draft
-version: 0.14.0
+version: 0.15.0
 component: "arm-controllers"
 date: 2026-11-20
 ---
@@ -12,7 +12,7 @@ date: 2026-11-20
 | Title     | Arm Controllers Design |
 | Type      | design                 |
 | Status    | draft                  |
-| Version   | 0.14.0                 |
+| Version   | 0.15.0                 |
 | Component | arm-controllers        |
 | Date      | 2026-11-20             |
 
@@ -164,29 +164,49 @@ Phase 5 ([#21](https://github.com/embedded-pro/e-robot-arm/issues/21)) adds four
 robotics-toolbox's manipulator controllers over the arm model, each with its parameters in the arm profile and each
 registered and enabled beside the others (Part B), `slotine-li` only when the profile allows it:
 
-| Name                  | Law                                                                                                    | Bumpless |
-|-----------------------|--------------------------------------------------------------------------------------------------------|----------|
-| `joint-impedance`     | `τ = K·(q* − q) + D·(q̇* − q̇) + G(q)`: a spring and damper per joint around the reference, plus gravity | yes      |
-| `cartesian-impedance` | `τ = Jᵀ·(K·e + D·ė) + G(q)`: a spring and damper on the tool's pose error e, in the base frame         | yes      |
-| `operational-space`   | `τ = Jᵀ·Λ·(ẍ* + Kd·ė + Kp·e − J̇·q̇) + C + G`: the tool follows the reference as a decoupled system      | yes      |
-| `slotine-li`          | `τ = Y·â − Kd·s, with s = q̇ − q̇r and â adapted as â̇ = −Γ·Yᵀ·s`: learns the arm's inertial parameters   | yes      |
+| Name                  | Law                                                                                                                                                           | Bumpless |
+|-----------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|
+| `joint-impedance`     | `τ = ID(q, q̇*, q̈*) + K·(q* − q) + D·(q̇* − q̇)`: the reference's inverse dynamics, a spring per joint and a coupled damper                                      | yes      |
+| `cartesian-impedance` | `τ = ID(q, q̇*, q̈*) + Jᵀ·K·e + D·(q̇* − q̇)`: the reference's inverse dynamics, a spring on the tool's pose error e in the base frame and a coupled joint damper | yes      |
+| `operational-space`   | `τ = Jᵀ·Λ·(ẍ* + Kd·ė + Kp·e − J̇·q̇) + C + G`: the tool follows the reference as a decoupled system                                                             | yes      |
+| `slotine-li`          | `τ = Y·â − Kd·s, with s = q̇ − q̇r and â adapted as â̇ = −Γ·Yᵀ·s`: learns the arm's inertial parameters                                                          | yes      |
 
-**Joint impedance.** The arm yields to a push as a spring of stiffness K and a damper D per joint, centred on the
-reference, with gravity compensated so it holds its own weight; nothing else is cancelled, so a move lags the
-reference by about D/K times its speed. The profile names each joint's stiffness K (N·m/rad, above 0) and one damping
-ratio ζ; D = 2·ζ·√(K·Jᵢᵢ), with Jᵢᵢ the joint's inertia at home with its rotor (Part A). The stiffness can be changed at
-run time, between a tenth of the profile's value and the profile's value, so an operator can soften the arm without
-a stiffer arm than the profile allows. It has no state: at a switch the reference is the measured pose, so its
-first set is `G(q) − D·q̇`.
+**Joint impedance.** The arm yields to a push as a spring of stiffness K per joint and a damper D, centred on the
+reference. The reference's own dynamics are fed forward, `M(q)·q̈* + C(q, q̇*)·q̇* + G(q)`, the model's inverse
+dynamics at the measured pose with the reference's speeds and accelerations, so with an exact model the arm follows
+the reference and the spring and damper only answer a push or the model's error; the stiffness to a push is the
+same as without it. The profile names each joint's stiffness K (N·m/rad, above 0) and one damping ratio ζ. Without
+stiffnesses each joint gets (10 rad/s)² times its inertia at home with the other joints free, 1 / (M₀⁻¹)ᵢᵢ with M₀ the
+mass matrix at home with the rotors. The damping is coupled, D = 2·ζ·W·M(q)·W with W = diag(√ωᵢ), ωᵢ = √(Kᵢ / Mᵢᵢ) and
+M(q) the mass matrix at the measured pose with the rotors: its diagonal is 2·ζ·√(Kᵢ·Mᵢᵢ), and with every ωᵢ equal it
+is `gravity-pd`'s 2·ζ·ω·M. The stiffness can be changed at run time, between a tenth of the profile's value and the
+profile's value, so an operator can soften the arm without a stiffer arm than the profile allows. It has no state:
+at a switch the reference is the measured pose at rest, so its first set is `G(q) − D·q̇`.
 
-**Cartesian impedance.** robotics-toolbox's `ImpedanceControl` without inertia shaping: the spring and damper act on
-the tool, the reference's tool pose (its forward kinematics) and twist (the Jacobian times its speeds) against the
-measured ones, and Jᵀ turns the wrench into torques, so it needs no inverse and stays well-behaved near a
-singularity, where it simply cannot push the tool along the lost direction. The profile names a translational
-stiffness (N/m) and a rotational one (N·m/rad), each the same on the three axes, and one damping ratio; the damping
-uses the tool's apparent mass at home, Λ = (J·M⁻¹·Jᵀ)⁻¹, diagonal by diagonal. The stiffnesses change at run time as
-the joint's do. It needs the arm model to provide the toolbox's `JacobianProvider`: the tool Jacobian, the tool pose
-and J̇·q̇.
+Why this form, measured on the simulated reference arm, whose wrist is direct drive and light (joint 5 about
+5·10⁻⁴ kg·m², joint 6 about 3·10⁻⁵ kg·m²) at a 10 ms period: with gravity alone fed forward, a 1 rad/s move from home
+pushed joint 5 0.3 rad off its reference through the coupling with joints 2 and 3, beyond the 0.2 rad tracking
+window; with a diagonal damper sized on each joint's own inertia, and stiffness on (Mᵢᵢ) rather than the free inertia,
+the coupled wrist's fastest mode sat near 40 rad/s with ζ about 0.2, and a 0.05 rad step on joint 5 at
+(0, 0.3, 0.3, 0, 0.5, 0) never settled; a larger ζ made it diverge sooner.
+
+**Cartesian impedance.** The same law with the spring on the tool: τ = `M(q)·q̈* + C(q, q̇*)·q̇* + G(q)` + Jᵀ·K·e +
+D·(q̇* − q̇), with e the pose error between the reference's tool pose (its forward kinematics) and the measured one
+(robotics-toolbox's `TaskError`) and J the tool Jacobian at the measured pose. Jᵀ turns the spring's wrench into
+torques, so it needs no inverse and stays well-behaved near a singularity, where it simply cannot push the tool
+along the lost direction. The profile names a translational stiffness (N/m) and a rotational one (N·m/rad), each the
+same on the three axes, and one damping ratio. The damper acts on the joints, D = 2·ζ·W·M(q)·W as above with
+Kᵢ = (Jᵀ·K·J)ᵢᵢ, the stiffness the tool's spring puts on joint i at the measured pose: a damper on the tool sized
+from its apparent mass Λ = (J·M⁻¹·Jᵀ)⁻¹ does not exist at the singular home (stretched upright, the wrist aligned),
+and one sized per base axis from the effective mass 1 / (J·M⁻¹·Jᵀ)ᵢᵢ passes the heavy joints' mass to the light wrist
+joints, which then diverged at 10 ms. One stiffness share, set at run time between 0.1 and 1, scales both impedance
+controllers' stiffnesses. It needs the arm model to provide the toolbox's `JacobianProvider` in the dynamics'
+coordinates: the tool Jacobian, the tool pose and J̇·q̇ ([arm-model.md](arm-model.md) Part B).
+
+Its defaults are sized for the reference arm at 10 ms: every rotational stiffness lands on joint 6 alone, so
+ω₆ ≈ √(K / 3·10⁻⁵ kg·m²). 50 N/m and 0.07 N·m/rad finished moves through four poses and back home, with a 0.05 rad
+reference step at each, on the simulated arm; 0.2 N·m/rad diverged on joints 4 and 6 near home, and 100 N/m let a
+reference step drive the wrist past its speed rule. A profile for an arm with geared wrists can be far stiffer.
 
 **Operational space.** robotics-toolbox's `OperationalSpaceControl` with the full six-dimensional tool task: the task
 inertia Λ, the Coriolis and gravity terms cancel the arm's dynamics as seen at the tool, so the tool follows the
@@ -206,9 +226,14 @@ switch away and back does not lose what was learnt; the console can set them bac
 **Gains away from home.** `gravity-pd` and `gravity-pid` size their gains from the inertia at home (Part A), and at
 some poses the arm's coupled modes are then lightly damped: on the simulated arm at 0.1, 0.5, 0.6, 0.2, 1.0, 0 rad the
 base and wrist joints 1, 4 and 6 swing together by about ±6 mrad with a period near 1.2 s, decaying over seconds. The
-controllers that use the mass matrix at the measured pose (`computed-torque`, `operational-space`) do not have it.
-Whether the joint-space laws recompute J at the measured pose every period, at the cost of a mass matrix per period,
-is open question 3.
+controllers that use the mass matrix at the measured pose (`computed-torque`, `operational-space` and the two
+impedance laws' dampers) do not have it. Whether `gravity-pd` and `gravity-pid` recompute J at the measured pose every
+period, at the cost of a mass matrix per period, is open question 3.
+
+**A softened arm and the tracking window.** With the stiffness share at 0.1, both impedance laws let a full-speed move
+(1 rad/s, 2 rad/s²) on the simulated reference arm leave a wrist joint 0.2 to 0.37 rad behind its reference, beyond the
+0.2 rad tracking window, and the supervisor holds the arm (safety.md Part F). A soft arm is for slow moves and for
+being guided; whether the window widens with the share is open question 4.
 
 ---
 
@@ -235,23 +260,29 @@ is open question 3.
 
 ## Data Model
 
-| Entity            | Field                 | Type / Unit     | Range        | Notes                                         |
-|-------------------|-----------------------|-----------------|--------------|-----------------------------------------------|
-| Measured joints   | positions             | radians         | finite       | Latest reading per joint                      |
-| Measured joints   | speeds                | radians/second  | finite       | Latest reading per joint                      |
-| Setpoint set      | positions             | radians         | joint limits | The reference, for the trace and the check    |
-| Setpoint set      | torques               | N·m, joint side | finite       | Sent to the joints                            |
-| `gravity-pd`      | bandwidth             | rad/s           | above 0      | 30 by default; Kp = ω²·J                      |
-| `gravity-pd`      | damping ratio         | 1               | above 0      | 0.7 by default; Kd = 2·ζ·ω·J                  |
-| `computed-torque` | bandwidth             | rad/s           | above 0      | 30 by default; Kp = ω²·I                      |
-| `computed-torque` | damping ratio         | 1               | above 0      | 0.7 by default; Kd = 2·ζ·ω·I                  |
-| `gravity-pid`     | bandwidth             | rad/s           | above 0      | 20 by default; Kp = (2ζ + 1)·ω², Ki = ω³      |
-| `gravity-pid`     | damping ratio         | 1               | above 0      | 0.7 by default; Kd = (2ζ + 1)·ω, on the speed |
-| `gravity-pid`     | output limit          | rad/s²          | ±200         | Per joint; the integral's anti-windup         |
-| Reference         | speeds, accelerations | rad/s, rad/s²   | finite       | Zero while holding                            |
-| Registry entry    | id                    | integer         | 0–7          | Registration order                            |
-| Registry entry    | name                  | text            | unique       | The names of Parts A and D                    |
-| Registry entry    | enabled               | flag            |              | Registered disabled                           |
+| Entity                | Field                   | Type / Unit     | Range        | Notes                                           |
+|-----------------------|-------------------------|-----------------|--------------|-------------------------------------------------|
+| Measured joints       | positions               | radians         | finite       | Latest reading per joint                        |
+| Measured joints       | speeds                  | radians/second  | finite       | Latest reading per joint                        |
+| Setpoint set          | positions               | radians         | joint limits | The reference, for the trace and the check      |
+| Setpoint set          | torques                 | N·m, joint side | finite       | Sent to the joints                              |
+| `gravity-pd`          | bandwidth               | rad/s           | above 0      | 30 by default; Kp = ω²·J                        |
+| `gravity-pd`          | damping ratio           | 1               | above 0      | 0.7 by default; Kd = 2·ζ·ω·J                    |
+| `computed-torque`     | bandwidth               | rad/s           | above 0      | 30 by default; Kp = ω²·I                        |
+| `computed-torque`     | damping ratio           | 1               | above 0      | 0.7 by default; Kd = 2·ζ·ω·I                    |
+| `gravity-pid`         | bandwidth               | rad/s           | above 0      | 20 by default; Kp = (2ζ + 1)·ω², Ki = ω³        |
+| `gravity-pid`         | damping ratio           | 1               | above 0      | 0.7 by default; Kd = (2ζ + 1)·ω, on the speed   |
+| `gravity-pid`         | output limit            | rad/s²          | ±200         | Per joint; the integral's anti-windup           |
+| `joint-impedance`     | stiffness               | N·m/rad         | above 0      | Per joint; (10 rad/s)² over (M₀⁻¹)ᵢᵢ by default |
+| `joint-impedance`     | damping ratio           | 1               | above 0      | 0.7 by default; D = 2·ζ·W·M(q)·W                |
+| `cartesian-impedance` | translational stiffness | N/m             | above 0      | 50 by default, on each axis                     |
+| `cartesian-impedance` | rotational stiffness    | N·m/rad         | above 0      | 0.07 by default, about each axis                |
+| `cartesian-impedance` | damping ratio           | 1               | above 0      | 0.7 by default; D = 2·ζ·W·M(q)·W on Jᵀ·K·J      |
+| Impedance             | stiffness share         | 1               | 0.1–1        | Scales both impedance controllers' stiffnesses  |
+| Reference             | speeds, accelerations   | rad/s, rad/s²   | finite       | Zero while holding                              |
+| Registry entry        | id                      | integer         | 0–7          | Registration order                              |
+| Registry entry        | name                    | text            | unique       | The names of Parts A and D                      |
+| Registry entry        | enabled                 | flag            |              | Registered disabled                             |
 
 ---
 
@@ -315,3 +346,4 @@ sequenceDiagram
 | 1 | Whether the profile stores the enabled and active ones  | Profile section; console and simulator choice only | open: with phase 5           |
 | 2 | Whether a switch to a non-bumpless controller may blend | Refuse while moving; ramp from the old set         | decided: refuse while moving |
 | 3 | Gains of the joint-space laws away from home            | Inertia at home; mass matrix at the measured pose  | open (Part D)                |
+| 4 | Whether the tracking window follows the stiffness share | Fixed window; window over the share                | open (Part D)                |

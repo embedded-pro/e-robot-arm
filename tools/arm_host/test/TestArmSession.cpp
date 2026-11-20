@@ -635,12 +635,13 @@ TEST_F(ArmSessionConfiguringTest, names_the_joint_whose_motor_controller_reads_b
 TEST_F(ArmSessionTest, lists_the_arm_controllers_and_reports_each_change_of_the_active_one)
 {
     Execute(1, arm_host::CheckContracts{});
-    ASSERT_EQ(4u, sink.snapshot.armControllers.size());
+    ASSERT_EQ(5u, sink.snapshot.armControllers.size());
     EXPECT_EQ("gravity-pd", sink.snapshot.armControllers[0].name);
     EXPECT_EQ("computed-torque", sink.snapshot.armControllers[1].name);
     EXPECT_TRUE(sink.snapshot.armControllers[1].enabled);
     EXPECT_EQ("gravity-pid", sink.snapshot.armControllers[2].name);
     EXPECT_EQ("joint-impedance", sink.snapshot.armControllers[3].name);
+    EXPECT_EQ("cartesian-impedance", sink.snapshot.armControllers[4].name);
     EXPECT_TRUE(sink.snapshot.armControllers[0].active);
     EXPECT_TRUE(sink.snapshot.armControllers[0].enabled);
 

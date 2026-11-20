@@ -2,9 +2,9 @@
 title: "Arm Model Design"
 type: design
 status: draft
-version: 0.3.0
+version: 0.4.0
 component: "arm_model"
-date: 2026-11-13
+date: 2026-11-20
 ---
 
 | Field     | Value            |
@@ -12,9 +12,9 @@ date: 2026-11-13
 | Title     | Arm Model Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.3.0            |
+| Version   | 0.4.0            |
 | Component | arm_model        |
-| Date      | 2026-11-13       |
+| Date      | 2026-11-20       |
 
 > The arm's geometry and mass, and what follows from them: the tool pose of a set of joint positions, the joint
 > positions of a tool pose, the Jacobian and the singularities, the gravity torque, the joint torques of a motion and
@@ -73,6 +73,10 @@ It is invented: about 0.56 m of reach from the shoulder, standing for a desktop 
 
 - **Tool pose** of six joint positions: base · flange · tool.
 - **Jacobian**: 6 × 6, linear rows first, in the base frame, at the tool centre point.
+- **Task Jacobian**: the same Jacobian, tool pose and bias acceleration J̇·q̇ as robotics-toolbox's
+  `JacobianProvider`, in the dynamics' coordinates (each joint's sign and offset applied), so the toolbox's
+  manipulator controllers take the model's Jacobian with its mass matrix and gravity
+  ([arm-controllers.md](arm-controllers.md) Part D).
 - **Manipulability**: |det J|.
 - **Singularities**: wrist, elbow and shoulder, each flagged on its own by the thresholds of the theory.
 - **Link frames**: the pose of each of the six links in the base frame, at its joint, as

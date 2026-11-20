@@ -6,6 +6,7 @@
 #include "core/joint_bus/interfaces/JointBus.hpp"
 #include "numerical/math/Matrix.hpp"
 #include "robotics/dynamics/ChainDynamicsModel.hpp"
+#include "robotics/kinematics/ChainPoseKinematics.hpp"
 #include <cstdint>
 #include <optional>
 
@@ -47,6 +48,7 @@ namespace arm
         using Jacobian = math::Matrix<float, 6, 6>;
         using MassMatrix = math::SquareMatrix<float, 6>;
         using LinkFrames = std::array<Pose, jointCount>;
+        using FrameChain = kinematics::FrameChain<float, jointCount>;
 
         static constexpr float singularSine{ 0.01f };
         static constexpr float shoulderDistance{ 0.005f };
@@ -73,6 +75,7 @@ namespace arm
         const DynamicLinks& Links() const;
         const math::Vector3<float>& Gravity() const;
         JointVector ModelVector(const JointPositions& joints) const;
+        FrameChain Frames(const JointVector& angles) const;
         JointVector ModelSpeeds(const JointSpeeds& speeds) const;
         JointVector ModelAccelerations(const JointAccelerations& accelerations) const;
         JointVector ModelTorques(const JointTorques& torques) const;

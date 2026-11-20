@@ -140,13 +140,14 @@ designed in [joint-motion.md](design/joint-motion.md) 0.9.0:
 ## Phase 5 — Arm controllers
 
 The order of work for [#21](https://github.com/embedded-pro/e-robot-arm/issues/21), each step a pull request,
-designed in [arm-controllers.md](design/arm-controllers.md) 0.14.0 Part D. `gravity-pd`, `computed-torque` and
+designed in [arm-controllers.md](design/arm-controllers.md) 0.15.0 Part D. `gravity-pd`, `computed-torque` and
 `gravity-pid` are done.
 
 1. Design: joint and Cartesian impedance, operational space, Slotine–Li adaptive.
 2. Done: `joint-impedance`: per-joint stiffness and a damping ratio in the profile, stiffness changed at run time within
    the profile's; console and host.
-3. The arm model as robotics-toolbox's `JacobianProvider`; `cartesian-impedance`.
+3. Done: the arm model as robotics-toolbox's `JacobianProvider`; `cartesian-impedance`; both impedance laws feed the
+   reference's inverse dynamics forward and damp with the coupled mass matrix at the measured pose.
 4. `operational-space`.
 5. `slotine-li` behind the profile's `experimental` flag, its parameters kept across switches and reset on demand.
 6. Open questions: gains away from home (measured on the virtual arm, Part D) and whether the profile keeps the
