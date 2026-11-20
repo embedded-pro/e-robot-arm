@@ -2,7 +2,7 @@
 title: "Arm Controllers Design"
 type: design
 status: draft
-version: 0.19.0
+version: 0.20.0
 component: "arm-controllers"
 date: 2026-11-20
 ---
@@ -12,7 +12,7 @@ date: 2026-11-20
 | Title     | Arm Controllers Design |
 | Type      | design                 |
 | Status    | draft                  |
-| Version   | 0.19.0                 |
+| Version   | 0.20.0                 |
 | Component | arm-controllers        |
 | Date      | 2026-11-20             |
 
@@ -162,6 +162,10 @@ that runs before the others would otherwise wait without setpoints and stop on i
 not running yet keeps the setpoint without acting on it.
 
 ### Part D — Impedance, operational space and adaptive control
+
+The mathematics behind these laws and the gains of Parts A and C is in
+[arm-control-laws.md](../theory/arm-control-laws.md). Every controller is verified by `arm_controller_catalogue.feature`:
+selected before the arm is enabled (REQ-CTL-002) and switched while it holds a pose (REQ-CTL-001).
 
 Phase 5 ([#21](https://github.com/embedded-pro/e-robot-arm/issues/21)) adds four controllers, each from
 robotics-toolbox's manipulator controllers over the arm model, each with its parameters in the arm profile and each

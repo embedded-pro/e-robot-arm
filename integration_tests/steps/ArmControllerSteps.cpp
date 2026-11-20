@@ -2,7 +2,9 @@
 #include "integration_tests/support/ArmFixture.hpp"
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <gtest/gtest.h>
+#include <iostream>
 
 using integration::ArmFixture;
 using namespace std::chrono_literals;
@@ -15,6 +17,13 @@ namespace
         EXPECT_TRUE(id.has_value()) << name;
         return id;
     }
+}
+
+GIVEN(R"(an arm with six simulated joints {word} experimental controllers)", (const std::string& allowing))
+{
+    auto config = ArmFixture::DefaultConfig();
+    config.experimental = allowing == "with";
+    context.Emplace<ArmFixture>(config);
 }
 
 WHEN(R"({int} ms pass)", (std::int32_t milliseconds))
@@ -62,4 +71,35 @@ WHEN(R"(the arm is disabled)")
     EXPECT_TRUE(fixture.arm.Lifecycle().Disable());
     fixture.ForwardTime(30ms);
     EXPECT_EQ(arm::ArmState::ready, fixture.arm.Lifecycle().State());
+}
+
+THEN(R"(a second after the move every joint shall be within {float} rad of its target)", (float tolerance))
+{
+    auto& fixture = context.Get<ArmFixture>();
+    fixture.ForwardTime(1s);
+    float largest{ 0.0f };
+    for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+    {
+        largest = std::max(largest, std::abs(fixture.target[joint].Value() - fixture.arm.Safety().Reading(joint).position.Value()));
+        EXPECT_NEAR(fixture.target[joint].Value(), fixture.arm.Safety().Reading(joint).position.Value(), tolerance) << "joint " << joint + 1;
+    }
+    std::cout << "[METRIC] arm_controllers.settled_error_rad=" << largest << " limit=" << tolerance << std::endl;
+}
+
+THEN(R"(for {int} ms every joint shall stay within {float} rad of where it was)", (std::int32_t milliseconds, float tolerance))
+{
+    auto& fixture = context.Get<ArmFixture>();
+    arm::JointPositions held{};
+    for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+        held[joint] = fixture.arm.Safety().Reading(joint).position;
+
+    float largest{ 0.0f };
+    for (std::int32_t elapsed = 0; elapsed < milliseconds; elapsed += 10)
+    {
+        fixture.ForwardTime(10ms);
+        for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+            largest = std::max(largest, std::abs(fixture.arm.Safety().Reading(joint).position.Value() - held[joint].Value()));
+    }
+    std::cout << "[METRIC] arm_controllers.switch_drift_rad=" << largest << " limit=" << tolerance << std::endl;
+    EXPECT_LE(largest, tolerance);
 }
