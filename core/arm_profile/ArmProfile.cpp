@@ -275,29 +275,36 @@ namespace arm
                     return ReadMass(path, value, profile.config.mass);
                 if (key == "meshes")
                     return ReadMeshes(path, value, profile.meshes);
-                if (key == "gravityPd")
-                    return ReadTuning(path, value, profile.config.gravityPd);
-                if (key == "computedTorque")
-                    return ReadTuning(path, value, profile.config.computedTorque);
-                if (key == "gravityPid")
-                    return ReadTuning(path, value, profile.config.gravityPid);
-                if (key == "jointImpedance")
-                    return ReadImpedance(path, value, profile.config.jointImpedance);
-                if (key == "cartesianImpedance")
-                    return ReadCartesianImpedance(path, value, profile.config.cartesianImpedance);
-                if (key == "operationalSpace")
-                    return ReadOperationalSpace(path, value, profile.config.operationalSpace);
-                if (key == "slotineLi")
-                    return ReadSlotineLi(path, value, profile.config.slotineLi);
-                if (key == "experimental")
-                    return ReadFlag(path, value, profile.config.experimental);
-                if (key == "armController")
-                    return ReadArmController(path, value, profile.config.activeController);
                 if (key == "collisionObserverGainPerS")
                     return ReadBounded(path, value, 1000.0f, "must be above 0 and at most 1000", profile.config.collisionObserverGain);
                 if (key == "safety")
                     return ReadSafety(path, value, profile.config.workspace);
+                if (const auto read = ReadControllerItem(path, key, value, profile.config); read.has_value())
+                    return *read;
                 return Unknown(path);
+            }
+
+            std::optional<bool> ReadControllerItem(const Path& path, infra::JsonString key, const Value& value, ArmConfig& config)
+            {
+                if (key == "gravityPd")
+                    return ReadTuning(path, value, config.gravityPd);
+                if (key == "computedTorque")
+                    return ReadTuning(path, value, config.computedTorque);
+                if (key == "gravityPid")
+                    return ReadTuning(path, value, config.gravityPid);
+                if (key == "jointImpedance")
+                    return ReadImpedance(path, value, config.jointImpedance);
+                if (key == "cartesianImpedance")
+                    return ReadCartesianImpedance(path, value, config.cartesianImpedance);
+                if (key == "operationalSpace")
+                    return ReadOperationalSpace(path, value, config.operationalSpace);
+                if (key == "slotineLi")
+                    return ReadSlotineLi(path, value, config.slotineLi);
+                if (key == "experimental")
+                    return ReadFlag(path, value, config.experimental);
+                if (key == "armController")
+                    return ReadArmController(path, value, config.activeController);
+                return std::nullopt;
             }
 
             bool ReadTeachPoints(const Path& path, const Value& value, ArmConfig& config)
