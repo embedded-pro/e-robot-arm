@@ -283,6 +283,8 @@ namespace arm
                     return ReadImpedance(path, value, profile.config.jointImpedance);
                 if (key == "cartesianImpedance")
                     return ReadCartesianImpedance(path, value, profile.config.cartesianImpedance);
+                if (key == "operationalSpace")
+                    return ReadOperationalSpace(path, value, profile.config.operationalSpace);
                 if (key == "collisionObserverGainPerS")
                     return ReadBounded(path, value, 1000.0f, "must be above 0 and at most 1000", profile.config.collisionObserverGain);
                 if (key == "safety")
@@ -411,6 +413,20 @@ namespace arm
                             return ReadPositive(item, member, tuning.rotationalStiffness);
                         if (key == "dampingRatio")
                             return ReadBounded(item, member, 5.0f, "must be above 0 and at most 5", tuning.dampingRatio);
+                        return Unknown(item);
+                    });
+            }
+
+            bool ReadOperationalSpace(const Path& path, const Value& value, OperationalSpaceTuning& tuning)
+            {
+                return ReadMembers(path, value, [this, &tuning](const Path& item, infra::JsonString key, const Value& member)
+                    {
+                        if (key == "bandwidthRadPerS")
+                            return ReadBounded(item, member, 500.0f, "must be above 0 and at most 500", tuning.bandwidth);
+                        if (key == "dampingRatio")
+                            return ReadBounded(item, member, 5.0f, "must be above 0 and at most 5", tuning.dampingRatio);
+                        if (key == "singularityDamping")
+                            return ReadBounded(item, member, 1.0f, "must be above 0 and at most 1", tuning.singularityDamping);
                         return Unknown(item);
                     });
             }
@@ -1207,6 +1223,13 @@ namespace arm
                 Number(config.cartesianImpedance.rotationalStiffness);
                 stream << ", \"dampingRatio\": ";
                 Number(config.cartesianImpedance.dampingRatio);
+                stream << " }";
+                stream << ",\n  \"operationalSpace\": { \"bandwidthRadPerS\": ";
+                Number(config.operationalSpace.bandwidth);
+                stream << ", \"dampingRatio\": ";
+                Number(config.operationalSpace.dampingRatio);
+                stream << ", \"singularityDamping\": ";
+                Number(config.operationalSpace.singularityDamping);
                 stream << " }";
                 stream << ",\n  \"collisionObserverGainPerS\": ";
                 Number(config.collisionObserverGain);

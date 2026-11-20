@@ -58,6 +58,7 @@ namespace arm
         , gravityPid(model, ReflectedRotors(config), config.gravityPid, config.controlPeriod)
         , jointImpedance(model, ReflectedRotors(config), config.jointImpedance)
         , cartesianImpedance(model, ReflectedRotors(config), config.cartesianImpedance)
+        , operationalSpace(model, ReflectedRotors(config), config.operationalSpace, config.toolLimits.manipulabilityMin)
         , collision(model, ReflectedRotors(config), config.collisionObserverGain)
         , period(config.controlPeriod)
         , torqueLimits(Supervision(config).torque)
@@ -74,6 +75,7 @@ namespace arm
         controllers.Enable(controllers.Register("gravity-pid", gravityPid));
         controllers.Enable(controllers.Register("joint-impedance", jointImpedance));
         controllers.Enable(controllers.Register("cartesian-impedance", cartesianImpedance));
+        controllers.Enable(controllers.Register("operational-space", operationalSpace));
         controllers.Select(gravityPdId);
         motion.SelectProfile(config.motionProfile);
     }
