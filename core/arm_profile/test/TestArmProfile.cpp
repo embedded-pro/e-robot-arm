@@ -368,7 +368,7 @@ TEST_F(ArmProfileTest, a_profile_without_a_workspace_leaves_it_to_the_geometry_a
     EXPECT_EQ(1u, Count(written, R"("linkRadiiM": [ 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04 ])"));
 }
 
-TEST_F(ArmProfileTest, reads_a_version_1_profile_and_writes_version_9)
+TEST_F(ArmProfileTest, reads_a_version_1_profile_and_writes_version_10)
 {
     const auto version1 = Read(Profile(Joint(1)));
     ASSERT_TRUE(version1.has_value()) << Problem();
@@ -376,11 +376,11 @@ TEST_F(ArmProfileTest, reads_a_version_1_profile_and_writes_version_9)
     infra::StringOutputStream::WithStorage<16384> stream;
     arm::WriteArmProfile(*version1, stream);
     const std::string written{ stream.Storage().begin(), stream.Storage().end() };
-    EXPECT_NE(std::string::npos, written.find(R"("version": 9,)"));
+    EXPECT_NE(std::string::npos, written.find(R"("version": 10,)"));
 
-    auto version10{ Profile(Joint(1)) };
-    version10.replace(version10.find(R"("version": 1)"), 12, R"("version": 10)");
-    EXPECT_FALSE(Read(version10).has_value());
+    auto version11{ Profile(Joint(1)) };
+    version11.replace(version11.find(R"("version": 1)"), 12, R"("version": 11)");
+    EXPECT_FALSE(Read(version11).has_value());
     EXPECT_EQ("version: is not a version this reader knows", Problem());
 }
 
@@ -517,6 +517,27 @@ TEST_F(ArmProfileTest, reads_the_operational_space_bandwidth_damping_and_singula
     EXPECT_EQ(expected, back->config.operationalSpace);
 }
 
+TEST_F(ArmProfileTest, reads_the_slotine_li_gains_and_the_experimental_flag_and_writes_them_back)
+{
+    const auto defaults = Read(Profile(Joint(1)));
+    ASSERT_TRUE(defaults.has_value()) << Problem();
+    EXPECT_EQ(arm::SlotineLiTuning{}, defaults->config.slotineLi);
+    EXPECT_FALSE(defaults->config.experimental);
+
+    const auto profile = Read(Profile(Joint(1), R"( "slotineLi": { "lambdaPerS": 8, "bandwidthRadPerS": 15, "adaptationGain": 2.5 }, "experimental": true,)"));
+    ASSERT_TRUE(profile.has_value()) << Problem();
+    const arm::SlotineLiTuning expected{ 8.0f, 15.0f, 2.5f };
+    EXPECT_EQ(expected, profile->config.slotineLi);
+    EXPECT_TRUE(profile->config.experimental);
+
+    infra::StringOutputStream::WithStorage<16384> stream;
+    arm::WriteArmProfile(*profile, stream);
+    const auto back = Read(std::string{ stream.Storage().begin(), stream.Storage().end() });
+    ASSERT_TRUE(back.has_value()) << Problem();
+    EXPECT_EQ(expected, back->config.slotineLi);
+    EXPECT_TRUE(back->config.experimental);
+}
+
 TEST_F(ArmProfileTest, refuses_a_profile_and_names_the_first_problem)
 {
     const std::vector<std::pair<std::string, std::string>> cases{
@@ -571,7 +592,12 @@ TEST_F(ArmProfileTest, refuses_a_profile_and_names_the_first_problem)
         { Profile(Joint(1), R"( "meshes": { "link1": "arm.stl" },)"), "meshes.link1: must name a .gltf or .glb file" },
         { Profile(Joint(1), R"( "meshes": { "base": "" },)"), "meshes.base: must be a path of 1 to 96 characters" },
         { Profile(Joint(1), R"( "meshes": { "base": 3 },)"), "meshes.base: must be a path of 1 to 96 characters" },
-        { R"({ "format": "e-robot-arm profile", "version": 10 })", "version: is not a version this reader knows" },
+        { R"({ "format": "e-robot-arm profile", "version": 11 })", "version: is not a version this reader knows" },
+        { Profile(Joint(1), R"( "slotineLi": { "lambdaPerS": 0 },)"), "slotineLi.lambdaPerS: must be above 0 and at most 100" },
+        { Profile(Joint(1), R"( "slotineLi": { "bandwidthRadPerS": 600 },)"), "slotineLi.bandwidthRadPerS: must be above 0 and at most 500" },
+        { Profile(Joint(1), R"( "slotineLi": { "adaptationGain": -1 },)"), "slotineLi.adaptationGain: must be above 0 and at most 10000" },
+        { Profile(Joint(1), R"( "slotineLi": { "gamma": 1 },)"), "slotineLi.gamma: is not a profile item" },
+        { Profile(Joint(1), R"( "experimental": 1,)"), "experimental: must be true or false" },
         { Profile(Joint(1), R"( "operationalSpace": { "bandwidthRadPerS": 0 },)"), "operationalSpace.bandwidthRadPerS: must be above 0 and at most 500" },
         { Profile(Joint(1), R"( "operationalSpace": { "dampingRatio": 6 },)"), "operationalSpace.dampingRatio: must be above 0 and at most 5" },
         { Profile(Joint(1), R"( "operationalSpace": { "singularityDamping": 2 },)"), "operationalSpace.singularityDamping: must be above 0 and at most 1" },

@@ -223,6 +223,16 @@ TEST_F(ArmConsoleTest, impedance_prints_the_stiffness_share_and_posts_a_new_one)
     EXPECT_THAT(Run("impedance 0.5 now"), StartsWith("usage:"));
 }
 
+TEST_F(ArmConsoleTest, adaptation_reset_posts_the_reset_of_the_learnt_parameters)
+{
+    EXPECT_CALL(arm, Post(VariantWith<arm_host::ResetAdaptation>(_))).WillOnce(Return(9));
+    EXPECT_EQ(9u, console.Execute("adaptation reset").command);
+
+    EXPECT_THAT(Run("adaptation"), StartsWith("usage:"));
+    EXPECT_THAT(Run("adaptation forget"), StartsWith("usage:"));
+    EXPECT_THAT(Run("adaptation reset now"), StartsWith("usage:"));
+}
+
 TEST_F(ArmConsoleTest, jog_holds_a_joint_or_tool_jog_for_a_time)
 {
     using namespace std::chrono_literals;

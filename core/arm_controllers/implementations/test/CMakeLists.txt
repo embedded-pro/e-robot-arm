@@ -18,4 +18,5 @@ target_sources(e_robot_arm.arm_controllers_test PRIVATE
     TestGravityPid.cpp
     TestJointImpedance.cpp
     TestOperationalSpace.cpp
+    TestSlotineLi.cpp
 )

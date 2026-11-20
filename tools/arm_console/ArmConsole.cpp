@@ -164,6 +164,9 @@ namespace arm_console
         if (command == "impedance")
             return Impedance(arguments);
 
+        if (command == "adaptation")
+            return Adaptation(arguments);
+
         if (command == "jog")
             return Jog(arguments);
 
@@ -320,6 +323,19 @@ namespace arm_console
         }
 
         return { Outcome::posted, arm.Post(arm_host::SelectMotionProfile{ static_cast<arm::MotionProfile>(found - motionProfileNames.begin()) }) };
+    }
+
+    ExecuteResult ArmConsole::Adaptation(std::istringstream& arguments)
+    {
+        std::string action;
+        std::string rest;
+        if (!(arguments >> action) || action != "reset" || (arguments >> rest))
+        {
+            Usage();
+            return { Outcome::done };
+        }
+
+        return { Outcome::posted, arm.Post(arm_host::ResetAdaptation{}) };
     }
 
     ExecuteResult ArmConsole::Impedance(std::istringstream& arguments)
@@ -586,7 +602,7 @@ namespace arm_console
 
     void ArmConsole::Usage()
     {
-        output << "usage: bringup | enable | disable | move q1 q2 q3 q4 q5 q6 | step q1 q2 q3 q4 q5 q6 | tune step|move <joint> <rad> [csv] | rearm | contracts | mode torque|speed|position | start | stop | estop | clear | align | abort | load <file> | save <file> | controllers | controller enable|disable|select <name> | motion [trapezoid|s-curve] | impedance [share] | jog <joint> <rad/s> [s] | jog base|tool x|y|z|rx|ry|rz <speed> [s] | teach <name> | goto <name> | points | movej <point|q1..q6>... | movel x y z roll pitch yaw | movel <point> | pose | gravity | fk q1..q6 | ik x y z roll pitch yaw | status | quit\n";
+        output << "usage: bringup | enable | disable | move q1 q2 q3 q4 q5 q6 | step q1 q2 q3 q4 q5 q6 | tune step|move <joint> <rad> [csv] | rearm | contracts | mode torque|speed|position | start | stop | estop | clear | align | abort | load <file> | save <file> | controllers | controller enable|disable|select <name> | motion [trapezoid|s-curve] | impedance [share] | adaptation reset | jog <joint> <rad/s> [s] | jog base|tool x|y|z|rx|ry|rz <speed> [s] | teach <name> | goto <name> | points | movej <point|q1..q6>... | movel x y z roll pitch yaw | movel <point> | pose | gravity | fk q1..q6 | ik x y z roll pitch yaw | status | quit\n";
     }
 
     ExecuteResult ArmConsole::Tune(std::istringstream& arguments)

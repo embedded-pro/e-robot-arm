@@ -7,7 +7,7 @@ namespace arm_host
     {
         static constexpr std::array<std::string_view, std::variant_size_v<ArmCommand>> names{ "check contracts", "select mode", "start", "stop",
             "clear faults", "emergency stop", "re-arm", "move", "abort", "inject fault", "silence joint", "bring up", "enable", "disable", "apply controller",
-            "read controller", "apply motor", "read motor", "enable arm controller", "disable arm controller", "select arm controller", "align", "restart motor", "resume joint", "apply torque", "power off motor", "step", "select motion profile", "move through", "move line", "jog joint", "jog tool", "hold jog", "teach", "go to", "set impedance share" };
+            "read controller", "apply motor", "read motor", "enable arm controller", "disable arm controller", "select arm controller", "align", "restart motor", "resume joint", "apply torque", "power off motor", "step", "select motion profile", "move through", "move line", "jog joint", "jog tool", "hold jog", "teach", "go to", "set impedance share", "reset adaptation" };
 
         return names[command.index()];
     }

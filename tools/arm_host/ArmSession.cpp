@@ -430,6 +430,11 @@ namespace arm_host
             return session.arm.Controllers().Select(select.id);
         }
 
+        bool operator()(const ResetAdaptation&) const
+        {
+            return session.arm.ResetAdaptation();
+        }
+
         bool operator()(const SetImpedanceShare& set) const
         {
             return session.arm.SetImpedanceShare(set.share);
@@ -529,6 +534,8 @@ namespace arm_host
             return Moving() ? "moving" : "a joint has no jerk limit";
         if (std::holds_alternative<SetImpedanceShare>(command))
             return "a stiffness share from 0.1 to 1";
+        if (std::holds_alternative<ResetAdaptation>(command))
+            return "no adaptive controller: the profile is not experimental";
         if (std::holds_alternative<Rearm>(command))
             return Stopped(arm.Lifecycle().State()) ? "a joint is in fault" : "not tripped or holding";
         if (LifecycleCommand(command))

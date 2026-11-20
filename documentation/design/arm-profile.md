@@ -2,7 +2,7 @@
 title: "Arm Profile Design"
 type: design
 status: draft
-version: 0.22.0
+version: 0.23.0
 component: "arm_profile"
 date: 2026-11-20
 ---
@@ -12,7 +12,7 @@ date: 2026-11-20
 | Title     | Arm Profile Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.22.0             |
+| Version   | 0.23.0             |
 | Component | arm_profile        |
 | Date      | 2026-11-20         |
 
@@ -48,7 +48,7 @@ A profile holds what `ArmConfig` holds:
 | Item                                          | JSON key                                         | Unit, range                 | Default when absent        |
 |-----------------------------------------------|--------------------------------------------------|-----------------------------|----------------------------|
 | Format marker                                 | `format`                                         | `"e-robot-arm profile"`     | required                   |
-| Format version                                | `version`                                        | `9` (`1` to `8` are read)   | required                   |
+| Format version                                | `version`                                        | `10` (`1` to `9` are read)  | required                   |
 | Name                                          | `name`                                           | text, at most 48 characters | required                   |
 | Control period                                | `controlPeriodMs`                                | ms, 1 to 1000               | required                   |
 | Missed telemetry allowed                      | `missedRequestsBeforeSilent`                     | periods, 1 to 255           | required                   |
@@ -69,6 +69,10 @@ A profile holds what `ArmConfig` holds:
 | `operational-space` bandwidth                 | `operationalSpace.bandwidthRadPerS`              | rad/s, above 0, at most 500 | 30                         |
 | `operational-space` damping                   | `operationalSpace.dampingRatio`                  | above 0, at most 5          | 0.7                        |
 | `operational-space` singularity damping       | `operationalSpace.singularityDamping`            | above 0, at most 1          | 0.01                       |
+| `slotine-li` λ                                | `slotineLi.lambdaPerS`                           | 1/s, above 0, at most 100   | 10                         |
+| `slotine-li` bandwidth                        | `slotineLi.bandwidthRadPerS`                     | rad/s, above 0, at most 500 | 20                         |
+| `slotine-li` adaptation gain                  | `slotineLi.adaptationGain`                       | above 0, at most 10000      | 10                         |
+| Experimental controllers                      | `experimental`                                   | `true`, `false`             | `false`                    |
 | Collision observer gain                       | `collisionObserverGainPerS`                      | 1/s, above 0, at most 1000  | 25                         |
 | Motion profile                                | `motionProfile`                                  | `trapezoid`, `s-curve`      | `trapezoid`                |
 | Tool limits                                   | `toolLimits`                                     | see below                   | see below                  |
@@ -111,7 +115,8 @@ the stiffnesses gives each joint (10 rad/s)² times its inertia at home with its
 `cartesian-impedance` arm controller the same way: one stiffness along the three axes of the tool's position, one
 about the three axes of its orientation, and the damping ratio. `operationalSpace` sets the `operational-space` arm
 controller: its bandwidth and damping ratio in task units and the damping σ of its task-inertia inverse; it hands
-over to joint-space control below `toolLimits.manipulabilityMin`.
+over to joint-space control below `toolLimits.manipulabilityMin`. `slotineLi` sets the `slotine-li` arm controller,
+which the arm offers only when `experimental` is `true`.
 
 The two `gravityPd` items set the gains of the `gravity-pd` arm controller, the two `computedTorque` items those of
 `computed-torque` and the two `gravityPid` items those of `gravity-pid`, for every joint at once ([arm-controllers.md](arm-controllers.md) Part A).
@@ -219,7 +224,7 @@ display units:
 motor leaves out; without a preset the eleven others are required. The two following-error items are optional with or
 without a preset: left out, they keep e-foc's default, supervision off (a window of 0 and a time of 0.1 s). They came
 with format version 2; a version 1 file reads as before. The speed trip, the torque limit, the drive watchdog and
-`safety` came with version 3; the motion profile and the jerk limit with version 4; the tool limits with version 5; the teach points with version 6; `jointImpedance` with version 7; `cartesianImpedance` with version 8; `operationalSpace` with version 9. An older file takes their defaults. Each value must lie in the e-foc contract's range, and
+`safety` came with version 3; the motion profile and the jerk limit with version 4; the tool limits with version 5; the teach points with version 6; `jointImpedance` with version 7; `cartesianImpedance` with version 8; `operationalSpace` with version 9; `slotineLi` and `experimental` with version 10. An older file takes their defaults. Each value must lie in the e-foc contract's range, and
 pole pairs must be a whole number. A joint without `motor` keeps whatever its node holds.
 
 ### Part B — Reading
@@ -243,7 +248,7 @@ significant digits than a float below 0.1.
 ```json
 {
   "format": "e-robot-arm profile",
-  "version": 9,
+  "version": 10,
   "name": "generic six-joint",
   "controlPeriodMs": 10,
   "missedRequestsBeforeSilent": 3,
