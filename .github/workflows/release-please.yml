@@ -63,6 +63,15 @@ jobs:
           path: build/host/e_robot_arm-*.*
           if-no-files-found: error
 
+  build_tools:
+    name: Build Tools Installers
+    needs: release_please
+    if: needs.release_please.outputs.release_created == 'true'
+    uses: ./.github/workflows/build-tools.yml
+    with:
+      version: ${{ needs.release_please.outputs.tag_name }}
+    secrets: inherit
+
   build_embedded:
     name: Build Embedded (${{ matrix.target }})
     needs: [release_please, build_host]
@@ -149,6 +158,7 @@ jobs:
       [
         release_please,
         build_host,
+        build_tools,
         build_embedded,
         build_documentation
       ]

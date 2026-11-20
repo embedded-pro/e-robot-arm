@@ -9,3 +9,7 @@ add_subdirectory(arm_host)
 add_subdirectory(tuning)
 
 add_subdirectory(simulator)
+
+if (TARGET e_robot_arm.tool.simulator)
+    add_subdirectory(installer)
+endif()

@@ -214,6 +214,11 @@
       "configuration": "Debug"
     },
     {
+      "name": "host-qt-Release",
+      "configurePreset": "host-qt",
+      "configuration": "Release"
+    },
+    {
       "name": "host-qt-RelWithDebInfo",
       "configurePreset": "host-qt",
       "configuration": "RelWithDebInfo"

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=e-robot-arm Simulator
+GenericName=Robot Arm Simulator
+Comment=Drive a six-joint arm on simulated joints, e-foc virtual motors or the real arm
+Exec=e-robot-arm-simulator
+Icon=e-robot-arm-simulator
+Terminal=false
+Categories=Development;Engineering;
+Keywords=robot;arm;e-foc;CAN;simulator;
