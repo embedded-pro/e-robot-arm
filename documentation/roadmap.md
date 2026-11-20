@@ -140,7 +140,7 @@ designed in [joint-motion.md](design/joint-motion.md) 0.9.0:
 ## Phase 5 — Arm controllers
 
 The order of work for [#21](https://github.com/embedded-pro/e-robot-arm/issues/21), each step a pull request,
-designed in [arm-controllers.md](design/arm-controllers.md) 0.18.0 Part D. `gravity-pd`, `computed-torque` and
+designed in [arm-controllers.md](design/arm-controllers.md) 0.19.0 Part D. `gravity-pd`, `computed-torque` and
 `gravity-pid` are done.
 
 1. Design: joint and Cartesian impedance, operational space, Slotine–Li adaptive.
@@ -150,8 +150,8 @@ designed in [arm-controllers.md](design/arm-controllers.md) 0.18.0 Part D. `grav
    reference's inverse dynamics forward and damp with the coupled mass matrix at the measured pose.
 4. Done: `operational-space`, handing over to joint-space computed torque near a singularity.
 5. Done: `slotine-li` behind the profile's `experimental` flag, its parameters kept across switches and reset on demand.
-6. Open questions: done, gains away from home (both joint-space laws take the mass matrix at the measured pose,
-   Part D); whether the profile keeps the enabled and active controllers.
+6. Done: open questions: gains away from home (both joint-space laws take the mass matrix at the measured pose,
+   Part D); the profile keeps the active controller (`armController`), enabling and disabling stay run-time choices.
 7. A scenario per controller (switch at rest and during a hold), theory notes, and requirements REQ-CTL-001 and 002.
 
 ## Phase 6 — Safety

@@ -24,6 +24,25 @@
 
 namespace arm
 {
+    enum class ArmControllerKind : uint8_t
+    {
+        gravityPd,
+        computedTorque,
+        gravityPid,
+        jointImpedance,
+        cartesianImpedance,
+        operationalSpace,
+        slotineLi
+    };
+
+    inline constexpr std::array<const char*, 7> armControllerNames{ "gravity-pd", "computed-torque", "gravity-pid", "joint-impedance", "cartesian-impedance",
+        "operational-space", "slotine-li" };
+
+    inline const char* ArmControllerName(ArmControllerKind kind)
+    {
+        return armControllerNames[static_cast<std::size_t>(kind)];
+    }
+
     inline constexpr std::size_t maxTeachPoints{ 16 };
     inline constexpr std::size_t teachPointNameSize{ 16 };
 
@@ -55,6 +74,7 @@ namespace arm
         OperationalSpaceTuning operationalSpace{};
         SlotineLiTuning slotineLi{};
         bool experimental{ false };
+        ArmControllerKind activeController{ ArmControllerKind::gravityPd };
         TrackingLimits tracking{};
         CollisionLimits collision{ DefaultCollisionLimits() };
         std::array<std::optional<foc::RadiansPerSecond>, jointCount> speedTrips{};

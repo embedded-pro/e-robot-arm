@@ -238,6 +238,8 @@ namespace arm
                     });
                 if (profile.config.motionProfile == MotionProfile::sCurve && !jerkLimited)
                     return Fail(Child(root, "motionProfile"), "s-curve needs a jerk limit on every joint");
+                if (profile.config.activeController == ArmControllerKind::slotineLi && !profile.config.experimental)
+                    return Fail(Child(root, "armController"), "slotine-li needs experimental");
                 return true;
             }
 
@@ -289,6 +291,8 @@ namespace arm
                     return ReadSlotineLi(path, value, profile.config.slotineLi);
                 if (key == "experimental")
                     return ReadFlag(path, value, profile.config.experimental);
+                if (key == "armController")
+                    return ReadArmController(path, value, profile.config.activeController);
                 if (key == "collisionObserverGainPerS")
                     return ReadBounded(path, value, 1000.0f, "must be above 0 and at most 1000", profile.config.collisionObserverGain);
                 if (key == "safety")
@@ -447,6 +451,15 @@ namespace arm
                             return ReadBounded(item, member, 10000.0f, "must be above 0 and at most 10000", tuning.adaptationGain);
                         return Unknown(item);
                     });
+            }
+
+            bool ReadArmController(const Path& path, const Value& value, ArmControllerKind& kind)
+            {
+                std::size_t chosen{ 0 };
+                if (!ReadChoice(path, value, armControllerNames, "is not an arm controller", chosen))
+                    return false;
+                kind = static_cast<ArmControllerKind>(chosen);
+                return true;
             }
 
             bool ReadFlag(const Path& path, const Value& value, bool& result)
@@ -1266,6 +1279,7 @@ namespace arm
                 Number(config.slotineLi.adaptationGain);
                 stream << " }";
                 stream << ",\n  \"experimental\": " << (config.experimental ? "true" : "false");
+                stream << ",\n  \"armController\": \"" << ArmControllerName(config.activeController) << "\"";
                 stream << ",\n  \"collisionObserverGainPerS\": ";
                 Number(config.collisionObserverGain);
                 stream << ",\n  \"motionProfile\": \"" << motionProfileNames[static_cast<std::size_t>(config.motionProfile)] << "\"";

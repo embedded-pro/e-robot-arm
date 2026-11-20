@@ -2,7 +2,7 @@
 title: "Arm Controllers Design"
 type: design
 status: draft
-version: 0.18.0
+version: 0.19.0
 component: "arm-controllers"
 date: 2026-11-20
 ---
@@ -12,7 +12,7 @@ date: 2026-11-20
 | Title     | Arm Controllers Design |
 | Type      | design                 |
 | Status    | draft                  |
-| Version   | 0.18.0                 |
+| Version   | 0.19.0                 |
 | Component | arm-controllers        |
 | Date      | 2026-11-20             |
 
@@ -121,9 +121,12 @@ is gone.
 
 ### Part B — Registry and selection
 
-The arm registers its controllers once, when it is built, up to a fixed capacity of four. Ids are their
-registration order. A controller is registered disabled; the arm then enables `gravity-pd`, `computed-torque` and
-`gravity-pid` and selects `gravity-pd`.
+The arm registers its controllers once, when it is built, up to a fixed capacity of eight. Ids are their
+registration order. A controller is registered disabled; the arm then enables every one it registered (`slotine-li`
+only with the profile's `experimental` flag, Part D) and selects the profile's `armController`, `gravity-pd` when the
+profile names none. The profile keeps the active controller and nothing else about the registry: a selection made
+at run time is written back into the arm host's copy of the profile, so saving it keeps the choice, while enabling
+and disabling stay run-time choices that a reload undoes (open question 1).
 
 | Request      | Accepted when                                                                           | Effect                                                              |
 |--------------|-----------------------------------------------------------------------------------------|---------------------------------------------------------------------|
@@ -371,7 +374,7 @@ sequenceDiagram
 
 | # | Question                                                | Options                                            | Status                        |
 |---|---------------------------------------------------------|----------------------------------------------------|-------------------------------|
-| 1 | Whether the profile stores the enabled and active ones  | Profile section; console and simulator choice only | open: with phase 5            |
+| 1 | Whether the profile stores the enabled and active ones  | Profile section; console and simulator choice only | decided: the active one only  |
 | 2 | Whether a switch to a non-bumpless controller may blend | Refuse while moving; ramp from the old set         | decided: refuse while moving  |
 | 3 | Gains of the joint-space laws away from home            | Inertia at home; mass matrix at the measured pose  | decided: at the measured pose |
 | 4 | Whether the tracking window follows the stiffness share | Fixed window; window over the share                | open (Part D)                 |
