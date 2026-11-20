@@ -227,7 +227,8 @@ display units:
 motor leaves out; without a preset the eleven others are required. The two following-error items are optional with or
 without a preset: left out, they keep e-foc's default, supervision off (a window of 0 and a time of 0.1 s). They came
 with format version 2; a version 1 file reads as before. The speed trip, the torque limit, the drive watchdog and
-`safety` came with version 3; the motion profile and the jerk limit with version 4; the tool limits with version 5; the teach points with version 6; `jointImpedance` with version 7; `cartesianImpedance` with version 8; `operationalSpace` with version 9; `slotineLi` and `experimental` with version 10; `armController` with version 11. An older file takes their defaults. Each value must lie in the e-foc contract's range, and
+`safety` came with version 3; the motion profile and the jerk limit with version 4; the tool limits with version 5; the teach points with version 6; `jointImpedance` with version 7; `cartesianImpedance` with version 8; `operationalSpace` with version 9; `slotineLi` and `experimental` with version 10; `armController` with version 11.
+An older file takes their defaults. Each value must lie in the e-foc contract's range, and
 pole pairs must be a whole number. A joint without `motor` keeps whatever its node holds.
 
 ### Part B — Reading
