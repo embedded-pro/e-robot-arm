@@ -357,6 +357,34 @@ TEST_F(ArmSessionTest, another_command_ends_a_held_jog)
     EXPECT_FALSE(sink.snapshot.moving);
 }
 
+TEST_F(ArmSessionTest, teaches_a_point_where_the_joints_are_and_goes_back_to_it)
+{
+    BringUp();
+    Execute(5, arm_host::Teach{ "" });
+    EXPECT_EQ("a name of 1 to 16 characters", sink.Last()->reason);
+    Execute(6, arm_host::GoTo{ "home" });
+    EXPECT_EQ("no such teach point", sink.Last()->reason);
+
+    Execute(7, arm_host::Teach{ "home" });
+    EXPECT_EQ(ArmEventKind::accepted, sink.Last()->kind);
+    ASSERT_EQ(1u, sink.snapshot.config.teachPointCount);
+    EXPECT_NEAR(0.0f, sink.snapshot.config.teachPoints[0].joints[0].Value(), 1.0e-3f);
+
+    Execute(8, arm_host::MoveTo{ Target(0.4f) });
+    Execute(9, arm_host::Teach{ "away" });
+    EXPECT_EQ("moving", sink.Last()->reason);
+    ForwardTime(2s);
+    Execute(10, arm_host::Teach{ "away" });
+    Execute(11, arm_host::Teach{ "away" });
+    ASSERT_EQ(2u, sink.snapshot.config.teachPointCount);
+    EXPECT_NEAR(0.4f, sink.snapshot.config.teachPoints[1].joints[0].Value(), 1.0e-2f);
+
+    Execute(12, arm_host::GoTo{ "home" });
+    EXPECT_EQ(ArmEventKind::accepted, sink.Last()->kind);
+    ForwardTime(2s);
+    EXPECT_NEAR(0.0f, sink.snapshot.commanded->at(0).Value(), 1.0e-3f);
+}
+
 TEST_F(ArmSessionTest, a_move_shows_the_commanded_positions_and_the_joints_follow_with_a_lag)
 {
     BringUp();

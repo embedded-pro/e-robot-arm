@@ -263,6 +263,8 @@ namespace arm
                     return ReadMotionProfile(path, value, profile.config.motionProfile);
                 if (key == "toolLimits")
                     return ReadToolLimits(path, value, profile.config.toolLimits);
+                if (key == "teachPoints")
+                    return ReadTeachPoints(path, value, profile.config);
                 if (key == "joints")
                     return Mark(seen.joints, ReadJoints(path, value, profile.config));
                 if (key == "geometry")
@@ -282,6 +284,60 @@ namespace arm
                 if (key == "safety")
                     return ReadSafety(path, value, profile.config.workspace);
                 return Unknown(path);
+            }
+
+            bool ReadTeachPoints(const Path& path, const Value& value, ArmConfig& config)
+            {
+                std::size_t count{ 0 };
+                if (!ReadList(path, value, 0, maxTeachPoints, "must be a list of at most sixteen points", count,
+                        [this, &config](const Path& item, const Value& element, std::size_t index)
+                        {
+                            return ReadTeachPoint(item, element, config.teachPoints[index]);
+                        }))
+                    return false;
+
+                config.teachPointCount = static_cast<uint8_t>(count);
+                for (std::size_t point = 1; point < count; ++point)
+                    for (std::size_t earlier = 0; earlier != point; ++earlier)
+                        if (config.teachPoints[point].name == config.teachPoints[earlier].name)
+                            return Fail(path, "names must be unique");
+                return true;
+            }
+
+            bool ReadTeachPoint(const Path& path, const Value& value, TeachPoint& point)
+            {
+                bool named{ false };
+                bool placed{ false };
+                const auto read = ReadMembers(path, value, [this, &point, &named, &placed](const Path& item, infra::JsonString key, const Value& member)
+                    {
+                        if (key == "name")
+                            return Mark(named, ReadPointName(item, member, point.name));
+                        if (key == "jointsRad")
+                        {
+                            std::size_t count{ 0 };
+                            return Mark(placed, ReadList(item, member, jointCount, jointCount, "must be a list of six angles", count,
+                                                    [this, &point](const Path& angle, const Value& element, std::size_t index)
+                                                    {
+                                                        float radians{ 0.0f };
+                                                        return ReadReal(angle, element, radians) && Store(point.joints[index], foc::Radians{ radians });
+                                                    }));
+                        }
+                        return Unknown(item);
+                    });
+                if (!read)
+                    return false;
+                if (!named || !placed)
+                    return Fail(path, "needs a name and jointsRad");
+                return true;
+            }
+
+            bool ReadPointName(const Path& path, const Value& value, infra::BoundedString& name)
+            {
+                const auto* text = std::get_if<infra::JsonString>(&value);
+                if (text == nullptr || text->empty() || text->size() > teachPointNameSize)
+                    return Fail(path, "must be text of 1 to 16 characters");
+                text->ToString(name);
+                return true;
             }
 
             bool ReadToolLimits(const Path& path, const Value& value, ToolLimits& limits)
@@ -1118,6 +1174,7 @@ namespace arm
                 stream << " \"manipulabilityMin\": ";
                 Number(config.toolLimits.manipulabilityMin);
                 stream << " }";
+                TeachPoints(config);
                 stream << ",\n  \"joints\": [";
 
                 for (std::size_t joint = 0; joint != jointCount; ++joint)
@@ -1208,6 +1265,24 @@ namespace arm
                     Number(values[index]);
                 }
                 stream << " }";
+            }
+
+            void TeachPoints(const ArmConfig& config)
+            {
+                stream << ",\n  \"teachPoints\": [";
+                for (std::size_t point = 0; point != config.teachPointCount; ++point)
+                {
+                    stream << (point == 0 ? "\n    { \"name\": " : ",\n    { \"name\": ");
+                    Text(config.teachPoints[point].name);
+                    stream << ", \"jointsRad\": [ ";
+                    for (std::size_t joint = 0; joint != jointCount; ++joint)
+                    {
+                        stream << (joint == 0 ? "" : ", ");
+                        Number(config.teachPoints[point].joints[joint].Value());
+                    }
+                    stream << " ] }";
+                }
+                stream << (config.teachPointCount == 0 ? " ]" : "\n  ]");
             }
 
             void Tuning(const BandwidthTuning& tuning)
