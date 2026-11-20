@@ -270,6 +270,11 @@ namespace arm
         return fsm.Is<Enabled>() && motion.MoveThrough(waypoints) && Accepted(MoveStarted{});
     }
 
+    bool ArmLifecycleImpl::MoveLine(const ToolPose& target)
+    {
+        return fsm.Is<Enabled>() && motion.MoveLine(target) && Accepted(MoveStarted{});
+    }
+
     ArmState ArmLifecycleImpl::State() const
     {
         return static_cast<ArmState>(fsm.CurrentState().index());

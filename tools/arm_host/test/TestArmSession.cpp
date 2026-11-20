@@ -66,6 +66,30 @@ namespace
         return config;
     }
 
+    arm::ArmConfig SlowTool()
+    {
+        auto config = arm_host::test::Config();
+        config.toolLimits = { 0.05f, 0.2f, 2.0f, 0.2f, 0.8f, 8.0f, 0.001f };
+        return config;
+    }
+
+    class SlowToolSessionTest
+        : public testing::Test
+        , public infra::ClockFixture
+    {
+    public:
+        void Execute(uint32_t id, const arm_host::ArmCommand& command)
+        {
+            session.Execute(id, command);
+            ForwardTime(30ms);
+        }
+
+        arm_host::ArmTarget target{ arm_host::TargetKind::simulated, "" };
+        simulation::SimulatedArm simulatedArm{ arm_host::test::nodes, 50ms, arm_host::PlantFor(arm_host::test::Config()) };
+        arm_host::test::RecordingSink sink;
+        arm_host::ArmSession session{ simulatedArm.ArmSide(), arm_host::test::Profile(SlowTool()), target, sink, &simulatedArm };
+    };
+
     class JerkLimitedSessionTest
         : public testing::Test
         , public infra::ClockFixture
@@ -218,6 +242,34 @@ TEST_F(ArmSessionTest, moves_through_waypoints_and_names_why_a_path_is_refused)
     ASSERT_NE(nullptr, sink.Find(ArmEventKind::moveDone));
     ASSERT_TRUE(sink.snapshot.commanded.has_value());
     EXPECT_NEAR(-0.2f, sink.snapshot.commanded->at(0).Value(), 1.0e-4f);
+}
+
+TEST_F(SlowToolSessionTest, moves_the_tool_along_a_line_and_names_where_and_why_a_line_is_refused)
+{
+    Execute(1, arm_host::CheckContracts{});
+    Execute(2, arm_host::SelectMode{ can::FocMotorMode::torque });
+    Execute(3, arm_host::StartJoints{});
+    auto target = sink.snapshot.toolPose;
+    target.y += 0.02f;
+    Execute(5, arm_host::MoveLine{ target });
+    EXPECT_EQ("near a singularity at 0.01 s", sink.Last()->reason);
+
+    arm::JointPositions clear{};
+    const std::array<float, arm::jointCount> start{ 0.1f, 0.5f, 0.6f, 0.2f, 1.0f, 0.0f };
+    for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+        clear[joint] = foc::Radians{ start[joint] };
+    Execute(6, arm_host::MoveTo{ clear });
+    ForwardTime(6s);
+    ASSERT_NE(nullptr, sink.Find(ArmEventKind::moveDone));
+
+    target = sink.snapshot.toolPose;
+    target.y += 0.02f;
+    Execute(7, arm_host::MoveLine{ target });
+    ForwardTime(4s);
+
+    EXPECT_EQ(ArmEventKind::accepted, std::ranges::find(sink.events, 7u, &arm_host::ArmEvent::command)->kind);
+    EXPECT_EQ(2, std::ranges::count(sink.events, ArmEventKind::moveDone, &arm_host::ArmEvent::kind));
+    EXPECT_NEAR(target.y, sink.snapshot.toolPose.y, 2.0e-3f);
 }
 
 TEST_F(ArmSessionTest, a_move_shows_the_commanded_positions_and_the_joints_follow_with_a_lag)

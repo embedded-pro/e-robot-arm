@@ -5,6 +5,7 @@
 #include "e-foc-protocol/foc/Units.hpp"
 #include "infra/util/BoundedVector.hpp"
 #include "infra/util/Observer.hpp"
+#include "numerical/math/SE3Transform.hpp"
 #include <array>
 #include <cstdint>
 #include <optional>
@@ -31,6 +32,25 @@ namespace arm
         float manipulabilityMin{ 0.001f };
 
         bool operator==(const ToolLimits& other) const = default;
+    };
+
+    using ToolPose = math::SE3Transform<float>;
+
+    enum class LineFault : uint8_t
+    {
+        unreachable,
+        outsideLimits,
+        nearSingularity,
+        tooFast,
+        workspace
+    };
+
+    struct LineRefusal
+    {
+        LineFault fault{ LineFault::unreachable };
+        float timeS{ 0.0f };
+
+        bool operator==(const LineRefusal& other) const = default;
     };
 
     constexpr std::size_t maxWaypoints{ 8 };
@@ -70,6 +90,8 @@ namespace arm
         virtual bool MoveTo(const JointPositions& target) = 0;
         virtual bool StepTo(const JointPositions& target) = 0;
         virtual bool MoveThrough(const JointWaypoints& waypoints) = 0;
+        virtual bool MoveLine(const ToolPose& target) = 0;
+        virtual std::optional<LineRefusal> LineRefused() const = 0;
         virtual void Abort() = 0;
         virtual bool Moving() const = 0;
         virtual bool SelectProfile(MotionProfile profile) = 0;

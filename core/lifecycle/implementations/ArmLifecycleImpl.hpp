@@ -189,6 +189,7 @@ namespace arm
         bool MoveTo(const JointPositions& target) override;
         bool StepTo(const JointPositions& target) override;
         bool MoveThrough(const JointWaypoints& waypoints) override;
+        bool MoveLine(const ToolPose& target) override;
         ArmState State() const override;
         std::optional<Misconfiguration> MisconfiguredJoint() const override;
         std::optional<std::size_t> UnstartedJoint() const override;

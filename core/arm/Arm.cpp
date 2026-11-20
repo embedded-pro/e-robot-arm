@@ -48,7 +48,7 @@ namespace arm
     Arm::Arm(can::FocMotorCategoryClient& client, const ArmConfig& config, HardwareStop* hardwareStop)
         : jointBus(client, config.nodes, config.transmissions, config.missedRequestsBeforeSilent, config.controlPeriod * config.commandTimeoutPeriods)
         , safety(jointBus, config.positionLimits, config.tracking, config.collision, config.controlPeriod, Supervision(config), SupervisionInputs{ &workspace, hardwareStop })
-        , motion(safety, config.positionLimits, config.motionLimits, config.controlPeriod, &workspace, config.jerkLimits)
+        , motion(safety, config.positionLimits, config.motionLimits, config.controlPeriod, &workspace, config.jerkLimits, ToolLineSetup{ &model, config.toolLimits })
         , configurator(safety, lifecycle, SilenceWindow(config))
         , lifecycle(safety, motion, configurator, config.controllers, config.motors, DriveWatchdogSeconds(config))
         , model(config.geometry, config.mass, config.positionLimits)
