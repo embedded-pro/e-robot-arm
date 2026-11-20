@@ -2,9 +2,9 @@
 title: "Joint Motion Design"
 type: design
 status: draft
-version: 0.8.0
+version: 0.9.0
 component: "motion"
-date: 2026-11-14
+date: 2026-11-20
 ---
 
 | Field     | Value               |
@@ -12,12 +12,12 @@ date: 2026-11-14
 | Title     | Joint Motion Design |
 | Type      | design              |
 | Status    | draft               |
-| Version   | 0.8.0               |
+| Version   | 0.9.0               |
 | Component | motion              |
-| Date      | 2026-11-14          |
+| Date      | 2026-11-20          |
 
-> Moving the six joints together from where they are to a target, in joint space. Behaviour only; diagrams are
-> Mermaid.
+> Moving the six joints: point-to-point in joint space, through joint waypoints, along a straight tool line, and by
+> jogging, plus named teach points to move to. Behaviour only; diagrams are Mermaid.
 
 ---
 
@@ -31,6 +31,9 @@ date: 2026-11-14
 - Sampling the planned positions, speeds and accelerations once per control period, and the target at rest last,
   as the reference the arm controllers follow ([arm-controllers.md](arm-controllers.md)).
 - A reference step: the reference jumps to a target close to the joints at once, for tuning the arm controllers.
+- Jerk-limited point-to-point moves, and a new target replacing a running point-to-point move (Parts E, F).
+- Paths through joint waypoints (Part G), straight tool lines (Part H) and jogging (Part I).
+- Teach points: named joint poses saved in the profile, and moving to one (Part J).
 - Reporting when the move is done, or when it was aborted.
 
 **Is NOT responsible for:**
@@ -39,7 +42,10 @@ date: 2026-11-14
   guards them; a set it refuses aborts the move. Joint motion only refuses a target outside the position limits up
   front.
 - Requesting telemetry: the arm's control loop paces the requests.
-- Paths through waypoints, Cartesian moves, jerk limits and dynamics: planned with the arm model.
+- Kinematics and dynamics: the arm model computes poses, inverse kinematics and manipulability
+  ([arm-model.md](arm-model.md)); joint motion only asks it.
+- The workspace: the workspace check judges a pose ([safety.md](safety.md) Part H); joint motion asks it before a
+  line starts.
 
 ---
 
@@ -85,6 +91,86 @@ If the arm cannot send the period's set (the safety supervisor refuses it, or no
 arm aborts the move. Aborting a move, by request or so, stops the sampling; the arm controllers hold the last
 reference, so the joints stay where the move left them.
 
+### Part E — Motion generators
+
+Every way of moving is a **motion generator**: point-to-point (Part F), waypoint path (Part G), tool line (Part H),
+jog (Part I) and the reference step (Part C). A generator is planned once, when its command is accepted, and then
+sampled once per control period. Each sample is a joint reference, position, speed and acceleration for every joint,
+the reference the active arm controller tracks ([arm-controllers.md](arm-controllers.md) Part C). A generator ends
+with the joints at rest at its last sample; joint motion then reports the move done.
+
+One generator runs at a time. A command while another one runs is refused, with two exceptions: a point-to-point
+target replaces a running point-to-point move (Part F), and a jog command refreshes a running jog of the same kind
+(Part I). Planning reads where the joints are from the latest reference when one runs, or from the latest positions
+at rest, so a move never starts from a stale or jumping position.
+
+The point-to-point **profile** is a setting, trapezoidal or S-curve, chosen in the profile and changed only at rest:
+a running move keeps the profile it was planned with.
+
+### Part F — Point-to-point: trapezoid, S-curve, and replacing a move
+
+**Trapezoid.** As Parts A and B: each joint at its speed and acceleration limits, then the others re-planned to the
+slowest joint's duration at their own acceleration limit.
+
+**S-curve.** Each joint is planned on its own with numerical-toolbox's jerk-limited S-curve profile at its speed,
+acceleration and jerk limits; the slowest sets the duration T. Every other joint, planned alone in Tᵢ, is planned
+again with its limits scaled by s, s² and s³, s = Tᵢ / T: the same profile stretched in time to last exactly T. All
+joints start and stop together, no joint exceeds a limit, and the acceleration rises and falls at most at the jerk
+limit, so no acceleration step reaches the joints.
+
+**Replacing a running move.** A new target accepted while a point-to-point move runs is planned from the running
+move's latest sample, its position, speed and acceleration per joint, with numerical-toolbox's profiles from a
+state (trapezoidal or S-curve, as the running move). Speed is continuous across the switch, and with the S-curve the
+acceleration too. Each joint reaches the new target in its own time: a profile from a state cannot be stretched to a
+common duration, so the joints of a replaced move are not synchronised. The move is done when the last joint
+arrives. The first move's done event is never sent; the replacing one sends it.
+
+### Part G — Waypoint paths
+
+A path runs through up to **8 joint waypoints** after the start, all within the position limits. robotics-toolbox's
+cubic spline through the start and the waypoints gives the path's shape, with zero speed at both ends.
+robotics-toolbox's time-optimal path parameterisation then times it as fast as each joint's speed and acceleration
+limits allow, on a grid of 64 points; the dynamics' torque limits join those constraints once the arm model's torque
+limits are in the profile. Before the path starts, it is sampled at every control period: a path that leaves a
+joint's position limits between two waypoints, or that the parameterisation cannot time, is refused. A path is done
+at its last waypoint, at rest.
+
+### Part H — Tool lines
+
+A line moves the tool from its current pose to a target pose: the position along a straight line and the
+orientation by spherical interpolation, robotics-toolbox's Cartesian slerp interpolation. A path parameter from 0 to
+1 runs along an S-curve whose length and limits are the larger of the line's linear distance under the profile's tool
+speed, acceleration and jerk, and its rotation angle under the tool's angular limits; the line starts and ends at
+rest. Every control period the sampled pose goes through the arm model's inverse kinematics, the solution nearest
+the previous sample, and the joint reference is that solution with speeds and accelerations by differences.
+
+Before the line starts it is planned in full: every period's pose must have an inverse-kinematics solution within
+the joint limits, a manipulability above the profile's threshold, joint speeds and accelerations within the joint
+limits, and a pose the workspace check accepts. A line that fails any of them is refused, and the refusal names the
+first failing sample's time and the reason; nothing is sent. The run computes the same samples again, so what runs is
+what was checked.
+
+### Part I — Jogging
+
+A jog moves at a commanded speed while the operator keeps commanding it:
+
+- **Joint jog**: one joint at a signed speed.
+- **Tool jog**: the tool along or about one axis, of the base frame or the tool frame, at a signed linear or angular
+  speed; each period the arm model's inverse kinematics turns the tool step into the next joint reference.
+
+The speed ramps up and down at the acceleration limits (the joint's, or the tool's). Each jog command sets the speed
+and refreshes the **dead-man**: when no jog command arrives for 20 control periods (200 ms at the 10 ms period), the
+jog ramps to rest and ends; a jog command of speed zero ends it the same way. A jog also ramps to rest before a joint
+reaches its position limit, and a tool jog holds instead of stepping into a sample a line would refuse (Part H). A
+jog while another generator runs is refused; a different jog kind ends the running jog first.
+
+### Part J — Teach points
+
+A teach point is a named joint pose: up to 16 points, each name up to 16 characters, kept in the arm profile
+([arm-profile.md](arm-profile.md)). Teaching saves the current latest positions under a name, replacing a point of the
+same name; it is refused while a generator runs. Going to a point is a point-to-point move to its pose, with the
+current profile (Part F). Saving the profile keeps the points.
+
 ---
 
 ## Interfaces
@@ -94,30 +180,41 @@ reference, so the joints stay where the move left them.
 | Interface           | Purpose                                                     | Contract                                                 |
 |---------------------|-------------------------------------------------------------|----------------------------------------------------------|
 | Joint motion        | Move or step to a target, abort, whether moving             | One move or step at a time; refused targets send nothing |
+| Motion generators   | Waypoint path, tool line, joint jog, tool jog, teach, go to | One generator at a time (Part E); a refusal names why    |
 | Joint motion events | Move done, move aborted                                     | Exactly one of the two per accepted move                 |
 | Reference           | Position, speed and acceleration per step while a move runs | None without a move; the target at rest is the last      |
 
 ### Required
 
-| Interface | Purpose                     | Contract                                 |
-|-----------|-----------------------------|------------------------------------------|
-| Joint bus | Latest positions            | The safety supervisor                    |
-| Step      | One step per control period | Run by the control loop's setpoint phase |
+| Interface | Purpose                                       | Contract                                 |
+|-----------|-----------------------------------------------|------------------------------------------|
+| Joint bus | Latest positions                              | The safety supervisor                    |
+| Arm model | Tool pose, inverse kinematics, manipulability | [arm-model.md](arm-model.md)             |
+| Workspace | Whether a pose is allowed                     | [safety.md](safety.md) Part H            |
+| Step      | One step per control period                   | Run by the control loop's setpoint phase |
 
 ---
 
 ## Data Model
 
-| Entity       | Field            | Type / Unit     | Range         | Notes                                    |
-|--------------|------------------|-----------------|---------------|------------------------------------------|
-| Joint limits | position         | radians         | lower < upper | One range per joint, as the supervisor's |
-| Joint limits | maximum speed    | radians/second  | > 0           | One per joint                            |
-| Joint limits | max acceleration | radians/second² | > 0           | One per joint                            |
-| Motion       | control period   | duration        | > 0           | Time between two setpoint sets           |
-| Reference    | position         | radians         | joint limits  | Per joint, from the move's trapezoid     |
-| Reference    | speed            | radians/second  | finite        | Per joint; zero at rest                  |
-| Reference    | acceleration     | radians/second² | finite        | Per joint; zero at rest                  |
-| Step         | size             | radians         | at most 0.2   | Per joint, from its latest position      |
+| Entity       | Field                             | Type / Unit           | Range                    | Notes                                    |
+|--------------|-----------------------------------|-----------------------|--------------------------|------------------------------------------|
+| Joint limits | position                          | radians               | lower < upper            | One range per joint, as the supervisor's |
+| Joint limits | maximum speed                     | radians/second        | > 0                      | One per joint                            |
+| Joint limits | max acceleration                  | radians/second²       | > 0                      | One per joint                            |
+| Motion       | control period                    | duration              | > 0                      | Time between two setpoint sets           |
+| Reference    | position                          | radians               | joint limits             | Per joint, from the move's trapezoid     |
+| Reference    | speed                             | radians/second        | finite                   | Per joint; zero at rest                  |
+| Reference    | acceleration                      | radians/second²       | finite                   | Per joint; zero at rest                  |
+| Step         | size                              | radians               | at most 0.2              | Per joint, from its latest position      |
+| Joint limits | max jerk                          | radians/second³       | > 0                      | One per joint; used by the S-curve       |
+| Motion       | profile                           | choice                | trapezoid, S-curve       | Changed only at rest                     |
+| Tool limits  | linear speed, acceleration, jerk  | m/s, m/s², m/s³       | > 0                      | Lines and tool jogs                      |
+| Tool limits  | angular speed, acceleration, jerk | rad/s, rad/s², rad/s³ | > 0                      | Lines and tool jogs                      |
+| Tool limits  | manipulability threshold          | 1                     | ≥ 0                      | A line or tool jog stays above it        |
+| Path         | waypoints                         | joint positions       | 1 to 8                   | After the start; within the limits       |
+| Jog          | dead-man                          | control periods       | 20                       | No command for that long ends the jog    |
+| Teach point  | name, pose                        | text, radians         | 16 points, 16 characters | Kept in the profile                      |
 
 ---
 
@@ -126,8 +223,12 @@ reference, so the joints stay where the move left them.
 ```mermaid
 stateDiagram-v2
     [*] --> Idle
-    Idle --> Moving : move or step [target finite]
+    Idle --> Moving : move, step, path or line [planned]
+    Idle --> Jogging : jog
+    Moving --> Moving : point-to-point target [running point-to-point] / replan from the latest sample
     Moving --> Idle : target sent / done
+    Jogging --> Jogging : jog command / refresh the dead-man
+    Jogging --> Idle : no command for 20 periods or speed zero / ramp to rest, done
     Moving --> Idle : set not sent / aborted
     Moving --> Idle : abort / aborted
 ```
@@ -157,15 +258,19 @@ sequenceDiagram
 
 | Constraint  | Value / Description                                                                 |
 |-------------|-------------------------------------------------------------------------------------|
-| Profile     | Trapezoidal velocity: acceleration steps at the start and end of each phase         |
-| Start state | At rest, at the latest reported positions; a move does not blend into a running one |
+| Profile     | Trapezoidal (acceleration steps) or S-curve (jerk-limited), per the profile         |
+| Start state | At rest at the latest positions, or the running point-to-point move's latest sample |
+| Replacing   | A replaced point-to-point move's joints are not synchronised (Part F)               |
+| Waypoints   | At most 8 after the start; the time-optimal grid has 64 points                      |
+| Lines       | Checked in full before they start; refused with the first failing sample's reason   |
 | Memory      | No heap; all state is fixed-size                                                    |
 
 ---
 
 ## Open Questions
 
-| # | Question                                        | Options                                            | Status |
-|---|-------------------------------------------------|----------------------------------------------------|--------|
-| 1 | Whether to limit jerk                           | Trapezoidal, S-curve per joint (numerical-toolbox) | open   |
-| 2 | Whether a new target may replace a running move | Refuse, re-plan from the current state             | open   |
+| # | Question                                        | Options                                            | Status                                            |
+|---|-------------------------------------------------|----------------------------------------------------|---------------------------------------------------|
+| 1 | Whether to limit jerk                           | Trapezoidal, S-curve per joint (numerical-toolbox) | decided: either, chosen in the profile (Part F)   |
+| 2 | Whether a new target may replace a running move | Refuse, re-plan from the current state             | decided: re-plan from the latest sample (Part F)  |
+| 3 | Torque limits in the waypoint timing            | Joint speed and acceleration only; with dynamics   | open: dynamics once the profile has torque limits |
