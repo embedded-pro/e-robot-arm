@@ -8,13 +8,6 @@
 
 namespace arm
 {
-    struct PdGain
-    {
-        float kp{ 0.0f };
-        float kd{ 0.0f };
-    };
-
-    using JointPdGains = std::array<PdGain, jointCount>;
     using PdGainMatrix = controllers::PdGravityCompensation<float, jointCount>::GainMatrix;
 
     struct PdGainMatrices
@@ -29,14 +22,13 @@ namespace arm
         float dampingRatio{ 0.7f };
     };
 
-    PdGainMatrices DiagonalGains(const JointPdGains& gains);
-    PdGainMatrices PlacedGains(const ArmModel& model, const JointInertias& rotors, const BandwidthTuning& tuning);
+    PdGainMatrices PlacedGains(const ArmModel& model, const JointInertias& rotors, const BandwidthTuning& tuning, const JointPositions& positions);
 
     class GravityCompensatedPd
         : public ArmController
     {
     public:
-        GravityCompensatedPd(const ArmModel& model, const PdGainMatrices& gains);
+        GravityCompensatedPd(const ArmModel& model, const JointInertias& rotors, const BandwidthTuning& tuning);
 
         bool BumplessTransfer() const override;
         void Reset(const MeasuredJoints& measured, const JointReference& held) override;
@@ -46,7 +38,8 @@ namespace arm
         using Law = controllers::PdGravityCompensation<float, jointCount>;
 
         const ArmModel& model;
-        Law law;
+        JointInertias rotors;
+        BandwidthTuning tuning;
     };
 }
 

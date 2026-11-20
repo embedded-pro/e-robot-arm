@@ -40,11 +40,6 @@ namespace arm
         return supervision;
     }
 
-    PdGainMatrices GravityPdGains(const ArmModel& model, const ArmConfig& config)
-    {
-        return PlacedGains(model, ReflectedRotors(config), config.gravityPd);
-    }
-
     Arm::Arm(can::FocMotorCategoryClient& client, const ArmConfig& config, HardwareStop* hardwareStop)
         : jointBus(client, config.nodes, config.transmissions, config.missedRequestsBeforeSilent, config.controlPeriod * config.commandTimeoutPeriods)
         , safety(jointBus, config.positionLimits, config.tracking, config.collision, config.controlPeriod, Supervision(config), SupervisionInputs{ &workspace, hardwareStop })
@@ -53,7 +48,7 @@ namespace arm
         , lifecycle(safety, motion, configurator, config.controllers, config.motors, DriveWatchdogSeconds(config))
         , model(config.geometry, config.mass, config.positionLimits)
         , workspace(model, config.geometry, config.workspace)
-        , gravityPd(model, GravityPdGains(model, config))
+        , gravityPd(model, ReflectedRotors(config), config.gravityPd)
         , computedTorque(model, ReflectedRotors(config), config.computedTorque)
         , gravityPid(model, ReflectedRotors(config), config.gravityPid, config.controlPeriod)
         , jointImpedance(model, ReflectedRotors(config), config.jointImpedance)

@@ -28,7 +28,7 @@ namespace arm
         JointAccelerations Corrections(const MeasuredJoints& measured, const JointReference& reference);
 
         const ArmModel& model;
-        ArmModel::MassMatrix inertia;
+        JointInertias rotors;
         float derivativeGain;
         std::array<Pid, jointCount> pids;
     };

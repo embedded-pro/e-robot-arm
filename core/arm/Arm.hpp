@@ -26,7 +26,6 @@
 namespace arm
 {
     JointInertias ReflectedRotors(const ArmConfig& config);
-    PdGainMatrices GravityPdGains(const ArmModel& model, const ArmConfig& config);
     MotionSupervision Supervision(const ArmConfig& config);
 
     class Arm
