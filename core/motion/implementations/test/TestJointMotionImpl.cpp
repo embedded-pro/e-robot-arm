@@ -149,15 +149,28 @@ TEST_F(JointMotionImplTest, refuses_a_target_outside_the_joint_limits)
     Step(10);
 }
 
-TEST_F(JointMotionImplTest, refuses_a_second_move_while_moving)
+TEST_F(JointMotionImplTest, a_new_target_replaces_a_running_move_from_its_latest_sample_and_only_the_replacing_move_is_done)
 {
     EXPECT_TRUE(motion.MoveTo(Target(1.0f)));
+    Step(5);
+    const auto latest = sent.back();
 
-    EXPECT_FALSE(motion.MoveTo(Target(-1.0f)));
+    EXPECT_TRUE(motion.MoveTo(Target(-1.0f)));
 
     EXPECT_CALL(observer, OnMoveDone());
-    Step(20);
-    EXPECT_EQ(Target(1.0f), sent.back());
+    Step(60);
+    EXPECT_GT(sent[5][0].Value(), latest[0].Value());
+    EXPECT_EQ(Target(-1.0f), sent.back());
+}
+
+TEST_F(JointMotionImplTest, refuses_a_new_target_while_a_step_runs)
+{
+    EXPECT_TRUE(motion.StepTo(Target(0.1f)));
+
+    EXPECT_FALSE(motion.MoveTo(Target(1.0f)));
+
+    EXPECT_CALL(observer, OnMoveDone());
+    Step(1);
 }
 
 TEST_F(JointMotionImplTest, abort_stops_sampling_and_reports_it_once)
@@ -308,4 +321,20 @@ TEST_F(JointMotionJerkLimitedTest, switches_profile_at_rest_only_and_moves_with_
     const auto first = jerkLimited.Step();
     ASSERT_TRUE(first.has_value());
     EXPECT_NEAR(4.0f * 0.1f, first->accelerations[0].Value(), tolerance);
+}
+
+TEST_F(JointMotionJerkLimitedTest, a_replaced_s_curve_continues_from_the_latest_acceleration)
+{
+    ASSERT_TRUE(jerkLimited.SelectProfile(arm::MotionProfile::sCurve));
+    ASSERT_TRUE(jerkLimited.MoveTo(Target(1.0f)));
+    jerkLimited.Step();
+    jerkLimited.Step();
+    const auto latest = jerkLimited.Step();
+
+    ASSERT_TRUE(jerkLimited.MoveTo(Target(-1.0f)));
+
+    const auto next = jerkLimited.Step();
+    ASSERT_TRUE(latest.has_value() && next.has_value());
+    EXPECT_GT(latest->accelerations[0].Value(), 0.5f);
+    EXPECT_NEAR(latest->accelerations[0].Value(), next->accelerations[0].Value(), 4.0f * 0.1f + tolerance);
 }

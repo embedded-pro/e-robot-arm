@@ -34,11 +34,19 @@ namespace arm
 
     bool JointMotionImpl::MoveTo(const JointPositions& newTarget)
     {
-        if (!Accepts(newTarget) || !PathClear(LatestPositions(), newTarget))
+        const bool replacing = moving && !stepping;
+        if ((moving && !replacing) || !Acceptable(newTarget))
+            return false;
+
+        const auto from = replacing ? plan.Sample(Elapsed()) : AtRest(LatestPositions());
+        if (!PathClear(from.positions, newTarget))
             return false;
 
         target = newTarget;
-        plan.Plan(LatestPositions(), target, limits, jerks, profile);
+        if (replacing)
+            plan.Replan(from, target, limits, jerks);
+        else
+            plan.Plan(from.positions, target, limits, jerks, profile);
         periodsElapsed = 0;
         moving = true;
         stepping = false;
@@ -58,7 +66,17 @@ namespace arm
 
     bool JointMotionImpl::Accepts(const JointPositions& newTarget) const
     {
-        return !Moving() && std::ranges::all_of(newTarget, Finite) && WithinLimits(positionLimits, newTarget) && !AnyReadingStale();
+        return !Moving() && Acceptable(newTarget);
+    }
+
+    bool JointMotionImpl::Acceptable(const JointPositions& newTarget) const
+    {
+        return std::ranges::all_of(newTarget, Finite) && WithinLimits(positionLimits, newTarget) && !AnyReadingStale();
+    }
+
+    float JointMotionImpl::Elapsed() const
+    {
+        return std::chrono::duration<float>(period * periodsElapsed).count();
     }
 
     bool JointMotionImpl::PathClear(const JointPositions& from, const JointPositions& to) const
@@ -151,7 +169,7 @@ namespace arm
             return std::nullopt;
 
         ++periodsElapsed;
-        const auto elapsed = std::chrono::duration<float>(period * periodsElapsed).count();
+        const auto elapsed = Elapsed();
         const bool arrived = stepping || elapsed >= plan.Duration();
         const auto reference = arrived ? AtRest(target) : plan.Sample(elapsed);
 

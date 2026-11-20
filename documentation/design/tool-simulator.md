@@ -2,9 +2,9 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.35.0
+version: 0.36.0
 component: "tool-simulator"
-date: 2026-11-19
+date: 2026-11-20
 ---
 
 | Field     | Value                   |
@@ -12,9 +12,9 @@ date: 2026-11-19
 | Title     | Simulator Screen Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.35.0                  |
+| Version   | 0.36.0                  |
 | Component | tool-simulator          |
-| Date      | 2026-11-19              |
+| Date      | 2026-11-20              |
 
 > What the e-robot-arm Simulator shows, what each control does and when, and how it looks (phase 8a,
 > [#28](https://github.com/embedded-pro/e-robot-arm/issues/28)). Components and threads are in
@@ -128,7 +128,7 @@ the target is built and at least one joint has answered. Joints are numbered 1�
 | Clear Faults         | Any joint in fault                                                                     | "No joint in fault"                                                                                                                                                                                        | Clear faults on all joints                                               |
 | Re-arm…              | The arm is Tripped or Holding, no joint in fault, hardware stop closed                 | "Not tripped or holding", "Joint N in fault: clear it first", "Hardware stop open: close it first"                                                                                                         | Confirmation naming the trip's source, then re-arm through the lifecycle |
 | Move target J1–6     | Always editable                                                                        | —                                                                                                                                                                                                          | Validated as typed against the joint limits                              |
-| Move                 | The arm is Enabled, all targets valid                                                  | "Not connected", "Tripped", "Moving", "Enable the arm first", "J N outside limits"                                                                                                                         | Move to the six targets through the lifecycle                            |
+| Move                 | The arm is Enabled or Moving, all targets valid                                        | "Not connected", "Tripped", "Enable the arm first", "J N outside limits"                                                                                                                                   | Move to the six targets through the lifecycle; replaces a running move   |
 | Abort                | A move running                                                                         | "No move running"                                                                                                                                                                                          | Abort the move                                                           |
 | Target selector      | The arm does not drive its joints: not enabling, enabled, moving, disabling or holding | "Disable the arm first"                                                                                                                                                                                    | Part C                                                                   |
 | Restart (motor)      | Virtual arm, arm not enabling, enabled, moving or disabling, motor not starting        | "Disable the arm first", "Starting"                                                                                                                                                                        | Restart that joint's virtual motor (Part L)                              |

@@ -69,9 +69,7 @@ namespace simulator
                 return Disabled("Tripped");
             if (snapshot.state == holding)
                 return Disabled("Holding: re-arm first");
-            if (snapshot.moving || snapshot.state == moving)
-                return Disabled("Moving");
-            if (snapshot.state != enabled)
+            if (snapshot.state != enabled && snapshot.state != moving)
                 return Disabled("Enable the arm first");
             if (!targetProblem.empty())
                 return Disabled(std::string{ targetProblem });

@@ -510,9 +510,12 @@ namespace arm_host
 
     std::string_view ArmSession::MoveRefusal(const ArmCommand& command) const
     {
-        if (arm.Lifecycle().State() == arm::ArmState::holding)
+        const auto state = arm.Lifecycle().State();
+        if (state == arm::ArmState::holding)
             return "holding after a protective stop: re-arm first";
-        if (arm.Lifecycle().State() != arm::ArmState::enabled)
+        if (state == arm::ArmState::moving && std::holds_alternative<StepTo>(command))
+            return "moving";
+        if (state != arm::ArmState::enabled && state != arm::ArmState::moving)
             return Moving() ? "moving" : "the arm is not enabled";
         const auto& target = std::holds_alternative<MoveTo>(command) ? std::get<MoveTo>(command).target : std::get<StepTo>(command).target;
         if (arm::WithinLimits(profile.config.positionLimits, target))

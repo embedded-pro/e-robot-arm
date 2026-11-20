@@ -2,9 +2,9 @@
 title: "Arm Composition and Console Design"
 type: design
 status: draft
-version: 0.11.0
+version: 0.12.0
 component: "arm"
-date: 2026-11-19
+date: 2026-11-20
 ---
 
 | Field     | Value                              |
@@ -12,9 +12,9 @@ date: 2026-11-19
 | Title     | Arm Composition and Console Design |
 | Type      | design                             |
 | Status    | draft                              |
-| Version   | 0.11.0                             |
+| Version   | 0.12.0                             |
 | Component | arm                                |
-| Date      | 2026-11-19                         |
+| Date      | 2026-11-20                         |
 
 > How the arm's components are put together, and the host console that drives them over a CAN adapter. Behaviour
 > only; diagrams are Mermaid.
@@ -70,7 +70,7 @@ control loop and reads one command per line from standard input:
 | `clear`                                     | Clear the faults of all six joints                                                                                                                                              |
 | `align`                                     | Align all six joints' rotors; it moves the motors. A joint that kept its calibration reports ready once aligned                                                                 |
 | `rearm`                                     | Re-arm the arm after a trip                                                                                                                                                     |
-| `move q1 q2 q3 q4 q5 q6`                    | Move the six joints to the positions, in radians; only while enabled                                                                                                            |
+| `move q1 q2 q3 q4 q5 q6`                    | Move the six joints to the positions, in radians; only while enabled, and a new target replaces a running move                                                                  |
 | `step q1 q2 q3 q4 q5 q6`                    | Step the reference to the positions at once, each at most 0.2 rad from its joint; only while enabled                                                                            |
 | `tune step\|move <joint> <rad> [csv]`       | Run a step or out-and-back test on one joint and print its metrics; with a file, also write the samples as CSV                                                                  |
 | `abort`                                     | Abort the running move                                                                                                                                                          |
