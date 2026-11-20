@@ -56,6 +56,7 @@ namespace arm
         , gravityPd(model, GravityPdGains(model, config))
         , computedTorque(model, ReflectedRotors(config), config.computedTorque)
         , gravityPid(model, ReflectedRotors(config), config.gravityPid, config.controlPeriod)
+        , jointImpedance(model, HomeInertias(model, ReflectedRotors(config)), config.jointImpedance)
         , collision(model, ReflectedRotors(config), config.collisionObserverGain)
         , period(config.controlPeriod)
         , torqueLimits(Supervision(config).torque)
@@ -70,6 +71,7 @@ namespace arm
         controllers.Enable(gravityPdId);
         controllers.Enable(controllers.Register("computed-torque", computedTorque));
         controllers.Enable(controllers.Register("gravity-pid", gravityPid));
+        controllers.Enable(controllers.Register("joint-impedance", jointImpedance));
         controllers.Select(gravityPdId);
         motion.SelectProfile(config.motionProfile);
     }
@@ -122,6 +124,16 @@ namespace arm
     const ArmControllers& Arm::Controllers() const
     {
         return controllers;
+    }
+
+    JointImpedance& Arm::Impedance()
+    {
+        return jointImpedance;
+    }
+
+    const JointImpedance& Arm::Impedance() const
+    {
+        return jointImpedance;
     }
 
     const std::optional<JointTorques>& Arm::EstimatedExternalTorques() const

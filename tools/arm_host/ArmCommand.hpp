@@ -174,13 +174,18 @@ namespace arm_host
         arm::ArmControllerId id;
     };
 
+    struct SetImpedanceShare
+    {
+        float share;
+    };
+
     struct SelectMotionProfile
     {
         arm::MotionProfile profile;
     };
 
     using ArmCommand = std::variant<CheckContracts, SelectMode, StartJoints, StopJoints, ClearFaults, EmergencyStop, Rearm, MoveTo, AbortMove, InjectFault, SilenceJoint,
-        BringUp, Enable, Disable, ApplyController, ReadController, ApplyMotor, ReadMotor, EnableArmController, DisableArmController, SelectArmController, AlignJoints, RestartMotor, ResumeJoint, CollideJoint, PowerOffMotor, StepTo, SelectMotionProfile, MoveThrough, MoveLine, JogJoint, JogTool, HoldJog, Teach, GoTo>;
+        BringUp, Enable, Disable, ApplyController, ReadController, ApplyMotor, ReadMotor, EnableArmController, DisableArmController, SelectArmController, AlignJoints, RestartMotor, ResumeJoint, CollideJoint, PowerOffMotor, StepTo, SelectMotionProfile, MoveThrough, MoveLine, JogJoint, JogTool, HoldJog, Teach, GoTo, SetImpedanceShare>;
 
     std::string_view CommandName(const ArmCommand& command);
     std::string_view StateName(arm::ArmState state);

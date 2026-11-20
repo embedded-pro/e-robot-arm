@@ -23,6 +23,8 @@ target_sources(e_robot_arm.arm_controllers.implementations PRIVATE
     GravityCompensatedPd.hpp
     GravityPid.cpp
     GravityPid.hpp
+    JointImpedance.cpp
+    JointImpedance.hpp
 )
 
 add_subdirectory(test)

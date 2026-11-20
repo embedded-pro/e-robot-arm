@@ -279,6 +279,8 @@ namespace arm
                     return ReadTuning(path, value, profile.config.computedTorque);
                 if (key == "gravityPid")
                     return ReadTuning(path, value, profile.config.gravityPid);
+                if (key == "jointImpedance")
+                    return ReadImpedance(path, value, profile.config.jointImpedance);
                 if (key == "collisionObserverGainPerS")
                     return ReadBounded(path, value, 1000.0f, "must be above 0 and at most 1000", profile.config.collisionObserverGain);
                 if (key == "safety")
@@ -370,6 +372,27 @@ namespace arm
                     {
                         if (key == "bandwidthRadPerS")
                             return ReadBounded(item, member, 500.0f, "must be above 0 and at most 500", tuning.bandwidth);
+                        if (key == "dampingRatio")
+                            return ReadBounded(item, member, 5.0f, "must be above 0 and at most 5", tuning.dampingRatio);
+                        return Unknown(item);
+                    });
+            }
+
+            bool ReadImpedance(const Path& path, const Value& value, JointImpedanceTuning& tuning)
+            {
+                return ReadMembers(path, value, [this, &tuning](const Path& item, infra::JsonString key, const Value& member)
+                    {
+                        if (key == "stiffnessNmPerRad")
+                        {
+                            JointStiffnesses stiffness{};
+                            if (!ReadSix(item, member, stiffness, [this](const Path& element, const Value& entry, float& result)
+                                    {
+                                        return ReadPositive(element, entry, result);
+                                    }))
+                                return false;
+                            tuning.stiffness = stiffness;
+                            return true;
+                        }
                         if (key == "dampingRatio")
                             return ReadBounded(item, member, 5.0f, "must be above 0 and at most 5", tuning.dampingRatio);
                         return Unknown(item);
@@ -1160,6 +1183,8 @@ namespace arm
                 Tuning(config.computedTorque);
                 stream << ",\n  \"gravityPid\": ";
                 Tuning(config.gravityPid);
+                stream << ",\n  \"jointImpedance\": ";
+                Impedance(config.jointImpedance);
                 stream << ",\n  \"collisionObserverGainPerS\": ";
                 Number(config.collisionObserverGain);
                 stream << ",\n  \"motionProfile\": \"" << motionProfileNames[static_cast<std::size_t>(config.motionProfile)] << "\"";
@@ -1290,6 +1315,24 @@ namespace arm
                 stream << "{ \"bandwidthRadPerS\": ";
                 Number(tuning.bandwidth);
                 stream << ", \"dampingRatio\": ";
+                Number(tuning.dampingRatio);
+                stream << " }";
+            }
+
+            void Impedance(const JointImpedanceTuning& tuning)
+            {
+                stream << "{ ";
+                if (tuning.stiffness.has_value())
+                {
+                    stream << "\"stiffnessNmPerRad\": [";
+                    for (std::size_t joint = 0; joint != jointCount; ++joint)
+                    {
+                        stream << (joint == 0 ? " " : ", ");
+                        Number((*tuning.stiffness)[joint]);
+                    }
+                    stream << " ], ";
+                }
+                stream << "\"dampingRatio\": ";
                 Number(tuning.dampingRatio);
                 stream << " }";
             }

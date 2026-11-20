@@ -10,7 +10,7 @@
 
 namespace arm
 {
-    inline constexpr std::size_t maxArmControllers{ 4 };
+    inline constexpr std::size_t maxArmControllers{ 8 };
 
     class ArmControllersImpl
         : public ArmControllers

@@ -2,6 +2,7 @@
 #define CORE_ARM_ARM_CONFIG_HPP
 
 #include "core/arm_controllers/implementations/GravityCompensatedPd.hpp"
+#include "core/arm_controllers/implementations/JointImpedance.hpp"
 #include "core/arm_model/ArmGeometry.hpp"
 #include "core/arm_model/ArmMass.hpp"
 #include "core/joint_bus/interfaces/JointBus.hpp"
@@ -46,6 +47,7 @@ namespace arm
         BandwidthTuning gravityPd{};
         BandwidthTuning computedTorque{};
         BandwidthTuning gravityPid{ 20.0f, 0.7f };
+        JointImpedanceTuning jointImpedance{};
         TrackingLimits tracking{};
         CollisionLimits collision{ DefaultCollisionLimits() };
         std::array<std::optional<foc::RadiansPerSecond>, jointCount> speedTrips{};

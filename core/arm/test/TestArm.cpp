@@ -197,8 +197,12 @@ TEST_F(ArmTest, enables_the_joints_in_torque_mode_and_streams_the_gravity_compen
     const auto gravityPd = arm.Controllers().Find("gravity-pd");
     ASSERT_TRUE(gravityPd.has_value());
     EXPECT_EQ(gravityPd, arm.Controllers().Active());
-    EXPECT_EQ(3u, arm.Controllers().Count());
+    EXPECT_EQ(4u, arm.Controllers().Count());
     ASSERT_TRUE(arm.Controllers().Find("gravity-pid").has_value());
+    const auto impedance = arm.Controllers().Find("joint-impedance");
+    ASSERT_TRUE(impedance.has_value());
+    EXPECT_TRUE(arm.Controllers().Enabled(*impedance));
+    EXPECT_FLOAT_EQ(1.0f, arm.Impedance().StiffnessShare());
     const auto computedTorque = arm.Controllers().Find("computed-torque");
     ASSERT_TRUE(computedTorque.has_value());
     EXPECT_TRUE(arm.Controllers().Enabled(*computedTorque));
