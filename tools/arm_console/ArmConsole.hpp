@@ -46,6 +46,8 @@ namespace arm_console
         ExecuteResult MotionProfile(std::istringstream& arguments);
         ExecuteResult Jog(std::istringstream& arguments);
         ExecuteResult TeachPoint(std::string_view command, std::istringstream& arguments);
+        ExecuteResult MoveJoints(std::istringstream& arguments);
+        ExecuteResult MoveLine(std::istringstream& arguments);
         void Points();
         void Kinematics(std::string_view command, std::istringstream& arguments);
         void PrintPose(const arm::Placement& pose, const arm::Singularities& singularities);

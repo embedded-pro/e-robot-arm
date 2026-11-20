@@ -133,7 +133,7 @@ designed in [joint-motion.md](design/joint-motion.md) 0.9.0:
 5. Done: tool lines: straight line and slerp, checked in full before they start; tool limits and the manipulability
    threshold in the profile.
 6. Done: jogging: joint and tool jog with the dead-man; console `jog`.
-7. Teach points in the profile; console `teach` and `goto`; console `movej` with waypoints and `movel`.
+7. Done: teach points in the profile; console `teach` and `goto`; console `movej` with waypoints and `movel`.
 8. Scenarios per generator on the simulated arm, requirements REQ-MOT-001 to 003, and the teach-two-points-and-line
    run the issue asks for.
 

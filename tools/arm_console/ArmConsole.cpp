@@ -3,10 +3,13 @@
 #include "tools/arm_host/ProfileFile.hpp"
 #include <algorithm>
 #include <array>
+#include <charconv>
 #include <filesystem>
 #include <format>
 #include <fstream>
 #include <iomanip>
+#include <iterator>
+#include <vector>
 
 namespace arm_console
 {
@@ -47,6 +50,41 @@ namespace arm_console
 
         constexpr std::array<std::string_view, 2> motionProfileNames{ "trapezoid", "s-curve" };
         constexpr std::array<std::string_view, 2> frameNames{ "base", "tool" };
+
+        std::optional<float> Number(std::string_view token)
+        {
+            float value{ 0.0f };
+            const auto [end, error] = std::from_chars(token.data(), token.data() + token.size(), value);
+            if (error != std::errc{} || end != token.data() + token.size())
+                return std::nullopt;
+            return value;
+        }
+
+        const arm::TeachPoint* FindPoint(const arm::ArmConfig& config, std::string_view name)
+        {
+            for (std::size_t point = 0; point != config.teachPointCount; ++point)
+                if (std::string_view{ config.teachPoints[point].name.data(), config.teachPoints[point].name.size() } == name)
+                    return &config.teachPoints[point];
+            return nullptr;
+        }
+
+        bool ReadAngles(const std::vector<std::string>& tokens, std::size_t& index, arm::JointPositions& joints)
+        {
+            for (auto& joint : joints)
+            {
+                const auto value = index != tokens.size() ? Number(tokens[index++]) : std::nullopt;
+                if (!value.has_value())
+                    return false;
+                joint = foc::Radians{ *value };
+            }
+            return true;
+        }
+
+        std::vector<std::string> Tokens(std::istringstream& arguments)
+        {
+            return { std::istream_iterator<std::string>{ arguments }, std::istream_iterator<std::string>{} };
+        }
+
         constexpr std::array<std::string_view, 6> axisNames{ "x", "y", "z", "rx", "ry", "rz" };
 
         std::optional<infra::Duration> HeldFor(std::istringstream& arguments)
@@ -128,6 +166,12 @@ namespace arm_console
 
         if (command == "teach" || command == "goto")
             return TeachPoint(command, arguments);
+
+        if (command == "movej")
+            return MoveJoints(arguments);
+
+        if (command == "movel")
+            return MoveLine(arguments);
 
         if (command == "points")
         {
@@ -301,6 +345,76 @@ namespace arm_console
         return { Outcome::posted, arm.Post(arm_host::HoldJog{ *jog, *duration }) };
     }
 
+    ExecuteResult ArmConsole::MoveJoints(std::istringstream& arguments)
+    {
+        const auto config = arm.Snapshot().config;
+        const auto tokens = Tokens(arguments);
+        arm_host::MoveThrough path;
+        for (std::size_t index = 0; index != tokens.size();)
+        {
+            arm::JointPositions joints{};
+            if (const auto* point = FindPoint(config, tokens[index]))
+            {
+                joints = point->joints;
+                ++index;
+            }
+            else if (!Number(tokens[index]).has_value())
+            {
+                output << "no teach point " << tokens[index] << "\n";
+                return { Outcome::done };
+            }
+            else if (!ReadAngles(tokens, index, joints))
+            {
+                Usage();
+                return { Outcome::done };
+            }
+
+            if (path.waypoints.full())
+            {
+                Usage();
+                return { Outcome::done };
+            }
+            path.waypoints.push_back(joints);
+        }
+
+        if (path.waypoints.empty())
+        {
+            Usage();
+            return { Outcome::done };
+        }
+        return { Outcome::posted, arm.Post(path) };
+    }
+
+    ExecuteResult ArmConsole::MoveLine(std::istringstream& arguments)
+    {
+        const auto tokens = Tokens(arguments);
+        if (tokens.size() == 1)
+        {
+            const auto config = arm.Snapshot().config;
+            const auto* point = FindPoint(config, tokens[0]);
+            if (point == nullptr)
+            {
+                output << "no teach point " << tokens[0] << "\n";
+                return { Outcome::done };
+            }
+            const arm::ArmModel model{ config.geometry, config.mass, config.positionLimits };
+            return { Outcome::posted, arm.Post(arm_host::MoveLine{ arm::ToPlacement(model.ToolPose(point->joints)) }) };
+        }
+
+        std::array<float, 6> values{};
+        for (std::size_t index = 0; index != values.size(); ++index)
+        {
+            const auto value = tokens.size() == values.size() ? Number(tokens[index]) : std::nullopt;
+            if (!value.has_value())
+            {
+                Usage();
+                return { Outcome::done };
+            }
+            values[index] = *value;
+        }
+        return { Outcome::posted, arm.Post(arm_host::MoveLine{ { values[0], values[1], values[2], values[3], values[4], values[5] } }) };
+    }
+
     ExecuteResult ArmConsole::TeachPoint(std::string_view command, std::istringstream& arguments)
     {
         std::string name;
@@ -448,7 +562,7 @@ namespace arm_console
 
     void ArmConsole::Usage()
     {
-        output << "usage: bringup | enable | disable | move q1 q2 q3 q4 q5 q6 | step q1 q2 q3 q4 q5 q6 | tune step|move <joint> <rad> [csv] | rearm | contracts | mode torque|speed|position | start | stop | estop | clear | align | abort | load <file> | save <file> | controllers | controller enable|disable|select <name> | motion [trapezoid|s-curve] | jog <joint> <rad/s> [s] | jog base|tool x|y|z|rx|ry|rz <speed> [s] | teach <name> | goto <name> | points | pose | gravity | fk q1..q6 | ik x y z roll pitch yaw | status | quit\n";
+        output << "usage: bringup | enable | disable | move q1 q2 q3 q4 q5 q6 | step q1 q2 q3 q4 q5 q6 | tune step|move <joint> <rad> [csv] | rearm | contracts | mode torque|speed|position | start | stop | estop | clear | align | abort | load <file> | save <file> | controllers | controller enable|disable|select <name> | motion [trapezoid|s-curve] | jog <joint> <rad/s> [s] | jog base|tool x|y|z|rx|ry|rz <speed> [s] | teach <name> | goto <name> | points | movej <point|q1..q6>... | movel x y z roll pitch yaw | movel <point> | pose | gravity | fk q1..q6 | ik x y z roll pitch yaw | status | quit\n";
     }
 
     ExecuteResult ArmConsole::Tune(std::istringstream& arguments)
