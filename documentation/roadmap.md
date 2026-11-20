@@ -119,6 +119,23 @@ The move there, in phase 8d ([#31](https://github.com/embedded-pro/e-robot-arm/i
 
 The architecture is described in [system.md](architecture/system.md#configurability).
 
+## Phase 4 — Motion
+
+The order of work for [#20](https://github.com/embedded-pro/e-robot-arm/issues/20), each step a pull request,
+designed in [joint-motion.md](design/joint-motion.md) 0.9.0:
+
+1. Design: motion generators, S-curve point-to-point and replacing a running move, waypoint paths, tool lines,
+   jogging and teach points.
+2. S-curve point-to-point: per-joint jerk limits and the profile choice in the arm profile, switchable at rest.
+3. Replacing a running point-to-point move from its latest sample.
+4. Waypoint paths: cubic spline through up to 8 joint waypoints, timed by the time-optimal parameterisation.
+5. Tool lines: straight line and slerp, checked in full before they start; tool limits and the manipulability
+   threshold in the profile.
+6. Jogging: joint and tool jog with the dead-man; console `jog`.
+7. Teach points in the profile; console `teach` and `goto`; console `movej` with waypoints and `movel`.
+8. Scenarios per generator on the simulated arm, requirements REQ-MOT-001 to 003, and the teach-two-points-and-line
+   run the issue asks for.
+
 ## Phase 6 — Safety
 
 The order of work for [#22](https://github.com/embedded-pro/e-robot-arm/issues/22), each step a pull request,
