@@ -27,9 +27,9 @@ namespace arm
             return { (static_cast<void>(Joint), controllers::PidIncrementalSynchronous<float>{ tunings, limits })... };
         }
 
-        ArmModel::MassMatrix InertiaAtHome(const ArmModel& model, const JointInertias& rotors)
+        ArmModel::MassMatrix InertiaAt(const ArmModel& model, const JointInertias& rotors, const JointPositions& positions)
         {
-            auto inertia = model.JointMassMatrix(JointPositions{});
+            auto inertia = model.JointMassMatrix(positions);
             for (std::size_t joint = 0; joint != jointCount; ++joint)
                 inertia.at(joint, joint) += rotors[joint];
             return inertia;
@@ -38,7 +38,7 @@ namespace arm
 
     GravityPid::GravityPid(const ArmModel& model, const JointInertias& rotors, const BandwidthTuning& tuning, infra::Duration period)
         : model(model)
-        , inertia(InertiaAtHome(model, rotors))
+        , rotors(rotors)
         , derivativeGain(PairGain(tuning) * tuning.bandwidth)
         , pids(MakePids(ProportionalIntegral(tuning, period), std::make_index_sequence<jointCount>{}))
     {}
@@ -63,6 +63,7 @@ namespace arm
     JointSetpoints GravityPid::Step(const MeasuredJoints& measured, const JointReference& reference)
     {
         const auto corrections = Corrections(measured, reference);
+        const auto inertia = InertiaAt(model, rotors, measured.positions);
         auto torques = model.GravityTorque(measured.positions);
         for (std::size_t row = 0; row != jointCount; ++row)
             for (std::size_t column = 0; column != jointCount; ++column)

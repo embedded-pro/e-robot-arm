@@ -30,7 +30,7 @@ namespace
         arm::JointTorques Expected(const arm::JointAccelerations& accelerations) const
         {
             auto torques = model.GravityTorque(measured.positions);
-            auto inertia = model.JointMassMatrix(arm::JointPositions{});
+            auto inertia = model.JointMassMatrix(measured.positions);
             for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
                 inertia.at(joint, joint) += rotors[joint];
             for (std::size_t row = 0; row != arm::jointCount; ++row)
@@ -60,7 +60,7 @@ TEST_F(GravityPidTest, holds_a_joint_at_rest_on_its_reference_with_the_gravity_t
     ExpectTorques(model.GravityTorque(measured.positions), setpoints.torques);
 }
 
-TEST_F(GravityPidTest, feeds_the_reference_acceleration_forward_through_the_arms_inertia)
+TEST_F(GravityPidTest, feeds_the_reference_acceleration_forward_through_the_arms_inertia_at_the_measured_pose)
 {
     auto reference = arm::AtRest(measured.positions);
     reference.accelerations[1] = foc::RadiansPerSecondSquared{ 2.0f };

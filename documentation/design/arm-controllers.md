@@ -2,7 +2,7 @@
 title: "Arm Controllers Design"
 type: design
 status: draft
-version: 0.17.0
+version: 0.18.0
 component: "arm-controllers"
 date: 2026-11-20
 ---
@@ -12,7 +12,7 @@ date: 2026-11-20
 | Title     | Arm Controllers Design |
 | Type      | design                 |
 | Status    | draft                  |
-| Version   | 0.17.0                 |
+| Version   | 0.18.0                 |
 | Component | arm-controllers        |
 | Date      | 2026-11-20             |
 
@@ -80,10 +80,10 @@ the measured position, so its first set is G(q) − Kd·q̇: it takes over witho
 and elbow move each other, so no diagonal gain set suits them all: gains sized from each joint's own inertia leave
 the fast coupled mode of shoulder and elbow, whose inertia is much smaller, damped beyond what a 10 ms loop can
 hold, and it oscillates. The profile names a bandwidth ω (rad/s) and a damping ratio ζ instead, and the gains are
-the arm's inertia matrix scaled: Kp = ω²·J, Kd = 2·ζ·ω·J, with J the arm model's mass matrix at the home position
-plus, on its diagonal, each motor's rotor inertia times its gear ratio squared (Teknic's when the profile names no
-motor). Near home every mode of the arm then has its poles at ω with damping ζ; away from home the mass matrix
-drifts from J, and the poles with it. Each joint lags a move by about 2·ζ/ω times its speed, and the damping per
+the arm's inertia matrix scaled: Kp = ω²·J, Kd = 2·ζ·ω·J, with J the arm model's mass matrix at the measured pose,
+recomputed every period, plus, on its diagonal, each motor's rotor inertia times its gear ratio squared (Teknic's
+when the profile names no motor). Every mode of the arm then has its poles near ω with damping ζ wherever the arm
+is (Gains away from home, Part D). Each joint lags a move by about 2·ζ/ω times its speed, and the damping per
 control period, 2·ζ·ω·T, does not depend on any inertia. The bandwidth is bounded by the loop's delay: the
 telemetry's age, half a control period for the held torque, and a reading that arrives a period late under host load.
 `gravity-pd` at 30 rad/s and `gravity-pid` at 20 rad/s, both at ζ = 0.7, cross over near 47 rad/s and lose stability
@@ -102,7 +102,7 @@ has no state and takes over without a step.
 whatever torque the models leave out, the drives' Coulomb friction first: about 0.04 rad on the elbow of the
 virtual arm. `gravity-pid` runs one numerical-toolbox `PidIncremental` per joint as a PI on the position error and
 adds a derivative on the speed error, in acceleration units, then turns the sum into torque the way `gravity-pd` does:
-`τ = J·(q̈* + u) + G(q)`, with J the inertia matrix at home and the rotors (above), `q̈*` the reference acceleration and
+`τ = J·(q̈* + u) + G(q)`, with J the inertia matrix at the measured pose and the rotors (above), `q̈*` the reference acceleration and
 u the six corrections. The gains place each joint's poles at the profile's bandwidth ω: a pair with damping ζ and a
 real pole for the integral, so Kp = (2·ζ + 1)·ω², Ki = ω³ (times the control period in the velocity form) and
 Kd = (2·ζ + 1)·ω. The derivative takes the drives' measured speed against the reference speed rather than differencing
@@ -243,12 +243,14 @@ so a switch away and back does not lose what was learnt; the console sets them b
 (`adaptation reset`). With the flag on and the model exact, moves through four poses, a 0.05 rad step at each and
 back home finished twice on the simulated arm.
 
-**Gains away from home.** `gravity-pd` and `gravity-pid` size their gains from the inertia at home (Part A), and at
-some poses the arm's coupled modes are then lightly damped: on the simulated arm at 0.1, 0.5, 0.6, 0.2, 1.0, 0 rad the
-base and wrist joints 1, 4 and 6 swing together by about ±6 mrad with a period near 1.2 s, decaying over seconds. The
-controllers that use the mass matrix at the measured pose (`computed-torque`, `operational-space` and the two
-impedance laws' dampers) do not have it. Whether `gravity-pd` and `gravity-pid` recompute J at the measured pose every
-period, at the cost of a mass matrix per period, is open question 3.
+**Gains away from home.** `gravity-pd` and `gravity-pid` sized their gains from the inertia at home, the stretched
+upright pose, where joint 1 moves about 0.004 kg·m²; bent out it moves seventeen times as much. On the simulated arm
+at 0.1, 0.5, 0.6, 0.2, 1.0, 0 rad the base and wrist joints 1, 4 and 6 then swung together by about ±6 mrad under
+`gravity-pd`, and `gravity-pid` (whose integral is tuned for the bandwidth) drifted joint 1 past its 0.2 rad tracking
+window after a move there or to 0.2, 0.5, 0.6, 0.3, 0.9, −0.2 rad. Both now take J at the measured pose every
+period (open question 3), a mass matrix per period as `computed-torque`, `operational-space` and the impedance
+dampers already pay: the swing is gone, and moves through four poses, a 0.05 rad step at each and back home finish
+under either.
 
 **A softened arm and the tracking window.** With the stiffness share at 0.1, both impedance laws let a full-speed move
 (1 rad/s, 2 rad/s²) on the simulated reference arm leave a wrist joint 0.2 to 0.37 rad behind its reference, beyond the
@@ -286,8 +288,8 @@ being guided; whether the window widens with the share is open question 4.
 | Measured joints       | speeds                  | radians/second  | finite                 | Latest reading per joint                             |
 | Setpoint set          | positions               | radians         | joint limits           | The reference, for the trace and the check           |
 | Setpoint set          | torques                 | N·m, joint side | finite                 | Sent to the joints                                   |
-| `gravity-pd`          | bandwidth               | rad/s           | above 0                | 30 by default; Kp = ω²·J                             |
-| `gravity-pd`          | damping ratio           | 1               | above 0                | 0.7 by default; Kd = 2·ζ·ω·J                         |
+| `gravity-pd`          | bandwidth               | rad/s           | above 0                | 30 by default; Kp = ω²·J(q)                          |
+| `gravity-pd`          | damping ratio           | 1               | above 0                | 0.7 by default; Kd = 2·ζ·ω·J(q)                      |
 | `computed-torque`     | bandwidth               | rad/s           | above 0                | 30 by default; Kp = ω²·I                             |
 | `computed-torque`     | damping ratio           | 1               | above 0                | 0.7 by default; Kd = 2·ζ·ω·I                         |
 | `gravity-pid`         | bandwidth               | rad/s           | above 0                | 20 by default; Kp = (2ζ + 1)·ω², Ki = ω³             |
@@ -367,9 +369,9 @@ sequenceDiagram
 
 ## Open Questions
 
-| # | Question                                                | Options                                            | Status                       |
-|---|---------------------------------------------------------|----------------------------------------------------|------------------------------|
-| 1 | Whether the profile stores the enabled and active ones  | Profile section; console and simulator choice only | open: with phase 5           |
-| 2 | Whether a switch to a non-bumpless controller may blend | Refuse while moving; ramp from the old set         | decided: refuse while moving |
-| 3 | Gains of the joint-space laws away from home            | Inertia at home; mass matrix at the measured pose  | open (Part D)                |
-| 4 | Whether the tracking window follows the stiffness share | Fixed window; window over the share                | open (Part D)                |
+| # | Question                                                | Options                                            | Status                        |
+|---|---------------------------------------------------------|----------------------------------------------------|-------------------------------|
+| 1 | Whether the profile stores the enabled and active ones  | Profile section; console and simulator choice only | open: with phase 5            |
+| 2 | Whether a switch to a non-bumpless controller may blend | Refuse while moving; ramp from the old set         | decided: refuse while moving  |
+| 3 | Gains of the joint-space laws away from home            | Inertia at home; mass matrix at the measured pose  | decided: at the measured pose |
+| 4 | Whether the tracking window follows the stiffness share | Fixed window; window over the share                | open (Part D)                 |

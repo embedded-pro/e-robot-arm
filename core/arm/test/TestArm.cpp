@@ -296,7 +296,7 @@ TEST_F(ArmTest, gravity_pd_gains_follow_the_arms_inertia_with_each_rotor_through
     config.gravityPd = { 20.0f, 0.5f };
     const arm::ArmModel model{ config.geometry, config.mass, config.positionLimits };
 
-    const auto gains = arm::GravityPdGains(model, config);
+    const auto gains = arm::PlacedGains(model, arm::ReflectedRotors(config), config.gravityPd, arm::JointPositions{});
 
     const auto mass = model.Dynamics().ComputeMassMatrix(model.ModelVector(arm::JointPositions{}));
     const auto teknic = arm::motorPresets[0].settings[arm::MotorParameter::inertia];
