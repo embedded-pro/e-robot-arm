@@ -7,6 +7,7 @@ target_include_directories(e_robot_arm.lifecycle.interfaces INTERFACE
 
 target_link_libraries(e_robot_arm.lifecycle.interfaces INTERFACE
     e_robot_arm.joint_bus.interfaces
+    e_robot_arm.motion.interfaces
 )
 
 target_sources(e_robot_arm.lifecycle.interfaces PRIVATE

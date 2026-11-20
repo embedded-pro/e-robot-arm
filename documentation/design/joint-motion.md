@@ -2,7 +2,7 @@
 title: "Joint Motion Design"
 type: design
 status: draft
-version: 0.9.0
+version: 0.10.0
 component: "motion"
 date: 2026-11-20
 ---
@@ -12,7 +12,7 @@ date: 2026-11-20
 | Title     | Joint Motion Design |
 | Type      | design              |
 | Status    | draft               |
-| Version   | 0.9.0               |
+| Version   | 0.10.0              |
 | Component | motion              |
 | Date      | 2026-11-20          |
 
@@ -128,12 +128,21 @@ arrives. The first move's done event is never sent; the replacing one sends it.
 ### Part G — Waypoint paths
 
 A path runs through up to **8 joint waypoints** after the start, all within the position limits. robotics-toolbox's
-cubic spline through the start and the waypoints gives the path's shape, with zero speed at both ends.
-robotics-toolbox's time-optimal path parameterisation then times it as fast as each joint's speed and acceleration
-limits allow, on a grid of 64 points; the dynamics' torque limits join those constraints once the arm model's torque
-limits are in the profile. Before the path starts, it is sampled at every control period: a path that leaves a
-joint's position limits between two waypoints, or that the parameterisation cannot time, is refused. A path is done
-at its last waypoint, at rest.
+cubic spline through the start and the waypoints gives the path's shape: knots spaced by the joint-space distance
+between waypoints, natural ends. robotics-toolbox's time-optimal path parameterisation then times it as fast as each
+joint's speed and acceleration limits allow, on a grid of 64 points, from rest to rest; the dynamics' torque limits
+join those constraints once the arm model's torque limits are in the profile.
+
+The parameterisation holds the limits at its grid points only. Where every moving joint stops at once, a path that
+turns back on itself, the acceleration between two grid points can exceed them. The timed path is therefore sampled at
+every control period and slowed uniformly by the least factor k that brings every sample within the limits (speed
+divided by k, acceleration by k²), checked again at the slowed samples; a path that still exceeds them after 8 rounds
+is refused, so the reference never breaks the safety supervisor's reference rule ([safety.md](safety.md) Part F).
+
+Before the path starts, its samples are checked against the position limits at every control period and against the
+workspace guard at up to 64 of them, evenly spread in time. A path that leaves a joint's position limits between two
+waypoints or fails the guard, that repeats a waypoint, or that the parameterisation cannot time is refused. A path
+runs alone: a new target or path is refused until it is done or aborted. It is done at its last waypoint, at rest.
 
 ### Part H — Tool lines
 
@@ -256,14 +265,14 @@ sequenceDiagram
 
 ## Constraints & Limitations
 
-| Constraint  | Value / Description                                                                 |
-|-------------|-------------------------------------------------------------------------------------|
-| Profile     | Trapezoidal (acceleration steps) or S-curve (jerk-limited), per the profile         |
-| Start state | At rest at the latest positions, or the running point-to-point move's latest sample |
-| Replacing   | A replaced point-to-point move's joints are not synchronised (Part F)               |
-| Waypoints   | At most 8 after the start; the time-optimal grid has 64 points                      |
-| Lines       | Checked in full before they start; refused with the first failing sample's reason   |
-| Memory      | No heap; all state is fixed-size                                                    |
+| Constraint  | Value / Description                                                                                                   |
+|-------------|-----------------------------------------------------------------------------------------------------------------------|
+| Profile     | Trapezoidal (acceleration steps) or S-curve (jerk-limited), per the profile                                           |
+| Start state | At rest at the latest positions, or the running point-to-point move's latest sample                                   |
+| Replacing   | A replaced point-to-point move's joints are not synchronised (Part F)                                                 |
+| Waypoints   | At most 8 after the start; the time-optimal grid has 64 points, then a uniform slowdown to the limits at every sample |
+| Lines       | Checked in full before they start; refused with the first failing sample's reason                                     |
+| Memory      | No heap; all state is fixed-size                                                                                      |
 
 ---
 

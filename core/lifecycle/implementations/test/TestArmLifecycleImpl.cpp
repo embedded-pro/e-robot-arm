@@ -310,6 +310,24 @@ TEST_F(ArmLifecycleImplTest, a_step_starts_only_while_enabled_moves_like_a_move_
     EXPECT_EQ(ArmState::enabled, lifecycle.State());
 }
 
+TEST_F(ArmLifecycleImplTest, a_path_starts_only_while_enabled_moves_like_a_move_and_ends_back_in_enabled)
+{
+    arm::JointWaypoints::WithMaxSize<arm::maxWaypoints> waypoints;
+    waypoints.push_back(target);
+    EXPECT_FALSE(lifecycle.MoveThrough(waypoints));
+
+    BringToEnabled();
+    EXPECT_CALL(motion, MoveThrough(_)).WillOnce(Return(false)).WillOnce(Return(true));
+    EXPECT_FALSE(lifecycle.MoveThrough(waypoints));
+    EXPECT_EQ(ArmState::enabled, lifecycle.State());
+    EXPECT_TRUE(lifecycle.MoveThrough(waypoints));
+    EXPECT_EQ(ArmState::moving, lifecycle.State());
+    EXPECT_FALSE(lifecycle.MoveThrough(waypoints));
+
+    FinishMove();
+    EXPECT_EQ(ArmState::enabled, lifecycle.State());
+}
+
 TEST_F(ArmLifecycleImplTest, a_move_refused_by_joint_motion_leaves_the_arm_enabled)
 {
     BringToEnabled();

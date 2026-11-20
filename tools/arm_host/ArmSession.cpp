@@ -10,7 +10,7 @@ namespace arm_host
         bool NeedsMotionPermission(const ArmCommand& command)
         {
             return std::holds_alternative<SelectMode>(command) || std::holds_alternative<StartJoints>(command) || std::holds_alternative<AlignJoints>(command) ||
-                   std::holds_alternative<MoveTo>(command) || std::holds_alternative<StepTo>(command);
+                   std::holds_alternative<MoveTo>(command) || std::holds_alternative<StepTo>(command) || std::holds_alternative<MoveThrough>(command);
         }
 
         bool DeliveredByTheJoints(const ArmCommand& command)
@@ -303,6 +303,11 @@ namespace arm_host
             return session.arm.Lifecycle().StepTo(step.target);
         }
 
+        bool operator()(const MoveThrough& path) const
+        {
+            return session.arm.Lifecycle().MoveThrough(path.waypoints);
+        }
+
         bool operator()(const AbortMove&) const
         {
             session.arm.Motion().Abort();
@@ -490,6 +495,8 @@ namespace arm_host
             return arm.Configurator().Busy() ? "busy" : "the arm is not ready";
         if (const auto reason = MotionPermissionRefusal(); NeedsMotionPermission(command) && reason.has_value())
             return *reason;
+        if (const auto* path = std::get_if<MoveThrough>(&command))
+            return PathRefusal(*path);
         if (std::holds_alternative<MoveTo>(command) || std::holds_alternative<StepTo>(command))
             return MoveRefusal(command);
         if (DeliveredByTheJoints(command))
@@ -531,6 +538,23 @@ namespace arm_host
         if (std::holds_alternative<MoveTo>(command))
             return "target outside the joint limits";
         return "a step is at most 0.2 rad from where the joints are, within the joint limits";
+    }
+
+    std::string_view ArmSession::PathRefusal(const MoveThrough& path) const
+    {
+        const auto state = arm.Lifecycle().State();
+        if (state == arm::ArmState::holding)
+            return "holding after a protective stop: re-arm first";
+        if (state != arm::ArmState::enabled)
+            return Moving() ? "moving" : "the arm is not enabled";
+        if (path.waypoints.empty())
+            return "no waypoints";
+        if (!std::ranges::all_of(path.waypoints, [this](const arm::JointPositions& waypoint)
+                {
+                    return arm::WithinLimits(profile.config.positionLimits, waypoint);
+                }))
+            return "a waypoint is outside the joint limits";
+        return "the path leaves the joint limits or the workspace, meets the arm itself, or repeats a waypoint";
     }
 
     std::string_view ArmSession::ArmControllerRefusal(arm::ArmControllerId id) const

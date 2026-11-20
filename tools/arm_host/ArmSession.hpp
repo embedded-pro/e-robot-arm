@@ -100,6 +100,7 @@ namespace arm_host
         std::string_view ArmControllerRefusal(arm::ArmControllerId id) const;
         std::optional<std::string_view> MotionPermissionRefusal() const;
         std::string_view MoveRefusal(const ArmCommand& command) const;
+        std::string_view PathRefusal(const MoveThrough& path) const;
         void ReportTrip(std::size_t joint, can::FocFaultCode fault, std::string reason = {});
         void Emit(ArmEvent event);
         void Publish();

@@ -3,9 +3,11 @@
 
 #include "core/joint_bus/interfaces/JointBus.hpp"
 #include "core/motion/implementations/JointMovePlan.hpp"
+#include "core/motion/implementations/JointPathPlan.hpp"
 #include "core/motion/interfaces/JointMotion.hpp"
 #include "core/safety/interfaces/PoseGuard.hpp"
 #include "infra/timer/Timer.hpp"
+#include <array>
 #include <cstdint>
 #include <optional>
 
@@ -23,6 +25,7 @@ namespace arm
 
         bool MoveTo(const JointPositions& target) override;
         bool StepTo(const JointPositions& target) override;
+        bool MoveThrough(const JointWaypoints& waypoints) override;
         void Abort() override;
         bool Moving() const override;
         bool SelectProfile(MotionProfile newProfile) override;
@@ -31,13 +34,26 @@ namespace arm
         std::optional<JointReference> Step();
 
     private:
+        enum class Generator : uint8_t
+        {
+            none,
+            pointToPoint,
+            step,
+            path
+        };
+
         bool Accepts(const JointPositions& target) const;
         bool Acceptable(const JointPositions& target) const;
+        bool Admissible(const JointPositions& target) const;
+        std::size_t PathPeriods() const;
+        float PeriodSeconds() const;
+        bool PathWithinLimits() const;
         float Elapsed() const;
         bool PathClear(const JointPositions& from, const JointPositions& to) const;
         bool WithinStep(const JointPositions& target) const;
         bool AnyReadingStale() const;
         JointPositions LatestPositions() const;
+        JointReference Sampled(float elapsed) const;
         void Finish();
 
         JointBus& bus;
@@ -48,10 +64,10 @@ namespace arm
         infra::Duration period;
         const PoseGuard* guard;
         JointMovePlan plan;
+        JointPathPlan path;
         JointPositions target{};
         uint32_t periodsElapsed{ 0 };
-        bool moving{ false };
-        bool stepping{ false };
+        Generator generator{ Generator::none };
     };
 }
 
