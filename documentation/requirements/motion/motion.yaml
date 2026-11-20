@@ -1,0 +1,18 @@
+- id: REQ-MOT-001
+  title: Paths through waypoints
+  shall: >
+    When commanded through a sequence of joint-space waypoints within the joint limits, the arm shall pass through
+    every waypoint and come to rest at the last one, within every joint's speed and acceleration limits.
+
+- id: REQ-MOT-002
+  title: Straight tool lines
+  shall: >
+    When commanded to move the tool in a straight line to a pose, the arm shall keep the tool on that line from its
+    start to the pose, and shall refuse, without moving any joint, a line any part of which it cannot follow within
+    its joint limits.
+
+- id: REQ-MOT-003
+  title: Jogging needs the operator
+  shall: >
+    While jogging, the arm shall bring the motion to rest, within every joint's acceleration limit, when the operator
+    stops commanding the jog.
