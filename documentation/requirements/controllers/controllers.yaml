@@ -1,0 +1,11 @@
+- id: REQ-CTL-001
+  title: A controller switch keeps a held pose
+  shall: >
+    When the operator selects another arm controller while the arm holds a pose, the arm shall keep every joint
+    within 0.005 rad of where it was at the switch, and shall then carry its moves with the newly selected controller.
+
+- id: REQ-CTL-002
+  title: Every arm controller reaches a commanded target
+  shall: >
+    Whichever arm controller the operator selects before enabling the arm, the arm shall bring every joint onto a
+    commanded joint-space target and hold it there.
