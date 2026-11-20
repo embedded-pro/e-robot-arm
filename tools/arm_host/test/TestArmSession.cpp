@@ -293,6 +293,28 @@ TEST_F(ArmSessionTest, jogs_a_joint_until_the_dead_man_expires_and_names_why_a_j
     EXPECT_NEAR(0.0f, sink.snapshot.commanded->at(1).Value(), 1.0e-4f);
 }
 
+TEST_F(SlowToolSessionTest, jogs_the_tool_along_a_base_axis_until_the_dead_man_expires)
+{
+    Execute(1, arm_host::CheckContracts{});
+    Execute(2, arm_host::SelectMode{ can::FocMotorMode::torque });
+    Execute(3, arm_host::StartJoints{});
+    arm::JointPositions clear{};
+    const std::array<float, arm::jointCount> start{ 0.1f, 0.5f, 0.6f, 0.2f, 1.0f, 0.0f };
+    for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+        clear[joint] = foc::Radians{ start[joint] };
+    Execute(4, arm_host::MoveTo{ clear });
+    ForwardTime(6s);
+    const auto before = sink.snapshot.toolPose;
+
+    Execute(5, arm_host::JogTool{ { arm::JogFrame::base, arm::ToolAxis::y, 0.05f } });
+    EXPECT_EQ(ArmEventKind::accepted, sink.Last()->kind);
+    ForwardTime(2s);
+
+    EXPECT_EQ(2, std::ranges::count(sink.events, ArmEventKind::moveDone, &arm_host::ArmEvent::kind));
+    EXPECT_GT(sink.snapshot.toolPose.y, before.y + 1.0e-3f);
+    EXPECT_NEAR(before.x, sink.snapshot.toolPose.x, 1.0e-3f);
+}
+
 TEST_F(ArmSessionTest, a_move_shows_the_commanded_positions_and_the_joints_follow_with_a_lag)
 {
     BringUp();

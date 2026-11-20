@@ -102,7 +102,7 @@ namespace arm_host
         std::string_view MoveRefusal(const ArmCommand& command) const;
         std::string_view PathRefusal(const MoveThrough& path) const;
         std::string_view LineRefusal() const;
-        std::string_view JogRefusal(const JogJoint& jog) const;
+        std::string_view JogRefusal(bool known, float speed) const;
         void ReportTrip(std::size_t joint, can::FocFaultCode fault, std::string reason = {});
         void Emit(ArmEvent event);
         void Publish();

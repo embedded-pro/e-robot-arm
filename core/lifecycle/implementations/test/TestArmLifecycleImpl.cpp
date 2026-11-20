@@ -351,12 +351,27 @@ TEST_F(ArmLifecycleImplTest, a_jog_starts_while_enabled_refreshes_while_moving_a
     EXPECT_FALSE(lifecycle.Jog(jog));
 
     BringToEnabled();
-    EXPECT_CALL(motion, Jog(_)).WillOnce(Return(true)).WillOnce(Return(true)).WillOnce(Return(false));
+    EXPECT_CALL(motion, Jog(An<const arm::JointJog&>())).WillOnce(Return(true)).WillOnce(Return(true)).WillOnce(Return(false));
     EXPECT_TRUE(lifecycle.Jog(jog));
     EXPECT_EQ(ArmState::moving, lifecycle.State());
     EXPECT_TRUE(lifecycle.Jog(jog));
     EXPECT_FALSE(lifecycle.Jog(jog));
     EXPECT_EQ(ArmState::moving, lifecycle.State());
+
+    FinishMove();
+    EXPECT_EQ(ArmState::enabled, lifecycle.State());
+}
+
+TEST_F(ArmLifecycleImplTest, a_tool_jog_starts_while_enabled_and_refreshes_while_moving)
+{
+    const arm::ToolJog jog{ arm::JogFrame::tool, arm::ToolAxis::rz, 0.2f };
+    EXPECT_FALSE(lifecycle.Jog(jog));
+
+    BringToEnabled();
+    EXPECT_CALL(motion, Jog(An<const arm::ToolJog&>())).WillOnce(Return(true)).WillOnce(Return(true));
+    EXPECT_TRUE(lifecycle.Jog(jog));
+    EXPECT_EQ(ArmState::moving, lifecycle.State());
+    EXPECT_TRUE(lifecycle.Jog(jog));
 
     FinishMove();
     EXPECT_EQ(ArmState::enabled, lifecycle.State());

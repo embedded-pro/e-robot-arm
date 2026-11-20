@@ -16,4 +16,5 @@ target_sources(e_robot_arm.motion_test PRIVATE
     TestJointJog.cpp
     TestJointLine.cpp
     TestJointPathPlan.cpp
+    TestToolJog.cpp
 )

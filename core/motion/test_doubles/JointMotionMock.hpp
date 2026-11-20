@@ -15,6 +15,7 @@ namespace arm
         MOCK_METHOD(bool, MoveThrough, (const JointWaypoints& waypoints), (override));
         MOCK_METHOD(bool, MoveLine, (const ToolPose& target), (override));
         MOCK_METHOD(bool, Jog, (const JointJog& jog), (override));
+        MOCK_METHOD(bool, Jog, (const ToolJog& jog), (override));
         MOCK_METHOD(std::optional<LineRefusal>, LineRefused, (), (const, override));
         MOCK_METHOD(void, Abort, (), (override));
         MOCK_METHOD(bool, Moving, (), (const, override));

@@ -2,7 +2,7 @@
 title: "Joint Motion Design"
 type: design
 status: draft
-version: 0.12.0
+version: 0.13.0
 component: "motion"
 date: 2026-11-20
 ---
@@ -12,7 +12,7 @@ date: 2026-11-20
 | Title     | Joint Motion Design |
 | Type      | design              |
 | Status    | draft               |
-| Version   | 0.12.0              |
+| Version   | 0.13.0              |
 | Component | motion              |
 | Date      | 2026-11-20          |
 
@@ -182,6 +182,25 @@ at its position limit at that acceleration; the other joints hold where they wer
 with a done event, when it is at rest with nothing commanded: after the dead-man, a jog of speed zero, or at a limit.
 A jog of another joint while one runs ramps the running joint to rest and then starts the new one, if the dead-man has
 not expired meanwhile; a first jog of speed zero is refused.
+
+A tool jog moves along x, y or z of its frame in m/s, or turns about one of them through the tool point in rad/s; its
+speed is clamped to the tool's linear or angular speed limit and ramps at the tool's acceleration limit
+([arm-profile.md](arm-profile.md) `toolLimits`). The commanded pose is integrated from the pose at the start, never
+from the solutions, so it does not drift. Each period the step:
+
+- goes through the arm model's inverse kinematics, the solution nearest the previous sample;
+- is sized, between the tool's acceleration limit and rest, so that every joint stays within its speed and
+  acceleration limits; the tool may brake harder than its own limit when a joint needs it;
+- is taken only if its solution stays above the manipulability threshold, passes the workspace check, and the jog can
+  still come to rest from it within every limit, which is checked by running the braking ahead; otherwise the jog
+  brakes now.
+
+So a jog toward a singularity, the reach or an obstacle slows and holds short of it while the operator keeps
+commanding it, and ends at rest when they stop. A step that cannot even brake within the limits is not taken: the jog
+holds at the last accepted sample and ends.
+
+A jog of the other kind, or of another axis or frame, ramps the running jog to rest first, as a jog of another joint
+does.
 
 ### Part J — Teach points
 

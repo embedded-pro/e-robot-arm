@@ -6,12 +6,14 @@
 #include "core/motion/implementations/JointLinePlan.hpp"
 #include "core/motion/implementations/JointMovePlan.hpp"
 #include "core/motion/implementations/JointPathPlan.hpp"
+#include "core/motion/implementations/ToolJogger.hpp"
 #include "core/motion/interfaces/JointMotion.hpp"
 #include "core/safety/interfaces/PoseGuard.hpp"
 #include "infra/timer/Timer.hpp"
 #include <array>
 #include <cstdint>
 #include <optional>
+#include <variant>
 
 namespace arm
 {
@@ -36,6 +38,7 @@ namespace arm
         bool MoveThrough(const JointWaypoints& waypoints) override;
         bool MoveLine(const ToolPose& target) override;
         bool Jog(const JointJog& jog) override;
+        bool Jog(const ToolJog& jog) override;
         std::optional<LineRefusal> LineRefused() const override;
         void Abort() override;
         bool Moving() const override;
@@ -52,8 +55,11 @@ namespace arm
             step,
             path,
             line,
-            jog
+            jog,
+            toolJog
         };
+
+        using PendingJog = std::variant<JointJog, ToolJog>;
 
         bool Accepts(const JointPositions& target) const;
         bool Acceptable(const JointPositions& target) const;
@@ -69,6 +75,10 @@ namespace arm
         JointReference Sampled(float elapsed) const;
         std::optional<JointReference> StepLine();
         JointReference StepJog();
+        JointReference StepToolJog();
+        void EndJog(const JointPositions& last);
+        bool StartJog(const JointJog& jog, const JointPositions& from);
+        bool StartJog(const ToolJog& jog, const JointPositions& from);
         void Arrive();
         void Finish();
 
@@ -84,6 +94,9 @@ namespace arm
         std::optional<JointLinePlan> line;
         std::optional<LineRefusal> lineRefusal;
         JointJogger jogger;
+        std::optional<ToolJogger> toolJogger;
+        std::optional<PendingJog> pendingJog;
+        uint32_t pendingAge{ 0 };
         JointPositions target{};
         uint32_t periodsElapsed{ 0 };
         Generator generator{ Generator::none };

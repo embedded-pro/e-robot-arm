@@ -14,6 +14,7 @@ namespace arm
 
         void Start(const JointPositions& from, const JointJog& jog);
         void Command(const JointJog& jog);
+        void Stop();
         JointReference Advance();
         bool Done() const;
 
