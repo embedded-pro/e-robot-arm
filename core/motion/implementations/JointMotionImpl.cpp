@@ -19,10 +19,12 @@ namespace arm
         }
     }
 
-    JointMotionImpl::JointMotionImpl(JointBus& bus, const JointLimits& positionLimits, const JointMotionLimits& limits, infra::Duration period, const PoseGuard* guard)
+    JointMotionImpl::JointMotionImpl(JointBus& bus, const JointLimits& positionLimits, const JointMotionLimits& limits, infra::Duration period, const PoseGuard* guard,
+        const JointJerkLimits& jerks)
         : bus(bus)
         , positionLimits(positionLimits)
         , limits(limits)
+        , jerks(jerks)
         , period(period)
         , guard(guard)
     {
@@ -36,7 +38,7 @@ namespace arm
             return false;
 
         target = newTarget;
-        plan.Plan(LatestPositions(), target, limits);
+        plan.Plan(LatestPositions(), target, limits, jerks, profile);
         periodsElapsed = 0;
         moving = true;
         stepping = false;
@@ -105,6 +107,24 @@ namespace arm
     bool JointMotionImpl::Moving() const
     {
         return moving;
+    }
+
+    bool JointMotionImpl::SelectProfile(MotionProfile newProfile)
+    {
+        const auto jerkLimited = std::ranges::all_of(jerks, [](const std::optional<foc::RadiansPerSecondCubed>& jerk)
+            {
+                return jerk.has_value() && jerk->Value() > 0.0f;
+            });
+        if (Moving() || (newProfile == MotionProfile::sCurve && !jerkLimited))
+            return false;
+
+        profile = newProfile;
+        return true;
+    }
+
+    MotionProfile JointMotionImpl::Profile() const
+    {
+        return profile;
     }
 
     bool JointMotionImpl::AnyReadingStale() const

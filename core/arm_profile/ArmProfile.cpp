@@ -13,6 +13,7 @@ namespace arm
     {
         constexpr const char* formatMarker{ "e-robot-arm profile" };
         constexpr std::array<const char*, 1> modeNames{ "torque" };
+        constexpr std::array<const char*, 2> motionProfileNames{ "trapezoid", "s-curve" };
         constexpr std::array<const char*, 4> currentNames{ "pid", "decoupledPid", "deadbeat", "slidingMode" };
         constexpr std::array<const char*, 4> speedNames{ "pid", "lqi", "adrc", "twoDof" };
         constexpr std::array<const char*, 5> positionNames{ "pid", "cascadeP", "lqr", "lqi", "twoDof" };
@@ -222,6 +223,12 @@ namespace arm
                     return Missing(root, "missedRequestsBeforeSilent");
                 if (!seen.joints)
                     return Missing(root, "joints");
+                const auto jerkLimited = std::ranges::all_of(profile.config.jerkLimits, [](const std::optional<foc::RadiansPerSecondCubed>& jerk)
+                    {
+                        return jerk.has_value();
+                    });
+                if (profile.config.motionProfile == MotionProfile::sCurve && !jerkLimited)
+                    return Fail(Child(root, "motionProfile"), "s-curve needs a jerk limit on every joint");
                 return true;
             }
 
@@ -243,6 +250,8 @@ namespace arm
                     return ReadWatchdogPeriods(path, value, profile.config.driveWatchdogPeriods);
                 if (key == "enableMode")
                     return ReadMode(path, value);
+                if (key == "motionProfile")
+                    return ReadMotionProfile(path, value, profile.config.motionProfile);
                 if (key == "joints")
                     return Mark(seen.joints, ReadJoints(path, value, profile.config));
                 if (key == "geometry")
@@ -651,6 +660,15 @@ namespace arm
                 return ReadChoice(path, value, modeNames, "must be torque: the arm runs its joints in torque mode only", mode);
             }
 
+            bool ReadMotionProfile(const Path& path, const Value& value, MotionProfile& profile)
+            {
+                std::size_t chosen{ 0 };
+                if (!ReadChoice(path, value, motionProfileNames, "must be trapezoid or s-curve", chosen))
+                    return false;
+                profile = static_cast<MotionProfile>(chosen);
+                return true;
+            }
+
             bool ReadJoints(const Path& path, const Value& value, ArmConfig& config)
             {
                 const auto* found = std::get_if<infra::JsonArray>(&value);
@@ -724,7 +742,7 @@ namespace arm
                 if (key == "positionLimitsRad")
                     return Mark(seen.limits, ReadLimits(path, value, config.positionLimits[joint]));
                 if (key == "motionLimits")
-                    return Mark(seen.motion, ReadMotion(path, value, config.motionLimits[joint]));
+                    return Mark(seen.motion, ReadMotion(path, value, config.motionLimits[joint], config.jerkLimits[joint]));
                 if (key == "trackingError")
                     return ReadTracking(path, value, config.tracking[joint]);
                 if (key == "collisionTorqueNm")
@@ -871,16 +889,18 @@ namespace arm
                 return true;
             }
 
-            bool ReadMotion(const Path& path, const Value& value, JointMotionLimit& limit)
+            bool ReadMotion(const Path& path, const Value& value, JointMotionLimit& limit, std::optional<foc::RadiansPerSecondCubed>& jerk)
             {
                 std::array<bool, 2> seen{};
                 std::array<float, 2> values{};
-                if (!ReadMembers(path, value, [this, &seen, &values](const Path& item, infra::JsonString key, const Value& member)
+                if (!ReadMembers(path, value, [this, &seen, &values, &jerk](const Path& item, infra::JsonString key, const Value& member)
                         {
                             if (key == "speedRadPerS")
                                 return Mark(seen[0], ReadPositive(item, member, values[0]));
                             if (key == "accelerationRadPerS2")
                                 return Mark(seen[1], ReadPositive(item, member, values[1]));
+                            if (key == "jerkRadPerS3")
+                                return ReadJerk(item, member, jerk);
                             return Unknown(item);
                         }))
                     return false;
@@ -890,6 +910,15 @@ namespace arm
                 if (!seen[1])
                     return Missing(path, "accelerationRadPerS2");
                 limit = { foc::RadiansPerSecond{ values[0] }, foc::RadiansPerSecondSquared{ values[1] } };
+                return true;
+            }
+
+            bool ReadJerk(const Path& path, const Value& value, std::optional<foc::RadiansPerSecondCubed>& jerk)
+            {
+                float number{ 0.0f };
+                if (!ReadPositive(path, value, number))
+                    return false;
+                jerk = foc::RadiansPerSecondCubed{ number };
                 return true;
             }
 
@@ -1042,6 +1071,7 @@ namespace arm
                 Tuning(config.gravityPid);
                 stream << ",\n  \"collisionObserverGainPerS\": ";
                 Number(config.collisionObserverGain);
+                stream << ",\n  \"motionProfile\": \"" << motionProfileNames[static_cast<std::size_t>(config.motionProfile)] << "\"";
                 stream << ",\n  \"joints\": [";
 
                 for (std::size_t joint = 0; joint != jointCount; ++joint)
@@ -1196,6 +1226,11 @@ namespace arm
                 Number(config.motionLimits[joint].maxSpeed.Value());
                 stream << ", \"accelerationRadPerS2\": ";
                 Number(config.motionLimits[joint].maxAcceleration.Value());
+                if (config.jerkLimits[joint].has_value())
+                {
+                    stream << ", \"jerkRadPerS3\": ";
+                    Number(config.jerkLimits[joint]->Value());
+                }
                 stream << " },\n      \"trackingError\": { \"windowRad\": ";
                 Number(config.tracking[joint].window.Value());
                 stream << ", \"timeS\": ";

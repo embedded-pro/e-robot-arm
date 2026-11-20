@@ -45,6 +45,8 @@ namespace arm_console
             return std::format("{}joint {} {}", category, stop->joint + 1, cause);
         }
 
+        constexpr std::array<std::string_view, 2> motionProfileNames{ "trapezoid", "s-curve" };
+
         std::string JointList(const arm::JointFlags& joints)
         {
             std::string list;
@@ -87,6 +89,9 @@ namespace arm_console
 
         if (command == "controller")
             return ArmController(arguments);
+
+        if (command == "motion")
+            return MotionProfile(arguments);
 
         if (command == "tune")
             return Tune(arguments);
@@ -208,6 +213,26 @@ namespace arm_console
         return { Outcome::posted, arm.Post(arm_host::SelectArmController{ id }) };
     }
 
+    ExecuteResult ArmConsole::MotionProfile(std::istringstream& arguments)
+    {
+        std::string name;
+        std::string rest;
+        if (!(arguments >> name))
+        {
+            output << "motion profile: " << motionProfileNames[static_cast<std::size_t>(arm.Snapshot().config.motionProfile)] << "\n";
+            return { Outcome::done };
+        }
+
+        const auto found = std::ranges::find(motionProfileNames, name);
+        if (found == motionProfileNames.end() || (arguments >> rest))
+        {
+            Usage();
+            return { Outcome::done };
+        }
+
+        return { Outcome::posted, arm.Post(arm_host::SelectMotionProfile{ static_cast<arm::MotionProfile>(found - motionProfileNames.begin()) }) };
+    }
+
     void ArmConsole::Kinematics(std::string_view command, std::istringstream& arguments)
     {
         const auto snapshot = arm.Snapshot();
@@ -325,7 +350,7 @@ namespace arm_console
 
     void ArmConsole::Usage()
     {
-        output << "usage: bringup | enable | disable | move q1 q2 q3 q4 q5 q6 | step q1 q2 q3 q4 q5 q6 | tune step|move <joint> <rad> [csv] | rearm | contracts | mode torque|speed|position | start | stop | estop | clear | align | abort | load <file> | save <file> | controllers | controller enable|disable|select <name> | pose | gravity | fk q1..q6 | ik x y z roll pitch yaw | status | quit\n";
+        output << "usage: bringup | enable | disable | move q1 q2 q3 q4 q5 q6 | step q1 q2 q3 q4 q5 q6 | tune step|move <joint> <rad> [csv] | rearm | contracts | mode torque|speed|position | start | stop | estop | clear | align | abort | load <file> | save <file> | controllers | controller enable|disable|select <name> | motion [trapezoid|s-curve] | pose | gravity | fk q1..q6 | ik x y z roll pitch yaw | status | quit\n";
     }
 
     ExecuteResult ArmConsole::Tune(std::istringstream& arguments)

@@ -185,6 +185,14 @@ TEST_F(JointMotionImplTest, a_move_to_where_the_joints_are_samples_the_target_on
     EXPECT_EQ(Target(0.0f), sent.front());
 }
 
+TEST_F(JointMotionImplTest, starts_trapezoidal_and_refuses_the_s_curve_without_a_jerk_limit_on_every_joint)
+{
+    EXPECT_EQ(arm::MotionProfile::trapezoid, motion.Profile());
+
+    EXPECT_FALSE(motion.SelectProfile(arm::MotionProfile::sCurve));
+    EXPECT_EQ(arm::MotionProfile::trapezoid, motion.Profile());
+}
+
 TEST_F(JointMotionImplTest, a_step_without_a_move_has_no_reference)
 {
     Step(5);
@@ -269,4 +277,35 @@ TEST_F(JointMotionGuardedTest, refuses_a_step_whose_target_fails_the_guard)
     EXPECT_CALL(guard, Check(_)).WillOnce(Return(arm::WorkspaceViolation{ arm::WorkspaceRule::selfCollision, 0, 2, 0.0f }));
 
     EXPECT_FALSE(guarded.StepTo(Target(0.1f)));
+}
+
+namespace
+{
+    arm::JointJerkLimits Jerks()
+    {
+        arm::JointJerkLimits jerks{};
+        jerks.fill(foc::RadiansPerSecondCubed{ 4.0f });
+        return jerks;
+    }
+
+    class JointMotionJerkLimitedTest
+        : public JointMotionImplTest
+    {
+    public:
+        arm::JointMotionImpl jerkLimited{ bus, PositionLimits(), UniformLimits(), 100ms, nullptr, Jerks() };
+    };
+}
+
+TEST_F(JointMotionJerkLimitedTest, switches_profile_at_rest_only_and_moves_with_the_one_in_effect_when_planned)
+{
+    EXPECT_TRUE(jerkLimited.SelectProfile(arm::MotionProfile::sCurve));
+    EXPECT_EQ(arm::MotionProfile::sCurve, jerkLimited.Profile());
+
+    ASSERT_TRUE(jerkLimited.MoveTo(Target(1.0f)));
+    EXPECT_FALSE(jerkLimited.SelectProfile(arm::MotionProfile::trapezoid));
+    EXPECT_EQ(arm::MotionProfile::sCurve, jerkLimited.Profile());
+
+    const auto first = jerkLimited.Step();
+    ASSERT_TRUE(first.has_value());
+    EXPECT_NEAR(4.0f * 0.1f, first->accelerations[0].Value(), tolerance);
 }

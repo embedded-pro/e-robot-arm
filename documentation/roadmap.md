@@ -126,7 +126,8 @@ designed in [joint-motion.md](design/joint-motion.md) 0.9.0:
 
 1. Design: motion generators, S-curve point-to-point and replacing a running move, waypoint paths, tool lines,
    jogging and teach points.
-2. S-curve point-to-point: per-joint jerk limits and the profile choice in the arm profile, switchable at rest.
+2. Done: S-curve point-to-point: per-joint jerk limits and the profile choice in the arm profile, switchable at rest
+   (console `motion`).
 3. Replacing a running point-to-point move from its latest sample.
 4. Waypoint paths: cubic spline through up to 8 joint waypoints, timed by the time-optimal parameterisation.
 5. Tool lines: straight line and slerp, checked in full before they start; tool limits and the manipulability

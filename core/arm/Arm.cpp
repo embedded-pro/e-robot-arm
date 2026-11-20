@@ -48,7 +48,7 @@ namespace arm
     Arm::Arm(can::FocMotorCategoryClient& client, const ArmConfig& config, HardwareStop* hardwareStop)
         : jointBus(client, config.nodes, config.transmissions, config.missedRequestsBeforeSilent, config.controlPeriod * config.commandTimeoutPeriods)
         , safety(jointBus, config.positionLimits, config.tracking, config.collision, config.controlPeriod, Supervision(config), SupervisionInputs{ &workspace, hardwareStop })
-        , motion(safety, config.positionLimits, config.motionLimits, config.controlPeriod, &workspace)
+        , motion(safety, config.positionLimits, config.motionLimits, config.controlPeriod, &workspace, config.jerkLimits)
         , configurator(safety, lifecycle, SilenceWindow(config))
         , lifecycle(safety, motion, configurator, config.controllers, config.motors, DriveWatchdogSeconds(config))
         , model(config.geometry, config.mass, config.positionLimits)
@@ -71,6 +71,7 @@ namespace arm
         controllers.Enable(controllers.Register("computed-torque", computedTorque));
         controllers.Enable(controllers.Register("gravity-pid", gravityPid));
         controllers.Select(gravityPdId);
+        motion.SelectProfile(config.motionProfile);
     }
 
     SafetySupervisor& Arm::Safety()

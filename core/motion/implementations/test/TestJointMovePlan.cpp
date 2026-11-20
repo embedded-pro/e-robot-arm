@@ -1,4 +1,5 @@
 #include "core/motion/implementations/JointMovePlan.hpp"
+#include "numerical/motion_profiles/SCurveProfile.hpp"
 #include "gmock/gmock.h"
 #include <algorithm>
 #include <cmath>
@@ -118,4 +119,61 @@ TEST_F(JointMovePlanTest, samples_each_joints_speed_and_acceleration_from_its_tr
     const auto end = plan.Sample(plan.Duration() + 1.0f);
     EXPECT_EQ(arm::JointSpeeds{}, end.speeds);
     EXPECT_EQ(arm::JointAccelerations{}, end.accelerations);
+}
+
+namespace
+{
+    arm::JointJerkLimits UniformJerks(float maxJerk)
+    {
+        arm::JointJerkLimits jerks{};
+        jerks.fill(foc::RadiansPerSecondCubed{ maxJerk });
+        return jerks;
+    }
+
+    class JointMovePlanSCurveTest
+        : public JointMovePlanTest
+    {
+    public:
+        JointMovePlanSCurveTest()
+        {
+            plan.Plan(from, to, UniformLimits(1.0f, 2.0f), UniformJerks(8.0f), arm::MotionProfile::sCurve);
+        }
+    };
+}
+
+TEST_F(JointMovePlanSCurveTest, the_slowest_joint_alone_sets_the_duration_and_every_joint_arrives_with_it)
+{
+    const motion_profiles::SCurveProfile<float> slowest{ 0.0f, 2.0f, { 1.0f, 2.0f, 8.0f } };
+
+    EXPECT_NEAR(slowest.Duration(), plan.Duration(), tolerance);
+    ExpectPositions(from, plan.Sample(0.0f).positions);
+    ExpectPositions(to, plan.Sample(plan.Duration()).positions);
+    ExpectPositions(Positions({ 1.0f, 0.75f, -1.0f, 0.75f, -0.125f, 1.5f }), plan.Sample(plan.Duration() / 2.0f).positions);
+}
+
+TEST_F(JointMovePlanSCurveTest, no_joint_exceeds_its_speed_acceleration_or_jerk_limit)
+{
+    constexpr float dt{ 1.0e-3f };
+    auto previous = plan.Sample(0.0f);
+    for (float time = dt; time <= plan.Duration(); time += dt)
+    {
+        const auto sample = plan.Sample(time);
+        for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+        {
+            EXPECT_LE(std::abs(sample.speeds[joint].Value()), 1.0f + tolerance) << "joint " << joint << " at " << time;
+            EXPECT_LE(std::abs(sample.accelerations[joint].Value()), 2.0f + tolerance) << "joint " << joint << " at " << time;
+            const auto jerk = (sample.accelerations[joint].Value() - previous.accelerations[joint].Value()) / dt;
+            EXPECT_LE(std::abs(jerk), 8.0f * 1.01f) << "joint " << joint << " at " << time;
+        }
+        previous = sample;
+    }
+}
+
+TEST_F(JointMovePlanSCurveTest, acceleration_starts_and_ends_at_zero)
+{
+    for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+    {
+        EXPECT_NEAR(0.0f, plan.Sample(0.0f).accelerations[joint].Value(), tolerance);
+        EXPECT_NEAR(0.0f, plan.Sample(plan.Duration()).accelerations[joint].Value(), 1.0e-3f);
+    }
 }

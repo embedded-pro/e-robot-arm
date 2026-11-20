@@ -14,6 +14,8 @@ namespace arm
         MOCK_METHOD(bool, StepTo, (const JointPositions& target), (override));
         MOCK_METHOD(void, Abort, (), (override));
         MOCK_METHOD(bool, Moving, (), (const, override));
+        MOCK_METHOD(bool, SelectProfile, (MotionProfile profile), (override));
+        MOCK_METHOD(MotionProfile, Profile, (), (const, override));
     };
 }
 

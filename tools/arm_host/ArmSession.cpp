@@ -389,6 +389,14 @@ namespace arm_host
             return session.arm.Controllers().Select(select.id);
         }
 
+        bool operator()(const SelectMotionProfile& select) const
+        {
+            if (!session.arm.Motion().SelectProfile(select.profile))
+                return false;
+            session.profile.config.motionProfile = select.profile;
+            return true;
+        }
+
         ArmSession& session;
     };
 
@@ -471,6 +479,8 @@ namespace arm_host
             return "the arm drives the joints with it: disable the arm first";
         if (const auto id = ArmControllerOf(command); id.has_value())
             return ArmControllerRefusal(*id);
+        if (std::holds_alternative<SelectMotionProfile>(command))
+            return Moving() ? "moving" : "a joint has no jerk limit";
         if (std::holds_alternative<Rearm>(command))
             return Stopped(arm.Lifecycle().State()) ? "a joint is in fault" : "not tripped or holding";
         if (LifecycleCommand(command))

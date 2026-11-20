@@ -2,7 +2,7 @@
 title: "Arm Profile Design"
 type: design
 status: draft
-version: 0.16.0
+version: 0.17.0
 component: "arm_profile"
 date: 2026-11-19
 ---
@@ -12,7 +12,7 @@ date: 2026-11-19
 | Title     | Arm Profile Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.16.0             |
+| Version   | 0.17.0             |
 | Component | arm_profile        |
 | Date      | 2026-11-19         |
 
@@ -48,7 +48,7 @@ A profile holds what `ArmConfig` holds:
 | Item                        | JSON key                          | Unit, range                 | Default when absent |
 |-----------------------------|-----------------------------------|-----------------------------|---------------------|
 | Format marker               | `format`                          | `"e-robot-arm profile"`     | required            |
-| Format version              | `version`                         | `3` (`1` and `2` are read)  | required            |
+| Format version              | `version`                         | `4` (`1` to `3` are read)   | required            |
 | Name                        | `name`                            | text, at most 48 characters | required            |
 | Control period              | `controlPeriodMs`                 | ms, 1 to 1000               | required            |
 | Missed telemetry allowed    | `missedRequestsBeforeSilent`      | periods, 1 to 255           | required            |
@@ -62,6 +62,7 @@ A profile holds what `ArmConfig` holds:
 | `gravity-pid` bandwidth     | `gravityPid.bandwidthRadPerS`     | rad/s, above 0, at most 500 | 20                  |
 | `gravity-pid` damping       | `gravityPid.dampingRatio`         | above 0, at most 5          | 0.7                 |
 | Collision observer gain     | `collisionObserverGainPerS`       | 1/s, above 0, at most 1000  | 25                  |
+| Motion profile              | `motionProfile`                   | `trapezoid`, `s-curve`      | `trapezoid`         |
 | Joints                      | `joints`                          | exactly six, in order       | required            |
 | Geometry                    | `geometry`                        | see below                   | the reference arm   |
 | Mass properties             | `massProperties`                  | see below                   | the reference arm   |
@@ -71,6 +72,11 @@ A profile holds what `ArmConfig` holds:
 The arm runs its joints in torque mode only ([arm-controllers.md](arm-controllers.md) Part A). `enableMode` is
 read for older profiles and must be `torque`; a profile that names another mode is refused, and a written profile
 leaves it out.
+
+The motion profile shapes every point-to-point move ([joint-motion.md](joint-motion.md) Part F): trapezoidal at each
+joint's speed and acceleration limits, or S-curve, also within its jerk limit. A profile that chooses `s-curve`
+without a jerk limit on every joint is refused. The profile can be changed at rest without reloading the file, and the
+profile in effect is the one written.
 
 The two `gravityPd` items set the gains of the `gravity-pd` arm controller, the two `computedTorque` items those of
 `computed-torque` and the two `gravityPid` items those of `gravity-pid`, for every joint at once ([arm-controllers.md](arm-controllers.md) Part A).
@@ -104,22 +110,23 @@ never reads them.
 
 Each joint:
 
-| Item               | JSON key                            | Unit, range                                 | Default when absent |
-|--------------------|-------------------------------------|---------------------------------------------|---------------------|
-| Node               | `node`                              | CAN node id, 1 to 255, unique among the six | required            |
-| Gear ratio         | `transmission.ratio`                | motor turns per joint turn, above 0         | 1                   |
-| Direction          | `transmission.direction`            | `positive`, `negative`                      | `positive`          |
-| Zero offset        | `transmission.offsetRad`            | rad, joint space                            | 0                   |
-| Position limits    | `positionLimitsRad.lower`, `.upper` | rad, joint space, lower below upper         | required            |
-| Speed limit        | `motionLimits.speedRadPerS`         | rad/s, joint space, above 0                 | required            |
-| Acceleration limit | `motionLimits.accelerationRadPerS2` | rad/s², joint space, above 0                | required            |
-| Tracking window    | `trackingError.windowRad`           | rad, joint space, above 0                   | 0.2                 |
-| Tracking time      | `trackingError.timeS`               | s, above 0, at most 10                      | 0.2                 |
-| Collision limit    | `collisionTorqueNm`                 | N·m, joint side, above 0, at most 1000      | 20                  |
-| Speed trip         | `speedLimitRadPerS`                 | rad/s, joint space, above 0                 | 4 × speed limit     |
-| Torque limit       | `torqueLimitNm`                     | N·m, joint side, above 0, at most 1000      | from the motor      |
-| Motor controller   | `motorController`                   | see below                                   | not configured      |
-| Motor              | `motor`                             | see below                                   | not configured      |
+| Item               | JSON key                            | Unit, range                                 | Default when absent         |
+|--------------------|-------------------------------------|---------------------------------------------|-----------------------------|
+| Node               | `node`                              | CAN node id, 1 to 255, unique among the six | required                    |
+| Gear ratio         | `transmission.ratio`                | motor turns per joint turn, above 0         | 1                           |
+| Direction          | `transmission.direction`            | `positive`, `negative`                      | `positive`                  |
+| Zero offset        | `transmission.offsetRad`            | rad, joint space                            | 0                           |
+| Position limits    | `positionLimitsRad.lower`, `.upper` | rad, joint space, lower below upper         | required                    |
+| Speed limit        | `motionLimits.speedRadPerS`         | rad/s, joint space, above 0                 | required                    |
+| Acceleration limit | `motionLimits.accelerationRadPerS2` | rad/s², joint space, above 0                | required                    |
+| Jerk limit         | `motionLimits.jerkRadPerS3`         | rad/s³, joint space, above 0                | none; required by `s-curve` |
+| Tracking window    | `trackingError.windowRad`           | rad, joint space, above 0                   | 0.2                         |
+| Tracking time      | `trackingError.timeS`               | s, above 0, at most 10                      | 0.2                         |
+| Collision limit    | `collisionTorqueNm`                 | N·m, joint side, above 0, at most 1000      | 20                          |
+| Speed trip         | `speedLimitRadPerS`                 | rad/s, joint space, above 0                 | 4 × speed limit             |
+| Torque limit       | `torqueLimitNm`                     | N·m, joint side, above 0, at most 1000      | from the motor              |
+| Motor controller   | `motorController`                   | see below                                   | not configured              |
+| Motor              | `motor`                             | see below                                   | not configured              |
 
 The tracking window and time are the safety supervisor's ([safety.md](safety.md) Part F): a joint whose tracking
 error stays above its window for its time trips the arm. So is the collision limit: an external torque on the joint,
@@ -177,7 +184,7 @@ display units:
 motor leaves out; without a preset the eleven others are required. The two following-error items are optional with or
 without a preset: left out, they keep e-foc's default, supervision off (a window of 0 and a time of 0.1 s). They came
 with format version 2; a version 1 file reads as before. The speed trip, the torque limit, the drive watchdog and
-`safety` came with version 3; an older file takes their defaults. Each value must lie in the e-foc contract's range, and
+`safety` came with version 3; the motion profile and the jerk limit with version 4. An older file takes their defaults. Each value must lie in the e-foc contract's range, and
 pole pairs must be a whole number. A joint without `motor` keeps whatever its node holds.
 
 ### Part B — Reading
@@ -201,7 +208,7 @@ significant digits than a float below 0.1.
 ```json
 {
   "format": "e-robot-arm profile",
-  "version": 3,
+  "version": 4,
   "name": "generic six-joint",
   "controlPeriodMs": 10,
   "missedRequestsBeforeSilent": 3,
