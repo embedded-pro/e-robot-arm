@@ -40,19 +40,19 @@ namespace simulator
         Update();
     }
 
-    void TeachPresenter::SetName(const std::string& newName)
+    void TeachPresenter::SetName(std::string_view newName)
     {
-        name = newName;
+        name = std::string{ newName };
         Update();
     }
 
-    void TeachPresenter::Teach()
+    void TeachPresenter::Teach() const
     {
         if (teachState.enabled)
             Post(arm_host::Teach{ name });
     }
 
-    void TeachPresenter::GoTo()
+    void TeachPresenter::GoTo() const
     {
         if (goToState.enabled)
             Post(arm_host::GoTo{ rows[*chosen].name });

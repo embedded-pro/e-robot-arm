@@ -128,7 +128,12 @@ namespace simulator
             const auto label = space == JogSpace::joints ? std::format("J{}", axis + 1) : std::string{ toolAxisNames[axis] };
             rows[axis] = JogRow{ label, std::format("{:.3f} {}", Speed(axis), unit) };
         }
-        status = hold.has_value() ? std::format("Jogging {} {}{}", rows[hold->axis].label, hold->direction < 0 ? "−" : "+", rows[hold->axis].speed) : std::string{};
+        status.clear();
+        if (hold.has_value())
+        {
+            const auto* sign = hold->direction < 0 ? "−" : "+";
+            status = std::format("Jogging {} {}{}", rows[hold->axis].label, sign, rows[hold->axis].speed);
+        }
     }
 
     ControlState JogPresenter::Evaluate() const

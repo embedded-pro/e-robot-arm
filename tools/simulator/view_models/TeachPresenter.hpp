@@ -8,6 +8,7 @@
 #include <array>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace simulator
@@ -29,9 +30,9 @@ namespace simulator
 
         void Refresh(const arm_host::ArmSnapshot& snapshot);
         void Choose(std::optional<std::size_t> row);
-        void SetName(const std::string& name);
-        void Teach();
-        void GoTo();
+        void SetName(std::string_view name);
+        void Teach() const;
+        void GoTo() const;
 
         const std::vector<TeachRow>& Rows() const;
         std::optional<std::size_t> Chosen() const;
