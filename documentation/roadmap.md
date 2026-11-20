@@ -144,7 +144,7 @@ designed in [arm-controllers.md](design/arm-controllers.md) 0.14.0 Part D. `grav
 `gravity-pid` are done.
 
 1. Design: joint and Cartesian impedance, operational space, Slotine–Li adaptive.
-2. `joint-impedance`: per-joint stiffness and a damping ratio in the profile, stiffness changed at run time within
+2. Done: `joint-impedance`: per-joint stiffness and a damping ratio in the profile, stiffness changed at run time within
    the profile's; console and host.
 3. The arm model as robotics-toolbox's `JacobianProvider`; `cartesian-impedance`.
 4. `operational-space`.

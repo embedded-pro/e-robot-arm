@@ -2,7 +2,7 @@
 title: "Arm Composition and Console Design"
 type: design
 status: draft
-version: 0.15.0
+version: 0.16.0
 component: "arm"
 date: 2026-11-20
 ---
@@ -12,7 +12,7 @@ date: 2026-11-20
 | Title     | Arm Composition and Console Design |
 | Type      | design                             |
 | Status    | draft                              |
-| Version   | 0.15.0                             |
+| Version   | 0.16.0                             |
 | Component | arm                                |
 | Date      | 2026-11-20                         |
 
@@ -75,6 +75,7 @@ control loop and reads one command per line from standard input:
 | `tune step\|move <joint> <rad> [csv]`       | Run a step or out-and-back test on one joint and print its metrics; with a file, also write the samples as CSV                                                                                          |
 | `abort`                                     | Abort the running move                                                                                                                                                                                  |
 | `motion [trapezoid\|s-curve]`               | Print the point-to-point motion profile, or choose it; refused while a move runs, and `s-curve` without a jerk limit on every joint ([joint-motion.md](joint-motion.md) Part F)                         |
+| `impedance [<share>]`                       | Print the `joint-impedance` stiffness share, or set it from 0.1 to 1 of the profile's stiffness ([arm-controllers.md](arm-controllers.md) Part D)                                                       |
 | `jog <joint> <rad/s> [<s>]`                 | Jog one joint, 1 to 6, at the speed for the time, 1 s when left out, at most 10 s ([joint-motion.md](joint-motion.md) Part I); the host refreshes the dead-man meanwhile, and any other command ends it |
 | `jog base\|tool <axis> <speed> [<s>]`       | Jog the tool along `x`, `y`, `z` in m/s or about `rx`, `ry`, `rz` in rad/s, in the base or tool frame, as above; it holds short of a singularity, the reach or the workspace                            |
 | `teach <name>`                              | Save where the joints are as a teach point, replacing one of the same name; at most 16, names up to 16 characters; refused while a move runs ([joint-motion.md](joint-motion.md) Part J)                |

@@ -430,6 +430,11 @@ namespace arm_host
             return session.arm.Controllers().Select(select.id);
         }
 
+        bool operator()(const SetImpedanceShare& set) const
+        {
+            return session.arm.Impedance().SetStiffnessShare(set.share);
+        }
+
         bool operator()(const SelectMotionProfile& select) const
         {
             if (!session.arm.Motion().SelectProfile(select.profile))
@@ -522,6 +527,8 @@ namespace arm_host
             return ArmControllerRefusal(*id);
         if (std::holds_alternative<SelectMotionProfile>(command))
             return Moving() ? "moving" : "a joint has no jerk limit";
+        if (std::holds_alternative<SetImpedanceShare>(command))
+            return "a stiffness share from 0.1 to 1";
         if (std::holds_alternative<Rearm>(command))
             return Stopped(arm.Lifecycle().State()) ? "a joint is in fault" : "not tripped or holding";
         if (LifecycleCommand(command))
@@ -939,6 +946,7 @@ namespace arm_host
         snapshot.profileName.assign(profile.name.begin(), profile.name.end());
         snapshot.config = profile.config;
         snapshot.commissioning = commissioning;
+        snapshot.impedanceShare = arm.Impedance().StiffnessShare();
         const auto& controllers = arm.Controllers();
         for (arm::ArmControllerId id = 0; id != controllers.Count(); ++id)
         {

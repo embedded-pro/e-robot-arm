@@ -635,11 +635,12 @@ TEST_F(ArmSessionConfiguringTest, names_the_joint_whose_motor_controller_reads_b
 TEST_F(ArmSessionTest, lists_the_arm_controllers_and_reports_each_change_of_the_active_one)
 {
     Execute(1, arm_host::CheckContracts{});
-    ASSERT_EQ(3u, sink.snapshot.armControllers.size());
+    ASSERT_EQ(4u, sink.snapshot.armControllers.size());
     EXPECT_EQ("gravity-pd", sink.snapshot.armControllers[0].name);
     EXPECT_EQ("computed-torque", sink.snapshot.armControllers[1].name);
     EXPECT_TRUE(sink.snapshot.armControllers[1].enabled);
     EXPECT_EQ("gravity-pid", sink.snapshot.armControllers[2].name);
+    EXPECT_EQ("joint-impedance", sink.snapshot.armControllers[3].name);
     EXPECT_TRUE(sink.snapshot.armControllers[0].active);
     EXPECT_TRUE(sink.snapshot.armControllers[0].enabled);
 
@@ -655,6 +656,22 @@ TEST_F(ArmSessionTest, lists_the_arm_controllers_and_reports_each_change_of_the_
     Execute(5, arm_host::EnableArmController{ 0 });
     Execute(6, arm_host::SelectArmController{ 0 });
     EXPECT_TRUE(sink.snapshot.armControllers[0].active);
+}
+
+TEST_F(ArmSessionTest, sets_the_joint_impedance_stiffness_share_and_refuses_one_outside_a_tenth_to_all)
+{
+    Execute(1, arm_host::CheckContracts{});
+    EXPECT_FLOAT_EQ(1.0f, sink.snapshot.impedanceShare);
+
+    Execute(2, arm_host::SetImpedanceShare{ 0.4f });
+    EXPECT_EQ(ArmEventKind::accepted, sink.Last()->kind);
+    Execute(3, arm_host::CheckContracts{});
+    EXPECT_FLOAT_EQ(0.4f, sink.snapshot.impedanceShare);
+
+    Execute(4, arm_host::SetImpedanceShare{ 0.05f });
+    EXPECT_EQ(4u, sink.Last()->command);
+    EXPECT_EQ("set impedance share", sink.Last()->commandName);
+    EXPECT_EQ("a stiffness share from 0.1 to 1", sink.Last()->reason);
 }
 
 TEST_F(ArmSessionTest, refuses_to_disable_the_controller_that_drives_the_joints)

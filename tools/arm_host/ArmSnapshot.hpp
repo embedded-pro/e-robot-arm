@@ -77,6 +77,7 @@ namespace arm_host
         std::string profileName{};
         arm::ArmConfig config{};
         std::vector<ArmControllerStatus> armControllers{};
+        float impedanceShare{ 1.0f };
         std::optional<VirtualMotorsStatus> virtualMotors{};
         std::optional<Disturbances> disturbances{};
     };

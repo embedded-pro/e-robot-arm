@@ -208,6 +208,21 @@ TEST_F(ArmConsoleTest, motion_prints_the_profile_and_posts_a_choice_of_profile)
     EXPECT_THAT(Run("motion s-curve now"), StartsWith("usage:"));
 }
 
+TEST_F(ArmConsoleTest, impedance_prints_the_stiffness_share_and_posts_a_new_one)
+{
+    arm_host::ArmSnapshot snapshot;
+    snapshot.impedanceShare = 0.4f;
+    EXPECT_CALL(arm, Snapshot()).WillOnce(Return(snapshot));
+    EXPECT_EQ("joint-impedance stiffness share: 0.4\n", Run("impedance"));
+
+    EXPECT_CALL(arm, Post(VariantWith<arm_host::SetImpedanceShare>(Field(&arm_host::SetImpedanceShare::share, 0.25f)))).WillOnce(Return(8));
+    EXPECT_EQ(8u, console.Execute("impedance 0.25").command);
+
+    EXPECT_THAT(Run("impedance soft"), StartsWith("usage:"));
+    EXPECT_THAT(Run("impedance 0.5x"), StartsWith("usage:"));
+    EXPECT_THAT(Run("impedance 0.5 now"), StartsWith("usage:"));
+}
+
 TEST_F(ArmConsoleTest, jog_holds_a_joint_or_tool_jog_for_a_time)
 {
     using namespace std::chrono_literals;
