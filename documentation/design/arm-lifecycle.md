@@ -2,9 +2,9 @@
 title: "Arm Lifecycle Design"
 type: design
 status: draft
-version: 0.8.0
+version: 0.9.0
 component: "lifecycle"
-date: 2026-11-19
+date: 2026-11-20
 ---
 
 | Field     | Value                |
@@ -12,9 +12,9 @@ date: 2026-11-19
 | Title     | Arm Lifecycle Design |
 | Type      | design               |
 | Status    | draft                |
-| Version   | 0.8.0                |
+| Version   | 0.9.0                |
 | Component | lifecycle            |
-| Date      | 2026-11-19           |
+| Date      | 2026-11-20           |
 
 > The arm's start-up sequence: from an arm that has not been checked to one that moves, and back after a fault.
 > Behaviour only; diagrams are Mermaid.
@@ -69,14 +69,14 @@ command aligns every joint, and it moves each motor.
 
 ### Part B — Commands
 
-| Command  | Allowed in                             | Does                                                                                                                           |
-|----------|----------------------------------------|--------------------------------------------------------------------------------------------------------------------------------|
-| Bring up | Unpowered, Incompatible, Misconfigured | Queries the contracts of every joint                                                                                           |
-| Enable   | Ready                                  | Selects torque mode; once delivered, starts every joint                                                                        |
-| Disable  | Enabled, Holding                       | Stops every joint; from Holding the arm is no longer held                                                                      |
-| Move     | Enabled                                | Starts a move through joint motion                                                                                             |
-| Step     | Enabled                                | Starts a reference step through joint motion ([joint-motion.md](joint-motion.md) Part C); Moving until it is done, like a move |
-| Re-arm   | Tripped, Holding                       | Re-arms the safety supervisor, which refuses while a joint is still in fault; from Holding the arm is Enabled again            |
+| Command  | Allowed in                             | Does                                                                                                                              |
+|----------|----------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------|
+| Bring up | Unpowered, Incompatible, Misconfigured | Queries the contracts of every joint                                                                                              |
+| Enable   | Ready                                  | Selects torque mode; once delivered, starts every joint                                                                           |
+| Disable  | Enabled, Holding                       | Stops every joint; from Holding the arm is no longer held                                                                         |
+| Move     | Enabled, Moving                        | Starts a move through joint motion; in Moving, a new target replaces the running move ([joint-motion.md](joint-motion.md) Part F) |
+| Step     | Enabled                                | Starts a reference step through joint motion ([joint-motion.md](joint-motion.md) Part C); Moving until it is done, like a move    |
+| Re-arm   | Tripped, Holding                       | Re-arms the safety supervisor, which refuses while a joint is still in fault; from Holding the arm is Enabled again               |
 
 A command in any other state is refused and changes nothing. Enable always selects torque mode: the arm closes
 position on the host through its arm controllers ([arm-controllers.md](arm-controllers.md) Part A).
@@ -190,6 +190,7 @@ stateDiagram-v2
     Enabling --> Disabling: a joint not running after 200 periods
     Enabled --> Moving: move
     Moving --> Enabled: move done or aborted
+    Moving --> Moving: move (replaces the running move)
     Enabled --> Disabling: disable
     Disabling --> Ready: no joint running
     Disabling --> Tripped: stop not delivered

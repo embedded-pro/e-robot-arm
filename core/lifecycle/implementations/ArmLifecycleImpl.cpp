@@ -255,6 +255,8 @@ namespace arm
 
     bool ArmLifecycleImpl::MoveTo(const JointPositions& target)
     {
+        if (fsm.Is<Moving>())
+            return motion.MoveTo(target);
         return fsm.Is<Enabled>() && motion.MoveTo(target) && Accepted(MoveStarted{});
     }
 

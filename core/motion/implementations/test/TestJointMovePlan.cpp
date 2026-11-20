@@ -1,5 +1,6 @@
 #include "core/motion/implementations/JointMovePlan.hpp"
 #include "numerical/motion_profiles/SCurveProfile.hpp"
+#include "numerical/motion_profiles/TrapezoidalProfileFromState.hpp"
 #include "gmock/gmock.h"
 #include <algorithm>
 #include <cmath>
@@ -121,6 +122,27 @@ TEST_F(JointMovePlanTest, samples_each_joints_speed_and_acceleration_from_its_tr
     EXPECT_EQ(arm::JointAccelerations{}, end.accelerations);
 }
 
+TEST_F(JointMovePlanTest, a_replanned_move_starts_from_the_running_state_and_each_joint_arrives_in_its_own_time)
+{
+    plan.Plan(from, to, UniformLimits(1.0f, 1.0f));
+    const auto running = plan.Sample(1.5f);
+    const arm::JointPositions next{};
+
+    plan.Replan(running, next, UniformLimits(1.0f, 1.0f));
+
+    float longest{ 0.0f };
+    for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+    {
+        const motion_profiles::TrapezoidalProfileFromState<float> alone{ running.positions[joint].Value(), running.speeds[joint].Value(), 0.0f, { 1.0f, 1.0f, 1.0f } };
+        longest = std::max(longest, alone.Duration());
+        EXPECT_NEAR(running.speeds[joint].Value(), plan.Sample(0.0f).speeds[joint].Value(), tolerance) << "joint " << joint;
+        EXPECT_NEAR(0.0f, plan.Sample(alone.Duration()).positions[joint].Value(), tolerance) << "joint " << joint;
+    }
+    EXPECT_NEAR(longest, plan.Duration(), tolerance);
+    ExpectPositions(running.positions, plan.Sample(0.0f).positions);
+    EXPECT_EQ(arm::JointSpeeds{}, plan.Sample(plan.Duration()).speeds);
+}
+
 namespace
 {
     arm::JointJerkLimits UniformJerks(float maxJerk)
@@ -176,4 +198,31 @@ TEST_F(JointMovePlanSCurveTest, acceleration_starts_and_ends_at_zero)
         EXPECT_NEAR(0.0f, plan.Sample(0.0f).accelerations[joint].Value(), tolerance);
         EXPECT_NEAR(0.0f, plan.Sample(plan.Duration()).accelerations[joint].Value(), 1.0e-3f);
     }
+}
+
+TEST_F(JointMovePlanSCurveTest, a_replanned_s_curve_keeps_speed_and_acceleration_and_stays_within_its_limits)
+{
+    const auto running = plan.Sample(plan.Duration() / 3.0f);
+
+    plan.Replan(running, from, UniformLimits(1.0f, 2.0f), UniformJerks(8.0f));
+
+    const auto start = plan.Sample(0.0f);
+    ExpectPositions(running.positions, start.positions);
+    for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+    {
+        EXPECT_NEAR(running.speeds[joint].Value(), start.speeds[joint].Value(), tolerance) << "joint " << joint;
+        EXPECT_NEAR(running.accelerations[joint].Value(), start.accelerations[joint].Value(), tolerance) << "joint " << joint;
+    }
+
+    constexpr float dt{ 1.0e-3f };
+    for (float time = dt; time <= plan.Duration(); time += dt)
+    {
+        const auto sample = plan.Sample(time);
+        for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+        {
+            EXPECT_LE(std::abs(sample.speeds[joint].Value()), 1.0f + tolerance) << "joint " << joint << " at " << time;
+            EXPECT_LE(std::abs(sample.accelerations[joint].Value()), 2.0f + tolerance) << "joint " << joint << " at " << time;
+        }
+    }
+    ExpectPositions(from, plan.Sample(plan.Duration()).positions);
 }

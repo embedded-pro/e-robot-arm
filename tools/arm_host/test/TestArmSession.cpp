@@ -184,6 +184,19 @@ TEST_F(ArmSessionTest, aligns_the_joints_once_the_contracts_are_compatible)
         }));
 }
 
+TEST_F(ArmSessionTest, a_new_target_replaces_a_running_move_and_only_the_replacing_move_is_done)
+{
+    BringUp();
+    Execute(5, arm_host::MoveTo{ Target(0.5f) });
+    Execute(6, arm_host::MoveTo{ Target(-0.3f) });
+    ForwardTime(4s);
+
+    EXPECT_EQ(ArmEventKind::accepted, std::ranges::find(sink.events, 6u, &arm_host::ArmEvent::command)->kind);
+    EXPECT_EQ(1, std::ranges::count(sink.events, ArmEventKind::moveDone, &arm_host::ArmEvent::kind));
+    ASSERT_TRUE(sink.snapshot.commanded.has_value());
+    EXPECT_NEAR(-0.3f, sink.snapshot.commanded->at(0).Value(), 1.0e-4f);
+}
+
 TEST_F(ArmSessionTest, a_move_shows_the_commanded_positions_and_the_joints_follow_with_a_lag)
 {
     BringUp();

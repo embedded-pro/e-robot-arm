@@ -32,6 +32,8 @@ namespace arm
 
     private:
         bool Accepts(const JointPositions& target) const;
+        bool Acceptable(const JointPositions& target) const;
+        float Elapsed() const;
         bool PathClear(const JointPositions& from, const JointPositions& to) const;
         bool WithinStep(const JointPositions& target) const;
         bool AnyReadingStale() const;

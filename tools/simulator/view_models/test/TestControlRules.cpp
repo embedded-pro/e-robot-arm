@@ -108,14 +108,15 @@ TEST_F(ControlRulesTest, move_needs_an_enabled_arm_and_valid_targets)
     ExpectEnabled(Control::move, simulator::test::Running());
 }
 
-TEST_F(ControlRulesTest, a_running_move_allows_abort_and_blocks_what_would_disturb_it)
+TEST_F(ControlRulesTest, a_running_move_allows_abort_and_a_new_target_and_blocks_what_would_disturb_it)
 {
     auto moving = simulator::test::Running();
     moving.moving = true;
     moving.state = arm::ArmState::moving;
 
     ExpectEnabled(Control::abort, moving);
-    ExpectDisabled(Control::move, moving, "Moving");
+    ExpectEnabled(Control::move, moving);
+    ExpectDisabled(Control::move, moving, "J2 outside its limits", "J2 outside its limits");
     ExpectDisabled(Control::checkContracts, moving, "Moving");
     ExpectDisabled(Control::torqueMode, moving, "Moving");
     ExpectDisabled(Control::target, moving, "Disable the arm first");

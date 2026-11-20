@@ -281,14 +281,16 @@ TEST_F(ArmLifecycleImplTest, joints_started_directly_bring_the_arm_to_enabled)
     EXPECT_EQ(ArmState::enabled, lifecycle.State());
 }
 
-TEST_F(ArmLifecycleImplTest, a_move_starts_only_while_enabled_and_ends_back_in_enabled)
+TEST_F(ArmLifecycleImplTest, a_move_starts_while_enabled_a_new_target_replaces_it_while_moving_and_it_ends_back_in_enabled)
 {
     BringToEnabled();
 
-    EXPECT_CALL(motion, MoveTo(_)).WillOnce(Return(true));
+    EXPECT_CALL(motion, MoveTo(_)).WillOnce(Return(true)).WillOnce(Return(true)).WillOnce(Return(false));
     EXPECT_TRUE(lifecycle.MoveTo(target));
     EXPECT_EQ(ArmState::moving, lifecycle.State());
+    EXPECT_TRUE(lifecycle.MoveTo(target));
     EXPECT_FALSE(lifecycle.MoveTo(target));
+    EXPECT_EQ(ArmState::moving, lifecycle.State());
 
     FinishMove();
     EXPECT_EQ(ArmState::enabled, lifecycle.State());
