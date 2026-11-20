@@ -53,6 +53,7 @@ namespace arm
         bool WithinStep(const JointPositions& target) const;
         bool AnyReadingStale() const;
         JointPositions LatestPositions() const;
+        JointReference Sampled(float elapsed) const;
         void Finish();
 
         JointBus& bus;

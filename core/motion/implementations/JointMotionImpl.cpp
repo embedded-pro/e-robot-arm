@@ -223,7 +223,7 @@ namespace arm
         const auto elapsed = Elapsed();
         const auto duration = generator == Generator::path ? path.Duration() : plan.Duration();
         const bool arrived = generator == Generator::step || elapsed >= duration;
-        const auto reference = arrived ? AtRest(target) : (generator == Generator::path ? path.Sample(elapsed) : plan.Sample(elapsed));
+        const auto reference = arrived ? AtRest(target) : Sampled(elapsed);
 
         if (arrived)
         {
@@ -235,6 +235,13 @@ namespace arm
         }
 
         return reference;
+    }
+
+    JointReference JointMotionImpl::Sampled(float elapsed) const
+    {
+        if (generator == Generator::path)
+            return path.Sample(elapsed);
+        return plan.Sample(elapsed);
     }
 
     void JointMotionImpl::Finish()

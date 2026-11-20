@@ -60,9 +60,9 @@ namespace arm
     float JointPathPlan::Excess(const JointMotionLimits& limits, float samplePeriod) const
     {
         float excess{ 0.0f };
-        for (float time = samplePeriod; time < Duration(); time += samplePeriod)
+        for (std::size_t index = 1; static_cast<float>(index) * samplePeriod < Duration(); ++index)
         {
-            const auto sample = Sample(time);
+            const auto sample = Sample(static_cast<float>(index) * samplePeriod);
             for (std::size_t joint = 0; joint != jointCount; ++joint)
             {
                 excess = std::max(excess, math::Abs(sample.speeds[joint].Value()) / limits[joint].maxSpeed.Value());
