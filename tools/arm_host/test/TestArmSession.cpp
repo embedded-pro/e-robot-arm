@@ -315,6 +315,35 @@ TEST_F(SlowToolSessionTest, jogs_the_tool_along_a_base_axis_until_the_dead_man_e
     EXPECT_NEAR(before.x, sink.snapshot.toolPose.x, 1.0e-3f);
 }
 
+TEST_F(ArmSessionTest, holds_a_joint_jog_for_its_time_and_lets_it_ramp_to_rest_after)
+{
+    BringUp();
+    Execute(5, arm_host::HoldJog{ arm::JointJog{ 0, foc::RadiansPerSecond{ 0.2f } }, 20s });
+    EXPECT_EQ("a held jog lasts more than 0 s and at most 10 s", sink.Last()->reason);
+
+    Execute(6, arm_host::HoldJog{ arm::JointJog{ 0, foc::RadiansPerSecond{ 0.2f } }, 1s });
+    EXPECT_EQ(ArmEventKind::accepted, sink.Last()->kind);
+    ForwardTime(800ms);
+    EXPECT_TRUE(sink.snapshot.moving);
+    EXPECT_EQ(nullptr, sink.Find(ArmEventKind::moveDone));
+
+    ForwardTime(1s);
+    ASSERT_NE(nullptr, sink.Find(ArmEventKind::moveDone));
+    EXPECT_FALSE(sink.snapshot.moving);
+    EXPECT_GT(sink.snapshot.commanded->at(0).Value(), 0.15f);
+}
+
+TEST_F(ArmSessionTest, another_command_ends_a_held_jog)
+{
+    BringUp();
+    Execute(5, arm_host::HoldJog{ arm::JointJog{ 0, foc::RadiansPerSecond{ 0.2f } }, 5s });
+    Execute(6, arm_host::Rearm{});
+    ForwardTime(1s);
+
+    ASSERT_NE(nullptr, sink.Find(ArmEventKind::moveDone));
+    EXPECT_FALSE(sink.snapshot.moving);
+}
+
 TEST_F(ArmSessionTest, a_move_shows_the_commanded_positions_and_the_joints_follow_with_a_lag)
 {
     BringUp();

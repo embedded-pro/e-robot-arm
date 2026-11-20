@@ -71,6 +71,17 @@ namespace arm_host
         arm::ToolJog jog;
     };
 
+    using AnyJog = std::variant<arm::JointJog, arm::ToolJog>;
+
+    constexpr infra::Duration maxHeldJog{ std::chrono::seconds{ 10 } };
+    constexpr uint32_t heldJogRefreshPeriods{ 5 };
+
+    struct HoldJog
+    {
+        AnyJog jog;
+        infra::Duration duration;
+    };
+
     struct AbortMove
     {};
 
@@ -158,7 +169,7 @@ namespace arm_host
     };
 
     using ArmCommand = std::variant<CheckContracts, SelectMode, StartJoints, StopJoints, ClearFaults, EmergencyStop, Rearm, MoveTo, AbortMove, InjectFault, SilenceJoint,
-        BringUp, Enable, Disable, ApplyController, ReadController, ApplyMotor, ReadMotor, EnableArmController, DisableArmController, SelectArmController, AlignJoints, RestartMotor, ResumeJoint, CollideJoint, PowerOffMotor, StepTo, SelectMotionProfile, MoveThrough, MoveLine, JogJoint, JogTool>;
+        BringUp, Enable, Disable, ApplyController, ReadController, ApplyMotor, ReadMotor, EnableArmController, DisableArmController, SelectArmController, AlignJoints, RestartMotor, ResumeJoint, CollideJoint, PowerOffMotor, StepTo, SelectMotionProfile, MoveThrough, MoveLine, JogJoint, JogTool, HoldJog>;
 
     std::string_view CommandName(const ArmCommand& command);
     std::string_view StateName(arm::ArmState state);

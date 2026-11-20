@@ -103,6 +103,10 @@ namespace arm_host
         std::string_view PathRefusal(const MoveThrough& path) const;
         std::string_view LineRefusal() const;
         std::string_view JogRefusal(bool known, float speed) const;
+        std::string_view JogRefusal(const AnyJog& jog) const;
+        bool Hold(const HoldJog& hold);
+        bool JogOnce(const AnyJog& jog);
+        void RefreshHold();
         void ReportTrip(std::size_t joint, can::FocFaultCode fault, std::string reason = {});
         void Emit(ArmEvent event);
         void Publish();
@@ -122,6 +126,9 @@ namespace arm_host
         mutable std::string lineRefusal;
         Events events{ *this, arm };
         infra::TimerRepeating publishTimer;
+        infra::TimerRepeating holdTimer;
+        infra::TimePoint holdUntil{};
+        std::optional<AnyJog> heldJog;
         std::optional<Pending> issuing;
         std::optional<Pending> held;
         bool tripReported{ false };
