@@ -285,6 +285,10 @@ namespace arm
                     return ReadCartesianImpedance(path, value, profile.config.cartesianImpedance);
                 if (key == "operationalSpace")
                     return ReadOperationalSpace(path, value, profile.config.operationalSpace);
+                if (key == "slotineLi")
+                    return ReadSlotineLi(path, value, profile.config.slotineLi);
+                if (key == "experimental")
+                    return ReadFlag(path, value, profile.config.experimental);
                 if (key == "collisionObserverGainPerS")
                     return ReadBounded(path, value, 1000.0f, "must be above 0 and at most 1000", profile.config.collisionObserverGain);
                 if (key == "safety")
@@ -429,6 +433,29 @@ namespace arm
                             return ReadBounded(item, member, 1.0f, "must be above 0 and at most 1", tuning.singularityDamping);
                         return Unknown(item);
                     });
+            }
+
+            bool ReadSlotineLi(const Path& path, const Value& value, SlotineLiTuning& tuning)
+            {
+                return ReadMembers(path, value, [this, &tuning](const Path& item, infra::JsonString key, const Value& member)
+                    {
+                        if (key == "lambdaPerS")
+                            return ReadBounded(item, member, 100.0f, "must be above 0 and at most 100", tuning.lambda);
+                        if (key == "bandwidthRadPerS")
+                            return ReadBounded(item, member, 500.0f, "must be above 0 and at most 500", tuning.bandwidth);
+                        if (key == "adaptationGain")
+                            return ReadBounded(item, member, 10000.0f, "must be above 0 and at most 10000", tuning.adaptationGain);
+                        return Unknown(item);
+                    });
+            }
+
+            bool ReadFlag(const Path& path, const Value& value, bool& result)
+            {
+                const auto* flag = std::get_if<bool>(&value);
+                if (flag == nullptr)
+                    return Fail(path, "must be true or false");
+                result = *flag;
+                return true;
             }
 
             bool ReadBounded(const Path& path, const Value& value, float maximum, infra::BoundedConstString range, float& result)
@@ -1231,6 +1258,14 @@ namespace arm
                 stream << ", \"singularityDamping\": ";
                 Number(config.operationalSpace.singularityDamping);
                 stream << " }";
+                stream << ",\n  \"slotineLi\": { \"lambdaPerS\": ";
+                Number(config.slotineLi.lambda);
+                stream << ", \"bandwidthRadPerS\": ";
+                Number(config.slotineLi.bandwidth);
+                stream << ", \"adaptationGain\": ";
+                Number(config.slotineLi.adaptationGain);
+                stream << " }";
+                stream << ",\n  \"experimental\": " << (config.experimental ? "true" : "false");
                 stream << ",\n  \"collisionObserverGainPerS\": ";
                 Number(config.collisionObserverGain);
                 stream << ",\n  \"motionProfile\": \"" << motionProfileNames[static_cast<std::size_t>(config.motionProfile)] << "\"";

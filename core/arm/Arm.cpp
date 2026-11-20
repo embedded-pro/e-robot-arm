@@ -59,6 +59,8 @@ namespace arm
         , jointImpedance(model, ReflectedRotors(config), config.jointImpedance)
         , cartesianImpedance(model, ReflectedRotors(config), config.cartesianImpedance)
         , operationalSpace(model, ReflectedRotors(config), config.operationalSpace, config.toolLimits.manipulabilityMin)
+        , slotineLi(model, ReflectedRotors(config), config.slotineLi, config.controlPeriod)
+        , experimental(config.experimental)
         , collision(model, ReflectedRotors(config), config.collisionObserverGain)
         , period(config.controlPeriod)
         , torqueLimits(Supervision(config).torque)
@@ -76,6 +78,8 @@ namespace arm
         controllers.Enable(controllers.Register("joint-impedance", jointImpedance));
         controllers.Enable(controllers.Register("cartesian-impedance", cartesianImpedance));
         controllers.Enable(controllers.Register("operational-space", operationalSpace));
+        if (experimental)
+            controllers.Enable(controllers.Register("slotine-li", slotineLi));
         controllers.Select(gravityPdId);
         motion.SelectProfile(config.motionProfile);
     }
@@ -141,6 +145,14 @@ namespace arm
     float Arm::ImpedanceShare() const
     {
         return jointImpedance.StiffnessShare();
+    }
+
+    bool Arm::ResetAdaptation()
+    {
+        if (!experimental)
+            return false;
+        slotineLi.ResetEstimate();
+        return true;
     }
 
     const std::optional<JointTorques>& Arm::EstimatedExternalTorques() const

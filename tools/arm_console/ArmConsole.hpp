@@ -45,6 +45,7 @@ namespace arm_console
         ExecuteResult ArmController(std::istringstream& arguments);
         ExecuteResult MotionProfile(std::istringstream& arguments);
         ExecuteResult Impedance(std::istringstream& arguments);
+        ExecuteResult Adaptation(std::istringstream& arguments);
         ExecuteResult Jog(std::istringstream& arguments);
         ExecuteResult TeachPoint(std::string_view command, std::istringstream& arguments);
         ExecuteResult MoveJoints(std::istringstream& arguments);

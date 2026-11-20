@@ -117,6 +117,36 @@ namespace
         can::FocMotorCanClient client{ canMock };
         arm::Arm arm{ client.CategoryClient(), Config() };
     };
+
+    arm::ArmConfig ExperimentalConfig()
+    {
+        auto config = Config();
+        config.experimental = true;
+        return config;
+    }
+
+    class ExperimentalArmTest
+        : public Test
+        , public infra::ClockFixture
+    {
+    public:
+        StrictMock<hal::CanMock> canMock;
+        infra::Execute setupBus{ [this]()
+            {
+                EXPECT_CALL(canMock, ReceiveData(_)).Times(AtLeast(1));
+            } };
+        can::FocMotorCanClient client{ canMock };
+        arm::Arm arm{ client.CategoryClient(), ExperimentalConfig() };
+    };
+}
+
+TEST_F(ExperimentalArmTest, offers_the_adaptive_controller_only_with_the_experimental_flag_and_resets_what_it_learnt)
+{
+    const auto adaptive = arm.Controllers().Find("slotine-li");
+    ASSERT_TRUE(adaptive.has_value());
+    EXPECT_TRUE(arm.Controllers().Enabled(*adaptive));
+    EXPECT_EQ(7u, arm.Controllers().Count());
+    EXPECT_TRUE(arm.ResetAdaptation());
 }
 
 TEST_F(ArmTest, the_running_loop_requests_telemetry_from_every_joint_each_period)
@@ -199,6 +229,8 @@ TEST_F(ArmTest, enables_the_joints_in_torque_mode_and_streams_the_gravity_compen
     EXPECT_EQ(gravityPd, arm.Controllers().Active());
     EXPECT_EQ(6u, arm.Controllers().Count());
     ASSERT_TRUE(arm.Controllers().Find("operational-space").has_value());
+    EXPECT_FALSE(arm.Controllers().Find("slotine-li").has_value());
+    EXPECT_FALSE(arm.ResetAdaptation());
     EXPECT_TRUE(arm.Controllers().Enabled(*arm.Controllers().Find("operational-space")));
     ASSERT_TRUE(arm.Controllers().Find("gravity-pid").has_value());
     const auto impedance = arm.Controllers().Find("joint-impedance");

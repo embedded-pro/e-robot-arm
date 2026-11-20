@@ -2,7 +2,7 @@
 title: "Arm Controllers Design"
 type: design
 status: draft
-version: 0.16.0
+version: 0.17.0
 component: "arm-controllers"
 date: 2026-11-20
 ---
@@ -12,7 +12,7 @@ date: 2026-11-20
 | Title     | Arm Controllers Design |
 | Type      | design                 |
 | Status    | draft                  |
-| Version   | 0.16.0                 |
+| Version   | 0.17.0                 |
 | Component | arm-controllers        |
 | Date      | 2026-11-20             |
 
@@ -230,10 +230,18 @@ arm.
 **Slotine–Li adaptive.** robotics-toolbox's `SlotineLiAdaptiveControl` over its `ChainInertialRegressor`: ten inertial
 parameters per link, sixty in all, start at the arm model's mass properties and adapt while the arm moves, so a
 payload the profile does not know is learnt rather than tracked with an error. The sliding variable is
-`s = q̇ − q̇r` with `q̇r = q̇* − Λ·(q − q*)`. The profile names Λ (1/s), Kd (from a bandwidth, as `gravity-pd`'s) and the
-adaptation gain Γ, and the controller is offered only when the profile's `experimental` flag is on: adaptation
-with too large a Γ, or under the drives' unmodelled friction, can drift. `Reset` keeps the adapted parameters, so a
-switch away and back does not lose what was learnt; the console can set them back to the model's.
+`s = q̇ − q̇r` with `q̇r = q̇* − Λ·(q − q*)`, Λ = λ·I. The rotors are not in the regressor: their known inertia times
+`q̈r` is fed forward beside it. Kd = ω·M₀, the mass matrix at home with the rotors times the profile's bandwidth,
+so with the right parameters s decays at about ω. The adaptation gain is scaled per parameter,
+Γₖₖ = γ·(θ⁰ₖ² + (10⁻³)²) with θ⁰ the model's value, so each parameter moves in proportion to its own size: with one
+Γ for all sixty, the wrist's inertias (about 10⁻⁴) moved as fast as the links' masses (about 1), and a simulation
+of the reference arm with a 0.4 kg payload the model lacks diverged above Γ = 0.01, three times the gain that
+learnt it. Scaled, γ from 3 to 1000 learnt it without diverging, the tracking error falling from 1.9 rad without
+adaptation to 0.06–0.19 rad; the default is 10. The controller is offered only when the profile's `experimental`
+flag is on: adaptation under the drives' unmodelled friction can still drift. `Reset` keeps the adapted parameters,
+so a switch away and back does not lose what was learnt; the console sets them back to the model's
+(`adaptation reset`). With the flag on and the model exact, moves through four poses, a 0.05 rad step at each and
+back home finished twice on the simulated arm.
 
 **Gains away from home.** `gravity-pd` and `gravity-pid` size their gains from the inertia at home (Part A), and at
 some poses the arm's coupled modes are then lightly damped: on the simulated arm at 0.1, 0.5, 0.6, 0.2, 1.0, 0 rad the
@@ -272,32 +280,35 @@ being guided; whether the window widens with the share is open question 4.
 
 ## Data Model
 
-| Entity                | Field                   | Type / Unit     | Range              | Notes                                                |
-|-----------------------|-------------------------|-----------------|--------------------|------------------------------------------------------|
-| Measured joints       | positions               | radians         | finite             | Latest reading per joint                             |
-| Measured joints       | speeds                  | radians/second  | finite             | Latest reading per joint                             |
-| Setpoint set          | positions               | radians         | joint limits       | The reference, for the trace and the check           |
-| Setpoint set          | torques                 | N·m, joint side | finite             | Sent to the joints                                   |
-| `gravity-pd`          | bandwidth               | rad/s           | above 0            | 30 by default; Kp = ω²·J                             |
-| `gravity-pd`          | damping ratio           | 1               | above 0            | 0.7 by default; Kd = 2·ζ·ω·J                         |
-| `computed-torque`     | bandwidth               | rad/s           | above 0            | 30 by default; Kp = ω²·I                             |
-| `computed-torque`     | damping ratio           | 1               | above 0            | 0.7 by default; Kd = 2·ζ·ω·I                         |
-| `gravity-pid`         | bandwidth               | rad/s           | above 0            | 20 by default; Kp = (2ζ + 1)·ω², Ki = ω³             |
-| `gravity-pid`         | damping ratio           | 1               | above 0            | 0.7 by default; Kd = (2ζ + 1)·ω, on the speed        |
-| `gravity-pid`         | output limit            | rad/s²          | ±200               | Per joint; the integral's anti-windup                |
-| `joint-impedance`     | stiffness               | N·m/rad         | above 0            | Per joint; (10 rad/s)² over (M₀⁻¹)ᵢᵢ by default      |
-| `joint-impedance`     | damping ratio           | 1               | above 0            | 0.7 by default; D = 2·ζ·W·M(q)·W                     |
-| `cartesian-impedance` | translational stiffness | N/m             | above 0            | 50 by default, on each axis                          |
-| `cartesian-impedance` | rotational stiffness    | N·m/rad         | above 0            | 0.07 by default, about each axis                     |
-| `cartesian-impedance` | damping ratio           | 1               | above 0            | 0.7 by default; D = 2·ζ·W·M(q)·W on Jᵀ·K·J           |
-| `operational-space`   | bandwidth               | rad/s           | above 0            | 30 by default; Kp = ω²·I, Kd = 2·ζ·ω·I in task units |
-| `operational-space`   | damping ratio           | 1               | above 0            | 0.7 by default                                       |
-| `operational-space`   | singularity damping     | 1               | above 0, at most 1 | 0.01 by default; σ in (J·M⁻¹·Jᵀ + σ²·I)⁻¹            |
-| Impedance             | stiffness share         | 1               | 0.1–1              | Scales both impedance controllers' stiffnesses       |
-| Reference             | speeds, accelerations   | rad/s, rad/s²   | finite             | Zero while holding                                   |
-| Registry entry        | id                      | integer         | 0–7                | Registration order                                   |
-| Registry entry        | name                    | text            | unique             | The names of Parts A and D                           |
-| Registry entry        | enabled                 | flag            |                    | Registered disabled                                  |
+| Entity                | Field                   | Type / Unit     | Range                  | Notes                                                |
+|-----------------------|-------------------------|-----------------|------------------------|------------------------------------------------------|
+| Measured joints       | positions               | radians         | finite                 | Latest reading per joint                             |
+| Measured joints       | speeds                  | radians/second  | finite                 | Latest reading per joint                             |
+| Setpoint set          | positions               | radians         | joint limits           | The reference, for the trace and the check           |
+| Setpoint set          | torques                 | N·m, joint side | finite                 | Sent to the joints                                   |
+| `gravity-pd`          | bandwidth               | rad/s           | above 0                | 30 by default; Kp = ω²·J                             |
+| `gravity-pd`          | damping ratio           | 1               | above 0                | 0.7 by default; Kd = 2·ζ·ω·J                         |
+| `computed-torque`     | bandwidth               | rad/s           | above 0                | 30 by default; Kp = ω²·I                             |
+| `computed-torque`     | damping ratio           | 1               | above 0                | 0.7 by default; Kd = 2·ζ·ω·I                         |
+| `gravity-pid`         | bandwidth               | rad/s           | above 0                | 20 by default; Kp = (2ζ + 1)·ω², Ki = ω³             |
+| `gravity-pid`         | damping ratio           | 1               | above 0                | 0.7 by default; Kd = (2ζ + 1)·ω, on the speed        |
+| `gravity-pid`         | output limit            | rad/s²          | ±200                   | Per joint; the integral's anti-windup                |
+| `joint-impedance`     | stiffness               | N·m/rad         | above 0                | Per joint; (10 rad/s)² over (M₀⁻¹)ᵢᵢ by default      |
+| `joint-impedance`     | damping ratio           | 1               | above 0                | 0.7 by default; D = 2·ζ·W·M(q)·W                     |
+| `cartesian-impedance` | translational stiffness | N/m             | above 0                | 50 by default, on each axis                          |
+| `cartesian-impedance` | rotational stiffness    | N·m/rad         | above 0                | 0.07 by default, about each axis                     |
+| `cartesian-impedance` | damping ratio           | 1               | above 0                | 0.7 by default; D = 2·ζ·W·M(q)·W on Jᵀ·K·J           |
+| `operational-space`   | bandwidth               | rad/s           | above 0                | 30 by default; Kp = ω²·I, Kd = 2·ζ·ω·I in task units |
+| `operational-space`   | damping ratio           | 1               | above 0                | 0.7 by default                                       |
+| `operational-space`   | singularity damping     | 1               | above 0, at most 1     | 0.01 by default; σ in (J·M⁻¹·Jᵀ + σ²·I)⁻¹            |
+| `slotine-li`          | λ                       | 1/s             | above 0, at most 100   | 10 by default; Λ = λ·I                               |
+| `slotine-li`          | bandwidth               | rad/s           | above 0, at most 500   | 20 by default; Kd = ω·M₀                             |
+| `slotine-li`          | adaptation gain         | 1               | above 0, at most 10000 | 10 by default; Γₖₖ = γ·(θ⁰ₖ² + 10⁻⁶)                 |
+| Impedance             | stiffness share         | 1               | 0.1–1                  | Scales both impedance controllers' stiffnesses       |
+| Reference             | speeds, accelerations   | rad/s, rad/s²   | finite                 | Zero while holding                                   |
+| Registry entry        | id                      | integer         | 0–7                    | Registration order                                   |
+| Registry entry        | name                    | text            | unique                 | The names of Parts A and D                           |
+| Registry entry        | enabled                 | flag            |                        | Registered disabled                                  |
 
 ---
 

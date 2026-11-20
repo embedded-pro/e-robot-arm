@@ -5,6 +5,7 @@
 #include "core/arm_controllers/implementations/GravityCompensatedPd.hpp"
 #include "core/arm_controllers/implementations/JointImpedance.hpp"
 #include "core/arm_controllers/implementations/OperationalSpace.hpp"
+#include "core/arm_controllers/implementations/SlotineLi.hpp"
 #include "core/arm_model/ArmGeometry.hpp"
 #include "core/arm_model/ArmMass.hpp"
 #include "core/joint_bus/interfaces/JointBus.hpp"
@@ -52,6 +53,8 @@ namespace arm
         JointImpedanceTuning jointImpedance{};
         CartesianImpedanceTuning cartesianImpedance{};
         OperationalSpaceTuning operationalSpace{};
+        SlotineLiTuning slotineLi{};
+        bool experimental{ false };
         TrackingLimits tracking{};
         CollisionLimits collision{ DefaultCollisionLimits() };
         std::array<std::optional<foc::RadiansPerSecond>, jointCount> speedTrips{};

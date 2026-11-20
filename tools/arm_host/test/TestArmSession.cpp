@@ -676,6 +676,15 @@ TEST_F(ArmSessionTest, sets_the_joint_impedance_stiffness_share_and_refuses_one_
     EXPECT_EQ("a stiffness share from 0.1 to 1", sink.Last()->reason);
 }
 
+TEST_F(ArmSessionTest, refuses_to_reset_the_adaptation_without_the_experimental_flag)
+{
+    Execute(1, arm_host::ResetAdaptation{});
+
+    EXPECT_EQ(1u, sink.Last()->command);
+    EXPECT_EQ("reset adaptation", sink.Last()->commandName);
+    EXPECT_EQ("no adaptive controller: the profile is not experimental", sink.Last()->reason);
+}
+
 TEST_F(ArmSessionTest, refuses_to_disable_the_controller_that_drives_the_joints)
 {
     Execute(1, arm_host::BringUp{});
