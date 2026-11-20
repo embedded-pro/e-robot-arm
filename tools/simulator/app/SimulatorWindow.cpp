@@ -5,6 +5,7 @@
 #include "ui/backend/qt/QtConversions.hpp"
 #include "ui/backend/qt/QtTheme.hpp"
 #include <QAction>
+#include <QApplication>
 #include <QCloseEvent>
 #include <QCoreApplication>
 #include <QDir>
@@ -81,6 +82,16 @@ namespace simulator
         , motor{ host, motorPanel->Form() }
         , armControllersPanel{ new ArmControllersPanel{ this } }
         , armControllers{ [this](const arm_host::ArmCommand& command)
+            {
+                presenter.Request(command);
+            } }
+        , jogPanel{ new JogPanel{ this } }
+        , jog{ [this](const arm_host::ArmCommand& command)
+            {
+                this->host.Post(command);
+            } }
+        , teachPanel{ new TeachPanel{ this } }
+        , teach{ [this](const arm_host::ArmCommand& command)
             {
                 presenter.Request(command);
             } }
@@ -241,6 +252,10 @@ namespace simulator
         motorPanel->SetHint(motor.Hint());
         armControllers.Refresh(snapshot);
         armControllersPanel->Update(armControllers);
+        jog.Refresh(snapshot, std::chrono::steady_clock::now());
+        jogPanel->Update(jog);
+        teach.Refresh(snapshot);
+        teachPanel->Update(teach);
         profilePanel->Update(DescribeProfile(snapshot), profilePath);
         UpdateVirtualMotors(snapshot);
         UpdateDisturbances(snapshot);
@@ -349,6 +364,14 @@ namespace simulator
             showing(motorController));
         connect(ConfigurationDock("Motor", "motorDock", motorPanel, armDock), &QDockWidget::visibilityChanged, this, showing(motor));
         tabifyDockWidget(armDock, Dock("Arm Controllers", "armControllersDock", armControllersPanel, Qt::RightDockWidgetArea));
+        auto* jogDock = Dock("Jog", "jogDock", jogPanel, Qt::RightDockWidgetArea);
+        tabifyDockWidget(armDock, jogDock);
+        tabifyDockWidget(jogDock, Dock("Teach Points", "teachPointsDock", teachPanel, Qt::RightDockWidgetArea));
+        connect(jogDock, &QDockWidget::visibilityChanged, this, [this](bool visible)
+            {
+                if (!visible)
+                    jog.Release();
+            });
         motorController.SetShown(false);
         motor.SetShown(false);
         auto* profileDock = Dock("Profile", "profileDock", profilePanel, Qt::RightDockWidgetArea);
@@ -600,6 +623,71 @@ namespace simulator
             {
                 armControllers.Trigger(static_cast<ArmControllerAction>(action));
             });
+        ConnectJog();
+        ConnectTeach();
+    }
+
+    void SimulatorWindow::ConnectJog()
+    {
+        connect(jogPanel, &JogPanel::spaceChosen, this, [this](int space)
+            {
+                jog.SetSpace(static_cast<JogSpace>(space));
+                jogPanel->Update(jog);
+            });
+        connect(jogPanel, &JogPanel::shareChanged, this, [this](int percent)
+            {
+                jog.SetShare(percent);
+                Settings().setValue("jog/share", jog.Share());
+                jogPanel->Update(jog);
+            });
+        connect(jogPanel, &JogPanel::axisChosen, this, [this](int axis)
+            {
+                jog.ChooseAxis(static_cast<std::size_t>(axis));
+                jogPanel->Update(jog);
+            });
+        connect(jogPanel, &JogPanel::pressed, this, [this](int axis, int direction)
+            {
+                jog.Press(static_cast<std::size_t>(axis), direction, std::chrono::steady_clock::now());
+                jogPanel->Update(jog);
+            });
+        connect(jogPanel, &JogPanel::released, this, [this]()
+            {
+                jog.Release();
+                jogPanel->Update(jog);
+            });
+        connect(qApp, &QGuiApplication::applicationStateChanged, this, [this](Qt::ApplicationState state)
+            {
+                if (state != Qt::ApplicationActive)
+                    jog.Release();
+            });
+        connect(qApp, &QApplication::focusChanged, this, [this](QWidget*, QWidget* now)
+            {
+                if (now == nullptr || (now != jogPanel && !jogPanel->isAncestorOf(now)))
+                    jog.Release();
+            });
+        jog.SetShare(Settings().value("jog/share", defaultJogShare).toInt());
+    }
+
+    void SimulatorWindow::ConnectTeach()
+    {
+        connect(teachPanel, &TeachPanel::chosen, this, [this](int row)
+            {
+                teach.Choose(row < 0 ? std::nullopt : std::optional<std::size_t>{ static_cast<std::size_t>(row) });
+                teachPanel->Update(teach);
+            });
+        connect(teachPanel, &TeachPanel::nameEdited, this, [this](const QString& name)
+            {
+                teach.SetName(name.toStdString());
+                teachPanel->Update(teach);
+            });
+        connect(teachPanel, &TeachPanel::teach, this, [this]()
+            {
+                teach.Teach();
+            });
+        connect(teachPanel, &TeachPanel::goTo, this, [this]()
+            {
+                teach.GoTo();
+            });
     }
 
     void SimulatorWindow::ChooseTarget(int choice)
@@ -831,6 +919,8 @@ namespace simulator
         motorControllerPanel->ApplyTheme();
         motorPanel->ApplyTheme();
         armControllersPanel->ApplyTheme();
+        jogPanel->ApplyTheme();
+        teachPanel->ApplyTheme();
         tool->ApplyTheme();
         virtualMotorsPanel->ApplyTheme();
         disturbancesPanel->ApplyTheme();

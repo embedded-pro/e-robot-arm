@@ -2,7 +2,7 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.36.0
+version: 0.37.0
 component: "tool-simulator"
 date: 2026-11-20
 ---
@@ -12,7 +12,7 @@ date: 2026-11-20
 | Title     | Simulator Screen Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.36.0                  |
+| Version   | 0.37.0                  |
 | Component | tool-simulator          |
 | Date      | 2026-11-20              |
 
@@ -198,6 +198,8 @@ arm only the joints whose motor changed restart, and the Virtual Motors dock sho
 | F             | Frame the arm (3-D view focused)                                                                                                                   |
 | Ctrl+S        | Save the event log                                                                                                                                 |
 | Ctrl+Shift+R  | Reset layout                                                                                                                                       |
+| 1–6           | Choose the jog axis (Jog dock focused, Part R)                                                                                                     |
+| ← / →         | Jog the chosen axis negative / positive while held (Jog dock focused); release stops                                                               |
 
 ### Part E — 3-D view: look
 
@@ -646,6 +648,70 @@ the arm host, which decides; the dock only shows the answer.
 - **Feedback:** each click shows "requested…" in the status strip until the arm host answers; a refusal, such as a
   switch to a controller that cannot take over a running move without a step, goes to the status strip and the log
   with its reason. The log records every change of the active controller (Part F).
+
+### Part R — Jog dock (phase 8c)
+
+A **Jog** dock, tabbed with the Arm dock, moves the arm while a button or key is held, in joint space or along the
+tool's axes in the base or the tool frame ([joint-motion.md](joint-motion.md) Part I). The arm host decides; the dock
+holds the dead-man.
+
+```text
+┌ Jog ──────────────────────────────────────────────────────────┐
+│ Space ( Joints ) ( Base ) ( Tool )      Speed [■■■■□□□□□□] 40 % │
+│ J1   [ − ]  [ + ]   0.40 rad/s          X   [ − ] [ + ] 0.100 m/s │
+│ …    (J2–J6, or X Y Z Rx Ry Rz in the Base and Tool spaces)    │
+│ Hold a button, or ← / → with an axis chosen by 1–6, to move.   │
+│ Jogging J1 −0.40 rad/s                                         │
+└────────────────────────────────────────────────────────────────┘
+```
+
+- **Hold-to-move.** Pressing a **−** or **+** button starts a jog of that axis at the scaled speed, and the dock sends
+  it again every half of the arm's dead-man time (jogDeadManPeriods control periods, 100 ms at 10 ms) while the
+  button stays down. Release sends a jog of zero speed on the same axis, so the arm comes to rest within its
+  acceleration limits. The window losing focus, the dock being hidden, or the arm leaving Enabled and Moving release
+  it the same way; a frozen window stops being refreshed, and the arm's own dead-man stops the jog.
+- **Speed** is a share from 1 to 100 % (10 % by default, remembered) of each joint's speed limit in joint space, and
+  of the tool's linear or angular speed limit along X, Y, Z or about Rx, Ry, Rz ([arm-profile.md](arm-profile.md)
+  `toolLimits`). Each row shows the speed it would jog at, with its unit. A change applies at the next refresh.
+- **State:** the line under the rows reads **Jogging `<axis>` `<speed>`** while held, and the jog's refusal from the
+  arm host otherwise (the status strip and the log carry it too).
+
+| Control | Enabled when                                                    | Disabled reason shown                                                                                | Does                            |
+|---------|-----------------------------------------------------------------|------------------------------------------------------------------------------------------------------|---------------------------------|
+| − / +   | Connected; the arm Enabled, or Moving under this dock's own jog | "Not connected", "Tripped", "Holding: re-arm first", "Enable the arm first", "Moving: wait or abort" | Jog while held; stop on release |
+| Space   | No jog held                                                     | "Release the jog first"                                                                              | Joint, base or tool frame       |
+| Speed   | Always                                                          | —                                                                                                    | Scales the jog speed, 1–100 %   |
+
+- **Keys** (Jog dock focused only, Part D): **1**–**6** choose the axis, shown highlighted; holding **←** or **→** jogs
+  it negative or positive, and release stops it. Auto-repeat of a held key is ignored, so it neither restarts nor
+  stops the jog.
+
+### Part S — Teach Points dock (phase 8c)
+
+A **Teach Points** dock, tabbed with the Jog dock, lists the profile's teach points ([joint-motion.md](joint-motion.md)
+Part J), teaches the current pose under a name and moves to a chosen one through the arm host.
+
+```text
+┌ Teach Points ──────────────────────────────────────────────────┐
+│ Name   J1 rad  J2 rad  J3 rad  J4 rad  J5 rad  J6 rad            │
+│ home    0.000   0.000   0.000   0.000   0.000   0.000            │
+│ pick    0.300   0.500   0.600   0.200   0.900  −0.200            │
+│ Name [pick        ]  [Teach]  [Go To]                            │
+│ Teach replaces "pick"                                            │
+│ Saved with the profile (File → Save Profile)                     │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+- **Rows** are the profile's points in their order, positions with three decimals; choosing a row fills the name.
+- **Teach** saves where the joints are now under the name, 1 to 16 characters, replacing a point of the same name
+  (the hint says so before the click); at most 16 points. The arm host's profile holds them, so **Save Profile** keeps
+  them.
+- **Go To** moves to the chosen point through the lifecycle, like **Move** (Part B), replacing a running move.
+
+| Control | Enabled when                                                     | Disabled reason shown                                                                                   | Does                     |
+|---------|------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------|--------------------------|
+| Teach   | Connected, no move running, a name of 1–16 characters, room left | "Not connected", "Moving: wait or abort", "Name it (1–16 characters)", "16 points already: replace one" | Teaches the current pose |
+| Go To   | A point chosen; the arm Enabled or Moving                        | "Choose a point", "Not connected", "Tripped", "Holding: re-arm first", "Enable the arm first"           | Moves to the point       |
 
 ---
 

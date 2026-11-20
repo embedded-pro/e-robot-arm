@@ -70,6 +70,8 @@ namespace simulator
         void BuildSimulationMenu();
         void BuildViewMenu();
         void ConnectSignals();
+        void ConnectJog();
+        void ConnectTeach();
         void RestoreSettings();
         QGroupBox* Group(const QString& title, QWidget* content);
         QDockWidget* Dock(const QString& title, const QString& name, QWidget* content, Qt::DockWidgetArea area);
@@ -114,6 +116,10 @@ namespace simulator
         MotorPresenter motor;
         ArmControllersPanel* armControllersPanel;
         ArmControllersPresenter armControllers;
+        JogPanel* jogPanel;
+        JogPresenter jog;
+        TeachPanel* teachPanel;
+        TeachPresenter teach;
         ProfilePanel* profilePanel;
         VirtualMotorsPanel* virtualMotorsPanel;
         DisturbancesPanel* disturbancesPanel;

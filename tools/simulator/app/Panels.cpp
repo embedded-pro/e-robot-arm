@@ -2,15 +2,20 @@
 #include "ui/backend/qt/QtConversions.hpp"
 #include "ui/backend/qt/QtTheme.hpp"
 #include <QComboBox>
+#include <QEvent>
 #include <QFile>
 #include <QFontDatabase>
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QHeaderView>
+#include <QKeyEvent>
 #include <QLabel>
+#include <QLineEdit>
 #include <QPlainTextEdit>
 #include <QPushButton>
+#include <QRadioButton>
 #include <QSignalBlocker>
+#include <QSlider>
 #include <QSplitter>
 #include <QTableWidget>
 #include <QTextStream>
@@ -636,5 +641,253 @@ namespace simulator
 
         QTextStream{ &file } << QString::fromStdString(log.Text({}));
         return true;
+    }
+}
+
+namespace simulator
+{
+    JogPanel::JogPanel(QWidget* parent)
+        : QWidget{ parent }
+        , share{ new QSlider{ Qt::Horizontal, this } }
+        , shareText{ new QLabel{ this } }
+        , hint{ new QLabel{ this } }
+        , status{ new QLabel{ this } }
+    {
+        setFocusPolicy(Qt::StrongFocus);
+        auto* layout = new QVBoxLayout{ this };
+        BuildSpace(*layout);
+        BuildRows(*layout);
+        auto* keys = new QLabel{ "Hold a button, or ← / → with an axis chosen by 1–6, to move.", this };
+        keys->setWordWrap(true);
+        status->setAccessibleName("Jog in progress");
+        hint->setAccessibleName("Why jogging is unavailable");
+        hint->setWordWrap(true);
+        layout->addWidget(keys);
+        layout->addWidget(status);
+        layout->addWidget(hint);
+        layout->addStretch();
+        for (auto* child : findChildren<QWidget*>())
+            child->installEventFilter(this);
+        installEventFilter(this);
+    }
+
+    void JogPanel::BuildSpace(QVBoxLayout& layout)
+    {
+        auto* row = new QHBoxLayout;
+        row->addWidget(new QLabel{ "Space", this });
+        constexpr std::array<const char*, 3> names{ "Joints", "Base", "Tool" };
+        for (std::size_t space = 0; space != spaces.size(); ++space)
+        {
+            spaces[space] = new QRadioButton{ names[space], this };
+            spaces[space]->setAccessibleName(QString{ "Jog in the %1 space" }.arg(names[space]));
+            row->addWidget(spaces[space]);
+            connect(spaces[space], &QRadioButton::clicked, this, [this, space]()
+                {
+                    emit spaceChosen(static_cast<int>(space));
+                });
+        }
+        row->addStretch();
+        share->setRange(1, 100);
+        share->setAccessibleName("Jog speed share");
+        share->setMinimumWidth(120);
+        connect(share, &QSlider::valueChanged, this, &JogPanel::shareChanged);
+        row->addWidget(new QLabel{ "Speed", this });
+        row->addWidget(share);
+        row->addWidget(shareText);
+        layout.addLayout(row);
+    }
+
+    void JogPanel::BuildRows(QVBoxLayout& layout)
+    {
+        auto* grid = new QGridLayout;
+        for (std::size_t axis = 0; axis != jogAxisCount; ++axis)
+        {
+            const auto row = static_cast<int>(axis);
+            labels[axis] = new QLabel{ this };
+            speeds[axis] = new QLabel{ this };
+            speeds[axis]->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+            grid->addWidget(labels[axis], row, 0);
+            for (std::size_t side = 0; side != 2; ++side)
+            {
+                const auto direction = side == 0 ? -1 : 1;
+                auto* button = new QPushButton{ side == 0 ? "−" : "+", this };
+                button->setAutoDefault(false);
+                button->setFocusPolicy(Qt::NoFocus);
+                buttons[axis][side] = button;
+                grid->addWidget(button, row, 1 + static_cast<int>(side));
+                connect(button, &QPushButton::pressed, this, [this, axis, direction]()
+                    {
+                        emit pressed(static_cast<int>(axis), direction);
+                    });
+                connect(button, &QPushButton::released, this, &JogPanel::released);
+            }
+            grid->addWidget(speeds[axis], row, 3);
+        }
+        grid->setColumnStretch(3, 1);
+        layout.addLayout(grid);
+    }
+
+    bool JogPanel::eventFilter(QObject* watched, QEvent* event)
+    {
+        if (event->type() == QEvent::KeyPress || event->type() == QEvent::KeyRelease)
+            if (Key(static_cast<const QKeyEvent&>(*event), event->type() == QEvent::KeyPress))
+                return true;
+        return QWidget::eventFilter(watched, event);
+    }
+
+    bool JogPanel::Key(const QKeyEvent& key, bool down)
+    {
+        if (key.key() >= Qt::Key_1 && key.key() <= Qt::Key_6)
+        {
+            if (down)
+                emit axisChosen(key.key() - Qt::Key_1);
+            return true;
+        }
+        if (key.key() != Qt::Key_Left && key.key() != Qt::Key_Right)
+            return false;
+        if (key.isAutoRepeat())
+            return true;
+        if (!down)
+            emit released();
+        else if (keyAxis >= 0)
+            emit pressed(keyAxis, key.key() == Qt::Key_Left ? -1 : 1);
+        return true;
+    }
+
+    void JogPanel::Update(const JogPresenter& presenter)
+    {
+        const auto space = static_cast<std::size_t>(presenter.Space());
+        for (std::size_t index = 0; index != spaces.size(); ++index)
+        {
+            const QSignalBlocker blocker{ spaces[index] };
+            spaces[index]->setChecked(index == space);
+            spaces[index]->setEnabled(presenter.SpaceState().enabled);
+            spaces[index]->setToolTip(ui::backend::qt::ToQt(presenter.SpaceState().reason));
+        }
+        {
+            const QSignalBlocker blocker{ share };
+            share->setValue(presenter.Share());
+        }
+        shareText->setText(QString{ "%1 %" }.arg(presenter.Share()));
+        keyAxis = presenter.ChosenAxis().has_value() ? static_cast<int>(*presenter.ChosenAxis()) : -1;
+        const auto& state = presenter.JogState();
+        for (std::size_t axis = 0; axis != jogAxisCount; ++axis)
+        {
+            const auto& row = presenter.Rows()[axis];
+            const auto label = ui::backend::qt::ToQt(row.label);
+            labels[axis]->setText(static_cast<int>(axis) == keyAxis ? QString{ "<b>%1</b>" }.arg(label) : label);
+            speeds[axis]->setText(ui::backend::qt::ToQt(row.speed));
+            for (std::size_t side = 0; side != 2; ++side)
+            {
+                auto* button = buttons[axis][side];
+                button->setEnabled(state.enabled);
+                button->setToolTip(ui::backend::qt::ToQt(state.reason));
+                button->setAccessibleName(QString{ "Jog %1 %2 while held" }.arg(label, side == 0 ? "negative" : "positive"));
+            }
+        }
+        status->setText(ui::backend::qt::ToQt(presenter.Status()));
+        status->setVisible(presenter.Held());
+        hint->setText(ui::backend::qt::ToQt(state.reason));
+        hint->setVisible(!state.enabled);
+    }
+
+    void JogPanel::ApplyTheme()
+    {
+        ui::backend::qt::StyleStatusLabel(*status, ui::theme::StatusLevel::Ok);
+        ui::backend::qt::StyleStatusLabel(*hint, ui::theme::StatusLevel::Neutral);
+    }
+
+    TeachPanel::TeachPanel(QWidget* parent)
+        : QWidget{ parent }
+        , table{ new QTableWidget{ 0, 1 + static_cast<int>(arm::jointCount), this } }
+        , name{ new QLineEdit{ this } }
+        , teachButton{ new QPushButton{ "Teach", this } }
+        , goToButton{ new QPushButton{ "Go To", this } }
+        , hint{ new QLabel{ this } }
+    {
+        table->setObjectName("teachPointsTable");
+        table->setAccessibleName("Teach points");
+        table->setHorizontalHeaderLabels({ "Name", "J1 rad", "J2 rad", "J3 rad", "J4 rad", "J5 rad", "J6 rad" });
+        table->verticalHeader()->setVisible(false);
+        table->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+        table->setEditTriggers(QAbstractItemView::NoEditTriggers);
+        table->setSelectionMode(QAbstractItemView::SingleSelection);
+        table->setSelectionBehavior(QAbstractItemView::SelectRows);
+        connect(table, &QTableWidget::itemSelectionChanged, this, [this]()
+            {
+                const auto selected = table->selectionModel()->selectedRows();
+                emit chosen(selected.isEmpty() ? -1 : selected.front().row());
+            });
+
+        name->setAccessibleName("Teach point name");
+        name->setMaxLength(static_cast<int>(arm::teachPointNameSize));
+        connect(name, &QLineEdit::textEdited, this, &TeachPanel::nameEdited);
+        teachButton->setAccessibleName("Teach the current pose under the name");
+        goToButton->setAccessibleName("Move to the chosen teach point");
+        connect(teachButton, &QPushButton::clicked, this, &TeachPanel::teach);
+        connect(goToButton, &QPushButton::clicked, this, &TeachPanel::goTo);
+
+        auto* actions = new QHBoxLayout;
+        actions->addWidget(new QLabel{ "Name", this });
+        actions->addWidget(name, 1);
+        actions->addWidget(teachButton);
+        actions->addWidget(goToButton);
+
+        hint->setAccessibleName("Teach and Go To hints");
+        hint->setWordWrap(true);
+        auto* source = new QLabel{ "Saved with the profile (File → Save Profile)", this };
+        source->setWordWrap(true);
+
+        auto* layout = new QVBoxLayout{ this };
+        layout->addWidget(table);
+        layout->addLayout(actions);
+        layout->addWidget(hint);
+        layout->addWidget(source);
+        layout->addStretch();
+    }
+
+    void TeachPanel::Update(const TeachPresenter& presenter)
+    {
+        if (presenter.Rows() != shown)
+        {
+            shown = presenter.Rows();
+            const QSignalBlocker blocker{ table };
+            table->setRowCount(static_cast<int>(shown.size()));
+            for (std::size_t row = 0; row != shown.size(); ++row)
+            {
+                const auto index = static_cast<int>(row);
+                table->setItem(index, 0, new QTableWidgetItem{ ui::backend::qt::ToQt(shown[row].name) });
+                for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+                {
+                    auto* cell = new QTableWidgetItem{ ui::backend::qt::ToQt(shown[row].positions[joint]) };
+                    cell->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+                    table->setItem(index, 1 + static_cast<int>(joint), cell);
+                }
+            }
+            if (presenter.Chosen().has_value())
+                table->selectRow(static_cast<int>(*presenter.Chosen()));
+        }
+        if (name->text().toStdString() != presenter.Name())
+            name->setText(ui::backend::qt::ToQt(presenter.Name()));
+
+        teachButton->setEnabled(presenter.TeachState().enabled);
+        teachButton->setToolTip(ui::backend::qt::ToQt(presenter.TeachState().reason));
+        goToButton->setEnabled(presenter.GoToState().enabled);
+        goToButton->setToolTip(ui::backend::qt::ToQt(presenter.GoToState().reason));
+
+        QStringList lines;
+        if (!presenter.Hint().empty())
+            lines << ui::backend::qt::ToQt(presenter.Hint());
+        if (!presenter.TeachState().enabled)
+            lines << QString{ "Teach: %1" }.arg(ui::backend::qt::ToQt(presenter.TeachState().reason));
+        if (!presenter.GoToState().enabled)
+            lines << QString{ "Go To: %1" }.arg(ui::backend::qt::ToQt(presenter.GoToState().reason));
+        hint->setText(lines.join('\n'));
+    }
+
+    void TeachPanel::ApplyTheme()
+    {
+        ui::backend::qt::StyleStatusLabel(*hint, ui::theme::StatusLevel::Neutral);
+        shown.clear();
     }
 }
