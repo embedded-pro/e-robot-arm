@@ -51,7 +51,7 @@ namespace arm_console
         constexpr std::array<std::string_view, 2> motionProfileNames{ "trapezoid", "s-curve" };
         constexpr std::array<std::string_view, 2> frameNames{ "base", "tool" };
 
-        std::optional<float> Number(const std::string& token)
+        std::optional<float> Number(std::string_view token)
         {
             float value{ 0.0f };
             const auto [end, error] = std::from_chars(token.data(), token.data() + token.size(), value);
@@ -66,6 +66,18 @@ namespace arm_console
                 if (std::string_view{ config.teachPoints[point].name.data(), config.teachPoints[point].name.size() } == name)
                     return &config.teachPoints[point];
             return nullptr;
+        }
+
+        bool ReadAngles(const std::vector<std::string>& tokens, std::size_t& index, arm::JointPositions& joints)
+        {
+            for (auto& joint : joints)
+            {
+                const auto value = index != tokens.size() ? Number(tokens[index++]) : std::nullopt;
+                if (!value.has_value())
+                    return false;
+                joint = foc::Radians{ *value };
+            }
+            return true;
         }
 
         std::vector<std::string> Tokens(std::istringstream& arguments)
@@ -351,17 +363,11 @@ namespace arm_console
                 output << "no teach point " << tokens[index] << "\n";
                 return { Outcome::done };
             }
-            else
-                for (auto& joint : joints)
-                {
-                    const auto value = index != tokens.size() ? Number(tokens[index++]) : std::nullopt;
-                    if (!value.has_value())
-                    {
-                        Usage();
-                        return { Outcome::done };
-                    }
-                    joint = foc::Radians{ *value };
-                }
+            else if (!ReadAngles(tokens, index, joints))
+            {
+                Usage();
+                return { Outcome::done };
+            }
 
             if (path.waypoints.full())
             {
