@@ -2,7 +2,7 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.37.0
+version: 0.38.0
 component: "tool-simulator"
 date: 2026-11-20
 ---
@@ -12,7 +12,7 @@ date: 2026-11-20
 | Title     | Simulator Screen Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.37.0                  |
+| Version   | 0.38.0                  |
 | Component | tool-simulator          |
 | Date      | 2026-11-20              |
 
@@ -619,20 +619,32 @@ An **Arm Controllers** dock, tabbed with the Motor Controller and Motor docks, s
 the arm host, which decides; the dock only shows the answer.
 
 ```text
-┌ Arm Controllers ──────────────────────────────────────────────┐
-│ Controller        State      Parameters                       │
-│ gravity-pd        ● Active   ω 30.0 rad/s, ζ 0.70             │
-│ computed-torque     Enabled  ω 30.0 rad/s, ζ 0.70             │
-│ gravity-pid         Enabled  ω 20.0 rad/s, ζ 0.70             │
-│ [Select] [Enable] [Disable]                                   │
-│ Disable is unavailable: disable the arm first                 │
-│ Parameters come from the profile (File → Open Profile…)       │
-└───────────────────────────────────────────────────────────────┘
+┌ Arm Controllers ────────────────────────────────────────────────┐
+│ Controller           State      Parameters                      │
+│ gravity-pd           ● Active   ω 30.0 rad/s, ζ 0.70            │
+│ computed-torque        Enabled  ω 30.0 rad/s, ζ 0.70            │
+│ gravity-pid            Enabled  ω 20.0 rad/s, ζ 0.70            │
+│ joint-impedance        Enabled  K at 10 rad/s, ζ 0.70           │
+│ cartesian-impedance    Enabled  K 50 N/m, 0.07 N·m/rad, ζ 0.70  │
+│ operational-space      Enabled  ω 30.0 rad/s, ζ 0.70, σ 0.01    │
+│ [Select] [Enable] [Disable]                                     │
+│ Disable is unavailable: disable the arm first                   │
+│ Parameters come from the profile (File → Open Profile…)         │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 - **Rows** are the registry in its order: the name, **Active** (`Ok`), **Enabled** (`Neutral`) or **Disabled**
-  (`Neutral`), and the bandwidth ω and damping ratio ζ the profile gives that controller. The parameters are
-  read-only: they change with the profile.
+  (`Neutral`), and the tuning the profile gives that controller ([arm-controllers.md](arm-controllers.md)). The
+  parameters are read-only: they change with the profile.
+
+  | Controller                               | Parameters                                                                      |
+  |------------------------------------------|---------------------------------------------------------------------------------|
+  | gravity-pd, computed-torque, gravity-pid | `ω 30.0 rad/s, ζ 0.70`: bandwidth and damping ratio                             |
+  | joint-impedance                          | `K at 10 rad/s, ζ 0.70` for the default stiffness, else `K 120, 80, … N·m/rad`  |
+  | cartesian-impedance                      | `K 50 N/m, 0.07 N·m/rad, ζ 0.70`: translational, rotational stiffness           |
+  | operational-space                        | `ω 30.0 rad/s, ζ 0.70, σ 0.01`: bandwidth, damping ratio, singularity damping   |
+  | slotine-li                               | `λ 10.0 1/s, ω 20.0 rad/s, γ 10.0`: sliding gain, damping bandwidth, adaptation |
+
 - **Selection:** clicking a row selects it; the buttons act on the selected row. With no row selected every button
   is disabled with "Choose a controller".
 

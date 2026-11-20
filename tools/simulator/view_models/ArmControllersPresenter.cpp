@@ -7,23 +7,51 @@ namespace simulator
     {
         constexpr std::array<std::string_view, armControllerActionCount> actionNames{ "Select", "Enable", "Disable" };
 
-        std::optional<arm::BandwidthTuning> TuningOf(const arm::ArmConfig& config, std::string_view name)
+        std::string Bandwidth(const arm::BandwidthTuning& tuning)
         {
-            if (name == "gravity-pd")
-                return config.gravityPd;
-            if (name == "computed-torque")
-                return config.computedTorque;
-            if (name == "gravity-pid")
-                return config.gravityPid;
-            return std::nullopt;
+            return std::format("ω {:.1f} rad/s, ζ {:.2f}", tuning.bandwidth, tuning.dampingRatio);
+        }
+
+        std::string JointImpedance(const arm::JointImpedanceTuning& tuning)
+        {
+            if (!tuning.stiffness.has_value())
+                return std::format("K at 10 rad/s, ζ {:.2f}", tuning.dampingRatio);
+            const auto& k = *tuning.stiffness;
+            return std::format("K {}, {}, {}, {}, {}, {} N·m/rad, ζ {:.2f}", k[0], k[1], k[2], k[3], k[4], k[5], tuning.dampingRatio);
+        }
+
+        std::string CartesianImpedance(const arm::CartesianImpedanceTuning& tuning)
+        {
+            return std::format("K {} N/m, {} N·m/rad, ζ {:.2f}", tuning.translationalStiffness, tuning.rotationalStiffness, tuning.dampingRatio);
+        }
+
+        std::string OperationalSpace(const arm::OperationalSpaceTuning& tuning)
+        {
+            return std::format("ω {:.1f} rad/s, ζ {:.2f}, σ {}", tuning.bandwidth, tuning.dampingRatio, tuning.singularityDamping);
+        }
+
+        std::string SlotineLi(const arm::SlotineLiTuning& tuning)
+        {
+            return std::format("λ {:.1f} 1/s, ω {:.1f} rad/s, γ {:.1f}", tuning.lambda, tuning.bandwidth, tuning.adaptationGain);
         }
 
         std::string Parameters(const arm::ArmConfig& config, std::string_view name)
         {
-            const auto tuning = TuningOf(config, name);
-            if (!tuning.has_value())
-                return "—";
-            return std::format("ω {:.1f} rad/s, ζ {:.2f}", tuning->bandwidth, tuning->dampingRatio);
+            if (name == "gravity-pd")
+                return Bandwidth(config.gravityPd);
+            if (name == "computed-torque")
+                return Bandwidth(config.computedTorque);
+            if (name == "gravity-pid")
+                return Bandwidth(config.gravityPid);
+            if (name == "joint-impedance")
+                return JointImpedance(config.jointImpedance);
+            if (name == "cartesian-impedance")
+                return CartesianImpedance(config.cartesianImpedance);
+            if (name == "operational-space")
+                return OperationalSpace(config.operationalSpace);
+            if (name == "slotine-li")
+                return SlotineLi(config.slotineLi);
+            return "—";
         }
 
         const char* StateText(const arm_host::ArmControllerStatus& controller)
