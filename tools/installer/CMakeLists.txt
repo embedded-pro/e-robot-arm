@@ -44,7 +44,7 @@ function(e_robot_arm_tools_package)
     set(CPACK_DEBIAN_PACKAGE_SECTION "electronics")
     set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
     set(CPACK_DEBIAN_PACKAGE_DEPENDS
-        "qt6-qpa-plugins, qml6-module-qtqml, qml6-module-qtqml-workerscript, qml6-module-qtquick, qml6-module-qtquick-window, qml6-module-quick3d, qml6-module-quick3d-assetutils, qml6-module-quick3d-helpers")
+        "qt6-qpa-plugins, qml6-module-qtqml, qml6-module-qtqml-workerscript, qml6-module-qtquick, qml6-module-qtquick-window, qml6-module-qtquick3d | qml6-module-quick3d, qml6-module-qtquick3d-assetutils | qml6-module-quick3d-assetutils, qml6-module-qtquick3d-helpers | qml6-module-quick3d-helpers")
     set(CPACK_DEBIAN_PACKAGE_DESCRIPTION
         "Simulator and console for a six-joint robot arm on e-foc motor nodes.\n Drives the arm on simulated joints, on e-foc virtual motors (included) or on\n the real arm through a CAN adapter.")
 

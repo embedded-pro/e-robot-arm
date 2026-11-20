@@ -45,12 +45,12 @@ date: 2026-11-20
 
 ### Part A — Contents and names
 
-| Program                    | What it is                                                                                          |
-|----------------------------|-----------------------------------------------------------------------------------------------------|
-| `e-robot-arm-simulator`    | The e-robot-arm Simulator ([tool-simulator.md](tool-simulator.md)), with its desktop entry and icon |
-| `e-robot-arm-console`      | The text console ([arm-console.md](arm-console.md))                                                 |
-| `e-robot-arm-virtual-arm`  | Starts six e-foc virtual motors from a profile ([virtual-arm.md](virtual-arm.md))                   |
-| `e-foc-virtual-motor`      | e-foc's headless virtual motor, which the Virtual arm target and the launcher start, one per joint  |
+| Program                   | What it is                                                                                          |
+|---------------------------|-----------------------------------------------------------------------------------------------------|
+| `e-robot-arm-simulator`   | The e-robot-arm Simulator ([tool-simulator.md](tool-simulator.md)), with its desktop entry and icon |
+| `e-robot-arm-console`     | The text console ([arm-console.md](arm-console.md))                                                 |
+| `e-robot-arm-virtual-arm` | Starts six e-foc virtual motors from a profile ([virtual-arm.md](virtual-arm.md))                   |
+| `e-foc-virtual-motor`     | e-foc's headless virtual motor, which the Virtual arm target and the launcher start, one per joint  |
 
 The package is called `e-robot-arm` and installs every program in the same directory, on the system path on Linux,
 so the Simulator's default engine, `e-foc-virtual-motor`, resolves without asking. Release assets are named
@@ -61,8 +61,9 @@ carries exactly one of each, which is how an update check picks its installer.
 
 A Debian package built on the runner's Ubuntu, so its library dependencies are the ones that system resolves. The
 Simulator loads Qt Quick 3D's QML modules at run time, which no linker sees, so the package depends on them by name
-beside the shared libraries the build finds. It installs the programs under the system binaries, the desktop entry
-under the applications directory and the icon in the scalable and 256 × 256 hicolor themes.
+beside the shared libraries the build finds, accepting either of the names Ubuntu has given them
+(`qml6-module-qtquick3d` and the older `qml6-module-quick3d`). It installs the programs under the system binaries,
+the desktop entry under the applications directory and the icon in the scalable and 256 × 256 hicolor themes.
 
 ### Part C — Windows setup
 
@@ -94,17 +95,17 @@ must still be running after ten seconds.
 
 ### Provided
 
-| Interface              | Purpose                          | Contract                                                                              |
-|------------------------|----------------------------------|---------------------------------------------------------------------------------------|
-| Linux release asset    | Install or update on Ubuntu      | Name ends `-linux-x86_64.deb`; installs and removes cleanly; the Simulator starts     |
-| Windows release asset  | Install or update on Windows     | Name ends `-windows-x86_64-setup.exe`; silent install and uninstall work              |
+| Interface             | Purpose                      | Contract                                                                          |
+|-----------------------|------------------------------|-----------------------------------------------------------------------------------|
+| Linux release asset   | Install or update on Ubuntu  | Name ends `-linux-x86_64.deb`; installs and removes cleanly; the Simulator starts |
+| Windows release asset | Install or update on Windows | Name ends `-windows-x86_64-setup.exe`; silent install and uninstall work          |
 
 ### Required
 
-| Interface              | Purpose                            | Contract                                                              |
-|------------------------|------------------------------------|-----------------------------------------------------------------------|
-| e-foc source           | Builds `e-foc-virtual-motor`       | The revision the virtual arm scenarios pin, so both test one engine   |
-| Qt 6 with Qt Quick 3D  | The Simulator's runtime            | From the distribution on Linux; deployed into the setup on Windows    |
+| Interface             | Purpose                      | Contract                                                            |
+|-----------------------|------------------------------|---------------------------------------------------------------------|
+| e-foc source          | Builds `e-foc-virtual-motor` | The revision the virtual arm scenarios pin, so both test one engine |
+| Qt 6 with Qt Quick 3D | The Simulator's runtime      | From the distribution on Linux; deployed into the setup on Windows  |
 
 ---
 
