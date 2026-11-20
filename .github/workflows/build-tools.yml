@@ -1,0 +1,97 @@
+---
+name: Build Tools
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: "Version used in the package file names"
+        type: string
+        required: true
+      retention_days:
+        description: "Days to keep the uploaded packages (0 keeps the repository default)"
+        type: number
+        default: 0
+
+permissions:
+  contents: read
+
+env:
+  CMAKE_BUILD_PARALLEL_LEVEL: 2
+
+jobs:
+  build_linux_tools:
+    name: Build Linux Tools
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure Git
+        run: |
+          git config --global url."https://${{ secrets.PRIVATE_REPO_TOKEN }}@github.com/".insteadOf "https://github.com/"
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+          git config --global --add safe.directory '*'
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          submodules: recursive
+      - uses: seanmiddleditch/gha-setup-ninja@3b1f8f94a2f8254bd26914c4ab9474d4f0015f67 # v6
+      - name: Install Qt Quick 3D and packaging tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            qt6-base-dev qt6-declarative-dev qt6-declarative-dev-tools qt6-quick3d-dev qt6-shadertools-dev \
+            libgl1-mesa-dev ccache dpkg-dev desktop-file-utils xvfb xauth libgl1-mesa-dri
+      - name: Check out e-foc
+        run: |
+          revision="$(cat .github/e-foc-revision)"
+          git init -q e-foc
+          git -C e-foc remote add origin https://github.com/embedded-pro/e-foc.git
+          git -C e-foc fetch -q --depth 1 origin "$revision"
+          git -C e-foc checkout -q FETCH_HEAD
+          git -C e-foc submodule update -q --init --recursive --depth 1
+      - uses: hendrikmuhs/ccache-action@dbeefd73e8e2ffc1bbc412570072735eb4db3607 # v1.2.25
+        with:
+          key: ${{ github.job }}-ubuntu-latest
+          max-size: 2G
+          save: ${{ github.ref == 'refs/heads/main' }}
+      - name: Build the e-foc virtual motor
+        working-directory: e-foc
+        run: |
+          cmake --preset host -DCMAKE_COMPILE_WARNING_AS_ERROR=OFF
+          cmake --build build/host --config Release --target e_foc.tool.virtual_motor
+      - name: Build the tools
+        run: |
+          engine="$(realpath "$(find e-foc/build/host -name e-foc-virtual-motor -type f -executable -path '*/Release/*' -print -quit)")"
+          test -x "$engine"
+          cmake --preset host-qt -DE_ROBOT_ARM_PACKAGE_ENGINE="$engine"
+          cmake --build --preset host-qt-Release --target e_robot_arm.tool.simulator e_robot_arm.tool.arm_console e_robot_arm.tool.virtual_arm.main
+      - name: Package the tools
+        run: |
+          name="e_robot_arm-tools-${{ inputs.version }}-linux-x86_64"
+          cpack --config build/host-qt/tools/installer/CPackConfig.cmake -C Release -G DEB \
+            -B "$PWD/installer" -D CPACK_PACKAGE_FILE_NAME="$name"
+          mv "installer/$name.deb" .
+          dpkg-deb --info "$name.deb"
+          dpkg-deb --contents "$name.deb"
+      - name: Install, start and remove the package
+        env:
+          LIBGL_ALWAYS_SOFTWARE: 1
+        run: |
+          sudo apt-get install -y "./e_robot_arm-tools-${{ inputs.version }}-linux-x86_64.deb"
+          desktop-file-validate /usr/share/applications/e-robot-arm-simulator.desktop
+          test -f /usr/share/icons/hicolor/scalable/apps/e-robot-arm-simulator.svg
+          test -f /usr/share/icons/hicolor/256x256/apps/e-robot-arm-simulator.png
+          e-foc-virtual-motor --help
+          printf 'status\nquit\n' | timeout 20 e-robot-arm-console
+          status=0
+          timeout 10 xvfb-run -a -s "-screen 0 1920x1080x24" e-robot-arm-simulator || status=$?
+          test "$status" -eq 124 || { echo "::error::the Simulator exited with $status instead of running"; exit 1; }
+          sudo apt-get remove -y e-robot-arm
+          for program in e-robot-arm-simulator e-robot-arm-console e-robot-arm-virtual-arm e-foc-virtual-motor; do
+            test ! -e "/usr/bin/$program" || { echo "::error::removing the package left /usr/bin/$program"; exit 1; }
+          done
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: linux-tools-installer
+          path: e_robot_arm-tools-*-linux-x86_64.deb
+          if-no-files-found: error
+          retention-days: ${{ inputs.retention_days }}

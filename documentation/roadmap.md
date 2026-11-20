@@ -25,6 +25,7 @@ request as the work it describes. The tracking issue is
 | Arm host           | `tools/arm_host/`          | [simulator.md](design/simulator.md)                   |
 | Virtual arm        | `tools/virtual_arm/`       | [virtual-arm.md](design/virtual-arm.md)               |
 | Simulator          | `tools/simulator/`         | [tool-simulator.md](design/tool-simulator.md)         |
+| Tools installer    | `tools/installer/`         | [tool-installers.md](design/tool-installers.md)       |
 | Arm scenarios      | `integration_tests/`       | [requirements](requirements/arm/arm.yaml)             |
 
 ## Order of work

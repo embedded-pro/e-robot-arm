@@ -184,8 +184,6 @@ jobs:
     name: Virtual Arm Scenarios (e-foc virtual motors)
     runs-on: ubuntu-latest
     container: gabrielfrasantos/embedded-devcontainer-cpp:v7.3.0@sha256:4f92e9c86dfc5a9688b6134944e7a40c9eb3c658022ea62dc9e57e4c3b056940
-    env:
-      E_FOC_REVISION: 586f7c9dd29029c556d88fe8ae34b7467a9ea228
     steps:
       - name: Configure Git
         run: |
@@ -200,7 +198,7 @@ jobs:
         run: |
           git init -q e-foc
           git -C e-foc remote add origin https://github.com/embedded-pro/e-foc.git
-          git -C e-foc fetch -q --depth 1 origin "$E_FOC_REVISION"
+          git -C e-foc fetch -q --depth 1 origin "$(cat .github/e-foc-revision)"
           git -C e-foc checkout -q FETCH_HEAD
           git -C e-foc submodule update -q --init --recursive --depth 1
       - uses: hendrikmuhs/ccache-action@dbeefd73e8e2ffc1bbc412570072735eb4db3607 # v1.2.25
@@ -242,6 +240,13 @@ jobs:
           name: virtual-arm-logs
           path: /tmp/e-robot-arm-virtual-scenarios/
           if-no-files-found: ignore
+  tools_build:
+    name: Tools Installers
+    uses: ./.github/workflows/build-tools.yml
+    with:
+      version: ci-${{ github.run_number }}
+      retention_days: 7
+    secrets: inherit
   host_cross_windows:
     name: Host Cross-Compile (Linux → Windows)
     runs-on: ubuntu-latest

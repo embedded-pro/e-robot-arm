@@ -81,6 +81,10 @@ simulator runs the same core against e-foc virtual motors or the real arm.
     the Qt Quick 3D scene as the `Simulator` QML module, built with the
     `host-qt` preset). Design: `documentation/design/simulator.md` and
     `tool-simulator.md`.
+  - `tools/installer/` — the tools package (Simulator, console, virtual arm launcher
+    and e-foc's virtual motor): a `.deb` built and install-tested by `build-tools.yml`
+    on every pull request and attached to releases. Design:
+    `documentation/design/tool-installers.md`.
 - `integration_tests/` — BDD tests (cucumber-cpp / Gherkin): `features/`, `steps/`,
   `support/`, `hooks/`, `main/`.
 - `infra/numerical-toolbox/` — generic numerical algorithms (PID, filters,
