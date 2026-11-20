@@ -11,7 +11,7 @@ namespace arm_host
         {
             return std::holds_alternative<SelectMode>(command) || std::holds_alternative<StartJoints>(command) || std::holds_alternative<AlignJoints>(command) ||
                    std::holds_alternative<MoveTo>(command) || std::holds_alternative<StepTo>(command) || std::holds_alternative<MoveThrough>(command) ||
-                   std::holds_alternative<MoveLine>(command);
+                   std::holds_alternative<MoveLine>(command) || std::holds_alternative<JogJoint>(command);
         }
 
         bool DeliveredByTheJoints(const ArmCommand& command)
@@ -314,6 +314,11 @@ namespace arm_host
             return session.arm.Lifecycle().MoveLine(arm::ToTransform(line.target));
         }
 
+        bool operator()(const JogJoint& jog) const
+        {
+            return session.arm.Lifecycle().Jog(arm::JointJog{ jog.joint, jog.speed });
+        }
+
         bool operator()(const AbortMove&) const
         {
             session.arm.Motion().Abort();
@@ -505,6 +510,8 @@ namespace arm_host
             return PathRefusal(*path);
         if (std::holds_alternative<MoveLine>(command))
             return LineRefusal();
+        if (const auto* jog = std::get_if<JogJoint>(&command))
+            return JogRefusal(*jog);
         if (std::holds_alternative<MoveTo>(command) || std::holds_alternative<StepTo>(command))
             return MoveRefusal(command);
         if (DeliveredByTheJoints(command))
@@ -563,6 +570,22 @@ namespace arm_host
                 }))
             return "a waypoint is outside the joint limits";
         return "the path leaves the joint limits or the workspace, meets the arm itself, or repeats a waypoint";
+    }
+
+    std::string_view ArmSession::JogRefusal(const JogJoint& jog) const
+    {
+        const auto state = arm.Lifecycle().State();
+        if (state == arm::ArmState::holding)
+            return "holding after a protective stop: re-arm first";
+        if (state != arm::ArmState::enabled && state != arm::ArmState::moving)
+            return "the arm is not enabled";
+        if (jog.joint >= arm::jointCount)
+            return "no such joint";
+        if (!std::isfinite(jog.speed.Value()) || (state == arm::ArmState::enabled && !(std::abs(jog.speed.Value()) > 0.0f)))
+            return "a jog needs a speed";
+        if (state == arm::ArmState::moving)
+            return "another move runs";
+        return "a joint's reading is stale";
     }
 
     std::string_view ArmSession::LineRefusal() const

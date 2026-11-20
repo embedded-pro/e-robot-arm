@@ -272,6 +272,27 @@ TEST_F(SlowToolSessionTest, moves_the_tool_along_a_line_and_names_where_and_why_
     EXPECT_NEAR(target.y, sink.snapshot.toolPose.y, 2.0e-3f);
 }
 
+TEST_F(ArmSessionTest, jogs_a_joint_until_the_dead_man_expires_and_names_why_a_jog_is_refused)
+{
+    Execute(1, arm_host::JogJoint{ 0, foc::RadiansPerSecond{ 0.2f } });
+    EXPECT_EQ("contracts not compatible", sink.Last()->reason);
+
+    BringUp();
+    Execute(5, arm_host::JogJoint{ 6, foc::RadiansPerSecond{ 0.2f } });
+    EXPECT_EQ("no such joint", sink.Last()->reason);
+    Execute(6, arm_host::JogJoint{ 0, foc::RadiansPerSecond{ 0.0f } });
+    EXPECT_EQ("a jog needs a speed", sink.Last()->reason);
+
+    Execute(7, arm_host::JogJoint{ 0, foc::RadiansPerSecond{ 0.2f } });
+    EXPECT_EQ(ArmEventKind::accepted, sink.Last()->kind);
+    ForwardTime(1s);
+
+    ASSERT_NE(nullptr, sink.Find(ArmEventKind::moveDone));
+    ASSERT_TRUE(sink.snapshot.commanded.has_value());
+    EXPECT_GT(sink.snapshot.commanded->at(0).Value(), 0.0f);
+    EXPECT_NEAR(0.0f, sink.snapshot.commanded->at(1).Value(), 1.0e-4f);
+}
+
 TEST_F(ArmSessionTest, a_move_shows_the_commanded_positions_and_the_joints_follow_with_a_lag)
 {
     BringUp();

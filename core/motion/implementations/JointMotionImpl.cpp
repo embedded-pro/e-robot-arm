@@ -27,6 +27,7 @@ namespace arm
         , jerks(jerks)
         , period(period)
         , guard(guard)
+        , jogger(positionLimits, limits, std::chrono::duration<float>(period).count())
     {
         really_assert(std::ranges::all_of(limits, ValidLimit));
         really_assert(period > infra::Duration::zero());
@@ -46,6 +47,26 @@ namespace arm
 
         periodsElapsed = 0;
         generator = Generator::line;
+        return true;
+    }
+
+    bool JointMotionImpl::Jog(const JointJog& jog)
+    {
+        if (jog.joint >= jointCount || !math::IsFinite(jog.speed.Value()))
+            return false;
+
+        if (generator == Generator::jog)
+        {
+            jogger.Command(jog);
+            return true;
+        }
+
+        if (Moving() || AnyReadingStale() || !(math::Abs(jog.speed.Value()) > 0.0f))
+            return false;
+
+        jogger.Start(LatestPositions(), jog);
+        periodsElapsed = 0;
+        generator = Generator::jog;
         return true;
     }
 
@@ -244,6 +265,8 @@ namespace arm
         ++periodsElapsed;
         if (generator == Generator::line)
             return StepLine();
+        if (generator == Generator::jog)
+            return StepJog();
 
         const auto elapsed = Elapsed();
         const auto duration = generator == Generator::path ? path.Duration() : plan.Duration();
@@ -269,6 +292,14 @@ namespace arm
         target = sample.reference->positions;
         Arrive();
         return AtRest(target);
+    }
+
+    JointReference JointMotionImpl::StepJog()
+    {
+        const auto reference = jogger.Advance();
+        if (jogger.Done())
+            Arrive();
+        return reference;
     }
 
     void JointMotionImpl::Arrive()

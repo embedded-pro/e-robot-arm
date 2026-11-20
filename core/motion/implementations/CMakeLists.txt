@@ -17,6 +17,8 @@ target_link_libraries(e_robot_arm.motion.implementations PUBLIC
 
 target_sources(e_robot_arm.motion.implementations PRIVATE
     JointMotionImpl.cpp
+    JointJogger.cpp
+    JointJogger.hpp
     JointLinePlan.cpp
     JointLinePlan.hpp
     JointMotionImpl.hpp

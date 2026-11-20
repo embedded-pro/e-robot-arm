@@ -345,6 +345,23 @@ TEST_F(ArmLifecycleImplTest, a_tool_line_starts_only_while_enabled_moves_like_a_
     EXPECT_EQ(ArmState::enabled, lifecycle.State());
 }
 
+TEST_F(ArmLifecycleImplTest, a_jog_starts_while_enabled_refreshes_while_moving_and_ends_back_in_enabled)
+{
+    const arm::JointJog jog{ 1, foc::RadiansPerSecond{ 0.2f } };
+    EXPECT_FALSE(lifecycle.Jog(jog));
+
+    BringToEnabled();
+    EXPECT_CALL(motion, Jog(_)).WillOnce(Return(true)).WillOnce(Return(true)).WillOnce(Return(false));
+    EXPECT_TRUE(lifecycle.Jog(jog));
+    EXPECT_EQ(ArmState::moving, lifecycle.State());
+    EXPECT_TRUE(lifecycle.Jog(jog));
+    EXPECT_FALSE(lifecycle.Jog(jog));
+    EXPECT_EQ(ArmState::moving, lifecycle.State());
+
+    FinishMove();
+    EXPECT_EQ(ArmState::enabled, lifecycle.State());
+}
+
 TEST_F(ArmLifecycleImplTest, a_move_refused_by_joint_motion_leaves_the_arm_enabled)
 {
     BringToEnabled();

@@ -53,6 +53,13 @@ namespace arm
         bool operator==(const LineRefusal& other) const = default;
     };
 
+    struct JointJog
+    {
+        std::size_t joint{ 0 };
+        foc::RadiansPerSecond speed{};
+    };
+
+    constexpr uint32_t jogDeadManPeriods{ 20 };
     constexpr std::size_t maxWaypoints{ 8 };
     using JointWaypoints = infra::BoundedVector<JointPositions>;
 
@@ -91,6 +98,7 @@ namespace arm
         virtual bool StepTo(const JointPositions& target) = 0;
         virtual bool MoveThrough(const JointWaypoints& waypoints) = 0;
         virtual bool MoveLine(const ToolPose& target) = 0;
+        virtual bool Jog(const JointJog& jog) = 0;
         virtual std::optional<LineRefusal> LineRefused() const = 0;
         virtual void Abort() = 0;
         virtual bool Moving() const = 0;
