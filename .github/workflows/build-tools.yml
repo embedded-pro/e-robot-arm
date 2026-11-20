@@ -115,7 +115,7 @@ jobs:
         uses: jurplel/install-qt-action@b344308e4483fc892e0d27b3cd1b173ebdd95f06 # v4.5.0
         with:
           version: "6.7.*"
-          modules: "qtquick3d qtshadertools"
+          modules: "qtquick3d qtshadertools qtquicktimeline"
           cache: true
       - uses: hendrikmuhs/ccache-action@dbeefd73e8e2ffc1bbc412570072735eb4db3607 # v1.2.25
         with:
