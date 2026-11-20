@@ -2,6 +2,7 @@
 #include "core/motion/implementations/JointMotionImpl.hpp"
 #include "core/safety/test_doubles/PoseGuardMock.hpp"
 #include "gmock/gmock.h"
+#include <algorithm>
 #include <chrono>
 #include <limits>
 #include <vector>
@@ -206,6 +207,88 @@ TEST_F(JointMotionImplTest, starts_trapezoidal_and_refuses_the_s_curve_without_a
     EXPECT_EQ(arm::MotionProfile::trapezoid, motion.Profile());
 }
 
+TEST_F(JointMotionImplTest, moves_through_the_waypoints_and_is_done_at_rest_at_the_last)
+{
+    arm::JointWaypoints::WithMaxSize<arm::maxWaypoints> waypoints;
+    waypoints.push_back(Target(1.0f));
+    waypoints.push_back(Target(-0.5f));
+
+    EXPECT_TRUE(motion.MoveThrough(waypoints));
+    EXPECT_TRUE(motion.Moving());
+
+    EXPECT_CALL(observer, OnMoveDone());
+    Step(100);
+    EXPECT_FALSE(motion.Moving());
+    EXPECT_EQ(Target(-0.5f), sent.back());
+    EXPECT_NEAR(1.0f, std::ranges::max(sent, {}, [](const arm::JointPositions& positions)
+                          {
+                              return positions[0].Value();
+                          })[0]
+                          .Value(),
+        0.02f);
+}
+
+TEST_F(JointMotionImplTest, every_sample_of_a_path_is_within_the_speed_and_acceleration_limits)
+{
+    arm::JointWaypoints::WithMaxSize<arm::maxWaypoints> waypoints;
+    for (const auto first : { 0.4f, -0.2f, 1.5f, -1.0f, 0.3f })
+        waypoints.push_back(Target(first));
+    ASSERT_TRUE(motion.MoveThrough(waypoints));
+
+    EXPECT_CALL(observer, OnMoveDone());
+    while (motion.Moving())
+    {
+        const auto reference = motion.Step();
+        ASSERT_TRUE(reference.has_value());
+        for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+        {
+            EXPECT_LE(std::abs(reference->speeds[joint].Value()), 1.0f);
+            EXPECT_LE(std::abs(reference->accelerations[joint].Value()), 1.0f);
+        }
+    }
+}
+
+TEST_F(JointMotionImplTest, refuses_a_path_while_moving_and_a_new_target_while_a_path_runs)
+{
+    arm::JointWaypoints::WithMaxSize<arm::maxWaypoints> waypoints;
+    waypoints.push_back(Target(1.0f));
+
+    EXPECT_TRUE(motion.MoveTo(Target(0.5f)));
+    EXPECT_FALSE(motion.MoveThrough(waypoints));
+
+    EXPECT_CALL(observer, OnMoveAborted());
+    motion.Abort();
+    EXPECT_TRUE(motion.MoveThrough(waypoints));
+    EXPECT_FALSE(motion.MoveTo(Target(0.5f)));
+}
+
+TEST_F(JointMotionImplTest, refuses_a_path_without_waypoints_outside_the_limits_or_from_a_stale_reading)
+{
+    arm::JointWaypoints::WithMaxSize<arm::maxWaypoints> waypoints;
+    EXPECT_FALSE(motion.MoveThrough(waypoints));
+
+    waypoints.push_back(Target(1.0f));
+    waypoints.push_back(Target(2.5f));
+    EXPECT_FALSE(motion.MoveThrough(waypoints));
+
+    waypoints.pop_back();
+    readings[3].period = currentPeriod - 2;
+    EXPECT_FALSE(motion.MoveThrough(waypoints));
+    EXPECT_FALSE(motion.Moving());
+}
+
+TEST_F(JointMotionImplTest, refuses_a_path_that_leaves_the_limits_between_waypoints)
+{
+    arm::JointWaypoints::WithMaxSize<arm::maxWaypoints> waypoints;
+    waypoints.push_back(Target(1.9f));
+    auto last = Target(1.98f);
+    last[1] = foc::Radians{ -1.9f };
+    waypoints.push_back(last);
+
+    EXPECT_FALSE(motion.MoveThrough(waypoints));
+    EXPECT_FALSE(motion.Moving());
+}
+
 TEST_F(JointMotionImplTest, a_step_without_a_move_has_no_reference)
 {
     Step(5);
@@ -283,6 +366,21 @@ TEST_F(JointMotionGuardedTest, checks_at_most_64_samples_on_a_long_move)
     EXPECT_CALL(guard, Check(_)).Times(64).WillRepeatedly(Return(std::nullopt));
 
     EXPECT_TRUE(guarded.MoveTo(Target(-2.0f)));
+}
+
+TEST_F(JointMotionGuardedTest, checks_a_path_at_most_64_times_and_refuses_one_that_fails_the_guard)
+{
+    arm::JointWaypoints::WithMaxSize<arm::maxWaypoints> waypoints;
+    waypoints.push_back(Target(1.5f));
+    waypoints.push_back(Target(-1.5f));
+    waypoints.push_back(Target(1.5f));
+    EXPECT_CALL(guard, Check(_)).Times(Between(2, 64)).WillRepeatedly(Return(std::nullopt));
+    EXPECT_TRUE(guarded.MoveThrough(waypoints));
+    guarded.Abort();
+
+    EXPECT_CALL(guard, Check(_)).WillOnce(Return(arm::WorkspaceViolation{ arm::WorkspaceRule::forbiddenZone, 3, 0, 0.01f }));
+    EXPECT_FALSE(guarded.MoveThrough(waypoints));
+    EXPECT_FALSE(guarded.Moving());
 }
 
 TEST_F(JointMotionGuardedTest, refuses_a_step_whose_target_fails_the_guard)

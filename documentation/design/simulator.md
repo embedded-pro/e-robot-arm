@@ -2,9 +2,9 @@
 title: "Simulator Design"
 type: design
 status: draft
-version: 0.24.1
+version: 0.25.0
 component: "simulator"
-date: 2026-11-19
+date: 2026-11-20
 ---
 
 | Field     | Value            |
@@ -12,9 +12,9 @@ date: 2026-11-19
 | Title     | Simulator Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.24.1           |
+| Version   | 0.25.0           |
 | Component | simulator        |
-| Date      | 2026-11-19       |
+| Date      | 2026-11-20       |
 
 > The e-robot-arm Simulator's components, threads, targets and data flow (phase 8a,
 > [#28](https://github.com/embedded-pro/e-robot-arm/issues/28)). The screen itself — layout, controls, flows,
@@ -151,16 +151,16 @@ A `SimulatedJoint` is an e-foc node on the in-process bus (a `FocMotorCategorySe
 
 `ArmHost` owns the arm thread and, on it, the target and the arm. Its operator-facing surface:
 
-| Operation              | Effect                                                                                                                                                                                                                                                                                                                                                                            |
-|------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `Post(command)`        | One of: bring up, enable, disable, check contracts, select a control mode, start, stop, clear faults, align, emergency stop, re-arm, move, step, abort, inject fault, silence joint. Answered by an event. Bring up, enable, disable, re-arm, move and step go through the arm's lifecycle ([arm-lifecycle.md](arm-lifecycle.md)), so a move is refused unless the arm is enabled |
-| `SwitchTarget(target)` | Part C; its result arrives as an event                                                                                                                                                                                                                                                                                                                                            |
-| `LoadProfile(profile)` | Rebuilds the arm from the profile on the current target, as a target switch does; refused while the arm is enabling, enabled, moving or disabling, or while a target switch runs. Answered `profileLoaded` or `refused` with the reason ([arm-profile.md](arm-profile.md))                                                                                                        |
-| `SetCommissioning(on)` | Turns the commissioning limits on or off (below); answered `accepted` or `refused` with the reason                                                                                                                                                                                                                                                                                |
-| `DetectAdapters()`     | The CAN adapters can-lite finds on this computer, virtual buses left out; found on the arm thread, where the adapters' timers live, within 500 ms, else none                                                                                                                                                                                                                      |
-| `Snapshot()`           | A copy of the latest snapshot                                                                                                                                                                                                                                                                                                                                                     |
-| `TakeEvents()`         | Every event since the last call, in order                                                                                                                                                                                                                                                                                                                                         |
-| `TakeTrace()`          | Every trace sample since the last call, in order                                                                                                                                                                                                                                                                                                                                  |
+| Operation              | Effect                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+|------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `Post(command)`        | One of: bring up, enable, disable, check contracts, select a control mode, start, stop, clear faults, align, emergency stop, re-arm, move, move through waypoints, step, select the motion profile, abort, inject fault, silence joint. Answered by an event. Bring up, enable, disable, re-arm, move, move through waypoints and step go through the arm's lifecycle ([arm-lifecycle.md](arm-lifecycle.md)), so a move is refused unless the arm is enabled |
+| `SwitchTarget(target)` | Part C; its result arrives as an event                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `LoadProfile(profile)` | Rebuilds the arm from the profile on the current target, as a target switch does; refused while the arm is enabling, enabled, moving or disabling, or while a target switch runs. Answered `profileLoaded` or `refused` with the reason ([arm-profile.md](arm-profile.md))                                                                                                                                                                                   |
+| `SetCommissioning(on)` | Turns the commissioning limits on or off (below); answered `accepted` or `refused` with the reason                                                                                                                                                                                                                                                                                                                                                           |
+| `DetectAdapters()`     | The CAN adapters can-lite finds on this computer, virtual buses left out; found on the arm thread, where the adapters' timers live, within 500 ms, else none                                                                                                                                                                                                                                                                                                 |
+| `Snapshot()`           | A copy of the latest snapshot                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `TakeEvents()`         | Every event since the last call, in order                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `TakeTrace()`          | Every trace sample since the last call, in order                                                                                                                                                                                                                                                                                                                                                                                                             |
 
 It is built in layers, each tested on its own:
 

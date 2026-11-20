@@ -11,6 +11,7 @@ target_link_libraries(e_robot_arm.motion.implementations PUBLIC
     infra.timer
     numerical.math
     numerical.motion_profiles
+    robotics.trajectory
 )
 
 target_sources(e_robot_arm.motion.implementations PRIVATE
@@ -18,6 +19,8 @@ target_sources(e_robot_arm.motion.implementations PRIVATE
     JointMotionImpl.hpp
     JointMovePlan.cpp
     JointMovePlan.hpp
+    JointPathPlan.cpp
+    JointPathPlan.hpp
 )
 
 add_subdirectory(test)

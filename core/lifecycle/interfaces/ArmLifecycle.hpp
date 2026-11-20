@@ -2,6 +2,7 @@
 #define CORE_LIFECYCLE_INTERFACES_ARM_LIFECYCLE_HPP
 
 #include "core/joint_bus/interfaces/JointBus.hpp"
+#include "core/motion/interfaces/JointMotion.hpp"
 #include "infra/util/Observer.hpp"
 #include <cstddef>
 #include <cstdint>
@@ -76,6 +77,7 @@ namespace arm
         virtual bool Rearm() = 0;
         virtual bool MoveTo(const JointPositions& target) = 0;
         virtual bool StepTo(const JointPositions& target) = 0;
+        virtual bool MoveThrough(const JointWaypoints& waypoints) = 0;
         virtual ArmState State() const = 0;
         virtual std::optional<Misconfiguration> MisconfiguredJoint() const = 0;
         virtual std::optional<std::size_t> UnstartedJoint() const = 0;

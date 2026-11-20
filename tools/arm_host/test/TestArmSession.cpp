@@ -197,6 +197,29 @@ TEST_F(ArmSessionTest, a_new_target_replaces_a_running_move_and_only_the_replaci
     EXPECT_NEAR(-0.3f, sink.snapshot.commanded->at(0).Value(), 1.0e-4f);
 }
 
+TEST_F(ArmSessionTest, moves_through_waypoints_and_names_why_a_path_is_refused)
+{
+    BringUp();
+    arm_host::MoveThrough path;
+    Execute(5, path);
+    EXPECT_EQ("no waypoints", sink.Last()->reason);
+
+    path.waypoints.push_back(Target(9.0f));
+    Execute(6, path);
+    EXPECT_EQ("a waypoint is outside the joint limits", sink.Last()->reason);
+
+    path.waypoints.clear();
+    path.waypoints.push_back(Target(0.4f));
+    path.waypoints.push_back(Target(-0.2f));
+    Execute(7, path);
+    ForwardTime(4s);
+
+    EXPECT_EQ(ArmEventKind::accepted, std::ranges::find(sink.events, 7u, &arm_host::ArmEvent::command)->kind);
+    ASSERT_NE(nullptr, sink.Find(ArmEventKind::moveDone));
+    ASSERT_TRUE(sink.snapshot.commanded.has_value());
+    EXPECT_NEAR(-0.2f, sink.snapshot.commanded->at(0).Value(), 1.0e-4f);
+}
+
 TEST_F(ArmSessionTest, a_move_shows_the_commanded_positions_and_the_joints_follow_with_a_lag)
 {
     BringUp();

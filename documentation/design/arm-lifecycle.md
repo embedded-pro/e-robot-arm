@@ -2,7 +2,7 @@
 title: "Arm Lifecycle Design"
 type: design
 status: draft
-version: 0.9.0
+version: 0.10.0
 component: "lifecycle"
 date: 2026-11-20
 ---
@@ -12,7 +12,7 @@ date: 2026-11-20
 | Title     | Arm Lifecycle Design |
 | Type      | design               |
 | Status    | draft                |
-| Version   | 0.9.0                |
+| Version   | 0.10.0               |
 | Component | lifecycle            |
 | Date      | 2026-11-20           |
 
@@ -75,6 +75,7 @@ command aligns every joint, and it moves each motor.
 | Enable   | Ready                                  | Selects torque mode; once delivered, starts every joint                                                                           |
 | Disable  | Enabled, Holding                       | Stops every joint; from Holding the arm is no longer held                                                                         |
 | Move     | Enabled, Moving                        | Starts a move through joint motion; in Moving, a new target replaces the running move ([joint-motion.md](joint-motion.md) Part F) |
+| Path     | Enabled                                | Starts a path through joint waypoints through joint motion ([joint-motion.md](joint-motion.md) Part G); Moving until it is done   |
 | Step     | Enabled                                | Starts a reference step through joint motion ([joint-motion.md](joint-motion.md) Part C); Moving until it is done, like a move    |
 | Re-arm   | Tripped, Holding                       | Re-arms the safety supervisor, which refuses while a joint is still in fault; from Holding the arm is Enabled again               |
 

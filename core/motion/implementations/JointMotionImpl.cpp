@@ -34,8 +34,8 @@ namespace arm
 
     bool JointMotionImpl::MoveTo(const JointPositions& newTarget)
     {
-        const bool replacing = moving && !stepping;
-        if ((moving && !replacing) || !Acceptable(newTarget))
+        const bool replacing = generator == Generator::pointToPoint;
+        if ((Moving() && !replacing) || !Acceptable(newTarget))
             return false;
 
         const auto from = replacing ? plan.Sample(Elapsed()) : AtRest(LatestPositions());
@@ -48,8 +48,7 @@ namespace arm
         else
             plan.Plan(from.positions, target, limits, jerks, profile);
         periodsElapsed = 0;
-        moving = true;
-        stepping = false;
+        generator = Generator::pointToPoint;
         return true;
     }
 
@@ -59,8 +58,55 @@ namespace arm
             return false;
 
         target = newTarget;
-        moving = true;
-        stepping = true;
+        generator = Generator::step;
+        return true;
+    }
+
+    bool JointMotionImpl::MoveThrough(const JointWaypoints& waypoints)
+    {
+        if (Moving() || AnyReadingStale() || !std::ranges::all_of(waypoints, [this](const JointPositions& waypoint)
+                                                 {
+                                                     return Admissible(waypoint);
+                                                 }))
+            return false;
+
+        if (!path.Plan(LatestPositions(), waypoints, limits, PeriodSeconds()) || !PathWithinLimits())
+            return false;
+
+        target = waypoints.back();
+        periodsElapsed = 0;
+        generator = Generator::path;
+        return true;
+    }
+
+    std::size_t JointMotionImpl::PathPeriods() const
+    {
+        return std::max<std::size_t>(static_cast<std::size_t>(math::Ceil(path.Duration() / PeriodSeconds())), 1);
+    }
+
+    float JointMotionImpl::PeriodSeconds() const
+    {
+        return std::chrono::duration<float>(period).count();
+    }
+
+    bool JointMotionImpl::PathWithinLimits() const
+    {
+        const auto step = PeriodSeconds();
+        const auto periods = PathPeriods();
+        const auto guardChecks = std::min(periods, maxPathSamples);
+        std::size_t checked{ 0 };
+        for (std::size_t sample = 1; sample <= periods; ++sample)
+        {
+            const auto pose = path.Sample(std::min(static_cast<float>(sample) * step, path.Duration())).positions;
+            if (!WithinLimits(positionLimits, pose))
+                return false;
+            if (guard != nullptr && sample * guardChecks >= (checked + 1) * periods)
+            {
+                ++checked;
+                if (guard->Check(pose).has_value())
+                    return false;
+            }
+        }
         return true;
     }
 
@@ -71,7 +117,12 @@ namespace arm
 
     bool JointMotionImpl::Acceptable(const JointPositions& newTarget) const
     {
-        return std::ranges::all_of(newTarget, Finite) && WithinLimits(positionLimits, newTarget) && !AnyReadingStale();
+        return Admissible(newTarget) && !AnyReadingStale();
+    }
+
+    bool JointMotionImpl::Admissible(const JointPositions& newTarget) const
+    {
+        return std::ranges::all_of(newTarget, Finite) && WithinLimits(positionLimits, newTarget);
     }
 
     float JointMotionImpl::Elapsed() const
@@ -124,7 +175,7 @@ namespace arm
 
     bool JointMotionImpl::Moving() const
     {
-        return moving;
+        return generator != Generator::none;
     }
 
     bool JointMotionImpl::SelectProfile(MotionProfile newProfile)
@@ -165,13 +216,14 @@ namespace arm
 
     std::optional<JointReference> JointMotionImpl::Step()
     {
-        if (!moving)
+        if (!Moving())
             return std::nullopt;
 
         ++periodsElapsed;
         const auto elapsed = Elapsed();
-        const bool arrived = stepping || elapsed >= plan.Duration();
-        const auto reference = arrived ? AtRest(target) : plan.Sample(elapsed);
+        const auto duration = generator == Generator::path ? path.Duration() : plan.Duration();
+        const bool arrived = generator == Generator::step || elapsed >= duration;
+        const auto reference = arrived ? AtRest(target) : (generator == Generator::path ? path.Sample(elapsed) : plan.Sample(elapsed));
 
         if (arrived)
         {
@@ -187,6 +239,6 @@ namespace arm
 
     void JointMotionImpl::Finish()
     {
-        moving = false;
+        generator = Generator::none;
     }
 }

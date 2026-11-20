@@ -265,6 +265,11 @@ namespace arm
         return fsm.Is<Enabled>() && motion.StepTo(target) && Accepted(MoveStarted{});
     }
 
+    bool ArmLifecycleImpl::MoveThrough(const JointWaypoints& waypoints)
+    {
+        return fsm.Is<Enabled>() && motion.MoveThrough(waypoints) && Accepted(MoveStarted{});
+    }
+
     ArmState ArmLifecycleImpl::State() const
     {
         return static_cast<ArmState>(fsm.CurrentState().index());

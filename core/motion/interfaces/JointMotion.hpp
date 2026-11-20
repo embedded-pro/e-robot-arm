@@ -3,6 +3,7 @@
 
 #include "core/joint_bus/interfaces/JointBus.hpp"
 #include "e-foc-protocol/foc/Units.hpp"
+#include "infra/util/BoundedVector.hpp"
 #include "infra/util/Observer.hpp"
 #include <array>
 #include <cstdint>
@@ -18,6 +19,9 @@ namespace arm
 
     using JointMotionLimits = std::array<JointMotionLimit, jointCount>;
     using JointJerkLimits = std::array<std::optional<foc::RadiansPerSecondCubed>, jointCount>;
+
+    constexpr std::size_t maxWaypoints{ 8 };
+    using JointWaypoints = infra::BoundedVector<JointPositions>;
 
     enum class MotionProfile : uint8_t
     {
@@ -52,6 +56,7 @@ namespace arm
 
         virtual bool MoveTo(const JointPositions& target) = 0;
         virtual bool StepTo(const JointPositions& target) = 0;
+        virtual bool MoveThrough(const JointWaypoints& waypoints) = 0;
         virtual void Abort() = 0;
         virtual bool Moving() const = 0;
         virtual bool SelectProfile(MotionProfile profile) = 0;
