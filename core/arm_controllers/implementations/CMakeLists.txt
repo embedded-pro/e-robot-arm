@@ -27,6 +27,8 @@ target_sources(e_robot_arm.arm_controllers.implementations PRIVATE
     GravityPid.hpp
     JointImpedance.cpp
     JointImpedance.hpp
+    OperationalSpace.cpp
+    OperationalSpace.hpp
 )
 
 add_subdirectory(test)

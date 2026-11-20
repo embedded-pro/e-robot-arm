@@ -368,7 +368,7 @@ TEST_F(ArmProfileTest, a_profile_without_a_workspace_leaves_it_to_the_geometry_a
     EXPECT_EQ(1u, Count(written, R"("linkRadiiM": [ 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04 ])"));
 }
 
-TEST_F(ArmProfileTest, reads_a_version_1_profile_and_writes_version_8)
+TEST_F(ArmProfileTest, reads_a_version_1_profile_and_writes_version_9)
 {
     const auto version1 = Read(Profile(Joint(1)));
     ASSERT_TRUE(version1.has_value()) << Problem();
@@ -376,11 +376,11 @@ TEST_F(ArmProfileTest, reads_a_version_1_profile_and_writes_version_8)
     infra::StringOutputStream::WithStorage<16384> stream;
     arm::WriteArmProfile(*version1, stream);
     const std::string written{ stream.Storage().begin(), stream.Storage().end() };
-    EXPECT_NE(std::string::npos, written.find(R"("version": 8,)"));
+    EXPECT_NE(std::string::npos, written.find(R"("version": 9,)"));
 
-    auto version9{ Profile(Joint(1)) };
-    version9.replace(version9.find(R"("version": 1)"), 12, R"("version": 9)");
-    EXPECT_FALSE(Read(version9).has_value());
+    auto version10{ Profile(Joint(1)) };
+    version10.replace(version10.find(R"("version": 1)"), 12, R"("version": 10)");
+    EXPECT_FALSE(Read(version10).has_value());
     EXPECT_EQ("version: is not a version this reader knows", Problem());
 }
 
@@ -499,6 +499,24 @@ TEST_F(ArmProfileTest, reads_the_cartesian_impedance_stiffnesses_and_damping_rat
     EXPECT_EQ(expected, back->config.cartesianImpedance);
 }
 
+TEST_F(ArmProfileTest, reads_the_operational_space_bandwidth_damping_and_singularity_damping_and_writes_them_back)
+{
+    const auto defaults = Read(Profile(Joint(1)));
+    ASSERT_TRUE(defaults.has_value()) << Problem();
+    EXPECT_EQ(arm::OperationalSpaceTuning{}, defaults->config.operationalSpace);
+
+    const auto profile = Read(Profile(Joint(1), R"( "operationalSpace": { "bandwidthRadPerS": 25, "dampingRatio": 0.9, "singularityDamping": 0.05 },)"));
+    ASSERT_TRUE(profile.has_value()) << Problem();
+    const arm::OperationalSpaceTuning expected{ 25.0f, 0.9f, 0.05f };
+    EXPECT_EQ(expected, profile->config.operationalSpace);
+
+    infra::StringOutputStream::WithStorage<16384> stream;
+    arm::WriteArmProfile(*profile, stream);
+    const auto back = Read(std::string{ stream.Storage().begin(), stream.Storage().end() });
+    ASSERT_TRUE(back.has_value()) << Problem();
+    EXPECT_EQ(expected, back->config.operationalSpace);
+}
+
 TEST_F(ArmProfileTest, refuses_a_profile_and_names_the_first_problem)
 {
     const std::vector<std::pair<std::string, std::string>> cases{
@@ -553,7 +571,11 @@ TEST_F(ArmProfileTest, refuses_a_profile_and_names_the_first_problem)
         { Profile(Joint(1), R"( "meshes": { "link1": "arm.stl" },)"), "meshes.link1: must name a .gltf or .glb file" },
         { Profile(Joint(1), R"( "meshes": { "base": "" },)"), "meshes.base: must be a path of 1 to 96 characters" },
         { Profile(Joint(1), R"( "meshes": { "base": 3 },)"), "meshes.base: must be a path of 1 to 96 characters" },
-        { R"({ "format": "e-robot-arm profile", "version": 9 })", "version: is not a version this reader knows" },
+        { R"({ "format": "e-robot-arm profile", "version": 10 })", "version: is not a version this reader knows" },
+        { Profile(Joint(1), R"( "operationalSpace": { "bandwidthRadPerS": 0 },)"), "operationalSpace.bandwidthRadPerS: must be above 0 and at most 500" },
+        { Profile(Joint(1), R"( "operationalSpace": { "dampingRatio": 6 },)"), "operationalSpace.dampingRatio: must be above 0 and at most 5" },
+        { Profile(Joint(1), R"( "operationalSpace": { "singularityDamping": 2 },)"), "operationalSpace.singularityDamping: must be above 0 and at most 1" },
+        { Profile(Joint(1), R"( "operationalSpace": { "posture": 1 },)"), "operationalSpace.posture: is not a profile item" },
         { Profile(Joint(1), R"( "cartesianImpedance": { "translationalStiffnessNPerM": 0 },)"), "cartesianImpedance.translationalStiffnessNPerM: must be above 0" },
         { Profile(Joint(1), R"( "cartesianImpedance": { "rotationalStiffnessNmPerRad": -1 },)"), "cartesianImpedance.rotationalStiffnessNmPerRad: must be above 0" },
         { Profile(Joint(1), R"( "cartesianImpedance": { "dampingRatio": 0 },)"), "cartesianImpedance.dampingRatio: must be above 0 and at most 5" },
