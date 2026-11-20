@@ -519,18 +519,8 @@ namespace arm_host
             return arm.Configurator().Busy() ? "busy" : "the arm is not ready";
         if (const auto reason = MotionPermissionRefusal(); NeedsMotionPermission(command) && reason.has_value())
             return *reason;
-        if (const auto* path = std::get_if<MoveThrough>(&command))
-            return PathRefusal(*path);
-        if (std::holds_alternative<MoveLine>(command))
-            return LineRefusal();
-        if (const auto* jog = std::get_if<JogJoint>(&command))
-            return JogRefusal(jog->joint < arm::jointCount, jog->speed.Value());
-        if (const auto* jog = std::get_if<JogTool>(&command))
-            return JogRefusal(true, jog->jog.speed);
-        if (const auto* hold = std::get_if<HoldJog>(&command))
-            return hold->duration > infra::Duration::zero() && hold->duration <= maxHeldJog ? JogRefusal(hold->jog) : "a held jog lasts more than 0 s and at most 10 s";
-        if (std::holds_alternative<MoveTo>(command) || std::holds_alternative<StepTo>(command))
-            return MoveRefusal(command);
+        if (const auto reason = GeneratorRefusal(command); reason.has_value())
+            return *reason;
         if (DeliveredByTheJoints(command))
             return "a joint's contract is incompatible";
         return "CAN transmit queue full";
@@ -603,6 +593,23 @@ namespace arm_host
         if (state == arm::ArmState::moving)
             return "another move runs";
         return "a joint's reading is stale";
+    }
+
+    std::optional<std::string_view> ArmSession::GeneratorRefusal(const ArmCommand& command) const
+    {
+        if (const auto* path = std::get_if<MoveThrough>(&command))
+            return PathRefusal(*path);
+        if (std::holds_alternative<MoveLine>(command))
+            return LineRefusal();
+        if (const auto* jog = std::get_if<JogJoint>(&command))
+            return JogRefusal(jog->joint < arm::jointCount, jog->speed.Value());
+        if (const auto* jog = std::get_if<JogTool>(&command))
+            return JogRefusal(true, jog->jog.speed);
+        if (const auto* hold = std::get_if<HoldJog>(&command))
+            return hold->duration > infra::Duration::zero() && hold->duration <= maxHeldJog ? JogRefusal(hold->jog) : "a held jog lasts more than 0 s and at most 10 s";
+        if (std::holds_alternative<MoveTo>(command) || std::holds_alternative<StepTo>(command))
+            return MoveRefusal(command);
+        return std::nullopt;
     }
 
     std::string_view ArmSession::JogRefusal(const AnyJog& jog) const
