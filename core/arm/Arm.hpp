@@ -4,6 +4,7 @@
 #include "core/arm/ArmConfig.hpp"
 #include "core/arm/ArmControllerEngagement.hpp"
 #include "core/arm_controllers/implementations/ArmControllersImpl.hpp"
+#include "core/arm_controllers/implementations/CartesianImpedance.hpp"
 #include "core/arm_controllers/implementations/ComputedTorque.hpp"
 #include "core/arm_controllers/implementations/GravityCompensatedPd.hpp"
 #include "core/arm_controllers/implementations/GravityPid.hpp"
@@ -43,8 +44,8 @@ namespace arm
         const ArmLifecycle& Lifecycle() const;
         ArmControllers& Controllers();
         const ArmControllers& Controllers() const;
-        JointImpedance& Impedance();
-        const JointImpedance& Impedance() const;
+        bool SetImpedanceShare(float share);
+        float ImpedanceShare() const;
         const std::optional<JointTorques>& EstimatedExternalTorques() const;
         const WorkspaceCheck& Workspace() const;
         ControlLoop& Loop();
@@ -64,6 +65,7 @@ namespace arm
         ComputedTorque computedTorque;
         GravityPid gravityPid;
         JointImpedance jointImpedance;
+        CartesianImpedance cartesianImpedance;
         CollisionObserver collision;
         infra::Duration period;
         std::array<foc::NewtonMeter, jointCount> torqueLimits;

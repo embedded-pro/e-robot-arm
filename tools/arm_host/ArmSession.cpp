@@ -432,7 +432,7 @@ namespace arm_host
 
         bool operator()(const SetImpedanceShare& set) const
         {
-            return session.arm.Impedance().SetStiffnessShare(set.share);
+            return session.arm.SetImpedanceShare(set.share);
         }
 
         bool operator()(const SelectMotionProfile& select) const
@@ -946,7 +946,7 @@ namespace arm_host
         snapshot.profileName.assign(profile.name.begin(), profile.name.end());
         snapshot.config = profile.config;
         snapshot.commissioning = commissioning;
-        snapshot.impedanceShare = arm.Impedance().StiffnessShare();
+        snapshot.impedanceShare = arm.ImpedanceShare();
         const auto& controllers = arm.Controllers();
         for (arm::ArmControllerId id = 0; id != controllers.Count(); ++id)
         {

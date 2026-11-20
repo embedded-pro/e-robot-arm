@@ -1,32 +1,51 @@
 #include "core/arm_controllers/implementations/JointImpedance.hpp"
 #include "numerical/math/Math.hpp"
+#include "numerical/solvers/GaussianElimination.hpp"
 
 namespace arm
 {
-    JointInertias HomeInertias(const ArmModel& model, const JointInertias& rotors)
+    ArmModel::MassMatrix HomeInertia(const ArmModel& model, const JointInertias& rotors)
     {
-        const auto inertia = model.Dynamics().ComputeMassMatrix(model.ModelVector(JointPositions{}));
-        JointInertias home{};
+        auto inertia = model.JointMassMatrix(JointPositions{});
         for (std::size_t joint = 0; joint != jointCount; ++joint)
-            home[joint] = inertia.at(joint, joint) + rotors[joint];
-        return home;
+            inertia.at(joint, joint) += rotors[joint];
+        return inertia;
     }
 
-    JointStiffnesses ImpedanceStiffness(const JointInertias& inertias, const JointImpedanceTuning& tuning)
+    JointStiffnesses ImpedanceStiffness(const ArmModel::MassMatrix& inertia, const JointImpedanceTuning& tuning)
     {
         if (tuning.stiffness.has_value())
             return *tuning.stiffness;
 
+        const auto mobility = solvers::SolveSystem(inertia, ArmModel::MassMatrix::Identity());
         JointStiffnesses stiffness{};
         for (std::size_t joint = 0; joint != jointCount; ++joint)
-            stiffness[joint] = defaultImpedanceBandwidth * defaultImpedanceBandwidth * inertias[joint];
+            stiffness[joint] = defaultImpedanceBandwidth * defaultImpedanceBandwidth / mobility.at(joint, joint);
         return stiffness;
     }
 
-    JointImpedance::JointImpedance(const ArmModel& model, const JointInertias& inertias, const JointImpedanceTuning& tuning)
+    ArmModel::MassMatrix CoupledDamping(const ArmModel::MassMatrix& inertia, const JointStiffnesses& stiffness, float dampingRatio)
+    {
+        std::array<float, jointCount> weight{};
+        for (std::size_t joint = 0; joint != jointCount; ++joint)
+            weight[joint] = inertia.at(joint, joint) > 0.0f ? math::Sqrt(math::Sqrt(stiffness[joint] / inertia.at(joint, joint))) : 0.0f;
+
+        ArmModel::MassMatrix damping{};
+        for (std::size_t row = 0; row != jointCount; ++row)
+            for (std::size_t column = 0; column != jointCount; ++column)
+                damping.at(row, column) = 2.0f * dampingRatio * weight[row] * inertia.at(row, column) * weight[column];
+        return damping;
+    }
+
+    JointTorques Feedforward(const ArmModel& model, const MeasuredJoints& measured, const JointReference& reference)
+    {
+        return model.InverseDynamics(measured.positions, reference.speeds, reference.accelerations);
+    }
+
+    JointImpedance::JointImpedance(const ArmModel& model, const JointInertias& rotors, const JointImpedanceTuning& tuning)
         : model(model)
-        , inertias(inertias)
-        , profileStiffness(ImpedanceStiffness(inertias, tuning))
+        , rotors(rotors)
+        , profileStiffness(ImpedanceStiffness(HomeInertia(model, rotors), tuning))
         , dampingRatio(tuning.dampingRatio)
     {
         Size();
@@ -47,6 +66,14 @@ namespace arm
         return share;
     }
 
+    ArmModel::MassMatrix JointImpedance::Damping(const JointPositions& positions) const
+    {
+        auto inertia = model.JointMassMatrix(positions);
+        for (std::size_t joint = 0; joint != jointCount; ++joint)
+            inertia.at(joint, joint) += rotors[joint];
+        return CoupledDamping(inertia, stiffness, dampingRatio);
+    }
+
     bool JointImpedance::BumplessTransfer() const
     {
         return true;
@@ -57,12 +84,14 @@ namespace arm
 
     JointSetpoints JointImpedance::Step(const MeasuredJoints& measured, const JointReference& reference)
     {
-        auto torques = model.GravityTorque(measured.positions);
+        auto torques = Feedforward(model, measured, reference);
+        const auto damping = Damping(measured.positions);
         for (std::size_t joint = 0; joint != jointCount; ++joint)
         {
-            const auto spring = stiffness[joint] * (reference.positions[joint].Value() - measured.positions[joint].Value());
-            const auto damper = damping[joint] * (reference.speeds[joint].Value() - measured.speeds[joint].Value());
-            torques[joint] = foc::NewtonMeter{ torques[joint].Value() + spring + damper };
+            auto torque = torques[joint].Value() + stiffness[joint] * (reference.positions[joint].Value() - measured.positions[joint].Value());
+            for (std::size_t other = 0; other != jointCount; ++other)
+                torque += damping.at(joint, other) * (reference.speeds[other].Value() - measured.speeds[other].Value());
+            torques[joint] = foc::NewtonMeter{ torque };
         }
         return JointSetpoints{ reference.positions, torques };
     }
@@ -70,9 +99,6 @@ namespace arm
     void JointImpedance::Size()
     {
         for (std::size_t joint = 0; joint != jointCount; ++joint)
-        {
             stiffness[joint] = share * profileStiffness[joint];
-            damping[joint] = 2.0f * dampingRatio * math::Sqrt(stiffness[joint] * inertias[joint]);
-        }
     }
 }

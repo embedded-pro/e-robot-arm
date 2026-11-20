@@ -148,7 +148,18 @@ namespace arm
 
     ArmModel::Jacobian ArmModel::ToolJacobian(const JointPositions& joints) const
     {
-        const auto angles = Angles(joints);
+        auto jacobian = kinematics::GeometricJacobian<float, jointCount>::Compute(Frames(ModelVector(joints)));
+        for (std::size_t joint = 0; joint != jointCount; ++joint)
+            for (std::size_t row = 0; row != 6; ++row)
+                jacobian.at(row, joint) *= static_cast<float>(geometry.opw.signs[joint]);
+        return jacobian;
+    }
+
+    ArmModel::FrameChain ArmModel::Frames(const JointVector& vector) const
+    {
+        ModelAngles angles{};
+        for (std::size_t joint = 0; joint != jointCount; ++joint)
+            angles.theta[joint] = vector.at(joint, 0);
         const auto& theta = angles.theta;
         const auto& p = geometry.opw;
 
@@ -164,16 +175,15 @@ namespace arm
             shoulder * math::Vector3<float>{ p.a1, 0.0f, p.c1 },
             shoulder * math::Vector3<float>{ p.a1 + p.c2 * math::Sin(theta[1]), 0.0f, p.c1 + p.c2 * math::Cos(theta[1]) }, centre, centre, centre };
 
-        kinematics::FrameChain<float, jointCount> frames{};
+        FrameChain frames{};
         for (std::size_t joint = 0; joint != jointCount; ++joint)
         {
-            frames.jointAxes[joint] = base.Rotate(axes[joint] * static_cast<float>(p.signs[joint]));
+            frames.jointAxes[joint] = base.Rotate(axes[joint]);
             frames.jointOrigins[joint] = base.Apply(points[joint]);
             frames.jointTypes[joint] = dynamics::JointType::Revolute;
         }
-        frames.tool = ToolPose(joints);
-
-        return kinematics::GeometricJacobian<float, jointCount>::Compute(frames);
+        frames.tool = ToolPose(ToJointPositions(vector));
+        return frames;
     }
 
     float ArmModel::Manipulability(const JointPositions& joints) const
