@@ -2,7 +2,7 @@
 title: "Arm Composition and Console Design"
 type: design
 status: draft
-version: 0.14.0
+version: 0.15.0
 component: "arm"
 date: 2026-11-20
 ---
@@ -12,7 +12,7 @@ date: 2026-11-20
 | Title     | Arm Composition and Console Design |
 | Type      | design                             |
 | Status    | draft                              |
-| Version   | 0.14.0                             |
+| Version   | 0.15.0                             |
 | Component | arm                                |
 | Date      | 2026-11-20                         |
 
@@ -80,6 +80,9 @@ control loop and reads one command per line from standard input:
 | `teach <name>`                              | Save where the joints are as a teach point, replacing one of the same name; at most 16, names up to 16 characters; refused while a move runs ([joint-motion.md](joint-motion.md) Part J)                |
 | `goto <name>`                               | Move to a teach point, point to point with the current motion profile                                                                                                                                   |
 | `points`                                    | List the teach points, each with its joint angles                                                                                                                                                       |
+| `movej <point\|q1 … q6> …`                  | Move through up to 8 waypoints, each a teach point or six joint angles in radians, timed to the limits ([joint-motion.md](joint-motion.md) Part G)                                                      |
+| `movel x y z roll pitch yaw`                | Move the tool in a straight line to the pose, in m and rad in the base frame, planned in full first ([joint-motion.md](joint-motion.md) Part H)                                                         |
+| `movel <point>`                             | Move the tool in a straight line to a teach point's tool pose                                                                                                                                           |
 | `load <file>`                               | Load an arm profile file: the arm is rebuilt from it; refused while the arm is enabled ([arm-profile.md](arm-profile.md))                                                                               |
 | `save <file>`                               | Write the profile in effect to a file                                                                                                                                                                   |
 | `controllers`                               | List the arm controllers, the active one starred and the disabled ones marked ([arm-controllers.md](arm-controllers.md))                                                                                |

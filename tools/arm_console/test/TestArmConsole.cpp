@@ -248,6 +248,47 @@ TEST_F(ArmConsoleTest, teach_goto_and_points_name_the_teach_points)
     EXPECT_THAT(Run("teach a b"), StartsWith("usage:"));
 }
 
+TEST_F(ArmConsoleTest, movej_takes_teach_points_and_joint_angles_as_waypoints)
+{
+    arm_host::ArmSnapshot snapshot;
+    snapshot.config.teachPointCount = 1;
+    snapshot.config.teachPoints[0].name.assign("home");
+    snapshot.config.teachPoints[0].joints[1] = foc::Radians{ 0.5f };
+    EXPECT_CALL(arm, Snapshot()).WillRepeatedly(Return(snapshot));
+
+    arm_host::ArmCommand posted;
+    EXPECT_CALL(arm, Post(_)).WillOnce(DoAll(SaveArg<0>(&posted), Return(12)));
+    EXPECT_EQ(12u, console.Execute("movej 0.1 0 0 0 0 0 home").command);
+    const auto& path = std::get<arm_host::MoveThrough>(posted);
+    ASSERT_EQ(2u, path.waypoints.size());
+    EXPECT_NEAR(0.1f, path.waypoints[0][0].Value(), 1.0e-6f);
+    EXPECT_NEAR(0.5f, path.waypoints[1][1].Value(), 1.0e-6f);
+
+    EXPECT_EQ("no teach point away\n", Run("movej home away"));
+    EXPECT_THAT(Run("movej 0.1 0.2"), StartsWith("usage:"));
+    EXPECT_THAT(Run("movej"), StartsWith("usage:"));
+    EXPECT_THAT(Run("movej home home home home home home home home home"), StartsWith("usage:"));
+}
+
+TEST_F(ArmConsoleTest, movel_takes_a_tool_pose_or_a_teach_points_tool_pose)
+{
+    arm_host::ArmSnapshot snapshot;
+    snapshot.config.teachPointCount = 1;
+    snapshot.config.teachPoints[0].name.assign("pick");
+    EXPECT_CALL(arm, Snapshot()).WillRepeatedly(Return(snapshot));
+
+    EXPECT_CALL(arm, Post(VariantWith<arm_host::MoveLine>(Field(&arm_host::MoveLine::target, Field(&arm::Placement::z, 0.3f))))).WillOnce(Return(13));
+    EXPECT_EQ(13u, console.Execute("movel 0.2 0 0.3 0 0 0").command);
+
+    const arm::ArmModel model{ snapshot.config.geometry, snapshot.config.mass, snapshot.config.positionLimits };
+    const auto expected = arm::ToPlacement(model.ToolPose(snapshot.config.teachPoints[0].joints));
+    EXPECT_CALL(arm, Post(VariantWith<arm_host::MoveLine>(Field(&arm_host::MoveLine::target, Field(&arm::Placement::x, FloatNear(expected.x, 1.0e-6f)))))).WillOnce(Return(14));
+    EXPECT_EQ(14u, console.Execute("movel pick").command);
+
+    EXPECT_EQ("no teach point drop\n", Run("movel drop"));
+    EXPECT_THAT(Run("movel 0.2 0 0.3"), StartsWith("usage:"));
+}
+
 TEST_F(ArmConsoleTest, quit_ends_the_console)
 {
     EXPECT_EQ(arm_console::Outcome::quit, console.Execute("quit").outcome);
