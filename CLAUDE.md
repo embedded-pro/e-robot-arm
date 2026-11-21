@@ -40,6 +40,8 @@ simulator runs the same core against e-foc virtual motors or the real arm.
   - `core/arm_model/` — `arm::ArmModel`: the arm's OPW geometry and link masses;
     tool pose, Jacobian, singularities, inverse kinematics within the joint limits,
     gravity torque, inverse dynamics and the mass matrix, on robotics-toolbox.
+    `arm::DrivenArm` beside it puts each drive's reflected rotor inertia on its link as
+    armature; the arm controllers and the collision observer share one.
     Design: `documentation/design/arm-model.md`.
   - `core/workspace/` — `arm::WorkspaceCheck`: a capsule on each link over the arm
     model, checked against the workspace box, forbidden zones and itself (robotics-toolbox

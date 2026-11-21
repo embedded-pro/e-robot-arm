@@ -4,10 +4,10 @@
 
 namespace arm
 {
-    CartesianImpedance::CartesianImpedance(const ArmModel& model, const JointInertias& rotors, const CartesianImpedanceTuning& tuning)
-        : model(model)
+    CartesianImpedance::CartesianImpedance(const DrivenArm& drivenArm, const CartesianImpedanceTuning& tuning)
+        : drivenArm(drivenArm)
+        , model(drivenArm.Model())
         , provider(model)
-        , rotors(rotors)
         , tuning(tuning)
     {
         Size();
@@ -30,10 +30,7 @@ namespace arm
 
     ArmModel::MassMatrix CartesianImpedance::Damping(const ArmModel::JointVector& angles) const
     {
-        auto inertia = model.Dynamics().ComputeMassMatrix(angles);
-        for (std::size_t joint = 0; joint != jointCount; ++joint)
-            inertia.at(joint, joint) += rotors[joint];
-
+        const auto inertia = drivenArm.MassMatrix(angles);
         const auto jacobian = provider.Jacobian(angles);
         JointStiffnesses jointStiffness{};
         for (std::size_t joint = 0; joint != jointCount; ++joint)

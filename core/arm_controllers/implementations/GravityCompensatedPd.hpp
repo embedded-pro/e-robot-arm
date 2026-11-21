@@ -2,7 +2,7 @@
 #define CORE_ARM_CONTROLLERS_IMPLEMENTATIONS_GRAVITY_COMPENSATED_PD_HPP
 
 #include "core/arm_controllers/interfaces/ArmController.hpp"
-#include "core/arm_model/ArmModel.hpp"
+#include "core/arm_model/DrivenArm.hpp"
 #include "robotics/controllers/manipulator/PdGravityCompensation.hpp"
 #include <array>
 
@@ -22,13 +22,13 @@ namespace arm
         float dampingRatio{ 0.7f };
     };
 
-    PdGainMatrices PlacedGains(const ArmModel& model, const JointInertias& rotors, const BandwidthTuning& tuning, const JointPositions& positions);
+    PdGainMatrices PlacedGains(const DrivenArm& drivenArm, const BandwidthTuning& tuning, const JointPositions& positions);
 
     class GravityCompensatedPd
         : public ArmController
     {
     public:
-        GravityCompensatedPd(const ArmModel& model, const JointInertias& rotors, const BandwidthTuning& tuning);
+        GravityCompensatedPd(const DrivenArm& drivenArm, const BandwidthTuning& tuning);
 
         bool BumplessTransfer() const override;
         void Reset(const MeasuredJoints& measured, const JointReference& held) override;
@@ -37,8 +37,8 @@ namespace arm
     private:
         using Law = controllers::PdGravityCompensation<float, jointCount>;
 
+        const DrivenArm& drivenArm;
         const ArmModel& model;
-        JointInertias rotors;
         BandwidthTuning tuning;
     };
 }

@@ -47,8 +47,9 @@ namespace
 
         arm::ArmModel model{ arm::ReferenceGeometry(), arm::ReferenceMass(), WideLimits() };
         arm::JointInertias rotors{ 0.01f, 0.02f, 0.03f, 0.04f, 0.05f, 0.06f };
+        arm::DrivenArm drivenArm{ model, rotors };
         arm::MeasuredJoints measured{};
-        arm::GravityPid controller{ model, rotors, arm::BandwidthTuning{ 10.0f, 0.5f }, 10ms };
+        arm::GravityPid controller{ drivenArm, arm::BandwidthTuning{ 10.0f, 0.5f }, 10ms };
     };
 }
 

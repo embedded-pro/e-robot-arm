@@ -50,7 +50,8 @@ namespace
         arm::ArmModel model{ arm::ReferenceGeometry(), arm::ReferenceMass(), WideLimits() };
         arm::JointPositions positions{};
         arm::JointSpeeds speeds{};
-        arm::CollisionObserver observer{ model, arm::JointInertias{ 0.01f, 0.02f, 0.03f, 0.04f, 0.05f, 0.06f }, 50.0f };
+        arm::DrivenArm drivenArm{ model, arm::JointInertias{ 0.01f, 0.02f, 0.03f, 0.04f, 0.05f, 0.06f } };
+        arm::CollisionObserver observer{ drivenArm, 50.0f };
     };
 }
 

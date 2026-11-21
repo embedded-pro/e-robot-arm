@@ -5,14 +5,6 @@ namespace arm
 {
     namespace
     {
-        ArmModel::DynamicLinks WithRotors(const ArmModel& model, const JointInertias& rotors)
-        {
-            auto links = model.Links();
-            for (std::size_t joint = 0; joint != jointCount; ++joint)
-                links[joint].armature = rotors[joint];
-            return links;
-        }
-
         ArmModel::JointVector Uniform(float gain)
         {
             ArmModel::JointVector gains{};
@@ -22,11 +14,9 @@ namespace arm
         }
     }
 
-    CollisionObserver::CollisionObserver(const ArmModel& model, const JointInertias& rotors, float gain)
-        : model(model)
-        , links(WithRotors(model, rotors))
-        , dynamics(links, model.Gravity())
-        , observer(dynamics, coriolis, links, Uniform(gain))
+    CollisionObserver::CollisionObserver(const DrivenArm& drivenArm, float gain)
+        : model(drivenArm.Model())
+        , observer(drivenArm.LinkDynamics(), coriolis, drivenArm.Links(), Uniform(gain))
     {}
 
     void CollisionObserver::Reset(const JointPositions& positions, const JointSpeeds& speeds)

@@ -44,7 +44,8 @@ namespace
         arm::ArmModel model{ arm::ReferenceGeometry(), arm::ReferenceMass(), WideLimits() };
         arm::ArmTaskJacobian provider{ model };
         const arm::JointInertias rotors{ 0.01f, 0.01f, 0.01f, 0.001f, 0.001f, 0.001f };
-        arm::CartesianImpedance controller{ model, rotors, arm::CartesianImpedanceTuning{} };
+        arm::DrivenArm drivenArm{ model, rotors };
+        arm::CartesianImpedance controller{ drivenArm, arm::CartesianImpedanceTuning{} };
         arm::MeasuredJoints measured{};
     };
 }

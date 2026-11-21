@@ -4,14 +4,6 @@
 
 namespace arm
 {
-    ArmModel::MassMatrix HomeInertia(const ArmModel& model, const JointInertias& rotors)
-    {
-        auto inertia = model.JointMassMatrix(JointPositions{});
-        for (std::size_t joint = 0; joint != jointCount; ++joint)
-            inertia.at(joint, joint) += rotors[joint];
-        return inertia;
-    }
-
     JointStiffnesses ImpedanceStiffness(const ArmModel::MassMatrix& inertia, const JointImpedanceTuning& tuning)
     {
         if (tuning.stiffness.has_value())
@@ -42,10 +34,10 @@ namespace arm
         return model.InverseDynamics(measured.positions, reference.speeds, reference.accelerations);
     }
 
-    JointImpedance::JointImpedance(const ArmModel& model, const JointInertias& rotors, const JointImpedanceTuning& tuning)
-        : model(model)
-        , rotors(rotors)
-        , profileStiffness(ImpedanceStiffness(HomeInertia(model, rotors), tuning))
+    JointImpedance::JointImpedance(const DrivenArm& drivenArm, const JointImpedanceTuning& tuning)
+        : drivenArm(drivenArm)
+        , model(drivenArm.Model())
+        , profileStiffness(ImpedanceStiffness(drivenArm.JointMassMatrix(JointPositions{}), tuning))
         , dampingRatio(tuning.dampingRatio)
     {
         Size();
@@ -68,10 +60,7 @@ namespace arm
 
     ArmModel::MassMatrix JointImpedance::Damping(const JointPositions& positions) const
     {
-        auto inertia = model.JointMassMatrix(positions);
-        for (std::size_t joint = 0; joint != jointCount; ++joint)
-            inertia.at(joint, joint) += rotors[joint];
-        return CoupledDamping(inertia, stiffness, dampingRatio);
+        return CoupledDamping(drivenArm.JointMassMatrix(positions), stiffness, dampingRatio);
     }
 
     bool JointImpedance::BumplessTransfer() const

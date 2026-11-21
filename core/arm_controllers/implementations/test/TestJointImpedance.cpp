@@ -40,7 +40,8 @@ namespace
 
         arm::ArmModel model{ arm::ReferenceGeometry(), arm::ReferenceMass(), WideLimits() };
         const arm::JointInertias rotors{ 0.01f, 0.01f, 0.01f, 0.001f, 0.001f, 0.001f };
-        arm::JointImpedance controller{ model, rotors, Tuning() };
+        arm::DrivenArm drivenArm{ model, rotors };
+        arm::JointImpedance controller{ drivenArm, Tuning() };
         arm::MeasuredJoints measured{};
     };
 }
@@ -116,7 +117,7 @@ TEST_F(JointImpedanceTest, softens_to_a_share_of_the_profiles_stiffness_and_refu
 
 TEST_F(JointImpedanceTest, without_stiffnesses_each_joint_gets_a_ten_radian_per_second_bandwidth_on_its_inertia_with_the_others_free)
 {
-    const auto home = arm::HomeInertia(model, rotors);
+    const auto home = drivenArm.JointMassMatrix(arm::JointPositions{});
     const auto mobility = solvers::SolveSystem(home, arm::ArmModel::MassMatrix::Identity());
     const auto stiffness = arm::ImpedanceStiffness(home, arm::JointImpedanceTuning{});
     for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
