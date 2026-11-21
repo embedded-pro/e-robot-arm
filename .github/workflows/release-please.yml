@@ -53,6 +53,11 @@ jobs:
           persist-credentials: false
           submodules: recursive
       - uses: seanmiddleditch/gha-setup-ninja@3b1f8f94a2f8254bd26914c4ab9474d4f0015f67 # v6
+      - uses: hendrikmuhs/ccache-action@dbeefd73e8e2ffc1bbc412570072735eb4db3607 # v1.2.25
+        with:
+          key: ${{ github.job }}-ubuntu-latest
+          max-size: 2G
+          save: false
       - uses: lukka/run-cmake@5d55ea7949e25f69f0ecb516d8d572297e03a956 # v10.9
         with:
           configurePreset: "host"
@@ -95,6 +100,11 @@ jobs:
         with:
           release: ${{ matrix.gcc }}
       - run: sudo apt-get update && sudo apt-get install ninja-build xsltproc
+      - uses: hendrikmuhs/ccache-action@dbeefd73e8e2ffc1bbc412570072735eb4db3607 # v1.2.25
+        with:
+          key: ${{ github.job }}-${{ matrix.target }}
+          max-size: 2G
+          save: false
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: host-install-package
@@ -162,7 +172,7 @@ jobs:
         build_embedded,
         build_documentation
       ]
-    if: needs.release_please.outputs.release_created == 'true'
+    if: ${{ !cancelled() && needs.release_please.outputs.release_created == 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write

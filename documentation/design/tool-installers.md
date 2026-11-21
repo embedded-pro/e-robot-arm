@@ -95,6 +95,9 @@ requests did not build and install. On Linux the Simulator is started under a vi
 rendering; on Windows it starts on the runner's desktop; on both it must still be running after ten seconds, and the
 console must report the six joints.
 
+A release attaches whatever its build jobs produced even when one of them fails, so a broken host package or
+firmware build never holds back the installers; the failed job still marks the release run red.
+
 ---
 
 ## Interfaces
