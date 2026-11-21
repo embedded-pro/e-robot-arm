@@ -86,3 +86,15 @@ TEST_F(JointFrameMapTest, flip_columns_and_congruence_are_products_with_the_sign
             EXPECT_FLOAT_EQ(congruent.at(row, column), expectedCongruent.at(row, column));
         }
 }
+
+TEST(JointDiagonalTest, places_values_on_the_diagonal_and_reads_them_back)
+{
+    const arm::JointValues values{ 1.0f, -2.0f, 3.0f, -4.0f, 5.0f, -6.0f };
+
+    const auto matrix = arm::Diagonal(values);
+
+    for (std::size_t row = 0; row != arm::jointCount; ++row)
+        for (std::size_t column = 0; column != arm::jointCount; ++column)
+            EXPECT_FLOAT_EQ(matrix.at(row, column), row == column ? values[row] : 0.0f);
+    EXPECT_EQ(arm::DiagonalEntries(matrix), values);
+}

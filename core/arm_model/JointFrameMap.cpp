@@ -21,6 +21,22 @@ namespace arm
         }
     }
 
+    JointMatrix Diagonal(const JointValues& values)
+    {
+        JointMatrix matrix{};
+        for (std::size_t joint = 0; joint != jointCount; ++joint)
+            matrix.at(joint, joint) = values[joint];
+        return matrix;
+    }
+
+    JointValues DiagonalEntries(const JointMatrix& matrix)
+    {
+        JointValues values{};
+        for (std::size_t joint = 0; joint != jointCount; ++joint)
+            values[joint] = matrix.at(joint, joint);
+        return values;
+    }
+
     JointFrameMap::JointFrameMap(const Signs& signs, const Offsets& offsets)
         : signs(SignVector(signs))
         , offsets(OffsetVector(offsets))
