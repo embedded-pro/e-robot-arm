@@ -1,4 +1,5 @@
 #include "core/motion/implementations/JointLinePlan.hpp"
+#include "core/motion/implementations/JointDifferences.hpp"
 #include "numerical/math/Math.hpp"
 #include <algorithm>
 
@@ -71,14 +72,8 @@ namespace arm
         if (!solution.joints.has_value())
             return { std::nullopt, solution.failure == IkFailure::unreachable ? LineFault::unreachable : LineFault::outsideLimits };
 
-        JointReference reference{};
-        reference.positions = *solution.joints;
-        for (std::size_t joint = 0; joint != jointCount; ++joint)
-        {
-            const auto speed = (reference.positions[joint].Value() - previous[joint].Value()) / period;
-            reference.speeds[joint] = foc::RadiansPerSecond{ speed };
-            reference.accelerations[joint] = foc::RadiansPerSecondSquared{ (speed - previousSpeeds[joint].Value()) / period };
-        }
+        const auto rates = BackwardDifferences(previous, previousSpeeds, *solution.joints, period);
+        const JointReference reference{ *solution.joints, rates.speeds, rates.accelerations };
 
         if (const auto fault = Check(reference); fault.has_value())
             return { std::nullopt, *fault };
@@ -92,10 +87,8 @@ namespace arm
     {
         if (model.Manipulability(reference.positions) < tool.manipulabilityMin)
             return LineFault::nearSingularity;
-        for (std::size_t joint = 0; joint != jointCount; ++joint)
-            if (math::Abs(reference.speeds[joint].Value()) > joints[joint].maxSpeed.Value() ||
-                math::Abs(reference.accelerations[joint].Value()) > joints[joint].maxAcceleration.Value())
-                return LineFault::tooFast;
+        if (!WithinMotionLimits(JointRates{ reference.speeds, reference.accelerations }, joints))
+            return LineFault::tooFast;
         if (guard != nullptr && guard->Check(reference.positions).has_value())
             return LineFault::workspace;
         return std::nullopt;
