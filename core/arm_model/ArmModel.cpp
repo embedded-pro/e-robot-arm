@@ -212,6 +212,7 @@ namespace arm
 
             const JointVector difference{ ToVector(*candidate) - ToVector(current) };
             const auto distance = math::DotProduct(difference, difference);
+
             if (distance < best)
             {
                 best = distance;
