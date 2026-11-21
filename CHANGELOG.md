@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.2](https://github.com/embedded-pro/e-robot-arm/compare/v1.0.1...v1.0.2) (2026-11-21)
+
+
+### Bug Fixes
+
+* **release:** Name the documentation PDFs e_robot_arm instead of e_foc ([b5acc96](https://github.com/embedded-pro/e-robot-arm/commit/b5acc964613f7ddacbd989c51897d82823248c12))
+* **release:** Name the documentation PDFs e_robot_arm instead of e_foc ([8970380](https://github.com/embedded-pro/e-robot-arm/commit/8970380f9a63517955e283453a54be23bd45016e))
+
 ## [1.0.1](https://github.com/embedded-pro/e-robot-arm/compare/v1.0.0...v1.0.1) (2026-11-21)
 
 
