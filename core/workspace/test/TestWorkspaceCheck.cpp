@@ -35,6 +35,24 @@ TEST_F(WorkspaceCheckTest, the_reference_arm_upright_is_inside_its_workspace_and
     EXPECT_EQ(std::nullopt, Check().Check(Pose(0.5f, 0.4f, 0.6f, 0.3f, 0.8f, 0.2f)));
 }
 
+TEST_F(WorkspaceCheckTest, the_link_capsules_chain_from_the_base_to_the_tool_with_the_profiles_radii)
+{
+    arm::WorkspaceConfig config{};
+    config.linkRadii = { 0.07f, 0.06f, 0.05f, 0.04f, 0.03f, 0.02f, 0.01f };
+    const auto joints = Pose(0.5f, 0.4f, 0.6f, 0.3f, 0.8f, 0.2f);
+
+    const auto capsules = Check(config).LinkCapsules(joints);
+    const auto tool = model.ToolPose(joints);
+
+    for (std::size_t link = 0; link != arm::workspaceCapsules; ++link)
+        EXPECT_FLOAT_EQ(config.linkRadii[link], capsules[link].radius) << "link " << link;
+    for (std::size_t link = 0; link + 1 != arm::workspaceCapsules; ++link)
+        for (std::size_t axis = 0; axis != 3; ++axis)
+            EXPECT_FLOAT_EQ(capsules[link].axis.end[axis], capsules[link + 1].axis.start[axis]) << "link " << link << " axis " << axis;
+    for (std::size_t axis = 0; axis != 3; ++axis)
+        EXPECT_NEAR(tool.translation[axis], capsules.back().axis.end[axis], 1e-5f) << "axis " << axis;
+}
+
 TEST_F(WorkspaceCheckTest, the_default_workspace_spans_the_arms_reach_above_the_base_plane)
 {
     const auto check = Check();
