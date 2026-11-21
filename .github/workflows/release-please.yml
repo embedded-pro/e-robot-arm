@@ -183,6 +183,12 @@ jobs:
           merge-multiple: true
       - name: Remove host install package
         run: rm -f release-assets/e_robot_arm-0*.* release-assets/e_robot_arm-*-Linux.*
+      - name: Name the documentation PDFs after this project
+        run: |
+          for pdf in release-assets/e_foc-*.pdf; do
+            [ -f "$pdf" ] || continue
+            mv "$pdf" "release-assets/e_robot_arm-${pdf#release-assets/e_foc-}"
+          done
       - name: Upload release assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
