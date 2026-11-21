@@ -47,7 +47,7 @@ namespace
         float TrackingError(float adaptationGain) const
         {
             const arm::ArmModel plant{ arm::ReferenceGeometry(), WithPayload(), WideLimits() };
-            arm::SlotineLi adaptive{ model, rotors, arm::SlotineLiTuning{ 10.0f, 20.0f, adaptationGain }, period };
+            arm::SlotineLi adaptive{ drivenArm, arm::SlotineLiTuning{ 10.0f, 20.0f, adaptationGain }, period };
 
             auto angles = model.ModelVector(Reference(0.0f).positions);
             arm::ArmModel::JointVector speeds{};
@@ -95,7 +95,8 @@ namespace
 
         arm::ArmModel model{ arm::ReferenceGeometry(), arm::ReferenceMass(), WideLimits() };
         const arm::JointInertias rotors{ 0.001f, 0.001f, 0.001f, 0.0001f, 0.0001f, 0.0001f };
-        arm::SlotineLi controller{ model, rotors, arm::SlotineLiTuning{}, period };
+        arm::DrivenArm drivenArm{ model, rotors };
+        arm::SlotineLi controller{ drivenArm, arm::SlotineLiTuning{}, period };
         arm::MeasuredJoints measured{};
     };
 }
@@ -136,7 +137,7 @@ TEST_F(SlotineLiTest, learns_a_payload_the_model_does_not_know_and_tracks_closer
 
 TEST_F(SlotineLiTest, keeps_what_it_learnt_across_a_reset_and_returns_to_the_models_parameters_on_demand)
 {
-    arm::SlotineLi learning{ model, rotors, arm::SlotineLiTuning{}, period };
+    arm::SlotineLi learning{ drivenArm, arm::SlotineLiTuning{}, period };
     auto reference = arm::AtRest(measured.positions);
     reference.positions[1] = foc::Radians{ reference.positions[1].Value() + 0.1f };
     learning.Step(measured, reference);

@@ -11,33 +11,10 @@ namespace arm
         }
     }
 
-    ArmatureLagrangeDynamics::ArmatureLagrangeDynamics(const dynamics::EulerLagrangeDynamics<float, jointCount>& arm, const JointInertias& rotors)
-        : arm(arm)
-        , rotors(rotors)
-    {}
-
-    ArmatureLagrangeDynamics::MassMatrix ArmatureLagrangeDynamics::ComputeMassMatrix(const StateVector& q) const
-    {
-        auto inertia = arm.ComputeMassMatrix(q);
-        for (std::size_t joint = 0; joint != jointCount; ++joint)
-            inertia.at(joint, joint) += rotors[joint];
-        return inertia;
-    }
-
-    ArmatureLagrangeDynamics::StateVector ArmatureLagrangeDynamics::ComputeCoriolisTerms(const StateVector& q, const StateVector& qDot) const
-    {
-        return arm.ComputeCoriolisTerms(q, qDot);
-    }
-
-    ArmatureLagrangeDynamics::StateVector ArmatureLagrangeDynamics::ComputeGravityTerms(const StateVector& q) const
-    {
-        return arm.ComputeGravityTerms(q);
-    }
-
-    OperationalSpace::OperationalSpace(const ArmModel& model, const JointInertias& rotors, const OperationalSpaceTuning& tuning, float manipulabilityMin)
-        : model(model)
+    OperationalSpace::OperationalSpace(const DrivenArm& drivenArm, const OperationalSpaceTuning& tuning, float manipulabilityMin)
+        : model(drivenArm.Model())
         , provider(model)
-        , dynamics(model.Dynamics(), rotors)
+        , dynamics(drivenArm.LinkDynamics())
         , law(dynamics, provider, Gain(tuning.bandwidth * tuning.bandwidth), Gain(2.0f * tuning.dampingRatio * tuning.bandwidth), tuning.singularityDamping)
         , stiffness(tuning.bandwidth * tuning.bandwidth)
         , damping(2.0f * tuning.dampingRatio * tuning.bandwidth)

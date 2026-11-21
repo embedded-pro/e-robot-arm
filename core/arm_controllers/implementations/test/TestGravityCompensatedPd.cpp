@@ -25,7 +25,8 @@ namespace
 
         arm::ArmModel model{ arm::ReferenceGeometry(), arm::ReferenceMass(), WideLimits() };
         const arm::JointInertias rotors{ 0.01f, 0.02f, 0.03f, 0.04f, 0.05f, 0.06f };
-        arm::GravityCompensatedPd controller{ model, rotors, arm::BandwidthTuning{ 20.0f, 0.5f } };
+        arm::DrivenArm drivenArm{ model, rotors };
+        arm::GravityCompensatedPd controller{ drivenArm, arm::BandwidthTuning{ 20.0f, 0.5f } };
         arm::MeasuredJoints measured{};
     };
 }
@@ -65,7 +66,7 @@ TEST_F(GravityCompensatedPdTest, takes_over_without_a_step)
 
 TEST_F(GravityCompensatedPdTest, places_every_mode_at_the_bandwidth_through_the_inertia_matrix_at_a_pose)
 {
-    const auto gains = arm::PlacedGains(model, rotors, arm::BandwidthTuning{ 30.0f, 0.7f }, measured.positions);
+    const auto gains = arm::PlacedGains(drivenArm, arm::BandwidthTuning{ 30.0f, 0.7f }, measured.positions);
 
     auto inertia = model.Dynamics().ComputeMassMatrix(model.ModelVector(measured.positions));
     for (std::size_t joint = 0; joint != arm::jointCount; ++joint)

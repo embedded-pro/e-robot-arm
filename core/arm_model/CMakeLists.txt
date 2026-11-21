@@ -20,6 +20,8 @@ target_sources(e_robot_arm.arm_model PRIVATE
     ArmModel.hpp
     ArmTaskJacobian.cpp
     ArmTaskJacobian.hpp
+    DrivenArm.cpp
+    DrivenArm.hpp
     JointFrameMap.cpp
     JointFrameMap.hpp
 )

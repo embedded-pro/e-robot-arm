@@ -45,7 +45,8 @@ namespace
         arm::ArmModel model{ arm::ReferenceGeometry(), arm::ReferenceMass(), WideLimits() };
         arm::ArmTaskJacobian provider{ model };
         const arm::JointInertias rotors{ 0.01f, 0.01f, 0.01f, 0.001f, 0.001f, 0.001f };
-        arm::OperationalSpace controller{ model, rotors, arm::OperationalSpaceTuning{ 20.0f, 0.5f, 0.0f }, 0.0f };
+        arm::DrivenArm drivenArm{ model, rotors };
+        arm::OperationalSpace controller{ drivenArm, arm::OperationalSpaceTuning{ 20.0f, 0.5f, 0.0f }, 0.0f };
         arm::MeasuredJoints measured{};
     };
 }
@@ -91,7 +92,7 @@ TEST_F(OperationalSpaceTest, gives_the_tool_the_references_acceleration_plus_the
 
 TEST_F(OperationalSpaceTest, hands_over_to_joint_space_computed_torque_as_the_manipulability_falls_below_the_profiles_minimum)
 {
-    arm::OperationalSpace blended{ model, rotors, arm::OperationalSpaceTuning{ 20.0f, 0.5f, 0.01f }, 0.001f };
+    arm::OperationalSpace blended{ drivenArm, arm::OperationalSpaceTuning{ 20.0f, 0.5f, 0.01f }, 0.001f };
     EXPECT_FLOAT_EQ(0.0f, blended.JointSpaceShare(measured.positions));
     EXPECT_FLOAT_EQ(1.0f, blended.JointSpaceShare(arm::JointPositions{}));
     const auto between = Joints(0.08f, 0.2f, 0.24f, 0.12f, 0.36f, -0.08f);
@@ -117,7 +118,7 @@ TEST_F(OperationalSpaceTest, hands_over_to_joint_space_computed_torque_as_the_ma
 TEST_F(OperationalSpaceTest, stays_finite_at_the_stretched_singular_home_without_the_hand_over)
 {
     measured.positions = arm::JointPositions{};
-    arm::OperationalSpace damped{ model, rotors, arm::OperationalSpaceTuning{}, 0.0f };
+    arm::OperationalSpace damped{ drivenArm, arm::OperationalSpaceTuning{}, 0.0f };
     EXPECT_FLOAT_EQ(0.0f, damped.JointSpaceShare(measured.positions));
     const auto torques = damped.Step(measured, arm::AtRest(Joints(0.0f, 0.02f, 0.02f, 0.0f, 0.02f, 0.0f))).torques;
     for (const auto& torque : torques)
