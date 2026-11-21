@@ -7,6 +7,7 @@
 #include "numerical/math/Matrix.hpp"
 #include "robotics/dynamics/ChainDynamicsModel.hpp"
 #include "robotics/kinematics/ChainPoseKinematics.hpp"
+#include "robotics/kinematics/NearestSolution.hpp"
 #include <cstdint>
 #include <optional>
 
@@ -85,11 +86,10 @@ namespace arm
 
     private:
         math::Vector3<float> WristCentre(const JointVector& theta) const;
-        std::optional<JointPositions> WithinLimits(const JointVector& solution, const JointPositions& current) const;
 
         ArmGeometry geometry;
         JointFrameMap jointMap;
-        JointLimits limits;
+        kinematics::JointLimitArray<float, jointCount> ikLimits;
         kinematics::AnalyticalIkOpw<float> opw;
         Pose tool;
         Pose base;

@@ -1,38 +1,14 @@
 #include "core/arm_model/ArmModel.hpp"
+#include "numerical/math/Geometry3D.hpp"
 #include "numerical/math/Math.hpp"
 #include "numerical/math/MatrixNorms.hpp"
 #include "numerical/solvers/LuDecomposition.hpp"
 #include "robotics/kinematics/GeometricJacobian.hpp"
-#include <limits>
-#include <numbers>
 
 namespace arm
 {
     namespace
     {
-        constexpr float twoPi{ 2.0f * std::numbers::pi_v<float> };
-
-        math::Matrix3<float> RotationX(float angle)
-        {
-            const auto c = math::Cos(angle);
-            const auto s = math::Sin(angle);
-            return math::Matrix3<float>{ { 1.0f, 0.0f, 0.0f }, { 0.0f, c, -s }, { 0.0f, s, c } };
-        }
-
-        math::Matrix3<float> RotationY(float angle)
-        {
-            const auto c = math::Cos(angle);
-            const auto s = math::Sin(angle);
-            return math::Matrix3<float>{ { c, 0.0f, s }, { 0.0f, 1.0f, 0.0f }, { -s, 0.0f, c } };
-        }
-
-        math::Matrix3<float> RotationZ(float angle)
-        {
-            const auto c = math::Cos(angle);
-            const auto s = math::Sin(angle);
-            return math::Matrix3<float>{ { c, -s, 0.0f }, { s, c, 0.0f }, { 0.0f, 0.0f, 1.0f } };
-        }
-
         math::Vector3<float> Column(const math::Matrix3<float>& rotation, std::size_t column)
         {
             return math::Vector3<float>{ rotation.at(0, column), rotation.at(1, column), rotation.at(2, column) };
@@ -48,24 +24,20 @@ namespace arm
             return math::Matrix3<float>{ { inertia[0], inertia[3], inertia[4] }, { inertia[3], inertia[1], inertia[5] }, { inertia[4], inertia[5], inertia[2] } };
         }
 
-        math::Matrix3<float> ParallelAxis(float mass, const math::Vector3<float>& offset)
+        dynamics::JointLink<float> WithPayload(const dynamics::JointLink<float>& link, const MassProperties& payload, float flange)
         {
-            const auto outer = offset * offset.Transpose();
-            return (math::Matrix3<float>::Identity() * math::DotProduct(offset, offset) - outer) * mass;
+            return dynamics::AttachRigidBody(link, payload.mass, Point(payload.centre) + math::Vector3<float>{ 0.0f, 0.0f, flange }, Tensor(payload.inertia));
         }
 
-        dynamics::JointLink<float> WithPayload(dynamics::JointLink<float> link, const MassProperties& payload, float flange)
+        kinematics::JointLimitArray<float, jointCount> IkLimits(const JointLimits& limits)
         {
-            const auto total = link.mass + payload.mass;
-            if (!(total > 0.0f))
-                return link;
-
-            const auto payloadCentre = Point(payload.centre) + math::Vector3<float>{ 0.0f, 0.0f, flange };
-            const auto centre = (link.jointToCoM * link.mass + payloadCentre * payload.mass) * (1.0f / total);
-            link.inertia = link.inertia + ParallelAxis(link.mass, link.jointToCoM - centre) + Tensor(payload.inertia) + ParallelAxis(payload.mass, payloadCentre - centre);
-            link.mass = total;
-            link.jointToCoM = centre;
-            return link;
+            kinematics::JointLimitArray<float, jointCount> ikLimits{};
+            for (std::size_t joint = 0; joint != jointCount; ++joint)
+            {
+                ikLimits[joint].positionMin = limits[joint].lower.Value();
+                ikLimits[joint].positionMax = limits[joint].upper.Value();
+            }
+            return ikLimits;
         }
 
         struct ChainFrame
@@ -106,7 +78,7 @@ namespace arm
 
     math::SE3Transform<float> ToTransform(const Placement& placement)
     {
-        return { RotationZ(placement.yaw) * RotationY(placement.pitch) * RotationX(placement.roll), math::Vector3<float>{ placement.x, placement.y, placement.z } };
+        return { math::RotationZ(placement.yaw) * math::RotationY(placement.pitch) * math::RotationX(placement.roll), math::Vector3<float>{ placement.x, placement.y, placement.z } };
     }
 
     Placement ToPlacement(const math::SE3Transform<float>& transform)
@@ -127,7 +99,7 @@ namespace arm
     ArmModel::ArmModel(const ArmGeometry& geometry, const ArmMass& mass, const JointLimits& limits)
         : geometry(geometry)
         , jointMap(geometry.opw.signs, geometry.opw.offsets)
-        , limits(limits)
+        , ikLimits(IkLimits(limits))
         , opw(geometry.opw)
         , tool(ToTransform(geometry.tool))
         , base(ToTransform(geometry.base))
@@ -154,10 +126,10 @@ namespace arm
     {
         const auto& p = geometry.opw;
 
-        const auto shoulder = RotationZ(theta[0]);
-        const auto upper = shoulder * RotationY(theta[1] + theta[2]);
-        const auto wrist4 = upper * RotationZ(theta[3]);
-        const auto wrist5 = wrist4 * RotationY(theta[4]);
+        const auto shoulder = math::RotationZ(theta[0]);
+        const auto upper = shoulder * math::RotationY(theta[1] + theta[2]);
+        const auto wrist4 = upper * math::RotationZ(theta[3]);
+        const auto wrist5 = wrist4 * math::RotationY(theta[4]);
         const auto centre = WristCentre(theta);
 
         const std::array<math::Vector3<float>, jointCount> axes{ math::Vector3<float>{ 0.0f, 0.0f, 1.0f }, Column(shoulder, 1), Column(shoulder, 1), Column(upper, 2),
@@ -196,31 +168,12 @@ namespace arm
 
     IkResult ArmModel::Inverse(const Pose& target, const JointPositions& current) const
     {
-        const auto solutions = opw.Solve(baseInverse * target * toolInverse);
-
-        IkResult result{};
-        float best{ std::numeric_limits<float>::max() };
-        for (const auto& solution : solutions)
-        {
-            if (!solution.has_value())
-                continue;
-
-            result.failure = IkFailure::outsideLimits;
-            const auto candidate = WithinLimits(solution->q, current);
-            if (!candidate.has_value())
-                continue;
-
-            const JointVector difference{ ToVector(*candidate) - ToVector(current) };
-            const auto distance = math::DotProduct(difference, difference);
-
-            if (distance < best)
-            {
-                best = distance;
-                result.joints = candidate;
-            }
-        }
-
-        return result;
+        const auto nearest = opw.SolveNearest(baseInverse * target * toolInverse, ToVector(current), ikLimits);
+        if (nearest.status == kinematics::SolutionStatus::unreachable)
+            return IkResult{};
+        if (!nearest.q.has_value())
+            return IkResult{ std::nullopt, IkFailure::outsideLimits };
+        return IkResult{ FromVector<foc::Radians>(*nearest.q), IkFailure::outsideLimits };
     }
 
     ArmModel::LinkFrames ArmModel::LinkPoses(const JointPositions& joints) const
@@ -313,28 +266,6 @@ namespace arm
         const auto elbow = theta[1] + theta[2] + forearmAngle;
         const auto x = p.a1 + p.c2 * math::Sin(theta[1]) + forearm * math::Sin(elbow);
         const auto z = p.c2 * math::Cos(theta[1]) + forearm * math::Cos(elbow);
-        return RotationZ(theta[0]) * math::Vector3<float>{ x, p.b, z } + math::Vector3<float>{ 0.0f, 0.0f, p.c1 };
-    }
-
-    std::optional<JointPositions> ArmModel::WithinLimits(const JointVector& solution, const JointPositions& current) const
-    {
-        JointPositions joints{};
-        for (std::size_t joint = 0; joint != jointCount; ++joint)
-        {
-            std::optional<float> chosen;
-            for (const auto shift : { 0.0f, twoPi, -twoPi })
-            {
-                const auto value = solution[joint] + shift;
-                const bool inside = limits[joint].lower.Value() <= value && value <= limits[joint].upper.Value();
-                if (inside && (!chosen.has_value() || math::Abs(value - current[joint].Value()) < math::Abs(*chosen - current[joint].Value())))
-                    chosen = value;
-            }
-
-            if (!chosen.has_value())
-                return std::nullopt;
-            joints[joint] = foc::Radians{ *chosen };
-        }
-
-        return joints;
+        return math::RotationZ(theta[0]) * math::Vector3<float>{ x, p.b, z } + math::Vector3<float>{ 0.0f, 0.0f, p.c1 };
     }
 }
