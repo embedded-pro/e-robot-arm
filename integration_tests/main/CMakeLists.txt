@@ -10,4 +10,4 @@ target_link_libraries(e_robot_arm.integration_tests PRIVATE
 
 add_test(NAME e_robot_arm.integration_tests
     COMMAND e_robot_arm.integration_tests -- ${CMAKE_CURRENT_SOURCE_DIR}/../features)
-set_tests_properties(e_robot_arm.integration_tests PROPERTIES LABELS integration)
+set_tests_properties(e_robot_arm.integration_tests PROPERTIES LABELS integration RESOURCE_LOCK virtual_can_hub_port)

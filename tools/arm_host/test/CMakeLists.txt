@@ -38,7 +38,7 @@ if (TARGET e_robot_arm.tool.arm_host.adapters)
     add_executable(e_robot_arm.tool.arm_host_adapters_test)
     emil_build_for(e_robot_arm.tool.arm_host_adapters_test HOST All BOOL E_ROBOT_ARM_BUILD_TESTS)
     emil_add_test(e_robot_arm.tool.arm_host_adapters_test)
-
+    set_tests_properties(e_robot_arm.tool.arm_host_adapters_test PROPERTIES RESOURCE_LOCK virtual_can_hub_port)
     target_link_libraries(e_robot_arm.tool.arm_host_adapters_test PUBLIC
         gmock_main
         e_robot_arm.tool.arm_host.adapters
@@ -55,7 +55,7 @@ if (TARGET e_robot_arm.tool.arm_host.virtual_arm AND TARGET e_robot_arm.tool.vir
     add_executable(e_robot_arm.tool.arm_host_virtual_arm_test)
     emil_build_for(e_robot_arm.tool.arm_host_virtual_arm_test HOST All BOOL E_ROBOT_ARM_BUILD_TESTS)
     emil_add_test(e_robot_arm.tool.arm_host_virtual_arm_test)
-
+    set_tests_properties(e_robot_arm.tool.arm_host_virtual_arm_test PROPERTIES RESOURCE_LOCK virtual_can_hub_port)
     target_link_libraries(e_robot_arm.tool.arm_host_virtual_arm_test PUBLIC
         gmock_main
         e_robot_arm.tool.arm_host.virtual_arm
