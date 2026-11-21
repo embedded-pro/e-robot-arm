@@ -29,6 +29,7 @@ namespace arm
         using Frames = kinematics::FrameChain<float, workspaceCapsules>;
 
         Frames Chain(const JointPositions& joints) const;
+        Capsules CapsulesOf(const Frames& frames) const;
         std::optional<WorkspaceViolation> OutsideWorkspace(const Capsules& capsules) const;
         std::optional<WorkspaceViolation> InForbiddenZone(const Capsules& capsules) const;
         std::optional<WorkspaceViolation> SelfColliding(const Frames& frames) const;
