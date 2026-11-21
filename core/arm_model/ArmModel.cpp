@@ -1,5 +1,6 @@
 #include "core/arm_model/ArmModel.hpp"
 #include "numerical/math/Math.hpp"
+#include "numerical/math/MatrixNorms.hpp"
 #include "numerical/solvers/LuDecomposition.hpp"
 #include "robotics/kinematics/GeometricJacobian.hpp"
 #include <limits>
@@ -209,13 +210,8 @@ namespace arm
             if (!candidate.has_value())
                 continue;
 
-            float distance{ 0.0f };
-            for (std::size_t joint = 0; joint != jointCount; ++joint)
-            {
-                const auto difference = (*candidate)[joint].Value() - current[joint].Value();
-                distance += difference * difference;
-            }
-
+            const JointVector difference{ ToVector(*candidate) - ToVector(current) };
+            const auto distance = math::DotProduct(difference, difference);
             if (distance < best)
             {
                 best = distance;

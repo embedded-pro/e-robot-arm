@@ -1,6 +1,8 @@
 #include "core/motion/implementations/JointMotionImpl.hpp"
+#include "core/arm_model/JointFrameMap.hpp"
 #include "infra/util/ReallyAssert.hpp"
 #include "numerical/math/Math.hpp"
+#include "numerical/math/MatrixNorms.hpp"
 #include <algorithm>
 #include <chrono>
 
@@ -227,18 +229,14 @@ namespace arm
         if (guard == nullptr)
             return true;
 
-        float travel{ 0.0f };
-        for (std::size_t joint = 0; joint != jointCount; ++joint)
-            travel = std::max(travel, math::Abs(to[joint].Value() - from[joint].Value()));
-        const auto samples = std::clamp<std::size_t>(static_cast<std::size_t>(math::Ceil(travel / pathSampleSpacing)), 1, maxPathSamples);
+        const auto start = ToVector(from);
+        const JointVector travel{ ToVector(to) - start };
+        const auto samples = std::clamp<std::size_t>(static_cast<std::size_t>(math::Ceil(math::InfinityNorm(travel) / pathSampleSpacing)), 1, maxPathSamples);
 
         for (std::size_t sample = 1; sample <= samples; ++sample)
         {
             const auto fraction = static_cast<float>(sample) / static_cast<float>(samples);
-            JointPositions pose{};
-            for (std::size_t joint = 0; joint != jointCount; ++joint)
-                pose[joint] = foc::Radians{ from[joint].Value() + (to[joint].Value() - from[joint].Value()) * fraction };
-            if (guard->Check(pose).has_value())
+            if (guard->Check(FromVector<foc::Radians>(start + travel * fraction)).has_value())
                 return false;
         }
         return true;
@@ -246,11 +244,7 @@ namespace arm
 
     bool JointMotionImpl::WithinStep(const JointPositions& newTarget) const
     {
-        const auto latest = LatestPositions();
-        for (std::size_t joint = 0; joint != jointCount; ++joint)
-            if (math::Abs(newTarget[joint].Value() - latest[joint].Value()) > maxStep)
-                return false;
-        return true;
+        return math::InfinityNorm(JointVector{ ToVector(newTarget) - ToVector(LatestPositions()) }) <= maxStep;
     }
 
     void JointMotionImpl::Abort()

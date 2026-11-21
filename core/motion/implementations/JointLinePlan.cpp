@@ -1,6 +1,5 @@
 #include "core/motion/implementations/JointLinePlan.hpp"
 #include "numerical/math/Math.hpp"
-#include "numerical/math/Quaternion.hpp"
 #include <algorithm>
 
 namespace arm
@@ -8,19 +7,6 @@ namespace arm
     namespace
     {
         constexpr float shortest{ 1.0e-6f };
-
-        float Length(const math::Vector3<float>& vector)
-        {
-            return math::Sqrt(vector[0] * vector[0] + vector[1] * vector[1] + vector[2] * vector[2]);
-        }
-
-        float RotationAngle(const ToolPose& start, const ToolPose& target)
-        {
-            const auto from = math::Quaternion<float>::FromRotationMatrix(start.rotation);
-            const auto to = math::Quaternion<float>::FromRotationMatrix(target.rotation);
-            const auto dot = math::Abs(from.w * to.w + from.x * to.x + from.y * to.y + from.z * to.z);
-            return 2.0f * math::Acos(std::min(dot, 1.0f));
-        }
 
         motion_profiles::SCurveProfile<float> TimeLaw(float length, float speed, float acceleration, float jerk)
         {
@@ -52,8 +38,8 @@ namespace arm
 
     void JointLinePlan::Build(const ToolPose& start, const ToolPose& target)
     {
-        const auto length = Length(target.translation - start.translation);
-        const auto angle = RotationAngle(start, target);
+        const auto length = math::VectorNorm(target.translation - start.translation);
+        const auto angle = math::VectorNorm(ToolPose::LogRotation(start.rotation.Transpose() * target.rotation));
         std::optional<motion_profiles::SCurveProfile<float>> law;
         if (length > shortest)
             law = TimeLaw(length, tool.speedMPerS, tool.accelerationMPerS2, tool.jerkMPerS3);
