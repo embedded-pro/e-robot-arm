@@ -162,6 +162,7 @@ without a correction around them:
 The arm builds one driven arm from the profile's motors and gear ratios and hands it to every arm controller and to the
 collision observer. The model itself stays without rotors: the gravity torque, the arm controllers' reference
 feed-forward and the tools' snapshots are the links' alone.
+
 ---
 
 ## Interfaces
@@ -179,6 +180,7 @@ feed-forward and the tools' snapshots are the links' alone.
 | Inverse dynamics   | Motion to joint torques           | Positions, speeds, accelerations; gravity included                  |
 | Mass matrix        | Joint positions to inertia        | 6 × 6, joint space, symmetric positive definite                     |
 | Driven arm         | The model with the drives' rotors | Mass matrix and link dynamics with each rotor as armature (Part G)  |
+
 ### Required
 
 | Interface         | Purpose                           | Contract                                            |
