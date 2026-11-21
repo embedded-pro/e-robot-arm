@@ -3,10 +3,6 @@
 Real-time controller for a six-joint robot arm that drives e-foc motor nodes over CAN, with a Qt simulator that
 runs the same code against virtual motors or the real hardware.
 
-The repository was bootstrapped from
-[`embedded-pro/embedded-scaffold`](https://github.com/embedded-pro/embedded-scaffold) and carries its structure,
-build system, dev container, CI and documentation scaffolding.
-
 > **Status**: the joint bus (`core/joint_bus/`) drives the six e-foc nodes over CAN, the safety supervisor
 > (`core/safety/`) guards it, joint motion (`core/motion/`) moves all six joints together to a target, and the
 > control loop (`core/control_loop/`) paces telemetry and setpoints, and the lifecycle (`core/lifecycle/`) walks the arm
@@ -76,7 +72,7 @@ build/host/tools/arm_console/Debug/e-robot-arm-console --bus simulated
 virtual CAN hub, where e-foc virtual motors connect), a SocketCAN interface such as `socketcan:can0`, or an slcan
 adapter.
 
-All presets are defined in `CMakePresets.json`. The scaffold's board presets (`EK-TM4C1294XL`, `EK-TM4C123GXL`,
+All presets are defined in `CMakePresets.json`. The board presets (`EK-TM4C1294XL`, `EK-TM4C123GXL`,
 `STM32F407G-DISC1`, `STM32F429I-DISC1`, `NUCLEO-H563ZI`) stay available for a later microcontroller target.
 
 ## Project Structure

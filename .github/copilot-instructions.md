@@ -1,8 +1,7 @@
 # e-robot-arm — Copilot / AI agent instructions
 
 Concise, task-oriented guidance for AI coding agents. This repository is the
-controller of a six-joint robot arm driving e-foc motor nodes over CAN, bootstrapped
-from embedded-scaffold. See [`CLAUDE.md`](../CLAUDE.md) for the
+controller of a six-joint robot arm driving e-foc motor nodes over CAN. See [`CLAUDE.md`](../CLAUDE.md) for the
 full guide — this file is a short summary.
 
 ## 1. Architecture (short)
