@@ -47,7 +47,6 @@ namespace arm
 
     ArmModel::MassMatrix DrivenArm::JointMassMatrix(const JointPositions& positions) const
     {
-        // The joints' signs flip only the coupling terms, so each rotor stays on its own diagonal entry.
         auto inertia = model.JointMassMatrix(positions);
         for (std::size_t joint = 0; joint != jointCount; ++joint)
             inertia.at(joint, joint) += rotors[joint];
