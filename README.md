@@ -3,6 +3,8 @@
 Real-time controller for a six-joint robot arm that drives e-foc motor nodes over CAN, with a Qt simulator that
 runs the same code against virtual motors or the real hardware.
 
+![The e-robot-arm Simulator moving the arm through three poses on simulated joints](.github/assets/simulator.gif)
+
 > **Status**: the joint bus (`core/joint_bus/`) drives the six e-foc nodes over CAN, the safety supervisor
 > (`core/safety/`) guards it, joint motion (`core/motion/`) moves all six joints together to a target, and the
 > control loop (`core/control_loop/`) paces telemetry and setpoints, and the lifecycle (`core/lifecycle/`) walks the arm
