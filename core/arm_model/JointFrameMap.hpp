@@ -9,6 +9,10 @@ namespace arm
 {
     using JointVector = math::Vector<float, jointCount>;
     using JointMatrix = math::SquareMatrix<float, jointCount>;
+    using JointValues = std::array<float, jointCount>;
+
+    JointMatrix Diagonal(const JointValues& values);
+    JointValues DiagonalEntries(const JointMatrix& matrix);
 
     template<class Quantity>
     JointVector ToVector(const std::array<Quantity, jointCount>& values)

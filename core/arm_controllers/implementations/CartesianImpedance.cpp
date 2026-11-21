@@ -32,10 +32,7 @@ namespace arm
     {
         const auto inertia = drivenArm.MassMatrix(angles);
         const auto jacobian = provider.Jacobian(angles);
-        JointStiffnesses jointStiffness{};
-        for (std::size_t joint = 0; joint != jointCount; ++joint)
-            for (std::size_t axis = 0; axis != 6; ++axis)
-                jointStiffness[joint] += stiffness[axis] * jacobian.at(axis, joint) * jacobian.at(axis, joint);
+        const auto jointStiffness = DiagonalEntries(jacobian.Transpose() * Diagonal(stiffness) * jacobian);
 
         return CoupledDamping(inertia, jointStiffness, tuning.dampingRatio);
     }
@@ -54,16 +51,10 @@ namespace arm
         const auto speedError = model.ModelSpeeds(reference.speeds) - model.ModelSpeeds(measured.speeds);
         const auto error = controllers::TaskError<float, 6>(provider.ToolPose(model.ModelVector(reference.positions)), provider.ToolPose(angles));
 
-        math::Vector<float, 6> wrench{};
-        for (std::size_t axis = 0; axis != 6; ++axis)
-            wrench.at(axis, 0) = stiffness[axis] * error.at(axis, 0);
-
+        const math::Vector<float, 6> wrench{ Diagonal(stiffness) * error };
         const ArmModel::JointVector torques{ provider.Jacobian(angles).Transpose() * wrench + Damping(angles) * speedError };
-        auto result = Feedforward(model, measured, reference);
-        const auto feedback = model.ToJointTorques(torques);
-        for (std::size_t joint = 0; joint != jointCount; ++joint)
-            result[joint] = foc::NewtonMeter{ result[joint].Value() + feedback[joint].Value() };
-        return JointSetpoints{ reference.positions, result };
+        const JointVector result{ ToVector(Feedforward(model, measured, reference)) + ToVector(model.ToJointTorques(torques)) };
+        return JointSetpoints{ reference.positions, FromVector<foc::NewtonMeter>(result) };
     }
 
     void CartesianImpedance::Size()

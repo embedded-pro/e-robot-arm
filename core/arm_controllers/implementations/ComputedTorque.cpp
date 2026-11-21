@@ -8,10 +8,7 @@ namespace arm
 
         GainMatrix Scaled(float gain)
         {
-            GainMatrix matrix{};
-            for (std::size_t joint = 0; joint != jointCount; ++joint)
-                matrix.at(joint, joint) = gain;
-            return matrix;
+            return GainMatrix::Identity() * gain;
         }
     }
 
