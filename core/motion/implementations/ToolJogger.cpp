@@ -1,4 +1,6 @@
 #include "core/motion/implementations/ToolJogger.hpp"
+#include "core/arm_model/JointFrameMap.hpp"
+#include "core/motion/implementations/JointDifferences.hpp"
 #include "numerical/math/Math.hpp"
 #include "numerical/math/Quaternion.hpp"
 #include <algorithm>
@@ -92,16 +94,13 @@ namespace arm
         if (!solution.has_value() || !Acceptable(*solution))
             return std::nullopt;
 
+        const auto rates = BackwardDifferences(from.joints, from.speeds, *solution, period);
+        if (!WithinMotionLimits(rates, joints))
+            return std::nullopt;
+
         next.joints = *solution;
-        for (std::size_t joint = 0; joint != jointCount; ++joint)
-        {
-            const auto jointSpeed = (next.joints[joint].Value() - from.joints[joint].Value()) / period;
-            const auto jointAcceleration = (jointSpeed - from.speeds[joint].Value()) / period;
-            if (math::Abs(jointSpeed) > joints[joint].maxSpeed.Value() || math::Abs(jointAcceleration) > joints[joint].maxAcceleration.Value())
-                return std::nullopt;
-            next.speeds[joint] = foc::RadiansPerSecond{ jointSpeed };
-            next.accelerations[joint] = foc::RadiansPerSecondSquared{ jointAcceleration };
-        }
+        next.speeds = rates.speeds;
+        next.accelerations = rates.accelerations;
         return next;
     }
 
@@ -162,10 +161,7 @@ namespace arm
 
     JointReference ToolJogger::Hold()
     {
-        JointReference reference{};
-        reference.positions = state.joints;
-        for (std::size_t joint = 0; joint != jointCount; ++joint)
-            reference.accelerations[joint] = foc::RadiansPerSecondSquared{ -state.speeds[joint].Value() / period };
+        const JointReference reference{ state.joints, {}, FromVector<foc::RadiansPerSecondSquared>(ToVector(state.speeds) * (-1.0f / period)) };
         state.speeds = {};
         state.speed = 0.0f;
         done = true;
