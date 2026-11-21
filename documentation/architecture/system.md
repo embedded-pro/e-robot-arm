@@ -2,9 +2,9 @@
 title: "System Architecture"
 type: architecture
 status: draft
-version: 0.13.0
+version: 0.13.1
 component: "system"
-date: 2026-11-12
+date: 2026-11-21
 ---
 
 | Field     | Value               |
@@ -12,11 +12,11 @@ date: 2026-11-12
 | Title     | System Architecture |
 | Type      | architecture        |
 | Status    | draft               |
-| Version   | 0.13.0              |
+| Version   | 0.13.1              |
 | Component | system              |
-| Date      | 2026-11-12          |
+| Date      | 2026-11-21          |
 
-> Target architecture of e-robot-arm. The repository is bootstrapped from embedded-scaffold: the joint bus
+> Target architecture of e-robot-arm. Today the joint bus
 > (`core/joint_bus/`, [design](../design/joint-bus.md)), the safety supervisor (`core/safety/`,
 > [design](../design/safety.md)), joint-space motion (`core/motion/`, [design](../design/joint-motion.md)) and the
 > control loop (`core/control_loop/`, [design](../design/control-loop.md)) and the lifecycle (`core/lifecycle/`,

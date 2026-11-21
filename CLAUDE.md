@@ -1,8 +1,7 @@
 # e-robot-arm — Claude Code Instructions
 
 This file is a concise, task-oriented guide for Claude and AI agents to be
-immediately productive in this repository. e-robot-arm was bootstrapped from
-embedded-scaffold, whose example components phase 1 removed.
+immediately productive in this repository.
 The planned architecture is in `documentation/architecture/system.md`; the phases still to build are in
 `documentation/roadmap.md`, one GitHub issue per phase (tracking issue #16). A change that completes or reshapes a
 phase updates the roadmap in the same pull request.
