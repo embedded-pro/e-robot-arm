@@ -2,7 +2,7 @@
 title: "Tool Installers"
 type: design
 status: draft
-version: 0.1.0
+version: 0.2.0
 component: "tool-installers"
 date: 2026-11-20
 ---
@@ -12,7 +12,7 @@ date: 2026-11-20
 | Title     | Tool Installers |
 | Type      | design          |
 | Status    | draft           |
-| Version   | 0.1.0           |
+| Version   | 0.2.0           |
 | Component | tool-installers |
 | Date      | 2026-11-20      |
 
@@ -52,6 +52,8 @@ date: 2026-11-20
 | `e-robot-arm-virtual-arm` | Starts six e-foc virtual motors from a profile ([virtual-arm.md](virtual-arm.md))                   |
 | `e-foc-virtual-motor`     | e-foc's headless virtual motor, which the Virtual arm target and the launcher start, one per joint  |
 
+The launcher and the virtual motor are in the Linux package only (Part C).
+
 The package is called `e-robot-arm` and installs every program in the same directory, on the system path on Linux,
 so the Simulator's default engine, `e-foc-virtual-motor`, resolves without asking. Release assets are named
 `e_robot_arm-tools-<tag>-linux-x86_64.deb` and `e_robot_arm-tools-<tag>-windows-x86_64-setup.exe`; a release
@@ -67,16 +69,19 @@ the desktop entry under the applications directory and the icon in the scalable 
 
 ### Part C — Windows setup
 
-A per-machine NSIS setup with the Qt runtime and the QML modules deployed beside the programs, a Start menu and
-desktop shortcut for the Simulator, and an uninstaller. On Windows the install directory is not on the path, so the
-Simulator also looks for the engine next to itself. It follows the Linux package in a pull request of its own.
+A per-machine NSIS setup, built with MSVC and Qt from the Qt online installer, holding the Simulator and the console
+with the Qt runtime, the Qt Quick 3D QML modules the scene imports and the Visual C++ runtime deployed beside them; a
+Start menu and desktop shortcut for the Simulator; and an uninstaller. It leaves out the virtual arm launcher and the
+e-foc virtual motor: the launcher starts motor processes and opens their plant ports with POSIX calls, so the Virtual
+arm target exists on Linux only ([virtual-arm.md](virtual-arm.md)). On Windows the Simulator drives simulated joints,
+a `virtual:` bus another program hosts, or the real arm through a PCAN, Kvaser, gs_usb or slcan adapter.
 
 ### Part D — Build and install test
 
 ```mermaid
 flowchart LR
-    E["e-foc at the pinned revision"] --> V["Build e-foc-virtual-motor"]
-    R["e-robot-arm"] --> B["Build Simulator, console, launcher (Release)"]
+    E["e-foc at the pinned revision"] --> V["Build e-foc-virtual-motor (Linux)"]
+    R["e-robot-arm"] --> B["Build Simulator, console, launcher on Linux (Release)"]
     V --> P["Package"]
     B --> P
     P --> I["Install on a clean runner"]
@@ -86,8 +91,9 @@ flowchart LR
 ```
 
 The same workflow runs on every pull request and on a release, so a release never publishes a package the pull
-requests did not build and install. The Simulator is started under a virtual display with software rendering and
-must still be running after ten seconds.
+requests did not build and install. On Linux the Simulator is started under a virtual display with software
+rendering; on Windows it starts on the runner's desktop; on both it must still be running after ten seconds, and the
+console must report the six joints.
 
 ---
 
