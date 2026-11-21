@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.1](https://github.com/embedded-pro/e-robot-arm/compare/v1.0.0...v1.0.1) (2026-11-21)
+
+
+### Bug Fixes
+
+* **release:** Attach the Linux and Windows installers to the release ([255026f](https://github.com/embedded-pro/e-robot-arm/commit/255026f4cf0b9e06fa443af07f14048c3f003433))
+* **release:** Attach the Linux and Windows installers to the release ([0a154cc](https://github.com/embedded-pro/e-robot-arm/commit/0a154cc4fcf119e5c33ffb6832355e7d02f71bd5))
+
 ## 1.0.0 (2026-11-21)
 
 
