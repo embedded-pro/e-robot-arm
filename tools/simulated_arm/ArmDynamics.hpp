@@ -21,6 +21,7 @@ namespace simulation
     PlantConfig PlantFor(const arm::JointTransmissions& transmissions, const arm::ArmGeometry& geometry, const arm::ArmMass& mass, const arm::JointMotors& motors);
 
     using DrivingTorques = std::array<std::optional<foc::NewtonMeter>, arm::jointCount>;
+    using StepTimes = std::array<float, arm::jointCount>;
 
     class ArmDynamics
     {
@@ -30,9 +31,11 @@ namespace simulation
         void SetState(const arm::JointPositions& positions, const arm::JointSpeeds& speeds);
         void SetPositions(const arm::JointPositions& positions);
         void Step(const DrivingTorques& torques, const arm::JointTorques& external, float seconds);
+        void Step(const DrivingTorques& torques, const arm::JointTorques& external, const StepTimes& seconds);
 
         arm::JointPositions Positions() const;
         arm::JointSpeeds Speeds() const;
+        std::array<float, arm::jointCount> Accelerations() const;
         std::array<float, arm::jointCount> ApparentInertias(const DrivingTorques& torques) const;
 
     private:
@@ -57,5 +60,6 @@ namespace simulation
         arm::ArmModel model;
         JointVector q{};
         JointVector qDot{};
+        JointVector qDDot{};
     };
 }

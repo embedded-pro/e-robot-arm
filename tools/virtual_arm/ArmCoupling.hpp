@@ -13,6 +13,7 @@ namespace virtual_arm
         float angle{ 0.0f };
         float torque{ 0.0f };
         uint64_t period{ 0 };
+        float periodSeconds{ 0.0f };
     };
 
     using MotorSamples = std::array<std::optional<MotorSample>, arm::jointCount>;
@@ -23,12 +24,15 @@ namespace virtual_arm
     public:
         explicit ArmCoupling(const arm::ArmConfig& config);
 
-        ShaftSpeeds Step(const MotorSamples& motors, const arm::JointTorques& collision, float seconds);
+        ShaftSpeeds Step(const MotorSamples& motors, const arm::JointTorques& collision);
         bool Engaged() const;
 
     private:
+        simulation::StepTimes MotorTimes(const MotorSamples& motors);
+
         arm::JointTransmissions transmissions;
         simulation::ArmDynamics dynamics;
+        std::array<std::optional<uint64_t>, arm::jointCount> lastPeriods{};
         bool engaged{ false };
     };
 }

@@ -5,6 +5,8 @@ namespace virtual_arm
 {
     namespace
     {
+        constexpr float longestStep{ 0.02f };
+
         simulation::PlantConfig PlantOf(const arm::ArmConfig& config)
         {
             auto plant = simulation::PlantFor(config.transmissions, config.geometry, config.mass, config.motors);
@@ -22,7 +24,7 @@ namespace virtual_arm
         , dynamics(PlantOf(config))
     {}
 
-    ShaftSpeeds ArmCoupling::Step(const MotorSamples& motors, const arm::JointTorques& collision, float seconds)
+    ShaftSpeeds ArmCoupling::Step(const MotorSamples& motors, const arm::JointTorques& collision)
     {
         const auto present = [](const std::optional<MotorSample>& motor)
         {
@@ -46,18 +48,34 @@ namespace virtual_arm
             dynamics.SetState(positions, arm::JointSpeeds{});
         engaged = true;
 
-        dynamics.Step(torques, collision, seconds);
+        dynamics.Step(torques, collision, MotorTimes(motors));
         const auto speeds = dynamics.Speeds();
+        const auto accelerations = dynamics.Accelerations();
         const auto inertias = dynamics.ApparentInertias(torques);
         ShaftSpeeds shafts{};
         for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
             if (motors[joint].has_value())
             {
-                const auto ratio = transmissions[joint].ratio;
-                shafts[joint] = plant_port::ShaftDrive{ transmissions[joint].MotorSpeed(speeds[joint]).Value(), motors[joint]->period, motors[joint]->torque,
-                    inertias[joint] / (ratio * ratio) };
+                const auto& transmission = transmissions[joint];
+                const auto inertia = inertias[joint] / (transmission.ratio * transmission.ratio);
+                const auto load = motors[joint]->torque - inertia * transmission.Gain() * accelerations[joint];
+                shafts[joint] = plant_port::ShaftDrive{ transmission.MotorSpeed(speeds[joint]).Value(), motors[joint]->period, load, inertia };
             }
         return shafts;
+    }
+
+    simulation::StepTimes ArmCoupling::MotorTimes(const MotorSamples& motors)
+    {
+        simulation::StepTimes times{};
+        for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+        {
+            const auto& motor = motors[joint];
+            const auto& last = lastPeriods[joint];
+            if (motor.has_value() && last.has_value() && motor->period > *last)
+                times[joint] = std::min(static_cast<float>(motor->period - *last) * motor->periodSeconds, longestStep);
+            lastPeriods[joint] = motor.has_value() ? std::optional{ motor->period } : std::nullopt;
+        }
+        return times;
     }
 
     bool ArmCoupling::Engaged() const

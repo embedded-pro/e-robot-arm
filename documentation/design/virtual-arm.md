@@ -2,9 +2,9 @@
 title: "Virtual Arm Design"
 type: design
 status: draft
-version: 0.20.0
+version: 0.21.0
 component: "virtual-arm"
-date: 2026-11-19
+date: 2026-11-21
 ---
 
 | Field     | Value              |
@@ -12,9 +12,9 @@ date: 2026-11-19
 | Title     | Virtual Arm Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.20.0             |
+| Version   | 0.21.0             |
 | Component | virtual-arm        |
-| Date      | 2026-11-19         |
+| Date      | 2026-11-21         |
 
 > The arm run against six real e-foc firmware instances instead of ideal simulated joints: e-foc's headless
 > virtual motor, one process per joint, on one virtual CAN bus, each loaded by what its link and the links beyond
@@ -164,15 +164,23 @@ reports the torque it produces.
    electrical torque, N its transmission (direction · ratio), and Jᵣ, b and c its rotor inertia and viscous and
    Coulomb friction from the joint's motor in the profile (Teknic's when it names none). τ꜀ is an injected collision
    torque (Part D). Coulomb friction never reverses a joint: a joint whose speed would change sign stops.
-3. It advances each joint's speed by q̈ over the time since its last step (at most 2 ms) and sends each motor its new
-   shaft speed, q̇ · N, with the control period of the window it used, the torque it used, and the shaft's apparent
-   inertia: 1 / (M + diag(Jᵣ·N²))⁻¹ᵢᵢ / N², what the joint weighs against a torque of its own while the others move
-   freely. The motor integrates its angle from that speed, so the positions stay the motors' own and never drift
-   from what the encoders read.
-4. The motor drives its shaft at that speed plus what its own torque did since the period the arm used, beyond the
-   torque the arm assumed, over that inertia (`virtual-motor.md` Part E, *Shaft drive*). Its fast local reactions, the
-   alignment's electrical spring among them, so see no lag; the arm's next speed replaces the estimate with the full
-   dynamics.
+3. It advances each joint's speed by q̈ over the time that joint's motor ran since the last window it used: the
+   control periods between the two windows, at the rate the motor gave in its Hello (at most 20 ms). A joint whose
+   motor sent no new window does not advance. A motor's pacer drops the time it was descheduled, so the virtual arm
+   does not step on the wall clock: a joint it advanced while its motor stood still would reach the motor with a speed
+   the motor never lived through.
+4. It sends each motor its new shaft speed, q̇ · N, with the control period of the window it used, the shaft's apparent
+   inertia J = 1 / (M + diag(Jᵣ·N²))⁻¹ᵢᵢ / N², what the joint weighs against a torque of its own while the others move
+   freely, and the load torque on the shaft: the motor's torque less what accelerates that inertia, τₑ − J · q̈ · N.
+   The motor integrates its angle from that speed, so the positions stay the motors' own and never drift from what the
+   encoders read.
+5. The motor drives its shaft at that speed plus what its own torque did since the period the arm used, beyond the
+   load, over that inertia (`virtual-motor.md` Part E, *Shaft drive*). Its fast local reactions, the alignment's
+   electrical spring among them, so see no lag, and between two speeds the shaft keeps the acceleration the arm
+   computed. Sending the motor's torque in place of the load stops the shaft's acceleration at the speed the arm sent:
+   on a runner busy enough to delay the next speed, the gap reaches the alignment's stiff spring as a kick, and the
+   alignment failed on a third of the scenarios run with every core busy. The arm's next speed replaces the estimate
+   with the full dynamics.
 
 ```mermaid
 sequenceDiagram
@@ -184,9 +192,9 @@ sequenceDiagram
         V->>V: unwrap, to joint space
         V->>A: q from the motors, q̇, motor torques, collision
         A-->>V: q̈ from the full mass matrix at q
-        V->>V: q̇ ← q̇ + q̈·Δt
-        V->>M: shaft speed q̇ · N, window period, torque used, apparent inertia
-        M->>M: speed + ∫(τₑ − τ used) / inertia since that period
+        V->>V: q̇ ← q̇ + q̈·Δt, Δt the motor's periods since its last window
+        V->>M: shaft speed q̇ · N, window period, load τₑ − J·q̈·N, apparent inertia J
+        M->>M: speed + ∫(τₑ − load) / J since that period
     end
 ```
 
@@ -361,7 +369,7 @@ stateDiagram-v2
 |------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Coupling   | The arm's full dynamics, integrated by the virtual arm; each motor's shaft driven at its joint's speed (Part C)                                                                                                                                                                        |
 | Motors     | The motor model's values; e-foc's other plant values (encoder, noise, supply limits) are the preset's                                                                                                                                                                                  |
-| Time       | Real time: virtual motors run on the wall clock                                                                                                                                                                                                                                        |
+| Time       | Real time: virtual motors run on the wall clock; the arm steps each joint by its own motor's control periods                                                                                                                                                                           |
 | Platform   | Linux first, as CI; Windows when e-foc's Windows archive is wired the same way                                                                                                                                                                                                         |
 | Network    | Loopback only                                                                                                                                                                                                                                                                          |
 | Bus load   | One telemetry request and two answers per joint per period: 1800 frames/s at 100 Hz. can-lite's hub must deliver every frame whose transmission time has passed at once; one per pass of its host's event loop (about 500 frames/s in an e-foc virtual motor) leaves the joints silent |

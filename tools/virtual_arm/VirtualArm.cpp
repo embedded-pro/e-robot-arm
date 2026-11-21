@@ -11,7 +11,6 @@ namespace virtual_arm
     namespace
     {
         constexpr auto couplingPeriod{ std::chrono::microseconds{ 250 } };
-        constexpr auto longestCouplingStep{ std::chrono::milliseconds{ 2 } };
         constexpr plant_port::ShaftDrive heldShaft{ 0.0f, std::numeric_limits<uint64_t>::max(), 0.0f, 1.0f };
 
         std::string LastLines(const plant_port::MotorConnection& connection)
@@ -360,7 +359,6 @@ namespace virtual_arm
     void VirtualArm::Run(const std::stop_token& stop)
     {
         nextCoupling = std::chrono::steady_clock::now();
-        lastCoupling = nextCoupling;
         while (!stop.stop_requested())
         {
             Poll();
@@ -455,8 +453,6 @@ namespace virtual_arm
         if (now < nextCoupling)
             return;
         nextCoupling = std::max(nextCoupling + couplingPeriod, now);
-        const auto elapsed = std::chrono::duration<float>(std::min<std::chrono::steady_clock::duration>(now - lastCoupling, longestCouplingStep)).count();
-        lastCoupling = now;
 
         MotorSamples samples{};
         for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
@@ -465,11 +461,13 @@ namespace virtual_arm
             const auto angle = motor.connection.RotorAngle();
             const auto torque = motor.connection.ElectricalTorque();
             const auto period = motor.connection.LastPeriod();
-            if (motor.socket.has_value() && !motor.connection.Paused() && angle.has_value() && torque.has_value() && period.has_value())
-                samples[joint] = MotorSample{ *angle, *torque, *period };
+            const auto& hello = motor.connection.Introduction();
+            if (motor.socket.has_value() && !motor.connection.Paused() && angle.has_value() && torque.has_value() && period.has_value() && hello.has_value() &&
+                hello->controlRateHz != 0)
+                samples[joint] = MotorSample{ *angle, *torque, *period, 1.0f / static_cast<float>(hello->controlRateHz) };
         }
 
-        const auto shafts = coupling->Step(samples, collision, elapsed);
+        const auto shafts = coupling->Step(samples, collision);
         if (!coupling->Engaged())
             return;
         for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
