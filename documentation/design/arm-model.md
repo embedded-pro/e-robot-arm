@@ -69,6 +69,13 @@ reaches the model. Without a geometry in the profile the arm uses the reference 
 
 It is invented: about 0.56 m of reach from the shoulder, standing for a desktop arm until the real one is measured.
 
+The signs and offsets are one affine map between joint space and the model's angles, `JointFrameMap`: with S the
+diagonal matrix of the signs (so S⁻¹ = S) and o the offsets,
+
+$$\theta = S\,q - o, \qquad \dot\theta = S\,\dot q, \qquad \tau_\theta = S\,\tau, \qquad J_q = J_\theta\,S, \qquad M_q = S\,M_\theta\,S.$$
+
+The map keeps S as its diagonal, so each product costs one multiplication per entry.
+
 ### Part B — Forward kinematics, Jacobian and singularities
 
 - **Tool pose** of six joint positions: base · flange · tool.

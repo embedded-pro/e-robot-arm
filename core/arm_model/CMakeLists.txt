@@ -20,6 +20,8 @@ target_sources(e_robot_arm.arm_model PRIVATE
     ArmModel.hpp
     ArmTaskJacobian.cpp
     ArmTaskJacobian.hpp
+    JointFrameMap.cpp
+    JointFrameMap.hpp
 )
 
 add_subdirectory(test)

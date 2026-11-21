@@ -3,6 +3,7 @@
 
 #include "core/arm_model/ArmGeometry.hpp"
 #include "core/arm_model/ArmMass.hpp"
+#include "core/arm_model/JointFrameMap.hpp"
 #include "core/joint_bus/interfaces/JointBus.hpp"
 #include "numerical/math/Matrix.hpp"
 #include "robotics/dynamics/ChainDynamicsModel.hpp"
@@ -66,7 +67,7 @@ namespace arm
         JointTorques InverseDynamics(const JointPositions& joints, const JointSpeeds& speeds, const JointAccelerations& accelerations) const;
         MassMatrix JointMassMatrix(const JointPositions& joints) const;
 
-        using JointVector = math::Vector<float, 6>;
+        using JointVector = arm::JointVector;
 
         using DynamicLinks = std::array<dynamics::JointLink<float>, jointCount>;
 
@@ -84,16 +85,11 @@ namespace arm
         JointTorques ToJointTorques(const JointVector& torques) const;
 
     private:
-        struct ModelAngles
-        {
-            std::array<float, 6> theta{};
-        };
-
-        ModelAngles Angles(const JointPositions& joints) const;
-        math::Vector3<float> WristCentre(const ModelAngles& angles) const;
+        math::Vector3<float> WristCentre(const JointVector& theta) const;
         std::optional<JointPositions> WithinLimits(const JointVector& solution, const JointPositions& current) const;
 
         ArmGeometry geometry;
+        JointFrameMap jointMap;
         JointLimits limits;
         kinematics::AnalyticalIkOpw<float> opw;
         Pose tool;

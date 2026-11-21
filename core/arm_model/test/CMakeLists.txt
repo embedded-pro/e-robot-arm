@@ -10,4 +10,5 @@ target_link_libraries(e_robot_arm.arm_model_test PUBLIC
 target_sources(e_robot_arm.arm_model_test PRIVATE
     TestArmModel.cpp
     TestArmTaskJacobian.cpp
+    TestJointFrameMap.cpp
 )

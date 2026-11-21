@@ -125,6 +125,7 @@ namespace arm
 
     ArmModel::ArmModel(const ArmGeometry& geometry, const ArmMass& mass, const JointLimits& limits)
         : geometry(geometry)
+        , jointMap(geometry.opw.signs, geometry.opw.offsets)
         , limits(limits)
         , opw(geometry.opw)
         , tool(ToTransform(geometry.tool))
@@ -140,34 +141,23 @@ namespace arm
 
     ArmModel::Pose ArmModel::ToolPose(const JointPositions& joints) const
     {
-        JointVector q{};
-        for (std::size_t joint = 0; joint != jointCount; ++joint)
-            q[joint] = joints[joint].Value();
-        return base * opw.Forward(q) * tool;
+        return base * opw.Forward(ToVector(joints)) * tool;
     }
 
     ArmModel::Jacobian ArmModel::ToolJacobian(const JointPositions& joints) const
     {
-        auto jacobian = kinematics::GeometricJacobian<float, jointCount>::Compute(Frames(ModelVector(joints)));
-        for (std::size_t joint = 0; joint != jointCount; ++joint)
-            for (std::size_t row = 0; row != 6; ++row)
-                jacobian.at(row, joint) *= static_cast<float>(geometry.opw.signs[joint]);
-        return jacobian;
+        return jointMap.FlipColumns(kinematics::GeometricJacobian<float, jointCount>::Compute(Frames(ModelVector(joints))));
     }
 
-    ArmModel::FrameChain ArmModel::Frames(const JointVector& vector) const
+    ArmModel::FrameChain ArmModel::Frames(const JointVector& theta) const
     {
-        ModelAngles angles{};
-        for (std::size_t joint = 0; joint != jointCount; ++joint)
-            angles.theta[joint] = vector.at(joint, 0);
-        const auto& theta = angles.theta;
         const auto& p = geometry.opw;
 
         const auto shoulder = RotationZ(theta[0]);
         const auto upper = shoulder * RotationY(theta[1] + theta[2]);
         const auto wrist4 = upper * RotationZ(theta[3]);
         const auto wrist5 = wrist4 * RotationY(theta[4]);
-        const auto centre = WristCentre(angles);
+        const auto centre = WristCentre(theta);
 
         const std::array<math::Vector3<float>, jointCount> axes{ math::Vector3<float>{ 0.0f, 0.0f, 1.0f }, Column(shoulder, 1), Column(shoulder, 1), Column(upper, 2),
             Column(wrist4, 1), Column(wrist5, 2) };
@@ -182,7 +172,7 @@ namespace arm
             frames.jointOrigins[joint] = base.Apply(points[joint]);
             frames.jointTypes[joint] = dynamics::JointType::Revolute;
         }
-        frames.tool = ToolPose(ToJointPositions(vector));
+        frames.tool = ToolPose(ToJointPositions(theta));
         return frames;
     }
 
@@ -196,10 +186,10 @@ namespace arm
 
     Singularities ArmModel::Near(const JointPositions& joints) const
     {
-        const auto angles = Angles(joints);
-        const auto centre = WristCentre(angles);
+        const auto theta = ModelVector(joints);
+        const auto centre = WristCentre(theta);
         const auto radial = math::Sqrt(centre[0] * centre[0] + centre[1] * centre[1]);
-        return { math::Abs(math::Sin(angles.theta[4])) < singularSine, math::Abs(math::Sin(angles.theta[2] + forearmAngle)) < singularSine,
+        return { math::Abs(math::Sin(theta[4])) < singularSine, math::Abs(math::Sin(theta[2] + forearmAngle)) < singularSine,
             math::Abs(radial - math::Abs(geometry.opw.b)) < shoulderDistance };
     }
 
@@ -238,13 +228,13 @@ namespace arm
 
     ArmModel::LinkFrames ArmModel::LinkPoses(const JointPositions& joints) const
     {
-        const auto angles = Angles(joints);
+        const auto theta = ModelVector(joints);
         const auto chain = Chain(geometry.opw);
         LinkFrames frames{};
         auto pose = base;
         for (std::size_t joint = 0; joint != jointCount; ++joint)
         {
-            pose = pose * Pose{ math::RotationAboutAxis(chain[joint].axis, angles.theta[joint]), chain[joint].origin };
+            pose = pose * Pose{ math::RotationAboutAxis(chain[joint].axis, theta[joint]), chain[joint].origin };
             frames[joint] = pose;
         }
         return frames;
@@ -257,34 +247,17 @@ namespace arm
 
     JointTorques ArmModel::InverseDynamics(const JointPositions& joints, const JointSpeeds& speeds, const JointAccelerations& accelerations) const
     {
-        JointVector speed{};
-        JointVector acceleration{};
-        for (std::size_t joint = 0; joint != jointCount; ++joint)
-        {
-            const auto sign = static_cast<float>(geometry.opw.signs[joint]);
-            speed.at(joint, 0) = sign * speeds[joint].Value();
-            acceleration.at(joint, 0) = sign * accelerations[joint].Value();
-        }
-
-        return ToJointTorques(dynamics.ComputeInverseDynamics(ModelVector(joints), speed, acceleration));
+        return ToJointTorques(dynamics.ComputeInverseDynamics(ModelVector(joints), ModelSpeeds(speeds), ModelAccelerations(accelerations)));
     }
 
     ArmModel::MassMatrix ArmModel::JointMassMatrix(const JointPositions& joints) const
     {
-        auto matrix = dynamics.ComputeMassMatrix(ModelVector(joints));
-        for (std::size_t row = 0; row != jointCount; ++row)
-            for (std::size_t column = 0; column != jointCount; ++column)
-                matrix.at(row, column) *= static_cast<float>(geometry.opw.signs[row] * geometry.opw.signs[column]);
-        return matrix;
+        return jointMap.Congruence(dynamics.ComputeMassMatrix(ModelVector(joints)));
     }
 
     ArmModel::JointVector ArmModel::ModelVector(const JointPositions& joints) const
     {
-        const auto angles = Angles(joints);
-        JointVector vector{};
-        for (std::size_t joint = 0; joint != jointCount; ++joint)
-            vector.at(joint, 0) = angles.theta[joint];
-        return vector;
+        return jointMap.Angles(joints);
     }
 
     const dynamics::EulerLagrangeDynamics<float, jointCount>& ArmModel::Dynamics() const
@@ -309,63 +282,36 @@ namespace arm
 
     ArmModel::JointVector ArmModel::ModelTorques(const JointTorques& torques) const
     {
-        JointVector vector{};
-        for (std::size_t joint = 0; joint != jointCount; ++joint)
-            vector.at(joint, 0) = static_cast<float>(geometry.opw.signs[joint]) * torques[joint].Value();
-        return vector;
+        return jointMap.ToModel(torques);
     }
 
     JointPositions ArmModel::ToJointPositions(const JointVector& angles) const
     {
-        JointPositions joints{};
-        for (std::size_t joint = 0; joint != jointCount; ++joint)
-            joints[joint] = foc::Radians{ static_cast<float>(geometry.opw.signs[joint]) * (angles.at(joint, 0) + geometry.opw.offsets[joint]) };
-        return joints;
+        return jointMap.Positions(angles);
     }
 
     JointSpeeds ArmModel::ToJointSpeeds(const JointVector& speeds) const
     {
-        JointSpeeds joints{};
-        for (std::size_t joint = 0; joint != jointCount; ++joint)
-            joints[joint] = foc::RadiansPerSecond{ static_cast<float>(geometry.opw.signs[joint]) * speeds.at(joint, 0) };
-        return joints;
+        return jointMap.ToJoint<foc::RadiansPerSecond>(speeds);
     }
 
     ArmModel::JointVector ArmModel::ModelSpeeds(const JointSpeeds& speeds) const
     {
-        JointVector vector{};
-        for (std::size_t joint = 0; joint != jointCount; ++joint)
-            vector.at(joint, 0) = static_cast<float>(geometry.opw.signs[joint]) * speeds[joint].Value();
-        return vector;
+        return jointMap.ToModel(speeds);
     }
 
     ArmModel::JointVector ArmModel::ModelAccelerations(const JointAccelerations& accelerations) const
     {
-        JointVector vector{};
-        for (std::size_t joint = 0; joint != jointCount; ++joint)
-            vector.at(joint, 0) = static_cast<float>(geometry.opw.signs[joint]) * accelerations[joint].Value();
-        return vector;
+        return jointMap.ToModel(accelerations);
     }
 
     JointTorques ArmModel::ToJointTorques(const JointVector& torques) const
     {
-        JointTorques result{};
-        for (std::size_t joint = 0; joint != jointCount; ++joint)
-            result[joint] = foc::NewtonMeter{ static_cast<float>(geometry.opw.signs[joint]) * torques.at(joint, 0) };
-        return result;
+        return jointMap.ToJoint<foc::NewtonMeter>(torques);
     }
 
-    ArmModel::ModelAngles ArmModel::Angles(const JointPositions& joints) const
+    math::Vector3<float> ArmModel::WristCentre(const JointVector& theta) const
     {
-        ModelAngles angles{};
-        for (std::size_t joint = 0; joint != jointCount; ++joint)
-            angles.theta[joint] = static_cast<float>(geometry.opw.signs[joint]) * joints[joint].Value() - geometry.opw.offsets[joint];
-        return angles;
-    }
-
-    math::Vector3<float> ArmModel::WristCentre(const ModelAngles& angles) const
-    {
-        const auto& theta = angles.theta;
         const auto& p = geometry.opw;
         const auto elbow = theta[1] + theta[2] + forearmAngle;
         const auto x = p.a1 + p.c2 * math::Sin(theta[1]) + forearm * math::Sin(elbow);
