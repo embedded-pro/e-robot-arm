@@ -1,5 +1,6 @@
 #include "core/arm_controllers/implementations/CartesianImpedance.hpp"
 #include "core/arm_controllers/implementations/JointImpedance.hpp"
+#include "robotics/controllers/manipulator/CoupledDamping.hpp"
 #include "robotics/controllers/manipulator/TaskError.hpp"
 
 namespace arm
@@ -32,9 +33,9 @@ namespace arm
     {
         const auto inertia = drivenArm.MassMatrix(angles);
         const auto jacobian = provider.Jacobian(angles);
-        const auto jointStiffness = DiagonalEntries(jacobian.Transpose() * Diagonal(stiffness) * jacobian);
+        const auto jointStiffness = math::DiagonalOf(ArmModel::MassMatrix{ jacobian.Transpose() * math::Diagonal(ToVector(stiffness)) * jacobian });
 
-        return CoupledDamping(inertia, jointStiffness, tuning.dampingRatio);
+        return controllers::CoupledDamping(inertia, jointStiffness, tuning.dampingRatio);
     }
 
     bool CartesianImpedance::BumplessTransfer() const
@@ -51,7 +52,7 @@ namespace arm
         const auto speedError = model.ModelSpeeds(reference.speeds) - model.ModelSpeeds(measured.speeds);
         const auto error = controllers::TaskError<float, 6>(provider.ToolPose(model.ModelVector(reference.positions)), provider.ToolPose(angles));
 
-        const math::Vector<float, 6> wrench{ Diagonal(stiffness) * error };
+        const math::Vector<float, 6> wrench{ math::Diagonal(ToVector(stiffness)) * error };
         const ArmModel::JointVector torques{ provider.Jacobian(angles).Transpose() * wrench + Damping(angles) * speedError };
         const JointVector result{ ToVector(Feedforward(model, measured, reference)) + ToVector(model.ToJointTorques(torques)) };
         return JointSetpoints{ reference.positions, FromVector<foc::NewtonMeter>(result) };

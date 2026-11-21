@@ -1,5 +1,6 @@
 #include "core/arm_controllers/implementations/CartesianImpedance.hpp"
 #include "core/arm_controllers/implementations/JointImpedance.hpp"
+#include "robotics/controllers/manipulator/CoupledDamping.hpp"
 #include "gmock/gmock.h"
 #include <cmath>
 
@@ -89,7 +90,7 @@ TEST_F(CartesianImpedanceTest, damps_with_the_coupled_inertia_at_the_measured_po
         for (std::size_t axis = 0; axis != 6; ++axis)
             jointStiffness[joint] += stiffness[axis] * jacobian.at(axis, joint) * jacobian.at(axis, joint);
 
-    const auto expected = arm::CoupledDamping(inertia, jointStiffness, 0.7f);
+    const auto expected = controllers::CoupledDamping(inertia, arm::ToVector(jointStiffness), 0.7f);
     const auto damping = controller.Damping(angles);
     for (std::size_t row = 0; row != arm::jointCount; ++row)
         for (std::size_t column = 0; column != arm::jointCount; ++column)

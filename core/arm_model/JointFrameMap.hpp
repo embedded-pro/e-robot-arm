@@ -2,6 +2,7 @@
 
 #include "core/joint_bus/interfaces/JointBus.hpp"
 #include "numerical/math/Matrix.hpp"
+#include "numerical/math/MatrixOperations.hpp"
 #include <array>
 #include <cstdint>
 
@@ -11,8 +12,8 @@ namespace arm
     using JointMatrix = math::SquareMatrix<float, jointCount>;
     using JointValues = std::array<float, jointCount>;
 
-    JointMatrix Diagonal(const JointValues& values);
-    JointValues DiagonalEntries(const JointMatrix& matrix);
+    JointVector ToVector(const JointValues& values);
+    JointValues ToValues(const JointVector& vector);
 
     template<class Quantity>
     JointVector ToVector(const std::array<Quantity, jointCount>& values)

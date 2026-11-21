@@ -19,7 +19,6 @@ namespace arm
     };
 
     JointStiffnesses ImpedanceStiffness(const ArmModel::MassMatrix& inertia, const JointImpedanceTuning& tuning);
-    ArmModel::MassMatrix CoupledDamping(const ArmModel::MassMatrix& inertia, const JointStiffnesses& stiffness, float dampingRatio);
     JointTorques Feedforward(const ArmModel& model, const MeasuredJoints& measured, const JointReference& reference);
 
     class JointImpedance

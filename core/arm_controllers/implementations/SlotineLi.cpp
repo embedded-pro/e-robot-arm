@@ -55,7 +55,7 @@ namespace arm
         const auto targetAccelerations = model.ModelAccelerations(reference.accelerations);
 
         auto torques = law.ComputeTorque(model.ModelVector(measured.positions), speeds, model.ModelVector(reference.positions), targetSpeeds, targetAccelerations);
-        torques += Diagonal(drivenArm.Rotors()) * JointVector{ targetAccelerations - (speeds - targetSpeeds) * lambda };
+        torques += math::Diagonal(ToVector(drivenArm.Rotors())) * JointVector{ targetAccelerations - (speeds - targetSpeeds) * lambda };
         return JointSetpoints{ reference.positions, model.ToJointTorques(torques) };
     }
 }

@@ -1,5 +1,7 @@
 #include "tools/simulated_arm/ArmDynamics.hpp"
+#include "core/arm_model/JointFrameMap.hpp"
 #include "numerical/math/CholeskyDecomposition.hpp"
+#include "robotics/dynamics/EffectiveJointInertia.hpp"
 #include <algorithm>
 
 namespace simulation
@@ -79,16 +81,7 @@ namespace simulation
 
     std::array<float, arm::jointCount> ArmDynamics::ApparentInertias(const DrivingTorques& torques) const
     {
-        const auto system = Assemble(torques, arm::JointTorques{});
-        std::array<float, arm::jointCount> inertias{};
-        for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
-        {
-            JointVector unit{};
-            unit.at(joint, 0) = 1.0f;
-            const auto response = math::CholeskyDecomposition<float, arm::jointCount>::Solve(system.mass, unit);
-            inertias[joint] = response.has_value() && response->at(joint, 0) > 0.0f ? 1.0f / response->at(joint, 0) : 0.0f;
-        }
-        return inertias;
+        return arm::ToValues(dynamics::EffectiveJointInertia(Assemble(torques, arm::JointTorques{}).mass).value_or(JointVector{}));
     }
 
     ArmDynamics::System ArmDynamics::Assemble(const DrivingTorques& torques, const arm::JointTorques& external) const
