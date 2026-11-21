@@ -77,7 +77,7 @@ namespace arm
         std::array<foc::NewtonMeter, jointCount> torqueLimits;
         bool observing{ false };
         JointTorques previousApplied{};
-        JointTorques actingSum{};
+        JointVector actingSum{};
         uint32_t actingPeriods{ 0 };
         std::array<uint32_t, jointCount> observedReadings{};
         infra::TimePoint observedRequest{};

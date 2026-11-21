@@ -170,8 +170,10 @@ namespace arm
     {
         auto applied = controllers.LastSetpoints();
         if (applied.has_value())
-            for (std::size_t joint = 0; joint != jointCount; ++joint)
-                applied->torques[joint] = foc::NewtonMeter{ std::clamp(applied->torques[joint].Value(), -torqueLimits[joint].Value(), torqueLimits[joint].Value()) };
+            std::ranges::transform(applied->torques, torqueLimits, applied->torques.begin(), [](foc::NewtonMeter torque, foc::NewtonMeter limit)
+                {
+                    return foc::NewtonMeter{ std::clamp(torque.Value(), -limit.Value(), limit.Value()) };
+                });
         const auto reference = motion.Step();
         if (!controllers.Step(reference))
             motion.Abort();
@@ -213,8 +215,7 @@ namespace arm
             return std::nullopt;
         }
 
-        for (std::size_t joint = 0; joint != jointCount; ++joint)
-            actingSum[joint] = foc::NewtonMeter{ actingSum[joint].Value() + 0.5f * (applied->torques[joint].Value() + previousApplied[joint].Value()) };
+        actingSum += (ToVector(applied->torques) + ToVector(previousApplied)) * 0.5f;
         previousApplied = applied->torques;
         ++actingPeriods;
 
@@ -222,9 +223,7 @@ namespace arm
             if (readings[joint] == observedReadings[joint])
                 return externalTorques;
 
-        JointTorques acting{};
-        for (std::size_t joint = 0; joint != jointCount; ++joint)
-            acting[joint] = foc::NewtonMeter{ actingSum[joint].Value() / static_cast<float>(actingPeriods) };
+        const auto acting = FromVector<foc::NewtonMeter>(actingSum * (1.0f / static_cast<float>(actingPeriods)));
         const auto elapsed = request > observedRequest ? request - observedRequest : period * actingPeriods;
         actingSum = {};
         actingPeriods = 0;
