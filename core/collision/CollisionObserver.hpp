@@ -1,5 +1,4 @@
-#ifndef CORE_COLLISION_COLLISION_OBSERVER_HPP
-#define CORE_COLLISION_COLLISION_OBSERVER_HPP
+#pragma once
 
 #include "core/arm_model/ArmModel.hpp"
 #include "infra/timer/Timer.hpp"
@@ -27,5 +26,3 @@ namespace arm
         Observer observer;
     };
 }
-
-#endif

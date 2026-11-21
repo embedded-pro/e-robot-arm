@@ -1,5 +1,4 @@
-#ifndef TOOLS_SIMULATOR_VIEW_MODELS_FRAME_STATISTICS_HPP
-#define TOOLS_SIMULATOR_VIEW_MODELS_FRAME_STATISTICS_HPP
+#pragma once
 
 #include "ui/theme/Theme.hpp"
 #include <chrono>
@@ -40,5 +39,3 @@ namespace simulator
         ui::theme::StatusLevel level{ ui::theme::StatusLevel::Neutral };
     };
 }
-
-#endif

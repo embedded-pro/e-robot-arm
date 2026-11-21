@@ -1,5 +1,4 @@
-#ifndef CORE_ARM_MODEL_ARM_TASK_JACOBIAN_HPP
-#define CORE_ARM_MODEL_ARM_TASK_JACOBIAN_HPP
+#pragma once
 
 #include "core/arm_model/ArmModel.hpp"
 #include "robotics/kinematics/JacobianProvider.hpp"
@@ -20,5 +19,3 @@ namespace arm
         const ArmModel& model;
     };
 }
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef TOOLS_SIMULATOR_VIEW_MODELS_DISTURBANCE_PRESENTER_HPP
-#define TOOLS_SIMULATOR_VIEW_MODELS_DISTURBANCE_PRESENTER_HPP
+#pragma once
 
 #include "tools/arm_host/ArmCommand.hpp"
 #include "tools/arm_host/ArmSnapshot.hpp"
@@ -71,5 +70,3 @@ namespace simulator
         std::string hint;
     };
 }
-
-#endif

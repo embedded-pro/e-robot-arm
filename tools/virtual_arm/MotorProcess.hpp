@@ -1,5 +1,4 @@
-#ifndef TOOLS_VIRTUAL_ARM_MOTOR_PROCESS_HPP
-#define TOOLS_VIRTUAL_ARM_MOTOR_PROCESS_HPP
+#pragma once
 
 #include <filesystem>
 #include <optional>
@@ -29,5 +28,3 @@ namespace virtual_arm
         std::optional<int> exitCode;
     };
 }
-
-#endif

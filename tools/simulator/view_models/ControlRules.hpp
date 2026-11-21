@@ -1,5 +1,4 @@
-#ifndef TOOLS_SIMULATOR_VIEW_MODELS_CONTROL_RULES_HPP
-#define TOOLS_SIMULATOR_VIEW_MODELS_CONTROL_RULES_HPP
+#pragma once
 
 #include "tools/arm_host/ArmSnapshot.hpp"
 #include <cstddef>
@@ -38,5 +37,3 @@ namespace simulator
     ControlState Evaluate(Control control, const arm_host::ArmSnapshot& snapshot, std::string_view targetProblem = {});
     bool DrivesJoints(const arm_host::ArmSnapshot& snapshot);
 }
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef TOOLS_ARM_HOST_ARM_TARGET_LINK_HPP
-#define TOOLS_ARM_HOST_ARM_TARGET_LINK_HPP
+#pragma once
 
 #include "core/arm/ArmConfig.hpp"
 #include "core/joint_bus/interfaces/JointBus.hpp"
@@ -55,5 +54,3 @@ namespace arm_host
         simulation::SimulatedArm arm;
     };
 }
-
-#endif

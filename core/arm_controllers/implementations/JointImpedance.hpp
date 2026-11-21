@@ -1,5 +1,4 @@
-#ifndef CORE_ARM_CONTROLLERS_IMPLEMENTATIONS_JOINT_IMPEDANCE_HPP
-#define CORE_ARM_CONTROLLERS_IMPLEMENTATIONS_JOINT_IMPEDANCE_HPP
+#pragma once
 
 #include "core/arm_controllers/interfaces/ArmController.hpp"
 #include "core/arm_model/ArmModel.hpp"
@@ -49,5 +48,3 @@ namespace arm
         JointStiffnesses stiffness{};
     };
 }
-
-#endif

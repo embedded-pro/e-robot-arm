@@ -1,5 +1,4 @@
-#ifndef TOOLS_SIMULATOR_APP_TIMED_QUICK_WIDGET_HPP
-#define TOOLS_SIMULATOR_APP_TIMED_QUICK_WIDGET_HPP
+#pragma once
 
 #include <QQuickWidget>
 #include <chrono>
@@ -23,5 +22,3 @@ namespace simulator
         bool rendered{ false };
     };
 }
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef TOOLS_SIMULATED_ARM_VIRTUAL_CAN_BUS_HPP
-#define TOOLS_SIMULATED_ARM_VIRTUAL_CAN_BUS_HPP
+#pragma once
 
 #include "hal/interfaces/Can.hpp"
 #include <deque>
@@ -59,5 +58,3 @@ namespace simulation
         std::shared_ptr<VirtualCanBus*> self{ std::make_shared<VirtualCanBus*>(this) };
     };
 }
-
-#endif

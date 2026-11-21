@@ -1,5 +1,4 @@
-#ifndef TOOLS_SIMULATOR_VIEW_MODELS_DESKTOP_ARM_HPP
-#define TOOLS_SIMULATOR_VIEW_MODELS_DESKTOP_ARM_HPP
+#pragma once
 
 #include "core/arm_model/ArmGeometry.hpp"
 #include "ui/stage/Shading.hpp"
@@ -27,5 +26,3 @@ namespace simulator
     float PartThickness(const arm::ArmGeometry& geometry);
     ArmMeshes BuildDesktopArm(const arm::ArmGeometry& geometry);
 }
-
-#endif

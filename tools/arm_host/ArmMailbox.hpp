@@ -1,5 +1,4 @@
-#ifndef TOOLS_ARM_HOST_ARM_MAILBOX_HPP
-#define TOOLS_ARM_HOST_ARM_MAILBOX_HPP
+#pragma once
 
 #include "tools/arm_host/ArmSnapshot.hpp"
 #include <cstddef>
@@ -40,5 +39,3 @@ namespace arm_host
         uint64_t droppedTraceSamples{ 0 };
     };
 }
-
-#endif

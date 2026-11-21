@@ -1,5 +1,4 @@
-#ifndef TOOLS_SIMULATOR_APP_SIMULATOR_WINDOW_HPP
-#define TOOLS_SIMULATOR_APP_SIMULATOR_WINDOW_HPP
+#pragma once
 
 #include "tools/arm_host/ArmHost.hpp"
 #include "tools/simulator/app/ArmSceneState.hpp"
@@ -158,5 +157,3 @@ namespace simulator
         QAction* automaticUpdatesAction{ nullptr };
     };
 }
-
-#endif

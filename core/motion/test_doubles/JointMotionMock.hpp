@@ -1,5 +1,4 @@
-#ifndef CORE_MOTION_TEST_DOUBLES_JOINT_MOTION_MOCK_HPP
-#define CORE_MOTION_TEST_DOUBLES_JOINT_MOTION_MOCK_HPP
+#pragma once
 
 #include "core/motion/interfaces/JointMotion.hpp"
 #include "gmock/gmock.h"
@@ -23,5 +22,3 @@ namespace arm
         MOCK_METHOD(MotionProfile, Profile, (), (const, override));
     };
 }
-
-#endif

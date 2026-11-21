@@ -1,5 +1,4 @@
-#ifndef TOOLS_ARM_HOST_ARM_HOST_HPP
-#define TOOLS_ARM_HOST_ARM_HOST_HPP
+#pragma once
 
 #include "hal/generic/TimerServiceGeneric.hpp"
 #include "infra/event/EventDispatcherThreadAware.hpp"
@@ -81,5 +80,3 @@ namespace arm_host
         std::jthread thread;
     };
 }
-
-#endif

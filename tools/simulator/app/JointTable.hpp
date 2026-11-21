@@ -1,5 +1,4 @@
-#ifndef TOOLS_SIMULATOR_APP_JOINT_TABLE_HPP
-#define TOOLS_SIMULATOR_APP_JOINT_TABLE_HPP
+#pragma once
 
 #include "tools/simulator/view_models/JointRows.hpp"
 #include <QTableWidget>
@@ -25,5 +24,3 @@ namespace simulator
         void SetCell(int row, int column, const std::string& text, Qt::Alignment alignment);
     };
 }
-
-#endif

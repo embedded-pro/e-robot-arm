@@ -1,5 +1,4 @@
-#ifndef TOOLS_SIMULATOR_VIEW_MODELS_ARM_SCENE_GEOMETRY_HPP
-#define TOOLS_SIMULATOR_VIEW_MODELS_ARM_SCENE_GEOMETRY_HPP
+#pragma once
 
 #include "core/arm_model/ArmModel.hpp"
 #include "core/workspace/WorkspaceConfig.hpp"
@@ -42,5 +41,3 @@ namespace simulator
     SceneNodes SceneNodePoses(const arm::ArmModel& model, const arm::ArmGeometry& geometry, const arm::JointPositions& joints);
     float ArmExtent(const arm::ArmGeometry& geometry);
 }
-
-#endif

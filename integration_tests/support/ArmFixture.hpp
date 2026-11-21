@@ -1,5 +1,4 @@
-#ifndef INTEGRATION_TESTS_SUPPORT_ARM_FIXTURE_HPP
-#define INTEGRATION_TESTS_SUPPORT_ARM_FIXTURE_HPP
+#pragma once
 
 #include "core/arm/Arm.hpp"
 #include "e-foc-protocol/client/FocMotorCanClient.hpp"
@@ -80,5 +79,3 @@ namespace integration
         arm::ToolPose lineTo{};
     };
 }
-
-#endif

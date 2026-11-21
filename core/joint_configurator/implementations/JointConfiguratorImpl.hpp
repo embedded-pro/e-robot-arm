@@ -1,5 +1,4 @@
-#ifndef CORE_JOINT_CONFIGURATOR_IMPLEMENTATIONS_JOINT_CONFIGURATOR_IMPL_HPP
-#define CORE_JOINT_CONFIGURATOR_IMPLEMENTATIONS_JOINT_CONFIGURATOR_IMPL_HPP
+#pragma once
 
 #include "core/joint_bus/interfaces/JointBus.hpp"
 #include "core/joint_configurator/interfaces/JointConfigurator.hpp"
@@ -77,5 +76,3 @@ namespace arm
         infra::TimerRepeating resendTimer;
     };
 }
-
-#endif

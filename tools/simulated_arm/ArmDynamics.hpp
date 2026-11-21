@@ -1,5 +1,4 @@
-#ifndef TOOLS_SIMULATED_ARM_ARM_DYNAMICS_HPP
-#define TOOLS_SIMULATED_ARM_ARM_DYNAMICS_HPP
+#pragma once
 
 #include "core/arm_model/ArmModel.hpp"
 #include "core/joint_bus/interfaces/JointBus.hpp"
@@ -60,5 +59,3 @@ namespace simulation
         JointVector qDot{};
     };
 }
-
-#endif

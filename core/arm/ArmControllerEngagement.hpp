@@ -1,5 +1,4 @@
-#ifndef CORE_ARM_ARM_CONTROLLER_ENGAGEMENT_HPP
-#define CORE_ARM_ARM_CONTROLLER_ENGAGEMENT_HPP
+#pragma once
 
 #include "core/arm_controllers/implementations/ArmControllersImpl.hpp"
 #include "core/lifecycle/interfaces/ArmLifecycle.hpp"
@@ -23,5 +22,3 @@ namespace arm
         ArmControllersImpl& controllers;
     };
 }
-
-#endif

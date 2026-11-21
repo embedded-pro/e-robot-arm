@@ -1,5 +1,4 @@
-#ifndef CORE_JOINT_CONFIGURATOR_INTERFACES_MOTOR_SETTINGS_HPP
-#define CORE_JOINT_CONFIGURATOR_INTERFACES_MOTOR_SETTINGS_HPP
+#pragma once
 
 #include "core/joint_bus/interfaces/JointBus.hpp"
 #include "core/joint_configurator/interfaces/ControllerSettings.hpp"
@@ -121,5 +120,3 @@ namespace arm
         return mismatches;
     }
 }
-
-#endif

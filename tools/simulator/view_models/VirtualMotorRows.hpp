@@ -1,5 +1,4 @@
-#ifndef TOOLS_SIMULATOR_VIEW_MODELS_VIRTUAL_MOTOR_ROWS_HPP
-#define TOOLS_SIMULATOR_VIEW_MODELS_VIRTUAL_MOTOR_ROWS_HPP
+#pragma once
 
 #include "tools/arm_host/ArmSnapshot.hpp"
 #include "ui/theme/Theme.hpp"
@@ -32,5 +31,3 @@ namespace simulator
     VirtualMotorsView ViewVirtualMotors(const arm_host::ArmSnapshot& snapshot);
     std::string StartingVirtualMotors(const arm_host::ArmSnapshot& snapshot);
 }
-
-#endif

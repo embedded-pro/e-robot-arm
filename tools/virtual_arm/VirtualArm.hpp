@@ -1,5 +1,4 @@
-#ifndef TOOLS_VIRTUAL_ARM_VIRTUAL_ARM_HPP
-#define TOOLS_VIRTUAL_ARM_VIRTUAL_ARM_HPP
+#pragma once
 
 #include "tools/virtual_arm/ArmCoupling.hpp"
 #include "tools/virtual_arm/MotorProcess.hpp"
@@ -109,5 +108,3 @@ namespace virtual_arm
         std::jthread worker;
     };
 }
-
-#endif

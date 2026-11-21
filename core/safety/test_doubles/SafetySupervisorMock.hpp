@@ -1,5 +1,4 @@
-#ifndef CORE_SAFETY_TEST_DOUBLES_SAFETY_SUPERVISOR_MOCK_HPP
-#define CORE_SAFETY_TEST_DOUBLES_SAFETY_SUPERVISOR_MOCK_HPP
+#pragma once
 
 #include "core/safety/interfaces/SafetySupervisor.hpp"
 #include "gmock/gmock.h"
@@ -36,5 +35,3 @@ namespace arm
         MOCK_METHOD(bool, HardwareStopOpen, (), (const, override));
     };
 }
-
-#endif

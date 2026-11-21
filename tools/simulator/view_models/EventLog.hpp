@@ -1,5 +1,4 @@
-#ifndef TOOLS_SIMULATOR_VIEW_MODELS_EVENT_LOG_HPP
-#define TOOLS_SIMULATOR_VIEW_MODELS_EVENT_LOG_HPP
+#pragma once
 
 #include "tools/arm_host/ArmEvent.hpp"
 #include <cstddef>
@@ -54,5 +53,3 @@ namespace simulator
         std::deque<LogLine> lines;
     };
 }
-
-#endif

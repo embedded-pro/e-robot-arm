@@ -170,6 +170,8 @@ path. Host tools, simulators, and test code may use normal heap patterns.
   headers are allowed (and common in hot paths).
 - Prefer `{}` initialization over `()`.
 - `const` on all non-mutating methods; `constexpr` for constants and lookup tables.
+- Headers start with `#pragma once`, not `#ifndef` include guards.
+- No comments that restate the code; name things so the code reads on its own.
 
 ## 4. Naming Conventions
 

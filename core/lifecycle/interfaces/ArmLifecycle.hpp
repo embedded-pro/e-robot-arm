@@ -1,5 +1,4 @@
-#ifndef CORE_LIFECYCLE_INTERFACES_ARM_LIFECYCLE_HPP
-#define CORE_LIFECYCLE_INTERFACES_ARM_LIFECYCLE_HPP
+#pragma once
 
 #include "core/joint_bus/interfaces/JointBus.hpp"
 #include "core/motion/interfaces/JointMotion.hpp"
@@ -89,5 +88,3 @@ namespace arm
         ~ArmLifecycle() = default;
     };
 }
-
-#endif

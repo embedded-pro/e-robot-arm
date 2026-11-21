@@ -1,5 +1,4 @@
-#ifndef TOOLS_ARM_HOST_VIRTUAL_ARM_TARGET_LINK_HPP
-#define TOOLS_ARM_HOST_VIRTUAL_ARM_TARGET_LINK_HPP
+#pragma once
 
 #include "can-lite/drivers/hub/VirtualCanHub.hpp"
 #include "can-lite/drivers/implementation/PlatformCanAdapter.hpp"
@@ -67,5 +66,3 @@ namespace arm_host
 
     TargetOpener VirtualArmTargetOpener(TargetOpener other, uint32_t bitrate);
 }
-
-#endif

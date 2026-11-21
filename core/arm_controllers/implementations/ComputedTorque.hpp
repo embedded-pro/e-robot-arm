@@ -1,5 +1,4 @@
-#ifndef CORE_ARM_CONTROLLERS_IMPLEMENTATIONS_COMPUTED_TORQUE_HPP
-#define CORE_ARM_CONTROLLERS_IMPLEMENTATIONS_COMPUTED_TORQUE_HPP
+#pragma once
 
 #include "core/arm_controllers/implementations/GravityCompensatedPd.hpp"
 #include "core/arm_controllers/interfaces/ArmController.hpp"
@@ -40,5 +39,3 @@ namespace arm
         Law law;
     };
 }
-
-#endif

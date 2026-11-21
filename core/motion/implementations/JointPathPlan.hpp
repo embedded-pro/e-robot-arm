@@ -1,5 +1,4 @@
-#ifndef CORE_MOTION_IMPLEMENTATIONS_JOINT_PATH_PLAN_HPP
-#define CORE_MOTION_IMPLEMENTATIONS_JOINT_PATH_PLAN_HPP
+#pragma once
 
 #include "core/motion/interfaces/JointMotion.hpp"
 #include "robotics/trajectory/CubicSplineTrajectory.hpp"
@@ -43,5 +42,3 @@ namespace arm
         float slowdown{ 1.0f };
     };
 }
-
-#endif

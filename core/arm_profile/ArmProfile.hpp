@@ -1,5 +1,4 @@
-#ifndef CORE_ARM_PROFILE_ARM_PROFILE_HPP
-#define CORE_ARM_PROFILE_ARM_PROFILE_HPP
+#pragma once
 
 #include "core/arm/ArmConfig.hpp"
 #include "infra/stream/OutputStream.hpp"
@@ -27,5 +26,3 @@ namespace arm
     std::optional<ArmProfile> ReadArmProfile(infra::BoundedConstString text, infra::BoundedString& problem);
     void WriteArmProfile(const ArmProfile& profile, infra::TextOutputStream& stream);
 }
-
-#endif

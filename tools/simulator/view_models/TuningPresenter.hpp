@@ -1,5 +1,4 @@
-#ifndef TOOLS_SIMULATOR_VIEW_MODELS_TUNING_PRESENTER_HPP
-#define TOOLS_SIMULATOR_VIEW_MODELS_TUNING_PRESENTER_HPP
+#pragma once
 
 #include "tools/arm_host/ArmCommands.hpp"
 #include "tools/arm_host/ArmEvent.hpp"
@@ -119,5 +118,3 @@ namespace simulator
         uint32_t chartRevision{ 0 };
     };
 }
-
-#endif

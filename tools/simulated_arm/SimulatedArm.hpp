@@ -1,5 +1,4 @@
-#ifndef TOOLS_SIMULATED_ARM_SIMULATED_ARM_HPP
-#define TOOLS_SIMULATED_ARM_SIMULATED_ARM_HPP
+#pragma once
 
 #include "core/joint_bus/interfaces/JointBus.hpp"
 #include "tools/simulated_arm/ArmPlant.hpp"
@@ -33,5 +32,3 @@ namespace simulation
         SimulatedHardwareStop hardwareStop;
     };
 }
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef TOOLS_SIMULATOR_VIEW_MODELS_JOINT_ROWS_HPP
-#define TOOLS_SIMULATOR_VIEW_MODELS_JOINT_ROWS_HPP
+#pragma once
 
 #include "tools/arm_host/ArmSnapshot.hpp"
 #include "ui/theme/Theme.hpp"
@@ -27,5 +26,3 @@ namespace simulator
     bool ModelIsLive(const arm_host::ArmSnapshot& snapshot);
     std::array<JointRow, arm::jointCount> JointRows(const arm_host::ArmSnapshot& snapshot, const arm::JointLimits& limits, const arm::JointFlags& torqueLimited = {});
 }
-
-#endif

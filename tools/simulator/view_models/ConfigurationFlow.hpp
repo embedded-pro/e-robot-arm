@@ -1,5 +1,4 @@
-#ifndef TOOLS_SIMULATOR_VIEW_MODELS_CONFIGURATION_FLOW_HPP
-#define TOOLS_SIMULATOR_VIEW_MODELS_CONFIGURATION_FLOW_HPP
+#pragma once
 
 #include "tools/arm_host/ArmCommands.hpp"
 #include "tools/arm_host/ArmEvent.hpp"
@@ -115,5 +114,3 @@ namespace simulator
         bool shown{ true };
     };
 }
-
-#endif

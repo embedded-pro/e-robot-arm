@@ -1,5 +1,4 @@
-#ifndef CORE_ARM_CONTROLLERS_INTERFACES_ARM_CONTROLLER_HPP
-#define CORE_ARM_CONTROLLERS_INTERFACES_ARM_CONTROLLER_HPP
+#pragma once
 
 #include "core/joint_bus/interfaces/JointBus.hpp"
 
@@ -32,5 +31,3 @@ namespace arm
         ~ArmController() = default;
     };
 }
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef CORE_JOINT_CONFIGURATOR_INTERFACES_CONTROLLER_SETTINGS_HPP
-#define CORE_JOINT_CONFIGURATOR_INTERFACES_CONTROLLER_SETTINGS_HPP
+#pragma once
 
 #include "core/joint_bus/interfaces/JointBus.hpp"
 #include "e-foc-protocol/contract/FocMotorMessages.hpp"
@@ -120,5 +119,3 @@ namespace arm
         }
     }
 }
-
-#endif

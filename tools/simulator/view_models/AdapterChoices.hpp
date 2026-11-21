@@ -1,5 +1,4 @@
-#ifndef TOOLS_SIMULATOR_VIEW_MODELS_ADAPTER_CHOICES_HPP
-#define TOOLS_SIMULATOR_VIEW_MODELS_ADAPTER_CHOICES_HPP
+#pragma once
 
 #include <span>
 #include <string>
@@ -17,5 +16,3 @@ namespace simulator
 
     AdapterChoices ChooseAdapter(std::span<const std::string> detected, std::string_view lastUsed);
 }
-
-#endif

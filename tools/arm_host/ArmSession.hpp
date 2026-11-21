@@ -1,5 +1,4 @@
-#ifndef TOOLS_ARM_HOST_ARM_SESSION_HPP
-#define TOOLS_ARM_HOST_ARM_SESSION_HPP
+#pragma once
 
 #include "core/arm/Arm.hpp"
 #include "core/arm_profile/ArmProfile.hpp"
@@ -139,5 +138,3 @@ namespace arm_host
         std::optional<StopReport> stop;
     };
 }
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef TOOLS_SIMULATOR_APP_MESH_FILES_HPP
-#define TOOLS_SIMULATOR_APP_MESH_FILES_HPP
+#pragma once
 
 #include "ui/backend/qt/quick3d/GltfInspection.hpp"
 #include <QString>
@@ -19,5 +18,3 @@ namespace simulator
     MeshFiles ResolveMeshes(const MeshNames& names, const QString& directory);
     QString MeshNodeName(std::size_t node);
 }
-
-#endif

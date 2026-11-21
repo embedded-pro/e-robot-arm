@@ -1,5 +1,4 @@
-#ifndef TOOLS_SIMULATED_ARM_SIMULATED_HARDWARE_STOP_HPP
-#define TOOLS_SIMULATED_ARM_SIMULATED_HARDWARE_STOP_HPP
+#pragma once
 
 #include "core/safety/interfaces/HardwareStop.hpp"
 
@@ -16,5 +15,3 @@ namespace simulation
         bool open{ false };
     };
 }
-
-#endif

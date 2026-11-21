@@ -1,5 +1,4 @@
-#ifndef CORE_MOTION_IMPLEMENTATIONS_JOINT_MOTION_IMPL_HPP
-#define CORE_MOTION_IMPLEMENTATIONS_JOINT_MOTION_IMPL_HPP
+#pragma once
 
 #include "core/joint_bus/interfaces/JointBus.hpp"
 #include "core/motion/implementations/JointJogger.hpp"
@@ -102,5 +101,3 @@ namespace arm
         Generator generator{ Generator::none };
     };
 }
-
-#endif

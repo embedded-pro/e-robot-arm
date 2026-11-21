@@ -1,5 +1,4 @@
-#ifndef TOOLS_SIMULATOR_APP_PANELS_HPP
-#define TOOLS_SIMULATOR_APP_PANELS_HPP
+#pragma once
 
 #include "tools/arm_host/ArmSnapshot.hpp"
 #include "tools/simulator/view_models/ArmControllersPresenter.hpp"
@@ -301,5 +300,3 @@ namespace simulator
         QPlainTextEdit* text;
     };
 }
-
-#endif

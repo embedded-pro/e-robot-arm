@@ -1,5 +1,4 @@
-#ifndef TOOLS_ARM_HOST_DEFAULT_ARM_CONFIG_HPP
-#define TOOLS_ARM_HOST_DEFAULT_ARM_CONFIG_HPP
+#pragma once
 
 #include "core/arm/Arm.hpp"
 #include "core/arm_profile/ArmProfile.hpp"
@@ -13,5 +12,3 @@ namespace arm_host
     arm::ArmConfig DefaultArmConfig(const arm::JointNodeIds& nodes);
     arm::ArmProfile DefaultArmProfile(const arm::JointNodeIds& nodes);
 }
-
-#endif

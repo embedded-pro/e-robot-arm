@@ -1,5 +1,4 @@
-#ifndef TOOLS_ARM_HOST_ARM_SNAPSHOT_HPP
-#define TOOLS_ARM_HOST_ARM_SNAPSHOT_HPP
+#pragma once
 
 #include "core/arm/ArmConfig.hpp"
 #include "core/arm_model/ArmModel.hpp"
@@ -102,5 +101,3 @@ namespace arm_host
         ~ArmSessionSink() = default;
     };
 }
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef CORE_WORKSPACE_WORKSPACE_CONFIG_HPP
-#define CORE_WORKSPACE_WORKSPACE_CONFIG_HPP
+#pragma once
 
 #include "numerical/math/Geometry3D.hpp"
 #include <array>
@@ -32,5 +31,3 @@ namespace arm
         uint8_t allowedLinkPairCount{ 0 };
     };
 }
-
-#endif

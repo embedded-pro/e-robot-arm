@@ -1,5 +1,4 @@
-#ifndef CORE_PLATFORM_ABSTRACTION_PLATFORM_HPP
-#define CORE_PLATFORM_ABSTRACTION_PLATFORM_HPP
+#pragma once
 
 #include "hal/interfaces/Gpio.hpp"
 #include "hal/interfaces/SerialCommunication.hpp"
@@ -37,5 +36,3 @@ namespace platform
         ~Platform() = default;
     };
 }
-
-#endif

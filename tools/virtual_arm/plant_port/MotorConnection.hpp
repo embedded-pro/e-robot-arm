@@ -1,5 +1,4 @@
-#ifndef TOOLS_VIRTUAL_ARM_PLANT_PORT_MOTOR_CONNECTION_HPP
-#define TOOLS_VIRTUAL_ARM_PLANT_PORT_MOTOR_CONNECTION_HPP
+#pragma once
 
 #include "tools/virtual_arm/plant_port/PlantPortCodec.hpp"
 #include <cstddef>
@@ -57,5 +56,3 @@ namespace virtual_arm::plant_port
         std::vector<uint8_t> outgoing;
     };
 }
-
-#endif

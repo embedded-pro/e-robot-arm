@@ -1,5 +1,4 @@
-#ifndef TOOLS_SIMULATOR_VIEW_MODELS_SIMULATOR_PRESENTER_HPP
-#define TOOLS_SIMULATOR_VIEW_MODELS_SIMULATOR_PRESENTER_HPP
+#pragma once
 
 #include "tools/arm_host/ArmCommands.hpp"
 #include "tools/simulator/view_models/ArmSceneModel.hpp"
@@ -162,5 +161,3 @@ namespace simulator
         std::size_t unchangedFrames{ 0 };
     };
 }
-
-#endif

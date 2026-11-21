@@ -1,5 +1,4 @@
-#ifndef CORE_ARM_MODEL_ARM_GEOMETRY_HPP
-#define CORE_ARM_MODEL_ARM_GEOMETRY_HPP
+#pragma once
 
 #include "numerical/math/SE3Transform.hpp"
 #include "robotics/kinematics/AnalyticalIkOpw.hpp"
@@ -37,5 +36,3 @@ namespace arm
     math::SE3Transform<float> ToTransform(const Placement& placement);
     Placement ToPlacement(const math::SE3Transform<float>& transform);
 }
-
-#endif

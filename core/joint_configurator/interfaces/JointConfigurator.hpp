@@ -1,5 +1,4 @@
-#ifndef CORE_JOINT_CONFIGURATOR_INTERFACES_JOINT_CONFIGURATOR_HPP
-#define CORE_JOINT_CONFIGURATOR_INTERFACES_JOINT_CONFIGURATOR_HPP
+#pragma once
 
 #include "core/joint_configurator/interfaces/ControllerSettings.hpp"
 #include "core/joint_configurator/interfaces/MotorSettings.hpp"
@@ -54,5 +53,3 @@ namespace arm
         ~JointConfigurator() = default;
     };
 }
-
-#endif

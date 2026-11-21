@@ -1,5 +1,4 @@
-#ifndef TOOLS_ARM_HOST_ARM_RUNTIME_HPP
-#define TOOLS_ARM_HOST_ARM_RUNTIME_HPP
+#pragma once
 
 #include "tools/arm_host/ArmSession.hpp"
 #include "tools/arm_host/ArmTargetLink.hpp"
@@ -55,5 +54,3 @@ namespace arm_host
         infra::TimerSingleShot grace;
     };
 }
-
-#endif

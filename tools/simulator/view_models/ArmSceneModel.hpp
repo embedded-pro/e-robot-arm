@@ -1,5 +1,4 @@
-#ifndef TOOLS_SIMULATOR_VIEW_MODELS_ARM_SCENE_MODEL_HPP
-#define TOOLS_SIMULATOR_VIEW_MODELS_ARM_SCENE_MODEL_HPP
+#pragma once
 
 #include "tools/arm_host/ArmSnapshot.hpp"
 #include "tools/simulator/view_models/ArmSceneGeometry.hpp"
@@ -79,5 +78,3 @@ namespace simulator
         uint32_t boxesRevision{ 0 };
     };
 }
-
-#endif
