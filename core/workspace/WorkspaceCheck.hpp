@@ -32,7 +32,6 @@ namespace arm
         std::optional<WorkspaceViolation> OutsideWorkspace(const Capsules& capsules) const;
         std::optional<WorkspaceViolation> InForbiddenZone(const Capsules& capsules) const;
         std::optional<WorkspaceViolation> SelfColliding(const Frames& frames) const;
-        void AllowPairsTouchingByConstruction();
 
         const ArmModel& model;
         math::SE3Transform<float> baseInverse;

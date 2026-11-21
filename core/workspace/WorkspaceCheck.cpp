@@ -48,7 +48,7 @@ namespace arm
         , workspace(config.workspace.value_or(DefaultWorkspace(geometry, config)))
         , selfCollision(config.linkRadii)
     {
-        AllowPairsTouchingByConstruction();
+        selfCollision.AllowTouching(Chain(JointPositions{}), config.selfCollisionMargin);
         for (std::size_t pair = 0; pair != config.allowedLinkPairCount; ++pair)
             selfCollision.Allow(config.allowedLinkPairs[pair][0], config.allowedLinkPairs[pair][1]);
     }
@@ -126,17 +126,5 @@ namespace arm
         if (!result.colliding)
             return std::nullopt;
         return Violation(WorkspaceRule::selfCollision, result.pair[0], result.pair[1], result.minimumDistance);
-    }
-
-    void WorkspaceCheck::AllowPairsTouchingByConstruction()
-    {
-        const auto reference = Chain(JointPositions{});
-        for (std::size_t link = 0; link != workspaceCapsules; ++link)
-            for (std::size_t other = link + 2; other < workspaceCapsules; ++other)
-            {
-                const auto distance = planning::PrimitiveDistance<float>::CapsuleCapsule(selfCollision.LinkCapsule(reference, link), selfCollision.LinkCapsule(reference, other)).distance;
-                if (distance < config.selfCollisionMargin)
-                    selfCollision.Allow(link, other);
-            }
     }
 }
