@@ -2,10 +2,9 @@
 #define CORE_ARM_CONTROLLERS_IMPLEMENTATIONS_OPERATIONAL_SPACE_HPP
 
 #include "core/arm_controllers/interfaces/ArmController.hpp"
-#include "core/arm_model/ArmModel.hpp"
 #include "core/arm_model/ArmTaskJacobian.hpp"
+#include "core/arm_model/DrivenArm.hpp"
 #include "robotics/controllers/manipulator/OperationalSpaceControl.hpp"
-#include "robotics/dynamics/EulerLagrangeDynamics.hpp"
 
 namespace arm
 {
@@ -20,26 +19,11 @@ namespace arm
         bool operator==(const OperationalSpaceTuning& other) const = default;
     };
 
-    class ArmatureLagrangeDynamics
-        : public dynamics::EulerLagrangeDynamics<float, jointCount>
-    {
-    public:
-        ArmatureLagrangeDynamics(const dynamics::EulerLagrangeDynamics<float, jointCount>& arm, const JointInertias& rotors);
-
-        MassMatrix ComputeMassMatrix(const StateVector& q) const override;
-        StateVector ComputeCoriolisTerms(const StateVector& q, const StateVector& qDot) const override;
-        StateVector ComputeGravityTerms(const StateVector& q) const override;
-
-    private:
-        const dynamics::EulerLagrangeDynamics<float, jointCount>& arm;
-        JointInertias rotors;
-    };
-
     class OperationalSpace
         : public ArmController
     {
     public:
-        OperationalSpace(const ArmModel& model, const JointInertias& rotors, const OperationalSpaceTuning& tuning, float manipulabilityMin);
+        OperationalSpace(const DrivenArm& drivenArm, const OperationalSpaceTuning& tuning, float manipulabilityMin);
 
         float JointSpaceShare(const JointPositions& positions) const;
 
@@ -54,7 +38,7 @@ namespace arm
 
         const ArmModel& model;
         ArmTaskJacobian provider;
-        ArmatureLagrangeDynamics dynamics;
+        const DrivenArm::Dynamics& dynamics;
         Law law;
         float stiffness;
         float damping;

@@ -2,7 +2,7 @@
 #define CORE_ARM_CONTROLLERS_IMPLEMENTATIONS_JOINT_IMPEDANCE_HPP
 
 #include "core/arm_controllers/interfaces/ArmController.hpp"
-#include "core/arm_model/ArmModel.hpp"
+#include "core/arm_model/DrivenArm.hpp"
 #include <array>
 #include <optional>
 
@@ -19,7 +19,6 @@ namespace arm
         float dampingRatio{ 0.7f };
     };
 
-    ArmModel::MassMatrix HomeInertia(const ArmModel& model, const JointInertias& rotors);
     JointStiffnesses ImpedanceStiffness(const ArmModel::MassMatrix& inertia, const JointImpedanceTuning& tuning);
     ArmModel::MassMatrix CoupledDamping(const ArmModel::MassMatrix& inertia, const JointStiffnesses& stiffness, float dampingRatio);
     JointTorques Feedforward(const ArmModel& model, const MeasuredJoints& measured, const JointReference& reference);
@@ -28,7 +27,7 @@ namespace arm
         : public ArmController
     {
     public:
-        JointImpedance(const ArmModel& model, const JointInertias& rotors, const JointImpedanceTuning& tuning);
+        JointImpedance(const DrivenArm& drivenArm, const JointImpedanceTuning& tuning);
 
         bool SetStiffnessShare(float share);
         float StiffnessShare() const;
@@ -41,8 +40,8 @@ namespace arm
     private:
         void Size();
 
+        const DrivenArm& drivenArm;
         const ArmModel& model;
-        JointInertias rotors;
         JointStiffnesses profileStiffness;
         float dampingRatio;
         float share{ 1.0f };

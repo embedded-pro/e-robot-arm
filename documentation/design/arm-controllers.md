@@ -94,7 +94,8 @@ dynamics for the torque that gives each joint the acceleration `a = q̈* + Kd·(
 inertia, its coupling and gravity are cancelled and every joint follows the reference as a decoupled second-order
 system. The gains are in acceleration units and the same for every joint: Kp = ω²·I, Kd = 2·ζ·ω·I, from the
 profile's own bandwidth and damping ratio for it. The arm model has no rotors, so the inverse dynamics it is given
-adds each motor's rotor inertia times its gear ratio squared, times the joint's acceleration. Unlike `gravity-pd` it
+is the driven arm's ([arm-model.md](arm-model.md) Part G), which adds each motor's rotor inertia times its gear ratio
+squared, times the joint's acceleration. Unlike `gravity-pd` it
 uses the reference speed and acceleration, so it tracks a move without the lag 2·ζ/ω times the speed; like it, it
 has no state and takes over without a step.
 

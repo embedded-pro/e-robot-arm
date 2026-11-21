@@ -42,7 +42,8 @@ date: 2026-11-20
 
 - Moving the arm: Cartesian moves are joint motion's (phase 4); the model only converts.
 - Feeding torques to the joints: gravity compensation and torque feed-forward are the arm controllers' (phase 5).
-- Friction and rotor inertia: they belong to each joint's drive ([arm-dynamics.md](../theory/arm-dynamics.md)).
+- Friction and rotor inertia: they belong to each joint's drive ([arm-dynamics.md](../theory/arm-dynamics.md)). The
+  driven arm beside the model adds the rotors for those that need them (Part G).
 - Arms of another shape: only the OPW family (see the theory's limitations).
 
 ---
@@ -145,6 +146,23 @@ development container's x86-64 CPU) and prints a `[METRIC]` line:
 
 The test fails if any call exceeds 2 ms, a fifth of the period.
 
+### Part G — The driven arm: the model with its drives' rotors
+
+The arm controllers and the collision observer need the inertia the drives move, and on a geared joint the motor's
+rotor is a large part of it: its inertia times the gear ratio squared is of the order of the links' own on a 50:1
+gear. `DrivenArm` holds the arm model and each joint's reflected rotor inertia, and puts the rotor on the joint's link
+as its armature. The links' dynamics, robotics-toolbox's `ChainDynamicsModel` over those links, then carry the rotors
+without a correction around them:
+
+- **Mass matrix**: M(q) + diag(Jᵣ), in the dynamics' coordinates or in joint space (the joints' signs flip only the
+  coupling terms, so each rotor stays on its own diagonal entry).
+- **Inverse dynamics**: the arm's torques plus Jᵣ·q̈.
+- **Gravity and Coriolis terms**: the arm's; a rotor turning about its own axis adds neither.
+
+The arm builds one driven arm from the profile's motors and gear ratios and hands it to every arm controller and to the
+collision observer. The model itself stays without rotors: the gravity torque, the arm controllers' reference
+feed-forward and the tools' snapshots are the links' alone.
+
 ---
 
 ## Interfaces
@@ -161,6 +179,7 @@ The test fails if any call exceeds 2 ms, a fifth of the period.
 | Gravity torque     | Joint positions to holding torque | N·m per joint, joint space                                          |
 | Inverse dynamics   | Motion to joint torques           | Positions, speeds, accelerations; gravity included                  |
 | Mass matrix        | Joint positions to inertia        | 6 × 6, joint space, symmetric positive definite                     |
+| Driven arm         | The model with the drives' rotors | Mass matrix and link dynamics with each rotor as armature (Part G)  |
 
 ### Required
 

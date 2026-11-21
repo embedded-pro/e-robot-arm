@@ -39,7 +39,8 @@ namespace
 
         arm::ArmModel model{ arm::ReferenceGeometry(), arm::ReferenceMass(), WideLimits() };
         arm::JointInertias rotors{ 0.01f, 0.02f, 0.03f, 0.04f, 0.05f, 0.06f };
-        arm::ComputedTorque controller{ model, rotors, arm::BandwidthTuning{ 20.0f, 0.5f } };
+        arm::DrivenArm drivenArm{ model, rotors };
+        arm::ComputedTorque controller{ drivenArm, arm::BandwidthTuning{ 20.0f, 0.5f } };
         arm::MeasuredJoints measured{};
     };
 }

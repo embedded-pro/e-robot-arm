@@ -2,7 +2,7 @@
 #define CORE_ARM_CONTROLLERS_IMPLEMENTATIONS_SLOTINE_LI_HPP
 
 #include "core/arm_controllers/interfaces/ArmController.hpp"
-#include "core/arm_model/ArmModel.hpp"
+#include "core/arm_model/DrivenArm.hpp"
 #include "infra/timer/Timer.hpp"
 #include "robotics/controllers/manipulator/SlotineLiAdaptiveControl.hpp"
 #include "robotics/dynamics/ChainInertialRegressor.hpp"
@@ -25,7 +25,7 @@ namespace arm
         using Regressor = dynamics::ChainInertialRegressor<float, jointCount>;
         using Parameters = Regressor::ParameterVector;
 
-        SlotineLi(const ArmModel& model, const JointInertias& rotors, const SlotineLiTuning& tuning, infra::Duration period);
+        SlotineLi(const DrivenArm& drivenArm, const SlotineLiTuning& tuning, infra::Duration period);
 
         const Parameters& Estimate() const;
         void ResetEstimate();
@@ -37,8 +37,8 @@ namespace arm
     private:
         using Law = controllers::SlotineLiAdaptiveControl<float, jointCount, Regressor::ParametersPerLink * jointCount>;
 
+        const DrivenArm& drivenArm;
         const ArmModel& model;
-        JointInertias rotors;
         float lambda;
         Regressor regressor;
         Law law;
