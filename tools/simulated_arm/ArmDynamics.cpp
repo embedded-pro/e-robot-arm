@@ -64,6 +64,13 @@ namespace simulation
 
     void ArmDynamics::Step(const DrivingTorques& torques, const arm::JointTorques& external, float seconds)
     {
+        StepTimes times{};
+        times.fill(seconds);
+        Step(torques, external, times);
+    }
+
+    void ArmDynamics::Step(const DrivingTorques& torques, const arm::JointTorques& external, const StepTimes& seconds)
+    {
         for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
             if (!torques[joint].has_value())
                 qDot.at(joint, 0) = 0.0f;
@@ -71,12 +78,17 @@ namespace simulation
         const auto system = Assemble(torques, external);
         const auto acceleration = math::CholeskyDecomposition<float, arm::jointCount>::Solve(system.mass, system.force);
         if (!acceleration.has_value())
+        {
+            qDDot = JointVector{};
             return;
+        }
 
+        qDDot = *acceleration;
+        const auto times = math::Diagonal(arm::ToVector(seconds));
         const auto before = qDot;
-        qDot = JointVector{ qDot + *acceleration * seconds };
+        qDot = JointVector{ qDot + times * *acceleration };
         StopReversedJoints(before);
-        q = JointVector{ q + qDot * seconds };
+        q = JointVector{ q + times * qDot };
     }
 
     std::array<float, arm::jointCount> ArmDynamics::ApparentInertias(const DrivingTorques& torques) const
@@ -117,6 +129,16 @@ namespace simulation
     arm::JointSpeeds ArmDynamics::Speeds() const
     {
         return model.ToJointSpeeds(qDot);
+    }
+
+    std::array<float, arm::jointCount> ArmDynamics::Accelerations() const
+    {
+        std::array<float, arm::jointCount> accelerations{};
+        std::ranges::transform(model.ToJointSpeeds(qDDot), accelerations.begin(), [](foc::RadiansPerSecond acceleration)
+            {
+                return acceleration.Value();
+            });
+        return accelerations;
     }
 
     ArmDynamics::JointVector ArmDynamics::DrivingForce(const DrivingTorques& torques, const arm::JointTorques& external) const

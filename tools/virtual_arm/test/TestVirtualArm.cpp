@@ -125,8 +125,11 @@ TEST_F(VirtualArmTest, brings_up_six_motors_and_drives_each_shaft_with_the_arms_
     virtual_arm::ArmCoupling coupling{ config };
     virtual_arm::MotorSamples samples{};
     for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
-        samples[joint] = virtual_arm::MotorSample{ 0.1f * static_cast<float>(joint + 1), 0.0f, 0 };
-    const auto falling = coupling.Step(samples, {}, 1.0e-3f)[1]->speed;
+        samples[joint] = virtual_arm::MotorSample{ 0.1f * static_cast<float>(joint + 1), 0.0f, 0, 5.0e-5f };
+    coupling.Step(samples, {});
+    for (auto& sample : samples)
+        sample->period += 20;
+    const auto falling = coupling.Step(samples, {})[1]->speed;
     ASSERT_GT(std::abs(falling), 1.0e-3f);
 
     EXPECT_TRUE(Eventually([&]()
