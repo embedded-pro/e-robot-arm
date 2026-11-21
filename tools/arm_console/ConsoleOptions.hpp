@@ -1,5 +1,4 @@
-#ifndef TOOLS_ARM_CONSOLE_CONSOLE_OPTIONS_HPP
-#define TOOLS_ARM_CONSOLE_CONSOLE_OPTIONS_HPP
+#pragma once
 
 #include "core/joint_bus/interfaces/JointBus.hpp"
 #include <cstdint>
@@ -22,5 +21,3 @@ namespace arm_console
     std::optional<ConsoleOptions> ParseOptions(const std::vector<std::string>& arguments);
     std::string OptionsUsage();
 }
-
-#endif

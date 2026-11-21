@@ -1,5 +1,4 @@
-#ifndef TOOLS_ARM_HOST_ARM_COMMAND_HPP
-#define TOOLS_ARM_HOST_ARM_COMMAND_HPP
+#pragma once
 
 #include "core/arm_controllers/interfaces/ArmControllers.hpp"
 #include "core/arm_model/ArmGeometry.hpp"
@@ -194,5 +193,3 @@ namespace arm_host
     std::string_view StateName(arm::ArmState state);
     std::string_view MisconfigurationText(const arm::Misconfiguration& misconfiguration);
 }
-
-#endif

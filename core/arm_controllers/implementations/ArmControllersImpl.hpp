@@ -1,5 +1,4 @@
-#ifndef CORE_ARM_CONTROLLERS_IMPLEMENTATIONS_ARM_CONTROLLERS_IMPL_HPP
-#define CORE_ARM_CONTROLLERS_IMPLEMENTATIONS_ARM_CONTROLLERS_IMPL_HPP
+#pragma once
 
 #include "core/arm_controllers/interfaces/ArmController.hpp"
 #include "core/arm_controllers/interfaces/ArmControllers.hpp"
@@ -63,5 +62,3 @@ namespace arm
         std::optional<JointSetpoints> lastSetpoints;
     };
 }
-
-#endif

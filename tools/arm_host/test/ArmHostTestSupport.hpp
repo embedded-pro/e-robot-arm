@@ -1,5 +1,4 @@
-#ifndef TOOLS_ARM_HOST_TEST_ARM_HOST_TEST_SUPPORT_HPP
-#define TOOLS_ARM_HOST_TEST_ARM_HOST_TEST_SUPPORT_HPP
+#pragma once
 
 #include "core/arm/Arm.hpp"
 #include "core/arm_profile/ArmProfile.hpp"
@@ -65,5 +64,3 @@ namespace arm_host::test
         std::vector<TraceSample> trace;
     };
 }
-
-#endif

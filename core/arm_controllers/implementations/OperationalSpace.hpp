@@ -1,5 +1,4 @@
-#ifndef CORE_ARM_CONTROLLERS_IMPLEMENTATIONS_OPERATIONAL_SPACE_HPP
-#define CORE_ARM_CONTROLLERS_IMPLEMENTATIONS_OPERATIONAL_SPACE_HPP
+#pragma once
 
 #include "core/arm_controllers/interfaces/ArmController.hpp"
 #include "core/arm_model/ArmTaskJacobian.hpp"
@@ -45,5 +44,3 @@ namespace arm
         float manipulabilityMin;
     };
 }
-
-#endif

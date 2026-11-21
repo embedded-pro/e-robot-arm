@@ -1,5 +1,4 @@
-#ifndef TOOLS_SIMULATOR_VIEW_MODELS_RECENT_PROFILES_HPP
-#define TOOLS_SIMULATOR_VIEW_MODELS_RECENT_PROFILES_HPP
+#pragma once
 
 #include <cstddef>
 #include <functional>
@@ -38,5 +37,3 @@ namespace simulator
 
     std::string WindowTitle(std::string_view profile, std::string_view target);
 }
-
-#endif

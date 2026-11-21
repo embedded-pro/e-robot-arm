@@ -1,5 +1,4 @@
-#ifndef TOOLS_SIMULATED_ARM_ARM_PLANT_HPP
-#define TOOLS_SIMULATED_ARM_ARM_PLANT_HPP
+#pragma once
 
 #include "infra/timer/Timer.hpp"
 #include "tools/simulated_arm/ArmDynamics.hpp"
@@ -32,5 +31,3 @@ namespace simulation
         infra::TimePoint simulated{ infra::Now() };
     };
 }
-
-#endif

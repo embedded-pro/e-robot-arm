@@ -1,5 +1,4 @@
-#ifndef CORE_ARM_CONTROLLERS_TEST_DOUBLES_ARM_CONTROLLER_MOCK_HPP
-#define CORE_ARM_CONTROLLERS_TEST_DOUBLES_ARM_CONTROLLER_MOCK_HPP
+#pragma once
 
 #include "core/arm_controllers/interfaces/ArmController.hpp"
 #include "gmock/gmock.h"
@@ -15,5 +14,3 @@ namespace arm
         MOCK_METHOD(JointSetpoints, Step, (const MeasuredJoints& measured, const JointReference& reference), (override));
     };
 }
-
-#endif

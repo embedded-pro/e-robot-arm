@@ -1,5 +1,4 @@
-#ifndef TOOLS_SIMULATOR_APP_ARM_SCENE_STATE_HPP
-#define TOOLS_SIMULATOR_APP_ARM_SCENE_STATE_HPP
+#pragma once
 
 #include "tools/simulator/view_models/ArmSceneModel.hpp"
 #include "ui/backend/qt/quick3d/MeshCatalog.hpp"
@@ -133,5 +132,3 @@ namespace simulator
         QColor fault;
     };
 }
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef TOOLS_ARM_HOST_VIRTUAL_MOTORS_HPP
-#define TOOLS_ARM_HOST_VIRTUAL_MOTORS_HPP
+#pragma once
 
 #include "core/arm_model/ArmModel.hpp"
 #include "tools/virtual_arm/MotorReport.hpp"
@@ -32,5 +31,3 @@ namespace arm_host
         ~VirtualMotors() = default;
     };
 }
-
-#endif

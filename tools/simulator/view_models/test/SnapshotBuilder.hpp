@@ -1,5 +1,4 @@
-#ifndef TOOLS_SIMULATOR_VIEW_MODELS_TEST_SNAPSHOT_BUILDER_HPP
-#define TOOLS_SIMULATOR_VIEW_MODELS_TEST_SNAPSHOT_BUILDER_HPP
+#pragma once
 
 #include "tools/arm_host/ArmSnapshot.hpp"
 
@@ -37,5 +36,3 @@ namespace simulator::test
         return limits;
     }
 }
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef TOOLS_SIMULATED_ARM_JOINT_PLANT_HPP
-#define TOOLS_SIMULATED_ARM_JOINT_PLANT_HPP
+#pragma once
 
 #include "e-foc-protocol/foc/Units.hpp"
 #include <cstddef>
@@ -17,5 +16,3 @@ namespace simulation
         ~JointPlant() = default;
     };
 }
-
-#endif

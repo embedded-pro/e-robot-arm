@@ -1,5 +1,4 @@
-#ifndef CORE_SAFETY_INTERFACES_HARDWARE_STOP_HPP
-#define CORE_SAFETY_INTERFACES_HARDWARE_STOP_HPP
+#pragma once
 
 #include "infra/util/Observer.hpp"
 
@@ -33,5 +32,3 @@ namespace arm
         ~HardwareStop() = default;
     };
 }
-
-#endif

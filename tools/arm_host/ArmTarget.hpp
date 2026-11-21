@@ -1,5 +1,4 @@
-#ifndef TOOLS_ARM_HOST_ARM_TARGET_HPP
-#define TOOLS_ARM_HOST_ARM_TARGET_HPP
+#pragma once
 
 #include <cstdint>
 #include <string>
@@ -23,5 +22,3 @@ namespace arm_host
         friend bool operator==(const ArmTarget& lhs, const ArmTarget& rhs) = default;
     };
 }
-
-#endif

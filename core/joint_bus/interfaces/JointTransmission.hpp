@@ -1,5 +1,4 @@
-#ifndef CORE_JOINT_BUS_INTERFACES_JOINT_TRANSMISSION_HPP
-#define CORE_JOINT_BUS_INTERFACES_JOINT_TRANSMISSION_HPP
+#pragma once
 
 #include "e-foc-protocol/foc/Units.hpp"
 #include "numerical/math/Math.hpp"
@@ -55,5 +54,3 @@ namespace arm
         }
     };
 }
-
-#endif

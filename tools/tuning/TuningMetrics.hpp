@@ -1,5 +1,4 @@
-#ifndef TOOLS_TUNING_TUNING_METRICS_HPP
-#define TOOLS_TUNING_TUNING_METRICS_HPP
+#pragma once
 
 #include <cstddef>
 #include <optional>
@@ -36,5 +35,3 @@ namespace tuning
     TrackingMetrics MeasureTracking(const std::vector<TuningSample>& samples);
     void WriteCsv(const std::vector<TuningSample>& samples, std::ostream& output);
 }
-
-#endif

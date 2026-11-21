@@ -1,5 +1,4 @@
-#ifndef CORE_SAFETY_INTERFACES_SAFETY_SUPERVISOR_HPP
-#define CORE_SAFETY_INTERFACES_SAFETY_SUPERVISOR_HPP
+#pragma once
 
 #include "core/joint_bus/interfaces/JointBus.hpp"
 #include "core/safety/interfaces/HardwareStop.hpp"
@@ -74,5 +73,3 @@ namespace arm
         ~SafetySupervisor() = default;
     };
 }
-
-#endif

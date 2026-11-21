@@ -1,5 +1,4 @@
-#ifndef TOOLS_TUNING_TUNING_RUN_HPP
-#define TOOLS_TUNING_TUNING_RUN_HPP
+#pragma once
 
 #include "tools/arm_host/ArmCommands.hpp"
 #include "tools/arm_host/ArmEvent.hpp"
@@ -77,5 +76,3 @@ namespace tuning
         std::vector<TuningSample> samples;
     };
 }
-
-#endif

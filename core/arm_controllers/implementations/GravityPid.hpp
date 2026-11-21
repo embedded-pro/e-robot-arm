@@ -1,5 +1,4 @@
-#ifndef CORE_ARM_CONTROLLERS_IMPLEMENTATIONS_GRAVITY_PID_HPP
-#define CORE_ARM_CONTROLLERS_IMPLEMENTATIONS_GRAVITY_PID_HPP
+#pragma once
 
 #include "core/arm_controllers/implementations/GravityCompensatedPd.hpp"
 #include "core/arm_controllers/interfaces/ArmController.hpp"
@@ -33,5 +32,3 @@ namespace arm
         std::array<Pid, jointCount> pids;
     };
 }
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef TOOLS_VIRTUAL_ARM_ARM_COUPLING_HPP
-#define TOOLS_VIRTUAL_ARM_ARM_COUPLING_HPP
+#pragma once
 
 #include "core/arm/ArmConfig.hpp"
 #include "tools/simulated_arm/ArmDynamics.hpp"
@@ -33,5 +32,3 @@ namespace virtual_arm
         bool engaged{ false };
     };
 }
-
-#endif

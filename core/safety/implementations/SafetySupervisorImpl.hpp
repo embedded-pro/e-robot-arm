@@ -1,5 +1,4 @@
-#ifndef CORE_SAFETY_IMPLEMENTATIONS_SAFETY_SUPERVISOR_IMPL_HPP
-#define CORE_SAFETY_IMPLEMENTATIONS_SAFETY_SUPERVISOR_IMPL_HPP
+#pragma once
 
 #include "core/joint_bus/interfaces/JointBus.hpp"
 #include "core/safety/interfaces/SafetySupervisor.hpp"
@@ -84,5 +83,3 @@ namespace arm
         bool holding{ false };
     };
 }
-
-#endif

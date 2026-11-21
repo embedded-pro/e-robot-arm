@@ -1,5 +1,4 @@
-#ifndef CORE_CONTROL_LOOP_IMPLEMENTATIONS_CONTROL_LOOP_IMPL_HPP
-#define CORE_CONTROL_LOOP_IMPLEMENTATIONS_CONTROL_LOOP_IMPL_HPP
+#pragma once
 
 #include "core/control_loop/interfaces/ControlLoop.hpp"
 #include "core/joint_bus/interfaces/JointBus.hpp"
@@ -39,5 +38,3 @@ namespace arm
         infra::TimerRepeating timer;
     };
 }
-
-#endif

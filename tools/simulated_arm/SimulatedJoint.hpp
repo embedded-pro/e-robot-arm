@@ -1,5 +1,4 @@
-#ifndef TOOLS_SIMULATED_ARM_SIMULATED_JOINT_HPP
-#define TOOLS_SIMULATED_ARM_SIMULATED_JOINT_HPP
+#pragma once
 
 #include "can-lite/server/CanProtocolServer.hpp"
 #include "core/joint_configurator/interfaces/ControllerSettings.hpp"
@@ -108,5 +107,3 @@ namespace simulation
         Node node;
     };
 }
-
-#endif

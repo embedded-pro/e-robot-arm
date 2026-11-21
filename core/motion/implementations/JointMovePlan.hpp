@@ -1,5 +1,4 @@
-#ifndef CORE_MOTION_IMPLEMENTATIONS_JOINT_MOVE_PLAN_HPP
-#define CORE_MOTION_IMPLEMENTATIONS_JOINT_MOVE_PLAN_HPP
+#pragma once
 
 #include "core/motion/interfaces/JointMotion.hpp"
 #include "numerical/motion_profiles/SCurveProfile.hpp"
@@ -32,5 +31,3 @@ namespace arm
         float duration{ 0.0f };
     };
 }
-
-#endif

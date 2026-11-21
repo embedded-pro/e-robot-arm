@@ -1,5 +1,4 @@
-#ifndef CORE_ARM_ARM_HPP
-#define CORE_ARM_ARM_HPP
+#pragma once
 
 #include "core/arm/ArmConfig.hpp"
 #include "core/arm/ArmControllerEngagement.hpp"
@@ -88,5 +87,3 @@ namespace arm
         ControlLoopImpl loop;
     };
 }
-
-#endif

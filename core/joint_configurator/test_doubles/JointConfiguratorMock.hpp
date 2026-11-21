@@ -1,5 +1,4 @@
-#ifndef CORE_JOINT_CONFIGURATOR_TEST_DOUBLES_JOINT_CONFIGURATOR_MOCK_HPP
-#define CORE_JOINT_CONFIGURATOR_TEST_DOUBLES_JOINT_CONFIGURATOR_MOCK_HPP
+#pragma once
 
 #include "core/joint_configurator/interfaces/JointConfigurator.hpp"
 #include "gmock/gmock.h"
@@ -34,5 +33,3 @@ namespace arm
         MOCK_METHOD(void, OnConfigurationFailed, (std::size_t joint, ConfigurationFailure failure), (override));
     };
 }
-
-#endif

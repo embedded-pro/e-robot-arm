@@ -1,5 +1,4 @@
-#ifndef CORE_CONTROL_LOOP_INTERFACES_CONTROL_LOOP_HPP
-#define CORE_CONTROL_LOOP_INTERFACES_CONTROL_LOOP_HPP
+#pragma once
 
 #include <cstdint>
 
@@ -21,5 +20,3 @@ namespace arm
         ~ControlLoop() = default;
     };
 }
-
-#endif

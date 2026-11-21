@@ -1,5 +1,4 @@
-#ifndef CORE_MOTION_INTERFACES_JOINT_MOTION_HPP
-#define CORE_MOTION_INTERFACES_JOINT_MOTION_HPP
+#pragma once
 
 #include "core/joint_bus/interfaces/JointBus.hpp"
 #include "e-foc-protocol/foc/Units.hpp"
@@ -133,5 +132,3 @@ namespace arm
         ~JointMotion() = default;
     };
 }
-
-#endif

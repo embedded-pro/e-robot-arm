@@ -1,5 +1,4 @@
-#ifndef CORE_WORKSPACE_WORKSPACE_CHECK_HPP
-#define CORE_WORKSPACE_WORKSPACE_CHECK_HPP
+#pragma once
 
 #include "core/arm_model/ArmModel.hpp"
 #include "core/safety/interfaces/PoseGuard.hpp"
@@ -43,5 +42,3 @@ namespace arm
         planning::SelfCollision<float, workspaceCapsules> selfCollision;
     };
 }
-
-#endif

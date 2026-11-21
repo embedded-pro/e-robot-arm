@@ -1,5 +1,4 @@
-#ifndef CORE_MOTION_IMPLEMENTATIONS_TOOL_JOGGER_HPP
-#define CORE_MOTION_IMPLEMENTATIONS_TOOL_JOGGER_HPP
+#pragma once
 
 #include "core/arm_model/ArmModel.hpp"
 #include "core/motion/interfaces/JointMotion.hpp"
@@ -61,5 +60,3 @@ namespace arm
         bool done{ false };
     };
 }
-
-#endif

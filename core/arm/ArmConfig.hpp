@@ -1,5 +1,4 @@
-#ifndef CORE_ARM_ARM_CONFIG_HPP
-#define CORE_ARM_ARM_CONFIG_HPP
+#pragma once
 
 #include "core/arm_controllers/implementations/CartesianImpedance.hpp"
 #include "core/arm_controllers/implementations/GravityCompensatedPd.hpp"
@@ -100,5 +99,3 @@ namespace arm
         return config.controlPeriod * config.missedRequestsBeforeSilent;
     }
 }
-
-#endif

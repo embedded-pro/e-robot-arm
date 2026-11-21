@@ -1,5 +1,4 @@
-#ifndef TOOLS_ARM_HOST_ARM_EVENT_HPP
-#define TOOLS_ARM_HOST_ARM_EVENT_HPP
+#pragma once
 
 #include "core/joint_bus/interfaces/JointBus.hpp"
 #include "core/joint_configurator/interfaces/ControllerSettings.hpp"
@@ -57,5 +56,3 @@ namespace arm_host
         std::string_view armController{};
     };
 }
-
-#endif

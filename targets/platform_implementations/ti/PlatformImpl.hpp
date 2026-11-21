@@ -1,5 +1,4 @@
-#ifndef TARGETS_PLATFORM_IMPLEMENTATIONS_TI_PLATFORM_IMPL_HPP
-#define TARGETS_PLATFORM_IMPLEMENTATIONS_TI_PLATFORM_IMPL_HPP
+#pragma once
 
 #include "core/platform_abstraction/Platform.hpp"
 #include "hal_tiva/instantiations/EventInfrastructure.hpp"
@@ -49,5 +48,3 @@ namespace application
         services::TracerToStream tracer{ stream };
     };
 }
-
-#endif

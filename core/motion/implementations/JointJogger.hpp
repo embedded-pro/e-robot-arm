@@ -1,5 +1,4 @@
-#ifndef CORE_MOTION_IMPLEMENTATIONS_JOINT_JOGGER_HPP
-#define CORE_MOTION_IMPLEMENTATIONS_JOINT_JOGGER_HPP
+#pragma once
 
 #include "core/motion/interfaces/JointMotion.hpp"
 #include <cstdint>
@@ -34,5 +33,3 @@ namespace arm
         bool done{ false };
     };
 }
-
-#endif

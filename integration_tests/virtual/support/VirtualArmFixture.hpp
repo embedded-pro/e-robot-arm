@@ -1,5 +1,4 @@
-#ifndef INTEGRATION_TESTS_VIRTUAL_SUPPORT_VIRTUAL_ARM_FIXTURE_HPP
-#define INTEGRATION_TESTS_VIRTUAL_SUPPORT_VIRTUAL_ARM_FIXTURE_HPP
+#pragma once
 
 #include "tools/arm_host/ArmHost.hpp"
 #include "tools/tuning/TuningRun.hpp"
@@ -37,5 +36,3 @@ namespace integration
         void Collect();
     };
 }
-
-#endif

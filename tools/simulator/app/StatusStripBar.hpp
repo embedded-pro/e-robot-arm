@@ -1,5 +1,4 @@
-#ifndef TOOLS_SIMULATOR_APP_STATUS_STRIP_BAR_HPP
-#define TOOLS_SIMULATOR_APP_STATUS_STRIP_BAR_HPP
+#pragma once
 
 #include "tools/simulator/view_models/ControlRules.hpp"
 #include "tools/simulator/view_models/SimulatorPresenter.hpp"
@@ -49,5 +48,3 @@ namespace simulator
         QPushButton* emergencyStop;
     };
 }
-
-#endif

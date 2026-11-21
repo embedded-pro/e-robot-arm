@@ -1,5 +1,4 @@
-#ifndef CORE_ARM_CONTROLLERS_IMPLEMENTATIONS_CARTESIAN_IMPEDANCE_HPP
-#define CORE_ARM_CONTROLLERS_IMPLEMENTATIONS_CARTESIAN_IMPEDANCE_HPP
+#pragma once
 
 #include "core/arm_controllers/interfaces/ArmController.hpp"
 #include "core/arm_model/ArmTaskJacobian.hpp"
@@ -42,5 +41,3 @@ namespace arm
         std::array<float, 6> stiffness{};
     };
 }
-
-#endif

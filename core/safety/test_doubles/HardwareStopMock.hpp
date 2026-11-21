@@ -1,5 +1,4 @@
-#ifndef CORE_SAFETY_TEST_DOUBLES_HARDWARE_STOP_MOCK_HPP
-#define CORE_SAFETY_TEST_DOUBLES_HARDWARE_STOP_MOCK_HPP
+#pragma once
 
 #include "core/safety/interfaces/HardwareStop.hpp"
 #include "gmock/gmock.h"
@@ -13,5 +12,3 @@ namespace arm
         MOCK_METHOD(bool, Open, (), (const, override));
     };
 }
-
-#endif

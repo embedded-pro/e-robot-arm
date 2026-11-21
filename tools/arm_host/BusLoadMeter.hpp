@@ -1,5 +1,4 @@
-#ifndef TOOLS_ARM_HOST_BUS_LOAD_METER_HPP
-#define TOOLS_ARM_HOST_BUS_LOAD_METER_HPP
+#pragma once
 
 #include "hal/interfaces/Can.hpp"
 #include "infra/timer/Timer.hpp"
@@ -34,5 +33,3 @@ namespace arm_host
         infra::TimerRepeating window;
     };
 }
-
-#endif

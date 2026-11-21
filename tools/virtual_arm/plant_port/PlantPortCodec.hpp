@@ -1,5 +1,4 @@
-#ifndef TOOLS_VIRTUAL_ARM_PLANT_PORT_PLANT_PORT_CODEC_HPP
-#define TOOLS_VIRTUAL_ARM_PLANT_PORT_PLANT_PORT_CODEC_HPP
+#pragma once
 
 #include <array>
 #include <cstddef>
@@ -122,5 +121,3 @@ namespace virtual_arm::plant_port
     std::vector<uint8_t> EncodeShaftSpeed(const std::optional<ShaftDrive>& drive);
     std::vector<uint8_t> EncodeStream(bool on);
 }
-
-#endif

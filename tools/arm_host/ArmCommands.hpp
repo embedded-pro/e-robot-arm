@@ -1,5 +1,4 @@
-#ifndef TOOLS_ARM_HOST_ARM_COMMANDS_HPP
-#define TOOLS_ARM_HOST_ARM_COMMANDS_HPP
+#pragma once
 
 #include "core/arm_profile/ArmProfile.hpp"
 #include "tools/arm_host/ArmCommand.hpp"
@@ -21,5 +20,3 @@ namespace arm_host
         ~ArmCommands() = default;
     };
 }
-
-#endif

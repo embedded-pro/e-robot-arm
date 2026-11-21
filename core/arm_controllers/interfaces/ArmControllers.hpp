@@ -1,5 +1,4 @@
-#ifndef CORE_ARM_CONTROLLERS_INTERFACES_ARM_CONTROLLERS_HPP
-#define CORE_ARM_CONTROLLERS_INTERFACES_ARM_CONTROLLERS_HPP
+#pragma once
 
 #include "core/arm_controllers/interfaces/ArmController.hpp"
 #include "infra/util/BoundedString.hpp"
@@ -50,5 +49,3 @@ namespace arm
         ~ArmControllers() = default;
     };
 }
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef CORE_SAFETY_INTERFACES_POSE_GUARD_HPP
-#define CORE_SAFETY_INTERFACES_POSE_GUARD_HPP
+#pragma once
 
 #include "core/joint_bus/interfaces/JointBus.hpp"
 #include <cstdint>
@@ -37,5 +36,3 @@ namespace arm
         ~PoseGuard() = default;
     };
 }
-
-#endif

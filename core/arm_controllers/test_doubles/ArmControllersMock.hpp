@@ -1,5 +1,4 @@
-#ifndef CORE_ARM_CONTROLLERS_TEST_DOUBLES_ARM_CONTROLLERS_MOCK_HPP
-#define CORE_ARM_CONTROLLERS_TEST_DOUBLES_ARM_CONTROLLERS_MOCK_HPP
+#pragma once
 
 #include "core/arm_controllers/interfaces/ArmControllers.hpp"
 #include "gmock/gmock.h"
@@ -22,5 +21,3 @@ namespace arm
         MOCK_METHOD(bool, Select, (ArmControllerId id), (override));
     };
 }
-
-#endif

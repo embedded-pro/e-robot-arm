@@ -1,5 +1,4 @@
-#ifndef TOOLS_VIRTUAL_ARM_PLANT_PORT_LISTENER_HPP
-#define TOOLS_VIRTUAL_ARM_PLANT_PORT_LISTENER_HPP
+#pragma once
 
 #include <cstdint>
 #include <optional>
@@ -44,5 +43,3 @@ namespace virtual_arm
         std::optional<uint16_t> port;
     };
 }
-
-#endif

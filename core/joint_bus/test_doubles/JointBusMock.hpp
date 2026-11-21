@@ -1,5 +1,4 @@
-#ifndef CORE_JOINT_BUS_TEST_DOUBLES_JOINT_BUS_MOCK_HPP
-#define CORE_JOINT_BUS_TEST_DOUBLES_JOINT_BUS_MOCK_HPP
+#pragma once
 
 #include "core/joint_bus/interfaces/JointBus.hpp"
 #include "gmock/gmock.h"
@@ -47,5 +46,3 @@ namespace arm
         MOCK_METHOD(void, OnHardwareStop, (bool open), (override));
     };
 }
-
-#endif

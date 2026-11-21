@@ -1,5 +1,4 @@
-#ifndef TOOLS_ARM_HOST_ADAPTER_TARGET_LINK_HPP
-#define TOOLS_ARM_HOST_ADAPTER_TARGET_LINK_HPP
+#pragma once
 
 #include "can-lite/drivers/hub/VirtualCanHub.hpp"
 #include "can-lite/drivers/implementation/PlatformCanAdapter.hpp"
@@ -36,5 +35,3 @@ namespace arm_host
     TargetOpener HostTargetOpener(infra::Duration simulatedTimeConstant, uint32_t bitrate);
     std::vector<std::string> DetectedAdapters();
 }
-
-#endif

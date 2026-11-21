@@ -1,5 +1,4 @@
-#ifndef TOOLS_VIRTUAL_ARM_PLANT_PORT_TEST_PLANT_PORT_BYTES_HPP
-#define TOOLS_VIRTUAL_ARM_PLANT_PORT_TEST_PLANT_PORT_BYTES_HPP
+#pragma once
 
 #include "tools/virtual_arm/plant_port/PlantPortCodec.hpp"
 #include <array>
@@ -83,5 +82,3 @@ namespace virtual_arm::plant_port::test
         return payload.Frame(MessageType::window);
     }
 }
-
-#endif

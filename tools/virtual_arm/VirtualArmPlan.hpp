@@ -1,5 +1,4 @@
-#ifndef TOOLS_VIRTUAL_ARM_VIRTUAL_ARM_PLAN_HPP
-#define TOOLS_VIRTUAL_ARM_VIRTUAL_ARM_PLAN_HPP
+#pragma once
 
 #include "core/arm/ArmConfig.hpp"
 #include <array>
@@ -43,5 +42,3 @@ namespace virtual_arm
     std::variant<VirtualArmPlan, std::string> PlanVirtualArm(const arm::ArmConfig& config);
     std::vector<std::string> EngineArguments(const MotorStart& motor, std::string_view bus, uint16_t plantPort, uint16_t hubPort);
 }
-
-#endif

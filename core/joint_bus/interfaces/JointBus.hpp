@@ -1,5 +1,4 @@
-#ifndef CORE_JOINT_BUS_INTERFACES_JOINT_BUS_HPP
-#define CORE_JOINT_BUS_INTERFACES_JOINT_BUS_HPP
+#pragma once
 
 #include "core/joint_bus/interfaces/JointTransmission.hpp"
 #include "e-foc-protocol/client/FocMotorCategoryClient.hpp"
@@ -169,5 +168,3 @@ namespace arm
         ~JointBus() = default;
     };
 }
-
-#endif

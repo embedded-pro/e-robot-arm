@@ -1,5 +1,4 @@
-#ifndef TOOLS_VIRTUAL_ARM_MOTOR_REPORT_HPP
-#define TOOLS_VIRTUAL_ARM_MOTOR_REPORT_HPP
+#pragma once
 
 #include "core/joint_bus/interfaces/JointBus.hpp"
 #include <array>
@@ -36,5 +35,3 @@ namespace virtual_arm
 
     using MotorTimings = std::array<std::optional<MotorTiming>, arm::jointCount>;
 }
-
-#endif

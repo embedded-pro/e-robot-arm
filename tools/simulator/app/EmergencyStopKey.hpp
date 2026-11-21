@@ -1,5 +1,4 @@
-#ifndef TOOLS_SIMULATOR_APP_EMERGENCY_STOP_KEY_HPP
-#define TOOLS_SIMULATOR_APP_EMERGENCY_STOP_KEY_HPP
+#pragma once
 
 #include <QObject>
 #include <functional>
@@ -26,5 +25,3 @@ namespace simulator
         const QEvent* lastEvent{ nullptr };
     };
 }
-
-#endif

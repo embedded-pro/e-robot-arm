@@ -1,5 +1,4 @@
-#ifndef CORE_ARM_CONTROLLERS_IMPLEMENTATIONS_SLOTINE_LI_HPP
-#define CORE_ARM_CONTROLLERS_IMPLEMENTATIONS_SLOTINE_LI_HPP
+#pragma once
 
 #include "core/arm_controllers/interfaces/ArmController.hpp"
 #include "core/arm_model/DrivenArm.hpp"
@@ -44,5 +43,3 @@ namespace arm
         Law law;
     };
 }
-
-#endif

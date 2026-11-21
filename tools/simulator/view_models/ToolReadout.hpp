@@ -1,5 +1,4 @@
-#ifndef TOOLS_SIMULATOR_VIEW_MODELS_TOOL_READOUT_HPP
-#define TOOLS_SIMULATOR_VIEW_MODELS_TOOL_READOUT_HPP
+#pragma once
 
 #include "tools/arm_host/ArmSnapshot.hpp"
 #include "ui/theme/Theme.hpp"
@@ -21,5 +20,3 @@ namespace simulator
 
     ToolReadout ToolReadoutOf(const arm_host::ArmSnapshot& snapshot);
 }
-
-#endif

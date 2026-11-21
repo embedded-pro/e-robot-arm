@@ -1,5 +1,4 @@
-#ifndef CORE_ARM_MODEL_ARM_MODEL_HPP
-#define CORE_ARM_MODEL_ARM_MODEL_HPP
+#pragma once
 
 #include "core/arm_model/ArmGeometry.hpp"
 #include "core/arm_model/ArmMass.hpp"
@@ -107,5 +106,3 @@ namespace arm
         dynamics::ChainDynamicsModel<float, jointCount> dynamics;
     };
 }
-
-#endif

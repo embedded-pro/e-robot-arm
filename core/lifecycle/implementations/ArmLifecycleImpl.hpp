@@ -1,5 +1,4 @@
-#ifndef CORE_LIFECYCLE_IMPLEMENTATIONS_ARM_LIFECYCLE_IMPL_HPP
-#define CORE_LIFECYCLE_IMPLEMENTATIONS_ARM_LIFECYCLE_IMPL_HPP
+#pragma once
 
 #include "core/joint_configurator/interfaces/JointConfigurator.hpp"
 #include "core/lifecycle/interfaces/ArmLifecycle.hpp"
@@ -262,5 +261,3 @@ namespace arm
         StateReporter reporter{ *this, fsm };
     };
 }
-
-#endif

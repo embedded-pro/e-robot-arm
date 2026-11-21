@@ -1,5 +1,4 @@
-#ifndef CORE_ARM_MODEL_ARM_MASS_HPP
-#define CORE_ARM_MODEL_ARM_MASS_HPP
+#pragma once
 
 #include <array>
 
@@ -29,5 +28,3 @@ namespace arm
             MassProperties{} };
     }
 }
-
-#endif

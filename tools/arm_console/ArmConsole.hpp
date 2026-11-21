@@ -1,5 +1,4 @@
-#ifndef TOOLS_ARM_CONSOLE_ARM_CONSOLE_HPP
-#define TOOLS_ARM_CONSOLE_ARM_CONSOLE_HPP
+#pragma once
 
 #include "tools/arm_host/ArmCommands.hpp"
 #include "tools/arm_host/ArmEvent.hpp"
@@ -68,5 +67,3 @@ namespace arm_console
         std::filesystem::path tuningCsv;
     };
 }
-
-#endif

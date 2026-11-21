@@ -1,5 +1,4 @@
-#ifndef TOOLS_SIMULATOR_VIEW_MODELS_PROFILE_VIEW_HPP
-#define TOOLS_SIMULATOR_VIEW_MODELS_PROFILE_VIEW_HPP
+#pragma once
 
 #include "tools/arm_host/ArmSnapshot.hpp"
 #include <array>
@@ -38,5 +37,3 @@ namespace simulator
 
     ProfileView DescribeProfile(const arm_host::ArmSnapshot& snapshot);
 }
-
-#endif

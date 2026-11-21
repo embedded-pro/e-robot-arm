@@ -1,5 +1,4 @@
-#ifndef CORE_JOINT_BUS_IMPLEMENTATIONS_JOINT_BUS_IMPL_HPP
-#define CORE_JOINT_BUS_IMPLEMENTATIONS_JOINT_BUS_IMPL_HPP
+#pragma once
 
 #include "core/joint_bus/interfaces/JointBus.hpp"
 #include "e-foc-protocol/client/FocMotorCategoryClient.hpp"
@@ -100,5 +99,3 @@ namespace arm
         infra::TimerSingleShot timeoutTimer;
     };
 }
-
-#endif

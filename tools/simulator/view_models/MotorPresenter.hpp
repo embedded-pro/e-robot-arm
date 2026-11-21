@@ -1,5 +1,4 @@
-#ifndef TOOLS_SIMULATOR_VIEW_MODELS_MOTOR_PRESENTER_HPP
-#define TOOLS_SIMULATOR_VIEW_MODELS_MOTOR_PRESENTER_HPP
+#pragma once
 
 #include "core/joint_configurator/interfaces/MotorSettings.hpp"
 #include "tools/simulator/view_models/ConfigurationFlow.hpp"
@@ -84,5 +83,3 @@ namespace simulator
         bool loading{ false };
     };
 }
-
-#endif

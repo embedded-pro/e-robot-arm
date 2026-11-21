@@ -1,5 +1,4 @@
-#ifndef CORE_SAFETY_TEST_DOUBLES_POSE_GUARD_MOCK_HPP
-#define CORE_SAFETY_TEST_DOUBLES_POSE_GUARD_MOCK_HPP
+#pragma once
 
 #include "core/safety/interfaces/PoseGuard.hpp"
 #include "gmock/gmock.h"
@@ -13,5 +12,3 @@ namespace arm
         MOCK_METHOD(std::optional<WorkspaceViolation>, Check, (const JointPositions& joints), (const, override));
     };
 }
-
-#endif
