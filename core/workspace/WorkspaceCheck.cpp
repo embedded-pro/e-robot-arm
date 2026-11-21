@@ -36,7 +36,7 @@ namespace arm
         const auto& p = geometry.opw;
         const auto& tool = geometry.tool;
         const auto reach = math::Abs(p.a1) + math::Abs(p.b) + math::Abs(p.c1) + p.c2 + math::Sqrt(p.a2 * p.a2 + p.c3 * p.c3) + p.c4 +
-                           math::Sqrt(tool.x * tool.x + tool.y * tool.y + tool.z * tool.z) + *std::ranges::max_element(config.linkRadii);
+                           math::VectorNorm(math::Vector3<float>{ tool.x, tool.y, tool.z }) + *std::ranges::max_element(config.linkRadii);
         return { math::Vector3<float>{ -reach, -reach, 0.0f }, math::Vector3<float>{ reach, reach, reach } };
     }
 
