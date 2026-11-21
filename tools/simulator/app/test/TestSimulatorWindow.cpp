@@ -733,3 +733,28 @@ TEST_F(SimulatorWindowTest, frame_statistics_report_the_gui_and_render_cost_whil
             return second.starts_with("3-D ") && second.find("fps") != std::string::npos;
         }));
 }
+
+TEST_F(SimulatorWindowTest, the_help_menu_checks_for_updates_and_an_update_waits_while_the_arm_drives_its_joints)
+{
+    QStringList help;
+    for (auto* menu : window.menuBar()->findChildren<QMenu*>())
+        if (menu->title() == "&Help")
+            for (auto* action : menu->actions())
+                help << action->text();
+    EXPECT_TRUE(help.contains("Check for &Updates…"));
+    EXPECT_TRUE(help.contains("Check for Updates &Automatically"));
+    EXPECT_TRUE(help.contains("&Report Issue…"));
+    EXPECT_FALSE(window.Updates().State().blocked);
+
+    host.Post(arm_host::BringUp{});
+    ASSERT_TRUE(Eventually([this]()
+        {
+            return window.Presenter().State(simulator::Control::enable).enabled;
+        }));
+    host.Post(arm_host::Enable{});
+
+    EXPECT_TRUE(Eventually([this]()
+        {
+            return window.Updates().State().blocked;
+        }));
+}
