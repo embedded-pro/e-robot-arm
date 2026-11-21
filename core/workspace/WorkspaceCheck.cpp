@@ -56,9 +56,7 @@ namespace arm
     std::optional<WorkspaceViolation> WorkspaceCheck::Check(const JointPositions& joints) const
     {
         const auto frames = Chain(joints);
-        Capsules capsules{};
-        for (std::size_t link = 0; link != workspaceCapsules; ++link)
-            capsules[link] = selfCollision.LinkCapsule(frames, link);
+        const auto capsules = CapsulesOf(frames);
 
         if (const auto outside = OutsideWorkspace(capsules); outside.has_value())
             return outside;
@@ -74,7 +72,11 @@ namespace arm
 
     WorkspaceCheck::Capsules WorkspaceCheck::LinkCapsules(const JointPositions& joints) const
     {
-        const auto frames = Chain(joints);
+        return CapsulesOf(Chain(joints));
+    }
+
+    WorkspaceCheck::Capsules WorkspaceCheck::CapsulesOf(const Frames& frames) const
+    {
         Capsules capsules{};
         for (std::size_t link = 0; link != workspaceCapsules; ++link)
             capsules[link] = selfCollision.LinkCapsule(frames, link);
