@@ -150,11 +150,12 @@ jobs:
           persist-credentials: false
           submodules: recursive
       - name: Generate documentation PDFs and traceability matrix
-        uses: embedded-pro/project-documentation@e1b8b6866333964f2e02b29bba322cbee211819b # v0.2.0
+        uses: embedded-pro/project-documentation@ddd3e4db45b9c6d77c561a8edb197e5a568bae1a # v0.4.0
         with:
           run-build-documentation-pdfs: 'true'
           run-traceability-matrix: 'true'
           version: ${{ needs.release_please.outputs.tag_name }}
+          name-prefix: e_robot_arm
           output-dir: docs-pdf
           artifact-name: documentation-pdfs
           requirements-dir: documentation/requirements
@@ -183,12 +184,6 @@ jobs:
           merge-multiple: true
       - name: Remove host install package
         run: rm -f release-assets/e_robot_arm-0*.* release-assets/e_robot_arm-*-Linux.*
-      - name: Name the documentation PDFs after this project
-        run: |
-          for pdf in release-assets/e_foc-*.pdf; do
-            [ -f "$pdf" ] || continue
-            mv "$pdf" "release-assets/e_robot_arm-${pdf#release-assets/e_foc-}"
-          done
       - name: Upload release assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
