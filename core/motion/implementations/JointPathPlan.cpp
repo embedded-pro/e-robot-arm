@@ -1,28 +1,16 @@
 #include "core/motion/implementations/JointPathPlan.hpp"
+#include "core/arm_model/JointFrameMap.hpp"
 #include "numerical/math/Math.hpp"
+#include "numerical/math/MatrixNorms.hpp"
 #include <algorithm>
 
 namespace arm
 {
     namespace
     {
-        math::Vector<float, jointCount> ToVector(const JointPositions& positions)
-        {
-            math::Vector<float, jointCount> vector{};
-            for (std::size_t joint = 0; joint != jointCount; ++joint)
-                vector[joint] = positions[joint].Value();
-            return vector;
-        }
-
         float Chord(const JointPositions& from, const JointPositions& to)
         {
-            float squared{ 0.0f };
-            for (std::size_t joint = 0; joint != jointCount; ++joint)
-            {
-                const auto travel = to[joint].Value() - from[joint].Value();
-                squared += travel * travel;
-            }
-            return math::Sqrt(squared);
+            return math::VectorNorm(JointVector{ ToVector(to) - ToVector(from) });
         }
     }
 

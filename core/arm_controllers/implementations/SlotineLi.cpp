@@ -55,9 +55,7 @@ namespace arm
         const auto targetAccelerations = model.ModelAccelerations(reference.accelerations);
 
         auto torques = law.ComputeTorque(model.ModelVector(measured.positions), speeds, model.ModelVector(reference.positions), targetSpeeds, targetAccelerations);
-        const auto& rotors = drivenArm.Rotors();
-        for (std::size_t joint = 0; joint != jointCount; ++joint)
-            torques.at(joint, 0) += rotors[joint] * (targetAccelerations.at(joint, 0) - lambda * (speeds.at(joint, 0) - targetSpeeds.at(joint, 0)));
+        torques += Diagonal(drivenArm.Rotors()) * JointVector{ targetAccelerations - (speeds - targetSpeeds) * lambda };
         return JointSetpoints{ reference.positions, model.ToJointTorques(torques) };
     }
 }

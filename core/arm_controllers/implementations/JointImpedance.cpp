@@ -22,11 +22,8 @@ namespace arm
         for (std::size_t joint = 0; joint != jointCount; ++joint)
             weight[joint] = inertia.at(joint, joint) > 0.0f ? math::Sqrt(math::Sqrt(stiffness[joint] / inertia.at(joint, joint))) : 0.0f;
 
-        ArmModel::MassMatrix damping{};
-        for (std::size_t row = 0; row != jointCount; ++row)
-            for (std::size_t column = 0; column != jointCount; ++column)
-                damping.at(row, column) = 2.0f * dampingRatio * weight[row] * inertia.at(row, column) * weight[column];
-        return damping;
+        const auto w = Diagonal(weight);
+        return w * inertia * w * (2.0f * dampingRatio);
     }
 
     JointTorques Feedforward(const ArmModel& model, const MeasuredJoints& measured, const JointReference& reference)
@@ -73,16 +70,11 @@ namespace arm
 
     JointSetpoints JointImpedance::Step(const MeasuredJoints& measured, const JointReference& reference)
     {
-        auto torques = Feedforward(model, measured, reference);
-        const auto damping = Damping(measured.positions);
-        for (std::size_t joint = 0; joint != jointCount; ++joint)
-        {
-            auto torque = torques[joint].Value() + stiffness[joint] * (reference.positions[joint].Value() - measured.positions[joint].Value());
-            for (std::size_t other = 0; other != jointCount; ++other)
-                torque += damping.at(joint, other) * (reference.speeds[other].Value() - measured.speeds[other].Value());
-            torques[joint] = foc::NewtonMeter{ torque };
-        }
-        return JointSetpoints{ reference.positions, torques };
+        const JointVector positionError{ ToVector(reference.positions) - ToVector(measured.positions) };
+        const JointVector speedError{ ToVector(reference.speeds) - ToVector(measured.speeds) };
+        const JointVector torques{ ToVector(Feedforward(model, measured, reference)) + Diagonal(stiffness) * positionError +
+                                   Damping(measured.positions) * speedError };
+        return JointSetpoints{ reference.positions, FromVector<foc::NewtonMeter>(torques) };
     }
 
     void JointImpedance::Size()

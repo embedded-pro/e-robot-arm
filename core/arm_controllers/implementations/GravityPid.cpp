@@ -54,14 +54,9 @@ namespace arm
 
     JointSetpoints GravityPid::Step(const MeasuredJoints& measured, const JointReference& reference)
     {
-        const auto corrections = Corrections(measured, reference);
-        const auto inertia = drivenArm.JointMassMatrix(measured.positions);
-        auto torques = model.GravityTorque(measured.positions);
-        for (std::size_t row = 0; row != jointCount; ++row)
-            for (std::size_t column = 0; column != jointCount; ++column)
-                torques[row] = foc::NewtonMeter{ torques[row].Value() +
-                                                 inertia.at(row, column) * (reference.accelerations[column].Value() + corrections[column].Value()) };
-        return JointSetpoints{ reference.positions, torques };
+        const JointVector acceleration{ ToVector(reference.accelerations) + ToVector(Corrections(measured, reference)) };
+        const JointVector torques{ ToVector(model.GravityTorque(measured.positions)) + drivenArm.JointMassMatrix(measured.positions) * acceleration };
+        return JointSetpoints{ reference.positions, FromVector<foc::NewtonMeter>(torques) };
     }
 
     JointAccelerations GravityPid::Corrections(const MeasuredJoints& measured, const JointReference& reference)
