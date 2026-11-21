@@ -21,19 +21,19 @@ namespace arm
         }
     }
 
-    JointMatrix Diagonal(const JointValues& values)
+    JointVector ToVector(const JointValues& values)
     {
-        JointMatrix matrix{};
+        JointVector vector{};
         for (std::size_t joint = 0; joint != jointCount; ++joint)
-            matrix.at(joint, joint) = values[joint];
-        return matrix;
+            vector[joint] = values[joint];
+        return vector;
     }
 
-    JointValues DiagonalEntries(const JointMatrix& matrix)
+    JointValues ToValues(const JointVector& vector)
     {
         JointValues values{};
         for (std::size_t joint = 0; joint != jointCount; ++joint)
-            values[joint] = matrix.at(joint, joint);
+            values[joint] = vector[joint];
         return values;
     }
 
@@ -62,19 +62,11 @@ namespace arm
 
     JointMatrix JointFrameMap::FlipColumns(const JointMatrix& matrix) const
     {
-        auto flipped = matrix;
-        for (std::size_t row = 0; row != jointCount; ++row)
-            for (std::size_t column = 0; column != jointCount; ++column)
-                flipped.at(row, column) *= signs[column];
-        return flipped;
+        return math::ScaleColumns(matrix, signs);
     }
 
     JointMatrix JointFrameMap::Congruence(const JointMatrix& matrix) const
     {
-        auto flipped = FlipColumns(matrix);
-        for (std::size_t row = 0; row != jointCount; ++row)
-            for (std::size_t column = 0; column != jointCount; ++column)
-                flipped.at(row, column) *= signs[row];
-        return flipped;
+        return math::DiagonalCongruence(signs, matrix);
     }
 }
