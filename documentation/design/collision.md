@@ -53,9 +53,9 @@ differentiation, so it does not amplify noise. The gain also scales every timing
 integrates: at 50 /s a reading that arrives a few milliseconds off made the reference step of a tuning run read
 10 N·m on the shoulder of the virtual arm, at 25 /s it reads below 2 N·m.
 
-The dynamics are the arm model's ([arm-model.md](arm-model.md)): its links' mass, centre of mass and inertia,
-gravity, and each joint's reflected rotor inertia, the motor's inertia times the gear ratio squared, as the link's
-armature. The rotor inertia matters: on a 50:1 gear it is of the order of the links' own inertia, and an observer
+The dynamics are the driven arm's ([arm-model.md](arm-model.md) Part G): the arm model's links' mass, centre of
+mass and inertia, gravity, and each joint's reflected rotor inertia, the motor's inertia times the gear ratio squared,
+as the link's armature. The rotor inertia matters: on a 50:1 gear it is of the order of the links' own inertia, and an observer
 without it reads every acceleration as an external torque.
 
 ### Part B — When it runs

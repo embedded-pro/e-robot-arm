@@ -11,6 +11,7 @@
 #include "core/arm_controllers/implementations/JointImpedance.hpp"
 #include "core/arm_controllers/implementations/OperationalSpace.hpp"
 #include "core/arm_controllers/implementations/SlotineLi.hpp"
+#include "core/arm_model/DrivenArm.hpp"
 #include "core/collision/CollisionObserver.hpp"
 #include "core/control_loop/implementations/ControlLoopImpl.hpp"
 #include "core/joint_bus/implementations/JointBusImpl.hpp"
@@ -62,6 +63,7 @@ namespace arm
         JointConfiguratorImpl configurator;
         ArmLifecycleImpl lifecycle;
         ArmModel model;
+        DrivenArm drivenArm;
         WorkspaceCheck workspace;
         GravityCompensatedPd gravityPd;
         ComputedTorque computedTorque;

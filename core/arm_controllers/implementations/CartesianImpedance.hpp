@@ -2,8 +2,8 @@
 #define CORE_ARM_CONTROLLERS_IMPLEMENTATIONS_CARTESIAN_IMPEDANCE_HPP
 
 #include "core/arm_controllers/interfaces/ArmController.hpp"
-#include "core/arm_model/ArmModel.hpp"
 #include "core/arm_model/ArmTaskJacobian.hpp"
+#include "core/arm_model/DrivenArm.hpp"
 #include <array>
 
 namespace arm
@@ -21,7 +21,7 @@ namespace arm
         : public ArmController
     {
     public:
-        CartesianImpedance(const ArmModel& model, const JointInertias& rotors, const CartesianImpedanceTuning& tuning);
+        CartesianImpedance(const DrivenArm& drivenArm, const CartesianImpedanceTuning& tuning);
 
         bool SetStiffnessShare(float share);
         float StiffnessShare() const;
@@ -34,9 +34,9 @@ namespace arm
     private:
         void Size();
 
+        const DrivenArm& drivenArm;
         const ArmModel& model;
         ArmTaskJacobian provider;
-        JointInertias rotors;
         CartesianImpedanceTuning tuning;
         float share{ 1.0f };
         std::array<float, 6> stiffness{};
