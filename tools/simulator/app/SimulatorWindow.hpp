@@ -17,6 +17,8 @@
 #include "tools/simulator/view_models/SimulatorPresenter.hpp"
 #include "tools/simulator/view_models/TuningPresenter.hpp"
 #include "ui/backend/qt/QtAppShell.hpp"
+#include "ui/backend/qt/update/IssueLog.hpp"
+#include "ui/backend/qt/update/widgets/UpdateAssistant.hpp"
 #include <QByteArray>
 #include <QElapsedTimer>
 #include <QMainWindow>
@@ -48,6 +50,8 @@ namespace simulator
         MotorControllerPresenter& MotorController();
         MotorPresenter& Motor();
         TuningPresenter& Tuning();
+        ui::backend::qt::update::UpdateAssistant& Updates();
+        void StartUpdateChecks();
         const FrameStatistics& Frames() const;
         void LoadProfileFrom(const QString& path);
         void SaveProfileTo(const QString& path);
@@ -96,6 +100,9 @@ namespace simulator
         void ChooseVirtualArm();
         void ApplyMeshes(const MeshNames& names, const QString& directory);
         void NoteMesh(int node, const QString& problem);
+        void ShowNewestLog(std::size_t count);
+        void BuildHelpMenu();
+        void ConnectUpdates();
 
         arm_host::ArmHost& host;
         ui::backend::qt::QtAppShell shell;
@@ -146,6 +153,9 @@ namespace simulator
         QAction* commissioningAction{ nullptr };
         QTimer frameTimer;
         QByteArray defaultLayout;
+        ui::backend::qt::update::IssueLog issueLog;
+        ui::backend::qt::update::UpdateAssistant updates;
+        QAction* automaticUpdatesAction{ nullptr };
     };
 }
 

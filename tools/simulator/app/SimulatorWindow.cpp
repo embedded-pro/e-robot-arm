@@ -17,6 +17,7 @@
 #include <QLabel>
 #include <QMenuBar>
 #include <QMessageBox>
+#include <QProcess>
 #include <QPushButton>
 #include <QQmlEngine>
 #include <QQuickItem>
@@ -24,8 +25,10 @@
 #include <QQuickWindow>
 #include <QScrollArea>
 #include <QSettings>
+#include <QStandardPaths>
 #include <QStatusBar>
 #include <QToolBar>
+#include <QUrl>
 #include <QVBoxLayout>
 #include <QtGlobal>
 #include <cstdio>
@@ -36,6 +39,40 @@ namespace simulator
     namespace
     {
         constexpr ui::shell::ShellSpec shellSpec{ "e-robot-arm Simulator", { 1600.0f, 900.0f }, 420.0f, {}, "Ready" };
+
+        ui::backend::qt::update::UpdateProduct Product()
+        {
+            const QString version{ E_ROBOT_ARM_VERSION };
+            return { "e-robot-arm Simulator", "Simulator", version, QUrl{ "https://api.github.com/repos/embedded-pro/e-robot-arm/releases/latest" },
+                QUrl{ "https://github.com/embedded-pro/e-robot-arm/releases" }, QUrl{ "https://github.com/embedded-pro/e-robot-arm/issues/new" },
+                QByteArray{ "e-robot-arm-simulator/" } + version.toUtf8(), "Disable the arm" };
+        }
+
+        ui::backend::qt::update::IssueLog::Config IssueLogConfig()
+        {
+            ui::backend::qt::update::IssueLog::Config config;
+            config.directory = QDir{ QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) }.filePath("logs");
+            config.baseName = "simulator";
+            return config;
+        }
+
+        ui::backend::qt::update::IssueSeverity SeverityOf(LogLevel level)
+        {
+            switch (level)
+            {
+                case LogLevel::fault:
+                    return ui::backend::qt::update::IssueSeverity::error;
+                case LogLevel::warning:
+                    return ui::backend::qt::update::IssueSeverity::warning;
+                default:
+                    return ui::backend::qt::update::IssueSeverity::info;
+            }
+        }
+
+        LogLevel LevelOf(ui::backend::qt::update::IssueSeverity severity)
+        {
+            return severity == ui::backend::qt::update::IssueSeverity::info ? LogLevel::info : LogLevel::warning;
+        }
 
         QSettings Settings()
         {
@@ -114,6 +151,8 @@ namespace simulator
             {
                 presenter.EmergencyStop();
             } }
+        , issueLog{ IssueLogConfig() }
+        , updates{ Product(), *this }
     {
         setMinimumSize(1280, 720);
         ArmSceneState::Use(sceneState);
@@ -124,7 +163,13 @@ namespace simulator
         armView->setSource(QUrl{ "qrc:/Simulator/qml/ArmScene.qml" });
         EnableAmbientOcclusion();
         ShowFrameStatistics();
-        shell.SetContent(armView);
+        auto* content = new QWidget{ this };
+        auto* contentLayout = new QVBoxLayout{ content };
+        contentLayout->setContentsMargins(0, 0, 0, 0);
+        contentLayout->setSpacing(0);
+        contentLayout->addWidget(&updates.Banner());
+        contentLayout->addWidget(armView, 1);
+        shell.SetContent(content);
 
         addToolBar(Qt::TopToolBarArea, strip);
         addToolBarBreak(Qt::TopToolBarArea);
@@ -139,6 +184,7 @@ namespace simulator
         BuildDocks();
         BuildMenus();
         ConnectSignals();
+        ConnectUpdates();
         RestoreSettings();
         QTimer::singleShot(0, this, &SimulatorWindow::CaptureDefaultLayout);
 
@@ -270,7 +316,8 @@ namespace simulator
             scope->TriggerOnTrip();
         scope->Repaint();
 
-        logPanel->AppendNewest(events.size());
+        ShowNewestLog(events.size());
+        updates.SetBlocked(DrivesJoints(snapshot));
         sceneState.Update(presenter.Scene());
         simulationMenu->setEnabled(snapshot.targetReady && snapshot.disturbances.has_value());
         faultMenu->setEnabled(snapshot.disturbances.has_value() && snapshot.disturbances->injectFault);
@@ -296,7 +343,7 @@ namespace simulator
     {
         const auto joint = node == 0 ? arm_host::noJoint : static_cast<std::size_t>(node - 1);
         presenter.Note(LogLevel::warning, joint, (MeshNodeName(static_cast<std::size_t>(node)) + " mesh not loaded: " + problem).toStdString());
-        logPanel->AppendNewest(1);
+        ShowNewestLog(1);
     }
 
     void SimulatorWindow::UpdateVirtualMotors(const arm_host::ArmSnapshot& snapshot)
@@ -434,8 +481,77 @@ namespace simulator
         BuildSimulationMenu();
         BuildViewMenu();
 
+        BuildHelpMenu();
+    }
+
+    void SimulatorWindow::BuildHelpMenu()
+    {
         auto* help = menuBar()->addMenu("&Help");
+        help->addAction("Check for &Updates…", this, [this]()
+            {
+                updates.Check(true);
+            });
+        automaticUpdatesAction = help->addAction("Check for Updates &Automatically");
+        automaticUpdatesAction->setCheckable(true);
+        automaticUpdatesAction->setChecked(updates.Automatic());
+        connect(automaticUpdatesAction, &QAction::toggled, this, [this](bool automatic)
+            {
+                updates.SetAutomatic(automatic);
+            });
+        help->addAction("&Report Issue…", this, [this]()
+            {
+                ui::backend::qt::update::OpenIssueReport(Product(), issueLog, this);
+            });
+        help->addSeparator();
         help->addAction("&About", this, &SimulatorWindow::ShowAbout);
+    }
+
+    void SimulatorWindow::ConnectUpdates()
+    {
+        connect(&updates, &ui::backend::qt::update::UpdateAssistant::Report, this, [this](ui::backend::qt::update::IssueSeverity severity, const QString& message)
+            {
+                presenter.Note(LevelOf(severity), arm_host::noJoint, message.toStdString());
+                ShowNewestLog(1);
+            });
+        connect(&updates, &ui::backend::qt::update::UpdateAssistant::Checking, this, [this]()
+            {
+                statusBar()->showMessage("Checking for updates…", 5000);
+            });
+        connect(&updates, &ui::backend::qt::update::UpdateAssistant::RestartRequested, this, [this]()
+            {
+                close();
+                QApplication::quit();
+            });
+        connect(&updates, &ui::backend::qt::update::UpdateAssistant::RelaunchRequested, this, [this]()
+            {
+                if (!QProcess::startDetached(QCoreApplication::applicationFilePath(), {}))
+                {
+                    presenter.Note(LogLevel::warning, arm_host::noJoint, "Could not start the new version; restart the Simulator to use it");
+                    ShowNewestLog(1);
+                    return;
+                }
+                close();
+                QApplication::quit();
+            });
+    }
+
+    void SimulatorWindow::ShowNewestLog(std::size_t count)
+    {
+        logPanel->AppendNewest(count);
+        const auto& log = presenter.Log();
+        const auto& lines = log.Lines();
+        for (auto index = lines.size() - std::min(count, lines.size()); index < lines.size(); ++index)
+            issueLog.Write(SeverityOf(lines[index].level), QString::fromStdString(log.Format(lines[index])));
+    }
+
+    ui::backend::qt::update::UpdateAssistant& SimulatorWindow::Updates()
+    {
+        return updates;
+    }
+
+    void SimulatorWindow::StartUpdateChecks()
+    {
+        updates.StartAutomaticChecks();
     }
 
     void SimulatorWindow::BuildArmMenu()
@@ -933,7 +1049,7 @@ namespace simulator
     {
         const auto api = armView->quickWindow() != nullptr ? GraphicsApiName(armView->quickWindow()->rendererInterface()->graphicsApi()) : QString{ "unknown" };
         QMessageBox::about(this, "About e-robot-arm Simulator",
-            QString{ "e-robot-arm Simulator\n\nQt %1, rendering with %2." }.arg(qVersion(), api));
+            QString{ "e-robot-arm Simulator %1\n\nQt %2, rendering with %3." }.arg(E_ROBOT_ARM_VERSION, qVersion(), api));
     }
 
     void SimulatorWindow::RestoreSettings()

@@ -2,6 +2,7 @@ find_package(Qt6 6.4 REQUIRED COMPONENTS Gui Qml Quick QuickWidgets Quick3D Widg
 
 add_library(e_robot_arm.tool.simulator.app STATIC)
 set_target_properties(e_robot_arm.tool.simulator.app PROPERTIES AUTOMOC ON)
+target_compile_definitions(e_robot_arm.tool.simulator.app PRIVATE E_ROBOT_ARM_VERSION="${e_robot_arm_VERSION}")
 
 qt_add_qml_module(e_robot_arm.tool.simulator.app
     URI Simulator
@@ -47,6 +48,7 @@ target_link_libraries(e_robot_arm.tool.simulator.app PUBLIC
     e_robot_arm.tool.arm_host.adapters
     ui.backend.qt
     ui.backend.quick3d
+    ui.backend.qt.update_widgets
     ui.scope
     ui.charts
     Qt6::Gui

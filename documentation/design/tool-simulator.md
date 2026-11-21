@@ -2,7 +2,7 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.38.0
+version: 0.39.0
 component: "tool-simulator"
 date: 2026-11-20
 ---
@@ -12,7 +12,7 @@ date: 2026-11-20
 | Title     | Simulator Screen Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.38.0                  |
+| Version   | 0.39.0                  |
 | Component | tool-simulator          |
 | Date      | 2026-11-20              |
 
@@ -726,6 +726,30 @@ Part J), teaches the current pose under a name and moves to a chosen one through
 | Go To   | A point chosen; the arm Enabled or Moving                        | "Choose a point", "Not connected", "Tripped", "Holding: re-arm first", "Enable the arm first"           | Moves to the point       |
 
 ---
+
+### Part T — Updates and issue reports
+
+The Simulator updates itself from the e-robot-arm releases ([tool-installers.md](tool-installers.md)) and opens a
+prefilled issue, through ui-cpp's update widgets (`ui/backend/qt/update/widgets`), as the e-foc tools do.
+
+```text
+┌ e-robot-arm Simulator 0.3.0 is available — you have 0.2.0. [Install Update…] [Release Notes] [Skip This Version] [Later] ┐
+│                                  3-D arm view                                                                            │
+```
+
+- **Banner** above the 3-D view, hidden while no update is offered: the offer, the download with its progress, the
+  verified download, the install and a failure with its reason. A portable or unsupported installation offers the
+  installer download instead of installing.
+- **Installing closes the Simulator**, so it waits while the arm drives its joints (enabling, enabled, moving or
+  disabling): the banner says "Disable the arm to install it" and Install and Restart is disabled until then. The
+  confirmation before downloading says the same.
+- **Help menu:** *Check for Updates…* (answers in a dialog: up to date, or why the check failed), *Check for Updates
+  Automatically* (checked by default; once at start and then daily; remembered), *Report Issue…* and *About*.
+- **Skip This Version** stops automatic checks from offering that release again; a check from the menu still does.
+- **Log:** every check, offer, download, install and failure is a line in the event log and in a log file kept for
+  issue reports (`logs/simulator.log` under the application data, rotated at 1 MB, three files kept).
+- **Report Issue…** opens the e-robot-arm new-issue page with the Simulator's version, the operating system, Qt and
+  the last lines of that log, and names the log file to attach; without a browser it says where to report instead.
 
 ## Interfaces
 

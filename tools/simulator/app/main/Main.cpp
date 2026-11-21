@@ -41,6 +41,7 @@ int main(int argc, char* argv[])
     arm_host::ArmHost host{ profile, opener, {} };
     simulator::SimulatorWindow window{ host, profile.config.positionLimits, start };
     window.show();
+    window.StartUpdateChecks();
 
     return QApplication::exec();
 }
