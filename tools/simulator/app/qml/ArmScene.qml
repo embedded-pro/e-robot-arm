@@ -10,12 +10,48 @@ Item {
     id: root
 
     property real pulse
+    property bool framePending: true
 
     SequentialAnimation on pulse {
         running: ArmSceneState.anyFault
         loops: Animation.Infinite
         NumberAnimation { from: 0.1; to: 0.9; duration: 600; easing.type: Easing.InOutSine }
         NumberAnimation { from: 0.9; to: 0.1; duration: 600; easing.type: Easing.InOutSine }
+    }
+
+    component Entry: Row {
+        id: entry
+        property string label
+        property color tone
+        property bool line: true
+        property real swatchOpacity: 1.0
+        spacing: 6
+        Item {
+            width: 18
+            height: 12
+            Rectangle {
+                anchors.verticalCenter: parent.verticalCenter
+                width: parent.width
+                height: entry.line ? 2 : parent.height
+                radius: entry.line ? 0 : 2
+                color: entry.tone
+                opacity: entry.swatchOpacity
+                border.color: entry.line ? "transparent" : Qt.darker(entry.tone, 1.6)
+                border.width: entry.line ? 0 : 1
+            }
+        }
+        Text {
+            text: entry.label
+            color: ArmSceneState.textColor
+            font.pixelSize: 11
+        }
+    }
+
+    function frameWhenSized() {
+        if (studio.width > 0 && studio.height > 0 && ArmSceneState.extent > 0) {
+            root.framePending = false
+            studio.frame()
+        }
     }
 
     StudioView {
@@ -25,11 +61,32 @@ Item {
         focus: true
 
         extent: ArmSceneState.extent
+        bounds: ArmSceneState.frameBounds
+        orthographic: ArmSceneState.orthographic
         backgroundColor: ArmSceneState.backgroundColor
         floorColor: ArmSceneState.floorColor
         gridColor: ArmSceneState.gridColor
+        gizmoTextColor: "#ffffff"
+        gizmoAxes: [
+            { label: "X", direction: Qt.vector3d(1, 0, 0), color: "#e53935" },
+            { label: "Y", direction: Qt.vector3d(0, 0, -1), color: "#43a047" },
+            { label: "Z", direction: Qt.vector3d(0, 1, 0), color: "#1e88e5" }
+        ]
+
+        onWidthChanged: if (root.framePending) root.frameWhenSized()
+        onHeightChanged: if (root.framePending) root.frameWhenSized()
 
         onPicked: (result) => ArmSceneState.Pick(result.objectHit && result.objectHit.joint !== undefined ? result.objectHit.joint : -1)
+
+        Keys.onPressed: (event) => {
+            if (event.key === Qt.Key_O) {
+                ArmSceneState.orthographic = !ArmSceneState.orthographic
+                event.accepted = true
+            } else if (event.key === Qt.Key_J) {
+                ArmSceneState.RequestFocusSelected()
+                event.accepted = true
+            }
+        }
 
         ArmModel {
             id: measuredArm
@@ -45,7 +102,7 @@ Item {
 
         Node {
             objectName: "toolTriad"
-            visible: ArmSceneState.trail.length > 0
+            visible: ArmSceneState.showFrames && ArmSceneState.trail.length > 0
             position: ArmSceneState.toolPosition
             rotation: ArmSceneState.toolRotation
 
@@ -56,7 +113,7 @@ Item {
 
         Model {
             objectName: "toolTrail"
-            visible: ArmSceneState.trail.length > 1
+            visible: ArmSceneState.showTrail && ArmSceneState.trail.length > 1
             castsShadows: false
             receivesShadows: false
             pickable: false
@@ -65,13 +122,13 @@ Item {
             }
             materials: DefaultMaterial {
                 lighting: DefaultMaterial.NoLighting
-                diffuseColor: ArmSceneState.accentColor
+                diffuseColor: ArmSceneState.trailColor
             }
         }
 
         Node {
             objectName: "targetMarker"
-            visible: ArmSceneState.targetVisible
+            visible: ArmSceneState.showFrames && ArmSceneState.targetVisible
             position: ArmSceneState.targetPosition
             rotation: ArmSceneState.targetRotation
 
@@ -82,7 +139,7 @@ Item {
 
         Model {
             objectName: "limitArc"
-            visible: ArmSceneState.limitArc.length > 1
+            visible: ArmSceneState.showLimits && ArmSceneState.limitArc.length > 1
             castsShadows: false
             receivesShadows: false
             pickable: false
@@ -91,7 +148,22 @@ Item {
             }
             materials: DefaultMaterial {
                 lighting: DefaultMaterial.NoLighting
-                diffuseColor: ArmSceneState.accentColor
+                diffuseColor: ArmSceneState.selectionColor
+            }
+        }
+
+        Model {
+            objectName: "selectionRing"
+            visible: ArmSceneState.selectionRing.length > 1
+            castsShadows: false
+            receivesShadows: false
+            pickable: false
+            geometry: PolylineGeometry {
+                points: ArmSceneState.selectionRing
+            }
+            materials: DefaultMaterial {
+                lighting: DefaultMaterial.NoLighting
+                diffuseColor: ArmSceneState.selectionColor
             }
         }
 
@@ -103,6 +175,7 @@ Item {
                 required property var modelData
 
                 objectName: box.modelData.zone ? "forbiddenZone" : "workspaceBox"
+                visible: ArmSceneState.showWorkspace || box.modelData.violated
                 readonly property color tone: box.modelData.violated ? ArmSceneState.faultColor
                                                                      : (box.modelData.zone ? ArmSceneState.warningColor : ArmSceneState.gridColor)
 
@@ -140,10 +213,88 @@ Item {
 
         ArmModel {
             id: ghostArm
-            visible: ArmSceneState.ghostVisible
+            objectName: "ghostArm"
+            visible: ArmSceneState.showGhost && ArmSceneState.ghostVisible
             ghost: true
             nodes: ArmSceneState.commandedNodes
             accentColor: ArmSceneState.accentColor
+        }
+    }
+
+    Rectangle {
+        id: jointLabel
+        objectName: "jointLabel"
+
+        readonly property vector3d screen: {
+            studio.pivot.position
+            studio.pivot.eulerRotation
+            studio.camera.position
+            studio.orthographic
+            studio.width
+            studio.height
+            if (ArmSceneState.selectionText.length === 0 || !studio.view.camera)
+                return Qt.vector3d(0, 0, -1)
+            return studio.view.mapFrom3DScene(ArmSceneState.selectionAnchor)
+        }
+        readonly property real gap: 14
+
+        visible: ArmSceneState.selectionText.length > 0 && jointLabel.screen.z > 0
+        enabled: false
+        x: Math.max(8, Math.min(root.width - width - 8, jointLabel.screen.x + jointLabel.gap))
+        y: Math.max(8, Math.min(root.height - height - 8, jointLabel.screen.y - height - jointLabel.gap))
+        width: labelText.implicitWidth + 16
+        height: labelText.implicitHeight + 8
+        radius: 3
+        color: Qt.rgba(ArmSceneState.panelColor.r, ArmSceneState.panelColor.g, ArmSceneState.panelColor.b, 0.88)
+        border.color: ArmSceneState.selectionColor
+        border.width: 1
+
+        Accessible.role: Accessible.StaticText
+        Accessible.name: ArmSceneState.selectionText
+
+        Text {
+            id: labelText
+            anchors.centerIn: parent
+            text: ArmSceneState.selectionText
+            color: ArmSceneState.textColor
+            font.family: "monospace"
+            font.pixelSize: 12
+        }
+    }
+
+    Rectangle {
+        id: legend
+        objectName: "legend"
+        visible: ArmSceneState.showLegend
+        enabled: false
+        anchors.left: parent.left
+        anchors.bottom: parent.bottom
+        anchors.margins: 12
+        width: legendRows.implicitWidth + 16
+        height: legendRows.implicitHeight + 12
+        radius: 4
+        color: Qt.rgba(ArmSceneState.panelColor.r, ArmSceneState.panelColor.g, ArmSceneState.panelColor.b, 0.82)
+
+        Accessible.role: Accessible.Grouping
+        Accessible.name: qsTr("3-D view legend")
+
+        Column {
+            id: legendRows
+            x: 8
+            y: 6
+            spacing: 3
+
+            Entry { label: qsTr("Measured arm"); tone: "#f2f4f7"; line: false }
+            Entry { visible: ArmSceneState.showGhost; label: qsTr("Commanded arm (ghost)"); tone: ArmSceneState.accentColor; line: false; swatchOpacity: 0.35 }
+            Entry { visible: ArmSceneState.showTrail; label: qsTr("Tool trail"); tone: ArmSceneState.trailColor }
+            Entry { visible: ArmSceneState.showLimits; label: qsTr("Selected joint and its limits"); tone: ArmSceneState.selectionColor }
+            Entry { visible: ArmSceneState.showFrames; label: qsTr("Tool and target frames (x, y, z)"); tone: "#e53935" }
+            Text {
+                text: qsTr("Grid %1 cm%2").arg(studio.gridSpacing).arg(ArmSceneState.orthographic ? qsTr(" · orthographic") : "")
+                color: ArmSceneState.textColor
+                opacity: 0.8
+                font.pixelSize: 11
+            }
         }
     }
 
@@ -160,6 +311,14 @@ Item {
         target: ArmSceneState
         function onCameraPresetRequested(preset) {
             studio.showPreset(preset)
+        }
+        function onFrameRequested() {
+            root.framePending = true
+            root.frameWhenSized()
+        }
+        function onFocusSelectedRequested() {
+            if (ArmSceneState.selectionText.length > 0)
+                studio.focusOn(ArmSceneState.selectionAnchor)
         }
     }
 }

@@ -365,3 +365,80 @@ TEST_F(ArmSceneModelTest, a_selected_joint_shows_an_arc_over_its_range_around_it
     scene.Update(snapshot);
     EXPECT_TRUE(scene.LimitArc().empty());
 }
+
+TEST_F(ArmSceneModelTest, a_selected_joint_shows_a_closed_ring_around_its_axis_and_a_label_with_its_measured_value)
+{
+    auto snapshot = simulator::test::Running();
+    snapshot.readings[0].position = foc::Radians{ 0.35f };
+    scene.Update(snapshot);
+    EXPECT_TRUE(scene.SelectionRing().empty());
+    EXPECT_FALSE(scene.Selection().has_value());
+
+    ASSERT_TRUE(scene.Select(0));
+    scene.Update(snapshot);
+
+    const auto& ring = scene.SelectionRing();
+    ASSERT_EQ(simulator::ArmSceneModel::selectionRingPoints, ring.size());
+    const auto& centre = scene.MeasuredNodes()[1].position;
+    const auto radius = simulator::ArmSceneModel::selectionRingShare * scene.Extent();
+    for (const auto& point : ring)
+    {
+        EXPECT_NEAR(radius, std::hypot(point[0] - centre[0], point[2] - centre[2]), 1.0e-2f);
+        EXPECT_NEAR(centre[1], point[1], 1.0e-3f);
+    }
+    EXPECT_NEAR(ring.front()[0], ring.back()[0], 1.0e-3f);
+    EXPECT_NEAR(ring.front()[2], ring.back()[2], 1.0e-3f);
+
+    ASSERT_TRUE(scene.Selection().has_value());
+    EXPECT_EQ("J1 · measured 0.35 rad", scene.Selection()->text);
+    EXPECT_EQ(centre, scene.Selection()->anchor);
+
+    scene.ClearSelection();
+    scene.Update(snapshot);
+    EXPECT_TRUE(scene.SelectionRing().empty());
+    EXPECT_FALSE(scene.Selection().has_value());
+}
+
+TEST_F(ArmSceneModelTest, the_selection_label_adds_the_commanded_value_while_the_ghost_shows)
+{
+    auto snapshot = simulator::test::Running();
+    snapshot.readings[1].position = foc::Radians{ 0.10f };
+    snapshot.commanded = arm::JointPositions{};
+    for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+        snapshot.commanded->at(joint) = snapshot.readings[joint].position;
+    snapshot.commanded->at(1) = foc::Radians{ 0.50f };
+    ASSERT_TRUE(scene.Select(1));
+
+    scene.Update(snapshot);
+
+    ASSERT_TRUE(scene.GhostVisible());
+    ASSERT_TRUE(scene.Selection().has_value());
+    EXPECT_EQ("J2 · measured 0.10 rad · commanded 0.50 rad", scene.Selection()->text);
+}
+
+TEST_F(ArmSceneModelTest, the_frame_bounds_hold_every_link_and_the_tool_and_follow_the_pose)
+{
+    auto snapshot = simulator::test::Running();
+    scene.Update(snapshot);
+
+    const auto inside = [this](const std::array<float, 3>& point)
+    {
+        const auto& bounds = scene.FrameBounds();
+        for (std::size_t axis = 0; axis != 3; ++axis)
+            if (point[axis] < bounds.min[axis] - 1.0e-3f || point[axis] > bounds.max[axis] + 1.0e-3f)
+                return false;
+        return true;
+    };
+    for (const auto& node : scene.MeasuredNodes())
+        EXPECT_TRUE(inside(node.position));
+    EXPECT_TRUE(inside(scene.ToolNode().position));
+    const auto folded = scene.FrameBounds();
+
+    snapshot.readings[1].position = foc::Radians{ std::numbers::pi_v<float> / 2.0f };
+    scene.Update(snapshot);
+
+    EXPECT_TRUE(inside(scene.ToolNode().position));
+    EXPECT_NE(folded, scene.FrameBounds());
+    for (std::size_t axis = 0; axis != 3; ++axis)
+        EXPECT_LT(scene.FrameBounds().min[axis], scene.FrameBounds().max[axis]);
+}

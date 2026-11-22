@@ -8,6 +8,7 @@
 #include <array>
 #include <deque>
 #include <optional>
+#include <string>
 #include <vector>
 
 namespace simulator
@@ -20,8 +21,27 @@ namespace simulator
         static constexpr float trailSpacingCentimetres{ 0.2f };
         static constexpr std::size_t limitArcPoints{ 33 };
         static constexpr float limitArcShare{ 0.08f };
+        static constexpr std::size_t selectionRingPoints{ 49 };
+        static constexpr float selectionRingShare{ 0.045f };
+        static constexpr float toolFrameShare{ 0.12f };
         using Trail = std::deque<std::array<float, 3>>;
         using BoxList = std::vector<SceneBox>;
+
+        struct Bounds
+        {
+            std::array<float, 3> min{};
+            std::array<float, 3> max{};
+
+            bool operator==(const Bounds& other) const = default;
+        };
+
+        struct SelectionLabel
+        {
+            std::string text;
+            std::array<float, 3> anchor{};
+
+            bool operator==(const SelectionLabel& other) const = default;
+        };
 
         void Update(const arm_host::ArmSnapshot& snapshot);
         void SetTarget(const std::optional<arm::JointPositions>& joints);
@@ -47,6 +67,10 @@ namespace simulator
         const std::vector<std::array<float, 3>>& LimitArc() const;
         uint32_t LimitArcRevision() const;
         uint32_t BoxesRevision() const;
+        const Bounds& FrameBounds() const;
+        const std::vector<std::array<float, 3>>& SelectionRing() const;
+        uint32_t SelectionRingRevision() const;
+        const std::optional<SelectionLabel>& Selection() const;
 
     private:
         void UpdateNodes(const arm_host::ArmSnapshot& snapshot);
@@ -54,6 +78,8 @@ namespace simulator
         void UpdateBoxes(const arm_host::ArmSnapshot& snapshot);
         void UpdateTarget(const arm::ArmModel& model, bool live);
         void UpdateLimitArc(const arm::ArmModel& model, const arm_host::ArmSnapshot& snapshot, const arm::JointPositions& measuredJoints);
+        void UpdateSelection(const arm::ArmModel& model, const arm_host::ArmSnapshot& snapshot, const arm::JointPositions& measuredJoints);
+        void UpdateBounds();
 
         std::array<float, arm::jointCount> measured{};
         std::array<float, arm::jointCount> commanded{};
@@ -76,5 +102,9 @@ namespace simulator
         std::vector<std::array<float, 3>> limitArc;
         uint32_t limitArcRevision{ 0 };
         uint32_t boxesRevision{ 0 };
+        Bounds frameBounds{};
+        std::vector<std::array<float, 3>> selectionRing;
+        uint32_t selectionRingRevision{ 0 };
+        std::optional<SelectionLabel> selection;
     };
 }

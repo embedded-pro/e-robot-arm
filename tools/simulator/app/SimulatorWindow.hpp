@@ -72,6 +72,7 @@ namespace simulator
         void ChooseCommissioning(bool on);
         void BuildSimulationMenu();
         void BuildViewMenu();
+        void BuildOverlaysMenu(QMenu& menu);
         void ConnectSignals();
         void ConnectJog();
         void ConnectTeach();
