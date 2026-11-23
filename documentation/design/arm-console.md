@@ -115,12 +115,12 @@ simulated joints in the process with no CAN at all.
 
 **Command outcomes.** Every line ends in exactly one outcome, and the console keeps them apart:
 
-| Outcome   | When                                                                                                | Printed                        |
-|-----------|-----------------------------------------------------------------------------------------------------|--------------------------------|
-| succeeded | A local command ran (`status`, `pose`, a `save` that wrote its file…) or the arm accepted a posted one | its output, or `ok`            |
-| failed    | A malformed or unknown command, a name that does not exist, a file that cannot be read or written   | the usage line or the reason   |
-| refused   | The arm answered the posted command with a refusal                                                  | `refused: <reason>`            |
-| no answer | The arm did not answer within 2 s                                                                   | `no answer in 2 s: <command>`  |
+| Outcome   | When                                                                                                   | Printed                       |
+|-----------|--------------------------------------------------------------------------------------------------------|-------------------------------|
+| succeeded | A local command ran (`status`, `pose`, a `save` that wrote its file…) or the arm accepted a posted one | its output, or `ok`           |
+| failed    | A malformed or unknown command, a name that does not exist, a file that cannot be read or written      | the usage line or the reason  |
+| refused   | The arm answered the posted command with a refusal                                                     | `refused: <reason>`           |
+| no answer | The arm did not answer within 2 s                                                                      | `no answer in 2 s: <command>` |
 
 An answer that comes after its 2 s is dropped, and every answer is forgotten once read, so the console's memory does
 not grow with the session.
@@ -147,7 +147,7 @@ first line that fails, is refused or gets no answer, and at a `wait` that fails.
 with status 0. A start-up failure (options, profile, virtual arm) exits with status 1 in both modes.
 
 ```text
-$ printf 'bringup\nwait ready\nenable\nwait enabled\nmove 0 0.5 0 0 0 0\nwait 10\nstatus\n' | e-robot-arm-console --bus simulated --batch
+printf 'bringup\nwait ready\nenable\nwait enabled\nmove 0 0.5 0 0 0 0\nwait 10\nstatus\n' | e-robot-arm-console --bus simulated --batch
 ```
 
 For a `virtual:` bus the host runs can-lite's virtual CAN hub, or joins the one already running when another process
