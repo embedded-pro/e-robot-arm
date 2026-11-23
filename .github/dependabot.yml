@@ -19,7 +19,9 @@ updates:
           - patch
           - minor
   - package-ecosystem: docker
-    directory: .devcontainer
+    directories:
+      - .devcontainer
+      - .devcontainer/simulator
     schedule:
       interval: daily
   - package-ecosystem: gitsubmodule
