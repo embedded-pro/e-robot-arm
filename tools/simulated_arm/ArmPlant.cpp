@@ -37,7 +37,12 @@ namespace simulation
         if (!driven || now - simulated > longestCatchUp)
             simulated = driven ? now - longestCatchUp : now;
         for (; simulated + step <= now; simulated += step)
-            dynamics.Step(torques, arm::JointTorques{}, stepSeconds);
+            dynamics.Step(torques, external, stepSeconds);
+    }
+
+    void ArmPlant::Push(std::size_t joint, foc::NewtonMeter torque)
+    {
+        external[joint] = torque;
     }
 
     foc::Radians ArmPlant::MotorPosition(std::size_t joint) const

@@ -38,4 +38,10 @@ namespace simulation
     {
         return hardwareStop;
     }
+
+    void SimulatedArm::Push(std::size_t joint, foc::NewtonMeter torque)
+    {
+        if (plant)
+            plant->Push(joint, torque);
+    }
 }

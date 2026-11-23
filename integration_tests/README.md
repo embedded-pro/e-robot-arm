@@ -36,13 +36,25 @@ ctest --preset host -R e_robot_arm.integration_tests
 
 ## The arm scenarios
 
-`arm.feature` runs the real `arm::Arm` (joint bus, safety supervisor, joint motion, control loop) against six
-`SimulatedJoint`s on one in-process `VirtualCanBus`, from `tools/simulated_arm/` (shared with the simulator and the
-console). Each simulated joint is a node built on e-foc-protocol's `FocMotorCategoryServer`: it answers contract
-queries, telemetry requests and commands as an e-foc node does. The scenarios give it no lag, so it follows its
-position setpoints exactly. A scenario can make a joint fault or go silent. Time is the test clock
-(`infra::ClockFixture`), so the scenarios are deterministic and run in milliseconds. Each scenario is tagged with
-the requirement it verifies (`documentation/requirements/arm/arm.yaml`).
+The features in `features/` run the real `arm::Arm` (joint bus, safety supervisor, joint motion, arm controllers,
+control loop) against six `SimulatedJoint`s on one in-process `VirtualCanBus`, from `tools/simulated_arm/` (shared with
+the simulator and the console). Each simulated joint is a node built on e-foc-protocol's `FocMotorCategoryServer`: it
+answers contract queries, telemetry requests and commands as an e-foc node does.
+
+The joints run in **torque mode**. They do not follow position setpoints: the arm's controller (`gravity-pd` unless a
+scenario selects another) closes the position loop on the host and sends torques, and the six joints move together
+through the arm model's dynamics, under gravity, in 1 ms steps (`ArmPlant`). So a measured joint trails its command
+while it accelerates, holds against gravity with a torque of its own, and can be pushed: a scenario can apply an
+external torque to a joint (`SimulatedArm::Push`), make a joint fault or make it go silent. Time is the test clock
+(`infra::ClockFixture`), so the scenarios are deterministic and run in milliseconds.
+
+| Model                         | Used by                                     | What it supports                                                        |
+|-------------------------------|---------------------------------------------|-------------------------------------------------------------------------|
+| Simulated joints, torque mode | `features/` (in-process, ctest)             | Lifecycle, motion, supervision, controllers, the model, profile reading |
+| e-foc virtual motors, 50:1    | `virtual/features/` (real time, own CI job) | The motor firmware's own loops, gearing and plant, collisions, silence  |
+
+Each scenario is tagged with the requirement it verifies (`documentation/requirements/*/`); every declared
+requirement has at least one tagged scenario.
 
 ## The virtual arm scenarios
 

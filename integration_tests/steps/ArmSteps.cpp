@@ -124,6 +124,8 @@ THEN(R"(the arm shall start every joint in torque mode)")
 WHEN(R"(the arm moves the joints to {float}, {float}, {float}, {float}, {float}, {float} rad)", (float q1, float q2, float q3, float q4, float q5, float q6))
 {
     auto& fixture = context.Get<ArmFixture>();
+    for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+        fixture.start[joint] = fixture.arm.Safety().Reading(joint).position;
     fixture.target = Positions(q1, q2, q3, q4, q5, q6);
     fixture.movesDoneBefore = fixture.events.movesDone;
     fixture.lastAccepted = fixture.arm.Lifecycle().MoveTo(fixture.target);

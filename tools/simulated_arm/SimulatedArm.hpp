@@ -23,6 +23,7 @@ namespace simulation
         SimulatedJoint& Joint(std::size_t index);
         bool Idle() const;
         SimulatedHardwareStop& HardwareStop();
+        void Push(std::size_t joint, foc::NewtonMeter torque);
 
     private:
         VirtualCanBus bus;
