@@ -209,7 +209,7 @@ namespace samples
             if (part.faces.empty())
                 continue;
             part.Finish();
-            primitives.push_back({ MaterialOf(static_cast<Finish>(finish)), ui::stage::Shade(part, creaseAngleDegrees) });
+            primitives.emplace_back(MaterialOf(static_cast<Finish>(finish)), ui::stage::Shade(part, creaseAngleDegrees));
         }
         return primitives;
     }
@@ -228,11 +228,11 @@ namespace samples
         const auto profile = SampleProfile();
         std::vector<SampleFile> files;
         for (std::size_t node = 0; node != arm::meshCount; ++node)
-            files.push_back({ std::string{ arm::meshNames[node] } + ".gltf", WriteGltf(arm::meshNames[node], SampleNodeMeshes(profile.config.geometry, node)) });
+            files.emplace_back(std::string{ arm::meshNames[node] } + ".gltf", WriteGltf(arm::meshNames[node], SampleNodeMeshes(profile.config.geometry, node)));
 
         infra::StdStringOutputStream::WithStorage stream;
         arm::WriteArmProfile(profile, stream);
-        files.push_back({ "profile.json", stream.Storage() });
+        files.emplace_back("profile.json", stream.Storage());
         return files;
     }
 }

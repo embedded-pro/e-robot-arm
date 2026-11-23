@@ -3,6 +3,7 @@
 #include <bit>
 #include <charconv>
 #include <cstdint>
+#include <format>
 #include <limits>
 
 namespace samples
@@ -102,26 +103,29 @@ namespace samples
                     });
 
                 const auto first = accessors.size();
-                accessors.push_back(Accessor(positions, floatComponent, mesh.vertices.size(), "VEC3") + ", \"min\": " + Vector(bounds.min) + ", \"max\": " + Vector(bounds.max) + " }");
-                accessors.push_back(Accessor(normals, floatComponent, mesh.vertices.size(), "VEC3") + " }");
-                accessors.push_back(Accessor(indices, unsignedIntComponent, mesh.indices.size(), "SCALAR") + " }");
+                accessors.emplace_back(std::format(R"({}, "min": {}, "max": {} }})", Accessor(positions, floatComponent, mesh.vertices.size(), "VEC3"), Vector(bounds.min), Vector(bounds.max)));
+                accessors.emplace_back(Accessor(normals, floatComponent, mesh.vertices.size(), "VEC3") + " }");
+                accessors.emplace_back(Accessor(indices, unsignedIntComponent, mesh.indices.size(), "SCALAR") + " }");
 
-                primitives.push_back("{ \"attributes\": { \"POSITION\": " + std::to_string(first) + ", \"NORMAL\": " + std::to_string(first + 1) +
-                                     " }, \"indices\": " + std::to_string(first + 2) + ", \"material\": " + std::to_string(index) + ", \"mode\": 4 }");
-                materials.push_back(Material(primitive.material));
+                primitives.emplace_back(std::format(R"({{ "attributes": {{ "POSITION": {}, "NORMAL": {} }}, "indices": {}, "material": {}, "mode": 4 }})", first, first + 1, first + 2, index));
+                materials.emplace_back(Material(primitive.material));
             }
 
             std::string Text(const std::string& nodeName) const
             {
-                std::string text{ "{\n  \"asset\": { \"version\": \"2.0\", \"generator\": \"e-robot-arm-sample-meshes\" },\n" };
-                text += "  \"scene\": 0,\n  \"scenes\": [ { \"nodes\": [ 0 ] } ],\n";
-                text += "  \"nodes\": [ { \"name\": \"" + nodeName + "\", \"mesh\": 0 } ],\n";
-                text += "  \"meshes\": [ { \"name\": \"" + nodeName + "\", \"primitives\": " + List(primitives) + " } ],\n";
-                text += "  \"materials\": " + List(materials) + ",\n";
-                text += "  \"accessors\": " + List(accessors) + ",\n";
-                text += "  \"bufferViews\": " + List(views) + ",\n";
-                text += "  \"buffers\": [ { \"byteLength\": " + std::to_string(buffer.size()) + ", \"uri\": \"data:application/octet-stream;base64," + Base64(buffer) + "\" } ]\n}\n";
-                return text;
+                return std::format(R"({{
+  "asset": {{ "version": "2.0", "generator": "e-robot-arm-sample-meshes" }},
+  "scene": 0,
+  "scenes": [ {{ "nodes": [ 0 ] }} ],
+  "nodes": [ {{ "name": "{0}", "mesh": 0 }} ],
+  "meshes": [ {{ "name": "{0}", "primitives": {1} }} ],
+  "materials": {2},
+  "accessors": {3},
+  "bufferViews": {4},
+  "buffers": [ {{ "byteLength": {5}, "uri": "data:application/octet-stream;base64,{6}" }} ]
+}}
+)",
+                    nodeName, List(primitives), List(materials), List(accessors), List(views), buffer.size(), Base64(buffer));
             }
 
         private:
@@ -130,20 +134,20 @@ namespace samples
             {
                 const auto offset = buffer.size();
                 fill(buffer);
-                views.push_back("{ \"buffer\": 0, \"byteOffset\": " + std::to_string(offset) + ", \"byteLength\": " + std::to_string(length) + ", \"target\": " + std::to_string(target) + " }");
+                views.emplace_back(std::format(R"({{ "buffer": 0, "byteOffset": {}, "byteLength": {}, "target": {} }})", offset, length, target));
                 return views.size() - 1;
             }
 
             static std::string Accessor(std::size_t view, uint32_t component, std::size_t count, const char* type)
             {
-                return "{ \"bufferView\": " + std::to_string(view) + ", \"componentType\": " + std::to_string(component) + ", \"count\": " + std::to_string(count) + ", \"type\": \"" + type + "\"";
+                return std::format(R"({{ "bufferView": {}, "componentType": {}, "count": {}, "type": "{}")", view, component, count, type);
             }
 
             static std::string Material(const GltfMaterial& material)
             {
                 const auto& c = material.linearColour;
-                return "{ \"name\": \"" + material.name + "\", \"pbrMetallicRoughness\": { \"baseColorFactor\": [" + Number(c[0]) + ", " + Number(c[1]) + ", " + Number(c[2]) +
-                       ", 1], \"metallicFactor\": " + Number(material.metallic) + ", \"roughnessFactor\": " + Number(material.roughness) + " } }";
+                return std::format(R"({{ "name": "{}", "pbrMetallicRoughness": {{ "baseColorFactor": [{}, {}, {}, 1], "metallicFactor": {}, "roughnessFactor": {} }} }})", material.name, Number(c[0]),
+                    Number(c[1]), Number(c[2]), Number(material.metallic), Number(material.roughness));
             }
 
             static std::string List(const std::vector<std::string>& items)
