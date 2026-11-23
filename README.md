@@ -38,10 +38,10 @@ See the [system architecture](documentation/architecture/system.md) for the plan
 
 The repository has two Dev Containers. Select one when you open the folder:
 
-| Dev Container                       | For                                         | Host access                                       |
-|-------------------------------------|---------------------------------------------|---------------------------------------------------|
-| `.devcontainer/` (default)          | Boards, debug probes, CAN adapters          | Privileged, with the host's Docker socket         |
-| `.devcontainer/simulator/`          | The simulator, the console, the host tests  | None: no privileged mode, no Docker socket        |
+| Dev Container              | For                                        | Host access                                |
+|----------------------------|--------------------------------------------|--------------------------------------------|
+| `.devcontainer/` (default) | Boards, debug probes, CAN adapters         | Privileged, with the host's Docker socket  |
+| `.devcontainer/simulator/` | The simulator, the console, the host tests | None: no privileged mode, no Docker socket |
 
 The simulator Dev Container adds Qt Quick 3D and Mesa's software renderer
 ([install-qt-quick3d.sh](.devcontainer/simulator/install-qt-quick3d.sh), also used by CI). Its window needs an X
