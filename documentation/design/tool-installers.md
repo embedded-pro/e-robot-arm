@@ -2,7 +2,7 @@
 title: "Tool Installers"
 type: design
 status: draft
-version: 0.2.1
+version: 0.3.0
 component: "tool-installers"
 date: 2026-11-23
 ---
@@ -55,6 +55,9 @@ date: 2026-11-23
 
 The launcher and the virtual motor are in the Linux package only (Part C).
 
+Both installers also hold the sample meshed arm ([tool-simulator.md](tool-simulator.md) Part E): a profile and seven
+glTF meshes in `share/e-robot-arm/samples/meshed-arm/` on Linux and `samples\meshed-arm\` on Windows.
+
 The package is called `e-robot-arm` and installs every program in the same directory, on the system path on Linux,
 so the Simulator's default engine, `e-foc-virtual-motor`, resolves without asking. Release assets are named
 `e_robot_arm-tools-<tag>-linux-x86_64.deb` and `e_robot_arm-tools-<tag>-windows-x86_64-setup.exe`; a release
@@ -86,7 +89,7 @@ flowchart LR
     V --> P["Package"]
     B --> P
     P --> I["Install on a clean runner"]
-    I --> S["Desktop entry valid, icon present, programs start, Simulator stays up"]
+    I --> S["Desktop entry valid, icon and samples present, programs start, Simulator stays up"]
     S --> U["Remove: nothing left behind"]
     U --> A["Upload artefact; on a release, attach it"]
 ```

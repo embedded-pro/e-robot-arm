@@ -80,6 +80,8 @@ jobs:
           desktop-file-validate /usr/share/applications/e-robot-arm-simulator.desktop
           test -f /usr/share/icons/hicolor/scalable/apps/e-robot-arm-simulator.svg
           test -f /usr/share/icons/hicolor/256x256/apps/e-robot-arm-simulator.png
+          test -f /usr/share/e-robot-arm/samples/meshed-arm/profile.json
+          test -f /usr/share/e-robot-arm/samples/meshed-arm/link6.gltf
           e-foc-virtual-motor --help
           printf 'status\nquit\n' | timeout 20 e-robot-arm-console
           status=0
@@ -155,7 +157,7 @@ jobs:
           Start-Process -FilePath $setup -ArgumentList "/S", "/D=$target" -Wait
           $bin = Join-Path $target "bin"
           $simulator = Join-Path $bin "e-robot-arm-simulator.exe"
-          foreach ($program in @($simulator, (Join-Path $bin "e-robot-arm-console.exe"), (Join-Path $bin "Qt6Quick3D.dll"))) {
+          foreach ($program in @($simulator, (Join-Path $bin "e-robot-arm-console.exe"), (Join-Path $bin "Qt6Quick3D.dll"), (Join-Path $target "samples\meshed-arm\profile.json"))) {
             if (-not (Test-Path $program)) { throw "the setup did not install $program" }
           }
           $status = "status`nquit`n" | & (Join-Path $bin "e-robot-arm-console.exe") | Out-String

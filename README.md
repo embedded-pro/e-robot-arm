@@ -72,6 +72,10 @@ build/host-qt/tools/simulator/app/Debug/e-robot-arm-simulator
 
 Esc is the emergency stop from anywhere in the application.
 
+To see the arm drawn from glTF meshes, open the sample profile with **Profile → Open**:
+`tools/simulator/samples/meshed-arm/profile.json` in the repository, or
+`/usr/share/e-robot-arm/samples/meshed-arm/profile.json` after you install the tools package.
+
 ### Driving the arm from a terminal
 
 `e-robot-arm-console` opens a CAN adapter, builds the arm and reads one command per line (`contracts`,

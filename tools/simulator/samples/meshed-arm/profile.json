@@ -1,0 +1,97 @@
+{
+  "format": "e-robot-arm profile",
+  "version": 11,
+  "name": "sample meshed arm",
+  "controlPeriodMs": 10,
+  "missedRequestsBeforeSilent": 3,
+  "commandTimeoutPeriods": 3,
+  "driveWatchdogPeriods": 10,
+  "gravityPd": { "bandwidthRadPerS": 30, "dampingRatio": 0.7 },
+  "computedTorque": { "bandwidthRadPerS": 30, "dampingRatio": 0.7 },
+  "gravityPid": { "bandwidthRadPerS": 20, "dampingRatio": 0.7 },
+  "jointImpedance": { "dampingRatio": 0.7 },
+  "cartesianImpedance": { "translationalStiffnessNPerM": 50, "rotationalStiffnessNmPerRad": 0.07, "dampingRatio": 0.7 },
+  "operationalSpace": { "bandwidthRadPerS": 30, "dampingRatio": 0.7, "singularityDamping": 0.01 },
+  "slotineLi": { "lambdaPerS": 10, "bandwidthRadPerS": 20, "adaptationGain": 10 },
+  "experimental": false,
+  "armController": "gravity-pd",
+  "collisionObserverGainPerS": 25,
+  "motionProfile": "trapezoid",
+  "toolLimits": { "speedMPerS": 0.25, "accelerationMPerS2": 1, "jerkMPerS3": 10, "angularSpeedRadPerS": 1, "angularAccelerationRadPerS2": 4, "angularJerkRadPerS3": 40, "manipulabilityMin": 0.001 },
+  "teachPoints": [ ],
+  "joints": [
+    {
+      "node": 1,
+      "transmission": { "ratio": 1, "direction": "positive", "offsetRad": 0 },
+      "positionLimitsRad": { "lower": -3.1415927, "upper": 3.1415927 },
+      "motionLimits": { "speedRadPerS": 1, "accelerationRadPerS2": 2 },
+      "trackingError": { "windowRad": 0.2, "timeS": 0.2 },
+      "collisionTorqueNm": 20
+    },
+    {
+      "node": 2,
+      "transmission": { "ratio": 1, "direction": "positive", "offsetRad": 0 },
+      "positionLimitsRad": { "lower": -3.1415927, "upper": 3.1415927 },
+      "motionLimits": { "speedRadPerS": 1, "accelerationRadPerS2": 2 },
+      "trackingError": { "windowRad": 0.2, "timeS": 0.2 },
+      "collisionTorqueNm": 20
+    },
+    {
+      "node": 3,
+      "transmission": { "ratio": 1, "direction": "positive", "offsetRad": 0 },
+      "positionLimitsRad": { "lower": -3.1415927, "upper": 3.1415927 },
+      "motionLimits": { "speedRadPerS": 1, "accelerationRadPerS2": 2 },
+      "trackingError": { "windowRad": 0.2, "timeS": 0.2 },
+      "collisionTorqueNm": 20
+    },
+    {
+      "node": 4,
+      "transmission": { "ratio": 1, "direction": "positive", "offsetRad": 0 },
+      "positionLimitsRad": { "lower": -3.1415927, "upper": 3.1415927 },
+      "motionLimits": { "speedRadPerS": 1, "accelerationRadPerS2": 2 },
+      "trackingError": { "windowRad": 0.2, "timeS": 0.2 },
+      "collisionTorqueNm": 20
+    },
+    {
+      "node": 5,
+      "transmission": { "ratio": 1, "direction": "positive", "offsetRad": 0 },
+      "positionLimitsRad": { "lower": -3.1415927, "upper": 3.1415927 },
+      "motionLimits": { "speedRadPerS": 1, "accelerationRadPerS2": 2 },
+      "trackingError": { "windowRad": 0.2, "timeS": 0.2 },
+      "collisionTorqueNm": 20
+    },
+    {
+      "node": 6,
+      "transmission": { "ratio": 1, "direction": "positive", "offsetRad": 0 },
+      "positionLimitsRad": { "lower": -3.1415927, "upper": 3.1415927 },
+      "motionLimits": { "speedRadPerS": 1, "accelerationRadPerS2": 2 },
+      "trackingError": { "windowRad": 0.2, "timeS": 0.2 },
+      "collisionTorqueNm": 20
+    }
+  ],
+  "geometry": {
+    "opwMetres": { "a1": 0.02, "a2": 0, "b": 0, "c1": 0.15, "c2": 0.25, "c3": 0.25, "c4": 0.06 },
+    "jointSigns": [ 1, 1, 1, 1, 1, 1 ],
+    "jointOffsetsRad": [ 0, 0, 0, 0, 0, 0 ],
+    "tool": { "xM": 0, "yM": 0, "zM": 0, "rollRad": 0, "pitchRad": 0, "yawRad": 0 },
+    "base": { "xM": 0, "yM": 0, "zM": 0, "rollRad": 0, "pitchRad": 0, "yawRad": 0 }
+  },
+  "massProperties": {
+    "links": [
+      { "massKg": 1.2, "centreM": { "x": 0.01, "y": 0, "z": 0.08 }, "inertiaKgM2": { "xx": 0.003, "yy": 0.003, "zz": 0.0015, "xy": 0, "xz": 0, "yz": 0 } },
+      { "massKg": 1, "centreM": { "x": 0, "y": 0, "z": 0.11 }, "inertiaKgM2": { "xx": 0.0052, "yy": 0.0052, "zz": 0.00045, "xy": 0, "xz": 0, "yz": 0 } },
+      { "massKg": 0.8, "centreM": { "x": 0, "y": 0, "z": 0.1 }, "inertiaKgM2": { "xx": 0.0042, "yy": 0.0042, "zz": 0.00036, "xy": 0, "xz": 0, "yz": 0 } },
+      { "massKg": 0.3, "centreM": { "x": 0, "y": 0, "z": -0.03 }, "inertiaKgM2": { "xx": 0.0002, "yy": 0.0002, "zz": 0.0001, "xy": 0, "xz": 0, "yz": 0 } },
+      { "massKg": 0.25, "centreM": { "x": 0, "y": 0, "z": 0.02 }, "inertiaKgM2": { "xx": 0.0001, "yy": 0.0001, "zz": 0.00005, "xy": 0, "xz": 0, "yz": 0 } },
+      { "massKg": 0.1, "centreM": { "x": 0, "y": 0, "z": 0.05 }, "inertiaKgM2": { "xx": 0.00003, "yy": 0.00003, "zz": 0.00002, "xy": 0, "xz": 0, "yz": 0 } }
+    ],
+    "payload": { "massKg": 0, "centreM": { "x": 0, "y": 0, "z": 0 }, "inertiaKgM2": { "xx": 0, "yy": 0, "zz": 0, "xy": 0, "xz": 0, "yz": 0 } }
+  },
+  "meshes": { "base": "base.gltf", "link1": "link1.gltf", "link2": "link2.gltf", "link3": "link3.gltf", "link4": "link4.gltf", "link5": "link5.gltf", "link6": "link6.gltf" },
+  "safety": {
+    "forbiddenZonesM": [ ],
+    "linkRadiiM": [ 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04 ],
+    "selfCollisionMarginM": 0.01,
+    "allowedLinkPairs": [ ]
+  }
+}
