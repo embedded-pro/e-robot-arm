@@ -50,7 +50,7 @@ namespace arm_console
     {
         const auto end = tracker.AwaitMove(timeout);
         if (!end.has_value())
-            output << "wait: move still running after " << timeout.count() / 1000.0 << " s\n";
+            output << "wait: move still running after " << std::chrono::duration<double>{ timeout }.count() << " s\n";
         return end == MoveEnd::done;
     }
 
