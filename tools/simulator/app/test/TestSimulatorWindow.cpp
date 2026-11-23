@@ -1,6 +1,7 @@
 #include "tools/arm_host/AdapterTargetLink.hpp"
 #include "tools/arm_host/DefaultArmConfig.hpp"
 #include "tools/arm_host/ProfileFile.hpp"
+#include "tools/simulator/app/AdapterDialog.hpp"
 #include "tools/simulator/app/ArmSceneState.hpp"
 #include "tools/simulator/app/SimulatorWindow.hpp"
 #include "ui/backend/qt/QtTheme.hpp"
@@ -20,6 +21,7 @@
 #include <QMenu>
 #include <QMenuBar>
 #include <QMessageBox>
+#include <QPointer>
 #include <QPushButton>
 #include <QQuickItem>
 #include <QQuickWidget>
@@ -27,14 +29,17 @@
 #include <QSettings>
 #include <QSurfaceFormat>
 #include <QTableWidget>
+#include <QTimer>
 #include <QVariantMap>
 #include <QVector3D>
 #include <QtQml/QQmlExtensionPlugin>
 #include <algorithm>
+#include <condition_variable>
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <functional>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -638,6 +643,137 @@ TEST_F(SimulatorWindowTest, frame_arm_fits_the_posed_arm_and_the_overlays_follow
     frameAndSettle();
     capture("-extended-light.png");
     MenuAction(window, "Instrument")->trigger();
+}
+
+namespace
+{
+    class SlowAdapterDetector
+    {
+    public:
+        std::function<std::vector<std::string>()> Detector()
+        {
+            return [this]()
+            {
+                std::unique_lock lock{ mutex };
+                released.wait(lock, [this]()
+                    {
+                        return open;
+                    });
+                return std::vector<std::string>{ "can0", "slcan:/dev/ttyACM0" };
+            };
+        }
+
+        void Release()
+        {
+            std::scoped_lock lock{ mutex };
+            open = true;
+            released.notify_all();
+        }
+
+        ~SlowAdapterDetector()
+        {
+            Release();
+        }
+
+    private:
+        std::mutex mutex;
+        std::condition_variable released;
+        bool open{ false };
+    };
+
+    QLabel& AdapterState(simulator::AdapterDialog& dialog)
+    {
+        return *dialog.findChild<QLabel*>("adapterSearchState");
+    }
+}
+
+TEST_F(SimulatorWindowTest, the_adapter_dialog_opens_at_once_and_the_window_stays_live_while_the_search_runs)
+{
+    SlowAdapterDetector detector;
+    window.SetAdapterDetector(detector.Detector());
+
+    QElapsedTimer opening;
+    opening.start();
+    window.ChooseRealArm();
+    EXPECT_LT(opening.elapsed(), 100);
+
+    auto* dialog = window.findChild<simulator::AdapterDialog*>("adapterDialog");
+    ASSERT_NE(nullptr, dialog);
+    EXPECT_TRUE(dialog->isVisible());
+    EXPECT_EQ(simulator::AdapterSearch::searching, dialog->State());
+    EXPECT_EQ("Searching for CAN adapters on this computer…", AdapterState(*dialog).text());
+    EXPECT_FALSE(dialog->findChild<QPushButton*>("adapterSearchAgain")->isEnabled());
+
+    bool timerFired{ false };
+    QTimer::singleShot(50, [&timerFired]()
+        {
+            timerFired = true;
+        });
+    EXPECT_TRUE(Eventually([&timerFired]()
+        {
+            return timerFired;
+        },
+        1000));
+
+    detector.Release();
+    EXPECT_TRUE(Eventually([dialog]()
+        {
+            return dialog->State() == simulator::AdapterSearch::found;
+        }));
+    auto* choice = dialog->findChild<QComboBox*>("adapterChoice");
+    ASSERT_EQ(2, choice->count());
+    EXPECT_EQ("can0", choice->itemText(0));
+    dialog->reject();
+}
+
+TEST_F(SimulatorWindowTest, an_adapter_search_that_does_not_finish_says_so_and_can_be_searched_again)
+{
+    SlowAdapterDetector detector;
+    window.SetAdapterDetector(detector.Detector());
+    window.ChooseRealArm();
+    auto* dialog = window.findChild<simulator::AdapterDialog*>("adapterDialog");
+    ASSERT_NE(nullptr, dialog);
+
+    EXPECT_TRUE(Eventually([dialog]()
+        {
+            return dialog->State() == simulator::AdapterSearch::timedOut;
+        },
+        (simulator::adapterSearchSeconds + 2) * 1000));
+    EXPECT_THAT(AdapterState(*dialog).text().toStdString(), testing::HasSubstr("did not finish"));
+    auto* searchAgain = dialog->findChild<QPushButton*>("adapterSearchAgain");
+    EXPECT_TRUE(searchAgain->isEnabled());
+
+    window.SetAdapterDetector([]()
+        {
+            return std::vector<std::string>{};
+        });
+    searchAgain->click();
+    detector.Release();
+    EXPECT_TRUE(Eventually([dialog]()
+        {
+            return dialog->State() == simulator::AdapterSearch::noneFound;
+        }));
+    EXPECT_THAT(AdapterState(*dialog).text().toStdString(), testing::HasSubstr("No CAN adapter detected"));
+    dialog->reject();
+}
+
+TEST_F(SimulatorWindowTest, cancelling_the_adapter_dialog_drops_a_late_answer_and_switches_nothing)
+{
+    SlowAdapterDetector detector;
+    window.SetAdapterDetector(detector.Detector());
+    window.ChooseRealArm();
+    QPointer<simulator::AdapterDialog> dialog{ window.findChild<simulator::AdapterDialog*>("adapterDialog") };
+    ASSERT_FALSE(dialog.isNull());
+
+    dialog->reject();
+    detector.Release();
+    QElapsedTimer settle;
+    settle.start();
+    while (settle.elapsed() < 300)
+        QApplication::processEvents(QEventLoop::AllEvents, 10);
+
+    EXPECT_TRUE(dialog.isNull());
+    EXPECT_EQ(arm_host::TargetKind::simulated, host.Snapshot().target.kind);
 }
 
 int main(int argc, char* argv[])

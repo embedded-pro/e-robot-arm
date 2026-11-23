@@ -1,6 +1,7 @@
 #include "tools/simulator/app/SimulatorWindow.hpp"
 #include "tools/arm_host/AdapterTargetLink.hpp"
 #include "tools/arm_host/ProfileFile.hpp"
+#include "tools/simulator/app/AdapterDialog.hpp"
 #include "tools/simulator/view_models/AdapterChoices.hpp"
 #include "ui/backend/qt/QtConversions.hpp"
 #include "ui/backend/qt/QtTheme.hpp"
@@ -18,6 +19,7 @@
 #include <QMenu>
 #include <QMenuBar>
 #include <QMessageBox>
+#include <QPointer>
 #include <QProcess>
 #include <QPushButton>
 #include <QQmlEngine>
@@ -879,26 +881,65 @@ namespace simulator
             }
         }
         else
-        {
-            const auto choices = ChooseAdapter(host.DetectAdapters(arm_host::DetectedAdapters), settings.value("realAdapter").toString().toStdString());
-            QStringList items;
-            for (const auto& item : choices.items)
-                items << QString::fromStdString(item);
-            const auto adapter = QInputDialog::getItem(this, "Real Arm", QString::fromStdString(choices.label), items, choices.current, true, &accepted);
-            if (!accepted || adapter.isEmpty())
-                return;
+            ChooseRealArm();
+    }
 
-            QMessageBox confirm{ QMessageBox::Warning, "Connect to the Real Arm", QString{ "Connect to the real arm on %1?\n\nJoints start stopped." }.arg(adapter),
-                QMessageBox::NoButton, this };
-            auto* connectButton = confirm.addButton("Connect", QMessageBox::AcceptRole);
-            confirm.setDefaultButton(confirm.addButton(QMessageBox::Cancel));
-            confirm.exec();
-            if (confirm.clickedButton() == connectButton)
+    void SimulatorWindow::ChooseRealArm()
+    {
+        auto* dialog = new AdapterDialog{ Settings().value("realAdapter").toString(), this };
+        connect(dialog, &AdapterDialog::searchRequested, this, [this, dialog]()
             {
-                settings.setValue("realAdapter", adapter);
-                presenter.SwitchTarget({ arm_host::TargetKind::real, adapter.toStdString() });
-            }
+                SearchAdapters(*dialog);
+            });
+        connect(dialog, &QDialog::accepted, this, [this, dialog]()
+            {
+                ConfirmRealArm(dialog->Adapter());
+            });
+        SearchAdapters(*dialog);
+        dialog->open();
+    }
+
+    void SimulatorWindow::SearchAdapters(AdapterDialog& dialog)
+    {
+        const auto search = dialog.StartSearch();
+        const QPointer<AdapterDialog> guard{ &dialog };
+        QTimer::singleShot(std::chrono::seconds{ adapterSearchSeconds }, &dialog, [guard, search]()
+            {
+                if (guard)
+                    guard->TimeOut(search);
+            });
+        host.DetectAdapters(adapterDetector, [guard, search](std::vector<std::string> adapters)
+            {
+                QMetaObject::invokeMethod(
+                    qApp, [guard, search, adapters = std::move(adapters)]()
+                    {
+                        if (guard)
+                            guard->Show(search, ChooseAdapter(adapters, guard->Adapter().toStdString()));
+                    },
+                    Qt::QueuedConnection);
+            });
+    }
+
+    void SimulatorWindow::ConfirmRealArm(const QString& adapter)
+    {
+        if (adapter.isEmpty())
+            return;
+
+        QMessageBox confirm{ QMessageBox::Warning, "Connect to the Real Arm", QString{ "Connect to the real arm on %1?\n\nJoints start stopped." }.arg(adapter),
+            QMessageBox::NoButton, this };
+        auto* connectButton = confirm.addButton("Connect", QMessageBox::AcceptRole);
+        confirm.setDefaultButton(confirm.addButton(QMessageBox::Cancel));
+        confirm.exec();
+        if (confirm.clickedButton() == connectButton)
+        {
+            Settings().setValue("realAdapter", adapter);
+            presenter.SwitchTarget({ arm_host::TargetKind::real, adapter.toStdString() });
         }
+    }
+
+    void SimulatorWindow::SetAdapterDetector(std::function<std::vector<std::string>()> detector)
+    {
+        adapterDetector = std::move(detector);
     }
 
     void SimulatorWindow::ChooseVirtualArm()
