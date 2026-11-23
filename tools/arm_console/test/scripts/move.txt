@@ -1,0 +1,7 @@
+bringup
+wait ready 10
+enable
+wait enabled 5
+move 0 0.3 0 0 0 0
+wait 10
+status

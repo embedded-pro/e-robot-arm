@@ -9,6 +9,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iterator>
+#include <utility>
 #include <vector>
 
 namespace arm_console
@@ -140,6 +141,9 @@ namespace arm_console
         if (command == "quit")
             return { Outcome::quit };
 
+        if (command == "wait")
+            return Wait(arguments);
+
         if (command == "status")
         {
             Status();
@@ -189,16 +193,13 @@ namespace arm_console
             return Tune(arguments);
 
         if (command == "pose" || command == "fk" || command == "ik" || command == "gravity")
-        {
-            Kinematics(command, arguments);
-            return { Outcome::done };
-        }
+            return Kinematics(command, arguments);
 
         const auto parsed = Parse(command, arguments);
         if (!parsed)
         {
             Usage();
-            return { Outcome::done };
+            return { Outcome::failed };
         }
 
         return { Outcome::posted, arm.Post(*parsed) };
@@ -249,7 +250,7 @@ namespace arm_console
         if (!(arguments >> path) || (arguments >> rest))
         {
             Usage();
-            return { Outcome::done };
+            return { Outcome::failed };
         }
 
         if (command == "save")
@@ -259,14 +260,14 @@ namespace arm_console
             profile.name.assign(snapshot.profileName.substr(0, arm::profileNameSize));
             const auto problem = arm_host::WriteProfileFile(path, profile);
             output << (problem.empty() ? "saved " + path.string() : "save failed: " + problem) << "\n";
-            return { Outcome::done };
+            return { problem.empty() ? Outcome::done : Outcome::failed };
         }
 
         auto read = arm_host::ReadProfileFile(path);
         if (const auto* problem = std::get_if<std::string>(&read))
         {
             output << "profile refused: " << *problem << "\n";
-            return { Outcome::done };
+            return { Outcome::failed };
         }
 
         return { Outcome::posted, arm.LoadProfile(std::get<arm::ArmProfile>(read)) };
@@ -286,7 +287,7 @@ namespace arm_console
         if (!(arguments >> action >> name) || (arguments >> rest) || (action != "enable" && action != "disable" && action != "select"))
         {
             Usage();
-            return { Outcome::done };
+            return { Outcome::failed };
         }
 
         const auto controllers = arm.Snapshot().armControllers;
@@ -294,7 +295,7 @@ namespace arm_console
         if (found == controllers.end())
         {
             output << "no arm controller " << name << "\n";
-            return { Outcome::done };
+            return { Outcome::failed };
         }
 
         const auto id = static_cast<arm::ArmControllerId>(found - controllers.begin());
@@ -319,7 +320,7 @@ namespace arm_console
         if (found == motionProfileNames.end() || (arguments >> rest))
         {
             Usage();
-            return { Outcome::done };
+            return { Outcome::failed };
         }
 
         return { Outcome::posted, arm.Post(arm_host::SelectMotionProfile{ static_cast<arm::MotionProfile>(found - motionProfileNames.begin()) }) };
@@ -332,7 +333,7 @@ namespace arm_console
         if (!(arguments >> action) || action != "reset" || (arguments >> rest))
         {
             Usage();
-            return { Outcome::done };
+            return { Outcome::failed };
         }
 
         return { Outcome::posted, arm.Post(arm_host::ResetAdaptation{}) };
@@ -353,7 +354,7 @@ namespace arm_console
         if (!(number >> share) || !number.eof() || (arguments >> rest))
         {
             Usage();
-            return { Outcome::done };
+            return { Outcome::failed };
         }
 
         return { Outcome::posted, arm.Post(arm_host::SetImpedanceShare{ share }) };
@@ -379,7 +380,7 @@ namespace arm_console
         if (!duration.has_value())
         {
             Usage();
-            return { Outcome::done };
+            return { Outcome::failed };
         }
 
         return { Outcome::posted, arm.Post(arm_host::HoldJog{ *jog, *duration }) };
@@ -401,18 +402,18 @@ namespace arm_console
             else if (!Number(tokens[index]).has_value())
             {
                 output << "no teach point " << tokens[index] << "\n";
-                return { Outcome::done };
+                return { Outcome::failed };
             }
             else if (!ReadAngles(tokens, index, joints))
             {
                 Usage();
-                return { Outcome::done };
+                return { Outcome::failed };
             }
 
             if (path.waypoints.full())
             {
                 Usage();
-                return { Outcome::done };
+                return { Outcome::failed };
             }
             path.waypoints.push_back(joints);
         }
@@ -420,7 +421,7 @@ namespace arm_console
         if (path.waypoints.empty())
         {
             Usage();
-            return { Outcome::done };
+            return { Outcome::failed };
         }
         return { Outcome::posted, arm.Post(path) };
     }
@@ -435,7 +436,7 @@ namespace arm_console
             if (point == nullptr)
             {
                 output << "no teach point " << tokens[0] << "\n";
-                return { Outcome::done };
+                return { Outcome::failed };
             }
             const arm::ArmModel model{ config.geometry, config.mass, config.positionLimits };
             return { Outcome::posted, arm.Post(arm_host::MoveLine{ arm::ToPlacement(model.ToolPose(point->joints)) }) };
@@ -448,7 +449,7 @@ namespace arm_console
             if (!value.has_value())
             {
                 Usage();
-                return { Outcome::done };
+                return { Outcome::failed };
             }
             values[index] = *value;
         }
@@ -462,7 +463,7 @@ namespace arm_console
         if (!(arguments >> name) || (arguments >> rest))
         {
             Usage();
-            return { Outcome::done };
+            return { Outcome::failed };
         }
 
         if (command == "teach")
@@ -485,7 +486,7 @@ namespace arm_console
         }
     }
 
-    void ArmConsole::Kinematics(std::string_view command, std::istringstream& arguments)
+    ExecuteResult ArmConsole::Kinematics(std::string_view command, std::istringstream& arguments)
     {
         const auto snapshot = arm.Snapshot();
         std::array<float, arm::jointCount> values{};
@@ -494,25 +495,28 @@ namespace arm_console
             if (wantsValues && !(arguments >> value))
             {
                 Usage();
-                return;
+                return { Outcome::failed };
             }
 
         std::string rest;
         if (arguments >> rest)
         {
             Usage();
-            return;
+            return { Outcome::failed };
         }
 
         if (command == "pose")
-            return PrintPose(snapshot.toolPose, snapshot.singularities);
+        {
+            PrintPose(snapshot.toolPose, snapshot.singularities);
+            return { Outcome::done };
+        }
         if (command == "gravity")
         {
             output << "gravity torque:";
             for (const auto& torque : snapshot.gravityTorque)
                 output << std::format(" {:.3f}", torque.Value() > -5.0e-4f && torque.Value() < 5.0e-4f ? 0.0f : torque.Value());
             output << " N·m\n";
-            return;
+            return { Outcome::done };
         }
 
         const arm::ArmModel model{ snapshot.config.geometry, snapshot.config.mass, snapshot.config.positionLimits };
@@ -521,19 +525,23 @@ namespace arm_console
             current[joint] = command == "fk" ? foc::Radians{ values[joint] } : snapshot.readings[joint].position;
 
         if (command == "fk")
-            return PrintPose(arm::ToPlacement(model.ToolPose(current)), model.Near(current));
+        {
+            PrintPose(arm::ToPlacement(model.ToolPose(current)), model.Near(current));
+            return { Outcome::done };
+        }
 
         const auto result = model.Inverse(arm::ToTransform({ values[0], values[1], values[2], values[3], values[4], values[5] }), current);
         if (!result.joints.has_value())
         {
             output << "ik refused: " << (result.failure == arm::IkFailure::unreachable ? "unreachable" : "outside joint limits") << "\n";
-            return;
+            return { Outcome::failed };
         }
 
         output << "joints:";
         for (const auto& joint : *result.joints)
             output << std::format(" {:.3f}", joint.Value());
         output << " rad\n";
+        return { Outcome::done };
     }
 
     void ArmConsole::PrintPose(const arm::Placement& pose, const arm::Singularities& singularities)
@@ -600,9 +608,47 @@ namespace arm_console
         output << "overruns: " << snapshot.overruns << "\n";
     }
 
+    ExecuteResult ArmConsole::Wait(std::istringstream& arguments)
+    {
+        static constexpr std::array<std::pair<std::string_view, arm::ArmState>, 6> states{ { { "unpowered", arm::ArmState::unpowered },
+            { "ready", arm::ArmState::ready }, { "enabled", arm::ArmState::enabled }, { "moving", arm::ArmState::moving },
+            { "holding", arm::ArmState::holding }, { "tripped", arm::ArmState::tripped } } };
+        constexpr double defaultSeconds{ 30.0 };
+        constexpr double maximumSeconds{ 600.0 };
+
+        ExecuteResult result{ .outcome = Outcome::wait };
+        double seconds{ defaultSeconds };
+        std::string token;
+        std::string rest;
+        if (arguments >> token)
+        {
+            const auto state = std::ranges::find(states, token, &std::pair<std::string_view, arm::ArmState>::first);
+            if (state != states.end())
+            {
+                result.waitState = state->second;
+                if (!(arguments >> token))
+                    token.clear();
+            }
+        }
+        if (!token.empty())
+        {
+            const auto [end, error] = std::from_chars(token.data(), token.data() + token.size(), seconds);
+            if (error != std::errc{} || end != token.data() + token.size())
+                seconds = 0.0;
+        }
+        if ((arguments >> rest) || seconds <= 0.0 || seconds > maximumSeconds)
+        {
+            Usage();
+            return { Outcome::failed };
+        }
+
+        result.waitFor = std::chrono::milliseconds{ static_cast<int64_t>(seconds * 1000.0) };
+        return result;
+    }
+
     void ArmConsole::Usage()
     {
-        output << "usage: bringup | enable | disable | move q1 q2 q3 q4 q5 q6 | step q1 q2 q3 q4 q5 q6 | tune step|move <joint> <rad> [csv] | rearm | contracts | mode torque|speed|position | start | stop | estop | clear | align | abort | load <file> | save <file> | controllers | controller enable|disable|select <name> | motion [trapezoid|s-curve] | impedance [share] | adaptation reset | jog <joint> <rad/s> [s] | jog base|tool x|y|z|rx|ry|rz <speed> [s] | teach <name> | goto <name> | points | movej <point|q1..q6>... | movel x y z roll pitch yaw | movel <point> | pose | gravity | fk q1..q6 | ik x y z roll pitch yaw | status | quit\n";
+        output << "usage: bringup | enable | disable | move q1 q2 q3 q4 q5 q6 | step q1 q2 q3 q4 q5 q6 | tune step|move <joint> <rad> [csv] | rearm | contracts | mode torque|speed|position | start | stop | estop | clear | align | abort | load <file> | save <file> | controllers | controller enable|disable|select <name> | motion [trapezoid|s-curve] | impedance [share] | adaptation reset | jog <joint> <rad/s> [s] | jog base|tool x|y|z|rx|ry|rz <speed> [s] | teach <name> | goto <name> | points | movej <point|q1..q6>... | movel x y z roll pitch yaw | movel <point> | pose | gravity | fk q1..q6 | ik x y z roll pitch yaw | wait [unpowered|ready|enabled|moving|holding|tripped] [s] | status | quit\n";
     }
 
     ExecuteResult ArmConsole::Tune(std::istringstream& arguments)
@@ -614,7 +660,7 @@ namespace arm_console
         if (!(arguments >> kind >> joint >> amplitude) || (kind != "step" && kind != "move") || joint == 0)
         {
             Usage();
-            return { Outcome::done };
+            return { Outcome::failed };
         }
         arguments >> csv;
 
@@ -625,7 +671,7 @@ namespace arm_console
         {
             output << "tune refused: " << *refusal << "\n";
             tuningRun.reset();
-            return { Outcome::done };
+            return { Outcome::failed };
         }
 
         tuningCsv = csv;

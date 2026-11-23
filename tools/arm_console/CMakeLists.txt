@@ -12,8 +12,12 @@ target_link_libraries(e_robot_arm.tool.arm_console.logic PUBLIC
 target_sources(e_robot_arm.tool.arm_console.logic PRIVATE
     ArmConsole.cpp
     ArmConsole.hpp
+    CommandTracker.cpp
+    CommandTracker.hpp
     ConsoleOptions.cpp
     ConsoleOptions.hpp
+    ConsoleSession.cpp
+    ConsoleSession.hpp
 )
 
 if (TARGET can_lite.drivers.platform)

@@ -1,5 +1,7 @@
 #include "tools/arm_console/ArmConsole.hpp"
+#include "tools/arm_console/CommandTracker.hpp"
 #include "tools/arm_console/ConsoleOptions.hpp"
+#include "tools/arm_console/ConsoleSession.hpp"
 #include "tools/arm_host/AdapterTargetLink.hpp"
 #include "tools/arm_host/ArmHost.hpp"
 #include "tools/arm_host/DefaultArmConfig.hpp"
@@ -7,14 +9,10 @@
 #ifdef E_ROBOT_ARM_VIRTUAL_ARM
 #include "tools/virtual_arm/VirtualArm.hpp"
 #endif
-#include <atomic>
 #include <chrono>
-#include <condition_variable>
 #include <cstdlib>
 #include <iostream>
-#include <mutex>
 #include <optional>
-#include <set>
 #include <string>
 #include <thread>
 #include <vector>
@@ -35,9 +33,10 @@ namespace
     class EventPrinter
     {
     public:
-        EventPrinter(arm_host::ArmHost& host, arm_console::ArmConsole& console)
+        EventPrinter(arm_host::ArmHost& host, arm_console::ArmConsole& console, arm_console::CommandTracker& tracker)
             : host(host)
             , console(console)
+            , tracker(tracker)
         {}
 
         void Run(const std::stop_token& stop)
@@ -50,15 +49,6 @@ namespace
             Print();
         }
 
-        void WaitForAnswer(uint32_t command)
-        {
-            std::unique_lock lock{ mutex };
-            answeredCondition.wait_for(lock, 2s, [this, command]()
-                {
-                    return answered.contains(command);
-                });
-        }
-
     private:
         void Print()
         {
@@ -66,21 +56,16 @@ namespace
                 console.Trace(sample);
             for (const auto& event : host.TakeEvents())
             {
-                std::scoped_lock lock{ mutex };
                 console.Print(event);
-                if (event.kind == arm_host::ArmEventKind::accepted || event.kind == arm_host::ArmEventKind::refused ||
-                    event.kind == arm_host::ArmEventKind::profileLoaded || event.kind == arm_host::ArmEventKind::targetFailed)
-                    answered.insert(event.command);
-                answeredCondition.notify_all();
+                std::cout.flush();
+                tracker.Note(event);
             }
             std::cout.flush();
         }
 
         arm_host::ArmHost& host;
         arm_console::ArmConsole& console;
-        std::mutex mutex;
-        std::condition_variable answeredCondition;
-        std::set<uint32_t> answered;
+        arm_console::CommandTracker& tracker;
     };
 }
 
@@ -132,7 +117,9 @@ int main(int argc, const char* const argv[])
 
     arm_host::ArmHost host{ profile, arm_host::HostTargetOpener(arm_host::simulatedTimeConstant, options->bitrate), TargetFor(options->bus) };
     arm_console::ArmConsole console{ host, std::cout };
-    EventPrinter printer{ host, console };
+    arm_console::CommandTracker tracker;
+    EventPrinter printer{ host, console, tracker };
+    arm_console::ConsoleSession session{ console, tracker, std::cout, options->batch };
 
     std::jthread printing{ [&printer](const std::stop_token& stop)
         {
@@ -140,14 +127,10 @@ int main(int argc, const char* const argv[])
         } };
 
     std::string line;
-    while (std::getline(std::cin, line))
-    {
-        const auto result = console.Execute(line);
-        if (result.outcome == arm_console::Outcome::quit)
-            break;
-        if (result.outcome == arm_console::Outcome::posted)
-            printer.WaitForAnswer(result.command);
-    }
+    while (std::getline(std::cin, line) && session.Handle(line))
+        std::cout.flush();
 
-    return EXIT_SUCCESS;
+    printing.request_stop();
+    printing.join();
+    return session.ExitStatus();
 }

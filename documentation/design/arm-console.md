@@ -2,9 +2,9 @@
 title: "Arm Composition and Console Design"
 type: design
 status: draft
-version: 0.18.0
+version: 0.19.0
 component: "arm"
-date: 2026-11-20
+date: 2026-11-23
 ---
 
 | Field     | Value                              |
@@ -12,9 +12,9 @@ date: 2026-11-20
 | Title     | Arm Composition and Console Design |
 | Type      | design                             |
 | Status    | draft                              |
-| Version   | 0.18.0                             |
+| Version   | 0.19.0                             |
 | Component | arm                                |
-| Date      | 2026-11-20                         |
+| Date      | 2026-11-23                         |
 
 > How the arm's components are put together, and the host console that drives them over a CAN adapter. Behaviour
 > only; diagrams are Mermaid.
@@ -93,6 +93,7 @@ control loop and reads one command per line from standard input:
 | `gravity`                                   | Print the gravity torque each joint holds at the measured joints, N·m ([arm-model.md](arm-model.md) Part F)                                                                                             |
 | `fk q1 q2 q3 q4 q5 q6`                      | Print the tool pose of the given joint positions, in radians; moves nothing                                                                                                                             |
 | `ik x y z roll pitch yaw`                   | Print the joint positions of the given tool pose (m, rad), or why there are none; moves nothing                                                                                                         |
+| `wait [<state>] [<s>]`                      | Wait for the running move to end, or with a state (`unpowered`, `ready`, `enabled`, `moving`, `holding`, `tripped`) for the arm to reach it; 30 s when left out, at most 600 s                          |
 | `status`                                    | Print each joint's position, speed, state and fault, the arm's lifecycle state, the stop, the move and the overrun count                                                                                |
 | `quit`                                      | Stop the control loop and leave                                                                                                                                                                         |
 
@@ -108,9 +109,46 @@ sends nothing.
 
 The console runs on the arm host shared with the simulator ([simulator.md](simulator.md) Parts B and E): the arm
 lives on the host's thread, each typed command is posted to it, and the console waits up to 2 s for that command's
-answer, `ok` or `refused: <reason>`. `--profile <file>` loads a profile at start; a profile the reader refuses
+answer, `ok` or `refused: <reason>` (see Command outcomes below). `--profile <file>` loads a profile at start; a profile the reader refuses
 prints the reader's message, which names the item, and the console does not start. Events print as they come, polled every 20 ms. `--bus simulated` runs six
 simulated joints in the process with no CAN at all.
+
+**Command outcomes.** Every line ends in exactly one outcome, and the console keeps them apart:
+
+| Outcome   | When                                                                                                   | Printed                       |
+|-----------|--------------------------------------------------------------------------------------------------------|-------------------------------|
+| succeeded | A local command ran (`status`, `pose`, a `save` that wrote its file…) or the arm accepted a posted one | its output, or `ok`           |
+| failed    | A malformed or unknown command, a name that does not exist, a file that cannot be read or written      | the usage line or the reason  |
+| refused   | The arm answered the posted command with a refusal                                                     | `refused: <reason>`           |
+| no answer | The arm did not answer within 2 s                                                                      | `no answer in 2 s: <command>` |
+
+An answer that comes after its 2 s is dropped, and every answer is forgotten once read, so the console's memory does
+not grow with the session.
+
+**Accepted is not finished.** `bringup` and `enable` are accepted as soon as they start; the arm then goes through
+its lifecycle states. A move that is accepted has only started. `wait` waits for what a script actually needs, from
+the arm's events rather than its snapshot, which is published once per control period and can lag them:
+
+- `wait <state>` succeeds once the arm is in that state, and fails at once when the arm trips, is misconfigured or
+  finds its contracts incompatible (unless that is the state asked for), or when its time runs out, printing
+  `wait: arm <state>, not <wanted>`.
+- `wait` alone waits for the move: a move is pending from the moment a `move`, `goto`, `movej`, `movel` or `jog` is
+  accepted until the arm reports `move done` or `move aborted`. It succeeds on `move done` and fails on
+  `move aborted` or with `wait: move still running after <s> s`. With no move pending it ends at once, failing only
+  when the last move that ended was aborted.
+
+A script that must not go on before the arm is in place puts `wait ready` after `bringup`, `wait enabled` after
+`enable` and `wait` after each move.
+
+**Batch mode.** With `--batch` the console reads its commands from standard input (a file or a pipe) and stops at the
+first line that fails, is refused or gets no answer, and at a `wait` that fails. It prints
+`batch stopped at line <n>: <line>` and exits with status 1. Reaching the end of the input exits with status 0. Without
+`--batch`, the console goes on after a failure, so an operator at the keyboard can correct a typing mistake, and exits
+with status 0. A start-up failure (options, profile, virtual arm) exits with status 1 in both modes.
+
+```text
+printf 'bringup\nwait ready\nenable\nwait enabled\nmove 0 0.5 0 0 0 0\nwait 10\nstatus\n' | e-robot-arm-console --bus simulated --batch
+```
 
 For a `virtual:` bus the host runs can-lite's virtual CAN hub, or joins the one already running when another process
 (an e-foc virtual motor, for instance) hosts it. The hub and the CAN adapter are polled every millisecond on the

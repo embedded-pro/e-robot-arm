@@ -103,11 +103,11 @@ TEST_F(ArmConsoleTest, step_posts_the_six_positions_as_a_reference_step)
 
 TEST_F(ArmConsoleTest, a_malformed_or_unknown_command_prints_the_usage_and_posts_nothing)
 {
-    EXPECT_THAT(Run("move 1 2 3"), StartsWith("usage:"));
-    EXPECT_THAT(Run("step 1 2"), StartsWith("usage:"));
-    EXPECT_THAT(Run("move 1 2 3 4 5 six"), StartsWith("usage:"));
-    EXPECT_THAT(Run("mode fast"), StartsWith("usage:"));
-    EXPECT_THAT(Run("jump"), StartsWith("usage:"));
+    EXPECT_THAT(Run("move 1 2 3", arm_console::Outcome::failed), StartsWith("usage:"));
+    EXPECT_THAT(Run("step 1 2", arm_console::Outcome::failed), StartsWith("usage:"));
+    EXPECT_THAT(Run("move 1 2 3 4 5 six", arm_console::Outcome::failed), StartsWith("usage:"));
+    EXPECT_THAT(Run("mode fast", arm_console::Outcome::failed), StartsWith("usage:"));
+    EXPECT_THAT(Run("jump", arm_console::Outcome::failed), StartsWith("usage:"));
     EXPECT_EQ("", Run(""));
 }
 
@@ -189,8 +189,8 @@ TEST_F(ArmConsoleTest, controllers_lists_the_arm_controllers_and_controller_post
     EXPECT_EQ(5u, console.Execute("controller select computed-torque").command);
     EXPECT_EQ(6u, console.Execute("controller disable gravity-pd").command);
 
-    EXPECT_EQ("no arm controller lqr\n", Run("controller select lqr"));
-    EXPECT_THAT(Run("controller toggle computed-torque"), StartsWith("usage:"));
+    EXPECT_EQ("no arm controller lqr\n", Run("controller select lqr", arm_console::Outcome::failed));
+    EXPECT_THAT(Run("controller toggle computed-torque", arm_console::Outcome::failed), StartsWith("usage:"));
     EXPECT_EQ("arm controller: computed-torque\n", Printed({ .kind = ArmEventKind::armControllerChanged, .armController = "computed-torque" }));
 }
 
@@ -204,8 +204,8 @@ TEST_F(ArmConsoleTest, motion_prints_the_profile_and_posts_a_choice_of_profile)
     EXPECT_CALL(arm, Post(VariantWith<arm_host::SelectMotionProfile>(Field(&arm_host::SelectMotionProfile::profile, arm::MotionProfile::trapezoid)))).WillOnce(Return(7));
     EXPECT_EQ(7u, console.Execute("motion trapezoid").command);
 
-    EXPECT_THAT(Run("motion smooth"), StartsWith("usage:"));
-    EXPECT_THAT(Run("motion s-curve now"), StartsWith("usage:"));
+    EXPECT_THAT(Run("motion smooth", arm_console::Outcome::failed), StartsWith("usage:"));
+    EXPECT_THAT(Run("motion s-curve now", arm_console::Outcome::failed), StartsWith("usage:"));
 }
 
 TEST_F(ArmConsoleTest, impedance_prints_the_stiffness_share_and_posts_a_new_one)
@@ -218,9 +218,9 @@ TEST_F(ArmConsoleTest, impedance_prints_the_stiffness_share_and_posts_a_new_one)
     EXPECT_CALL(arm, Post(VariantWith<arm_host::SetImpedanceShare>(Field(&arm_host::SetImpedanceShare::share, 0.25f)))).WillOnce(Return(8));
     EXPECT_EQ(8u, console.Execute("impedance 0.25").command);
 
-    EXPECT_THAT(Run("impedance soft"), StartsWith("usage:"));
-    EXPECT_THAT(Run("impedance 0.5x"), StartsWith("usage:"));
-    EXPECT_THAT(Run("impedance 0.5 now"), StartsWith("usage:"));
+    EXPECT_THAT(Run("impedance soft", arm_console::Outcome::failed), StartsWith("usage:"));
+    EXPECT_THAT(Run("impedance 0.5x", arm_console::Outcome::failed), StartsWith("usage:"));
+    EXPECT_THAT(Run("impedance 0.5 now", arm_console::Outcome::failed), StartsWith("usage:"));
 }
 
 TEST_F(ArmConsoleTest, adaptation_reset_posts_the_reset_of_the_learnt_parameters)
@@ -228,9 +228,9 @@ TEST_F(ArmConsoleTest, adaptation_reset_posts_the_reset_of_the_learnt_parameters
     EXPECT_CALL(arm, Post(VariantWith<arm_host::ResetAdaptation>(_))).WillOnce(Return(9));
     EXPECT_EQ(9u, console.Execute("adaptation reset").command);
 
-    EXPECT_THAT(Run("adaptation"), StartsWith("usage:"));
-    EXPECT_THAT(Run("adaptation forget"), StartsWith("usage:"));
-    EXPECT_THAT(Run("adaptation reset now"), StartsWith("usage:"));
+    EXPECT_THAT(Run("adaptation", arm_console::Outcome::failed), StartsWith("usage:"));
+    EXPECT_THAT(Run("adaptation forget", arm_console::Outcome::failed), StartsWith("usage:"));
+    EXPECT_THAT(Run("adaptation reset now", arm_console::Outcome::failed), StartsWith("usage:"));
 }
 
 TEST_F(ArmConsoleTest, jog_holds_a_joint_or_tool_jog_for_a_time)
@@ -247,10 +247,10 @@ TEST_F(ArmConsoleTest, jog_holds_a_joint_or_tool_jog_for_a_time)
         .WillOnce(Return(9));
     EXPECT_EQ(9u, console.Execute("jog tool rz 0.5 2.5").command);
 
-    EXPECT_THAT(Run("jog 7 0.2"), StartsWith("usage:"));
-    EXPECT_THAT(Run("jog base w 0.1"), StartsWith("usage:"));
-    EXPECT_THAT(Run("jog 1"), StartsWith("usage:"));
-    EXPECT_THAT(Run("jog 1 0.2 1 extra"), StartsWith("usage:"));
+    EXPECT_THAT(Run("jog 7 0.2", arm_console::Outcome::failed), StartsWith("usage:"));
+    EXPECT_THAT(Run("jog base w 0.1", arm_console::Outcome::failed), StartsWith("usage:"));
+    EXPECT_THAT(Run("jog 1", arm_console::Outcome::failed), StartsWith("usage:"));
+    EXPECT_THAT(Run("jog 1 0.2 1 extra", arm_console::Outcome::failed), StartsWith("usage:"));
 }
 
 TEST_F(ArmConsoleTest, teach_goto_and_points_name_the_teach_points)
@@ -269,8 +269,8 @@ TEST_F(ArmConsoleTest, teach_goto_and_points_name_the_teach_points)
     EXPECT_EQ(10u, console.Execute("teach pick").command);
     EXPECT_CALL(arm, Post(VariantWith<arm_host::GoTo>(Field(&arm_host::GoTo::name, "home")))).WillOnce(Return(11));
     EXPECT_EQ(11u, console.Execute("goto home").command);
-    EXPECT_THAT(Run("goto"), StartsWith("usage:"));
-    EXPECT_THAT(Run("teach a b"), StartsWith("usage:"));
+    EXPECT_THAT(Run("goto", arm_console::Outcome::failed), StartsWith("usage:"));
+    EXPECT_THAT(Run("teach a b", arm_console::Outcome::failed), StartsWith("usage:"));
 }
 
 TEST_F(ArmConsoleTest, movej_takes_teach_points_and_joint_angles_as_waypoints)
@@ -289,10 +289,10 @@ TEST_F(ArmConsoleTest, movej_takes_teach_points_and_joint_angles_as_waypoints)
     EXPECT_NEAR(0.1f, path.waypoints[0][0].Value(), 1.0e-6f);
     EXPECT_NEAR(0.5f, path.waypoints[1][1].Value(), 1.0e-6f);
 
-    EXPECT_EQ("no teach point away\n", Run("movej home away"));
-    EXPECT_THAT(Run("movej 0.1 0.2"), StartsWith("usage:"));
-    EXPECT_THAT(Run("movej"), StartsWith("usage:"));
-    EXPECT_THAT(Run("movej home home home home home home home home home"), StartsWith("usage:"));
+    EXPECT_EQ("no teach point away\n", Run("movej home away", arm_console::Outcome::failed));
+    EXPECT_THAT(Run("movej 0.1 0.2", arm_console::Outcome::failed), StartsWith("usage:"));
+    EXPECT_THAT(Run("movej", arm_console::Outcome::failed), StartsWith("usage:"));
+    EXPECT_THAT(Run("movej home home home home home home home home home", arm_console::Outcome::failed), StartsWith("usage:"));
 }
 
 TEST_F(ArmConsoleTest, movel_takes_a_tool_pose_or_a_teach_points_tool_pose)
@@ -310,8 +310,8 @@ TEST_F(ArmConsoleTest, movel_takes_a_tool_pose_or_a_teach_points_tool_pose)
     EXPECT_CALL(arm, Post(VariantWith<arm_host::MoveLine>(Field(&arm_host::MoveLine::target, Field(&arm::Placement::x, FloatNear(expected.x, 1.0e-6f)))))).WillOnce(Return(14));
     EXPECT_EQ(14u, console.Execute("movel pick").command);
 
-    EXPECT_EQ("no teach point drop\n", Run("movel drop"));
-    EXPECT_THAT(Run("movel 0.2 0 0.3"), StartsWith("usage:"));
+    EXPECT_EQ("no teach point drop\n", Run("movel drop", arm_console::Outcome::failed));
+    EXPECT_THAT(Run("movel 0.2 0 0.3", arm_console::Outcome::failed), StartsWith("usage:"));
 }
 
 TEST_F(ArmConsoleTest, quit_ends_the_console)
@@ -342,8 +342,8 @@ TEST_F(ArmConsoleTest, load_reads_a_profile_file_and_save_writes_the_profile_in_
 
 TEST_F(ArmConsoleTest, a_profile_that_cannot_be_read_is_refused_with_the_reason)
 {
-    EXPECT_EQ("profile refused: cannot open /no/such/profile.json\n", Run("load /no/such/profile.json"));
-    EXPECT_THAT(Run("load"), HasSubstr("usage:"));
+    EXPECT_EQ("profile refused: cannot open /no/such/profile.json\n", Run("load /no/such/profile.json", arm_console::Outcome::failed));
+    EXPECT_THAT(Run("load", arm_console::Outcome::failed), HasSubstr("usage:"));
 }
 
 TEST_F(ArmConsoleTest, pose_gravity_fk_and_ik_convert_without_moving_the_arm)
@@ -357,13 +357,13 @@ TEST_F(ArmConsoleTest, pose_gravity_fk_and_ik_convert_without_moving_the_arm)
     EXPECT_CALL(arm, Snapshot()).WillRepeatedly(Return(snapshot));
 
     EXPECT_EQ("gravity torque: 0.000 -7.016 0.000 0.000 0.250 0.000 N·m\n", Run("gravity"));
-    EXPECT_THAT(Run("gravity 1"), HasSubstr("usage:"));
+    EXPECT_THAT(Run("gravity 1", arm_console::Outcome::failed), HasSubstr("usage:"));
     EXPECT_EQ("tool: x 0.020 y 0.000 z 0.710 m, roll 0.000 pitch 0.000 yaw 0.000 rad, near wrist elbow singularity\n", Run("pose"));
     EXPECT_EQ("tool: x 0.580 y 0.000 z 0.150 m, roll 0.000 pitch 1.571 yaw 0.000 rad, near wrist elbow singularity\n", Run("fk 0 1.5707963 0 0 0 0"));
     EXPECT_EQ("tool: x 0.562 y 0.000 z 0.258 m, roll 0.000 pitch 1.571 yaw 0.000 rad\n", Run("fk 0 1.2 0.3 0 0.0707963 0"));
     EXPECT_THAT(Run("ik 0.4 0.1 0.3 0 1.5707963 0"), StartsWith("joints:"));
-    EXPECT_EQ("ik refused: unreachable\n", Run("ik 2 0 0 0 0 0"));
-    EXPECT_THAT(Run("fk 1 2"), HasSubstr("usage:"));
+    EXPECT_EQ("ik refused: unreachable\n", Run("ik 2 0 0 0 0 0", arm_console::Outcome::failed));
+    EXPECT_THAT(Run("fk 1 2", arm_console::Outcome::failed), HasSubstr("usage:"));
 }
 
 TEST_F(ArmConsoleTest, tune_step_runs_a_step_test_and_prints_its_metrics_once_it_has_recorded)
@@ -402,7 +402,44 @@ TEST_F(ArmConsoleTest, tune_prints_why_a_test_does_not_start_and_the_usage_when_
     snapshot.targetReady = true;
     EXPECT_CALL(arm, Snapshot()).WillRepeatedly(Return(snapshot));
 
-    EXPECT_EQ("tune refused: the arm is not enabled\n", Run("tune move 3 -0.5"));
-    EXPECT_THAT(Run("tune spin 2 0.1"), StartsWith("usage:"));
-    EXPECT_THAT(Run("tune step 2"), StartsWith("usage:"));
+    EXPECT_EQ("tune refused: the arm is not enabled\n", Run("tune move 3 -0.5", arm_console::Outcome::failed));
+    EXPECT_THAT(Run("tune spin 2 0.1", arm_console::Outcome::failed), StartsWith("usage:"));
+    EXPECT_THAT(Run("tune step 2", arm_console::Outcome::failed), StartsWith("usage:"));
+}
+
+TEST_F(ArmConsoleTest, a_malformed_or_unknown_command_fails_and_posts_nothing)
+{
+    EXPECT_CALL(arm, Snapshot()).WillRepeatedly(Return(arm_host::ArmSnapshot{}));
+    EXPECT_THAT(Run("move 1 2", arm_console::Outcome::failed), HasSubstr("usage:"));
+    EXPECT_THAT(Run("fly", arm_console::Outcome::failed), HasSubstr("usage:"));
+    EXPECT_THAT(Run("fk 1 2", arm_console::Outcome::failed), HasSubstr("usage:"));
+}
+
+TEST_F(ArmConsoleTest, a_name_that_does_not_exist_or_a_file_that_cannot_be_read_fails)
+{
+    EXPECT_CALL(arm, Snapshot()).WillRepeatedly(Return(arm_host::ArmSnapshot{}));
+
+    EXPECT_THAT(Run("controller select nothing", arm_console::Outcome::failed), HasSubstr("no arm controller nothing"));
+    EXPECT_THAT(Run("movej nowhere", arm_console::Outcome::failed), HasSubstr("no teach point nowhere"));
+    EXPECT_THAT(Run("load /no/such/profile.json", arm_console::Outcome::failed), HasSubstr("profile refused"));
+    EXPECT_THAT(Run("save /no/such/directory/profile.json", arm_console::Outcome::failed), HasSubstr("save failed"));
+}
+
+TEST_F(ArmConsoleTest, wait_asks_to_wait_for_the_move_or_a_state_for_the_time_given_or_thirty_seconds)
+{
+    EXPECT_EQ(arm_console::Outcome::wait, console.Execute("wait").outcome);
+    EXPECT_EQ(std::chrono::milliseconds{ 30000 }, console.Execute("wait").waitFor);
+    EXPECT_EQ(std::chrono::milliseconds{ 2500 }, console.Execute("wait 2.5").waitFor);
+
+    EXPECT_EQ(arm::ArmState::ready, console.Execute("wait ready").waitState);
+    EXPECT_EQ(std::chrono::milliseconds{ 30000 }, console.Execute("wait ready").waitFor);
+    EXPECT_EQ(std::chrono::milliseconds{ 5000 }, console.Execute("wait enabled 5").waitFor);
+    EXPECT_EQ(std::nullopt, console.Execute("wait 5").waitState);
+
+    Run("wait 0", arm_console::Outcome::failed);
+    Run("wait calibrated", arm_console::Outcome::failed);
+    Run("wait ready 5 now", arm_console::Outcome::failed);
+    Run("wait 601", arm_console::Outcome::failed);
+    Run("wait soon", arm_console::Outcome::failed);
+    Run("wait 1 2", arm_console::Outcome::failed);
 }

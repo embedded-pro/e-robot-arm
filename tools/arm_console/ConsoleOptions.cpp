@@ -72,8 +72,16 @@ namespace arm_console
     {
         ConsoleOptions options;
         for (std::size_t index = 1; index < arguments.size(); index += 2)
+        {
+            if (arguments[index] == "--batch")
+            {
+                options.batch = true;
+                --index;
+                continue;
+            }
             if (index + 1 == arguments.size() || !Apply(options, arguments[index], arguments[index + 1]))
                 return std::nullopt;
+        }
 
         if (options.virtualArm.empty())
             return options.engine.empty() ? std::optional{ options } : std::nullopt;
@@ -84,6 +92,6 @@ namespace arm_console
 
     std::string OptionsUsage()
     {
-        return "usage: e-robot-arm-console [--bus virtual:<name>|<socketcan interface>|<serial port>] [--bitrate <bits/s>] [--nodes n1,n2,n3,n4,n5,n6] [--profile <file>] [--virtual-arm <profile> [--engine <e-foc-virtual-motor>]]";
+        return "usage: e-robot-arm-console [--bus virtual:<name>|<socketcan interface>|<serial port>] [--bitrate <bits/s>] [--nodes n1,n2,n3,n4,n5,n6] [--profile <file>] [--virtual-arm <profile> [--engine <e-foc-virtual-motor>]] [--batch]";
     }
 }

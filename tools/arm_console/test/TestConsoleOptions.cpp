@@ -73,4 +73,17 @@ TEST_F(ConsoleOptionsTest, the_usage_names_every_option)
     EXPECT_THAT(usage, testing::HasSubstr("--nodes"));
     EXPECT_THAT(usage, testing::HasSubstr("--virtual-arm"));
     EXPECT_THAT(usage, testing::HasSubstr("--engine"));
+    EXPECT_THAT(usage, testing::HasSubstr("--batch"));
+}
+
+TEST_F(ConsoleOptionsTest, batch_is_a_flag_anywhere_among_the_options)
+{
+    EXPECT_FALSE(Parse({}).value().batch);
+    EXPECT_TRUE(Parse({ "--batch" }).value().batch);
+
+    const auto options = Parse({ "--bus", "simulated", "--batch", "--bitrate", "500000" });
+    ASSERT_TRUE(options.has_value());
+    EXPECT_TRUE(options->batch);
+    EXPECT_EQ("simulated", options->bus);
+    EXPECT_EQ(500000u, options->bitrate);
 }
