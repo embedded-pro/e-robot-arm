@@ -15,6 +15,13 @@ if (E_ROBOT_ARM_PACKAGE_ENGINE)
 endif()
 
 if (WIN32)
+    set(samples_destination samples)
+else()
+    set(samples_destination ${CMAKE_INSTALL_DATADIR}/e-robot-arm/samples)
+endif()
+install(DIRECTORY "${PROJECT_SOURCE_DIR}/tools/simulator/samples/meshed-arm" DESTINATION ${samples_destination} COMPONENT ${component} EXCLUDE_FROM_ALL)
+
+if (WIN32)
     install(FILES "${PROJECT_SOURCE_DIR}/LICENSE" DESTINATION . RENAME LICENSE.txt COMPONENT ${component} EXCLUDE_FROM_ALL)
 
     if (NOT CMAKE_CROSSCOMPILING AND TARGET e_robot_arm.tool.simulator)

@@ -562,6 +562,29 @@ TEST_F(SimulatorWindowTest, a_profile_draws_its_link_meshes_and_names_a_mesh_it_
     QSettings{ "embedded-pro", "e-robot-arm Simulator" }.remove("profile");
 }
 
+TEST_F(SimulatorWindowTest, the_sample_meshed_arm_draws_every_link_from_its_mesh)
+{
+    window.LoadProfileFrom(SAMPLE_ARM_PROFILE);
+    auto* root = window.ArmView().rootObject();
+    EXPECT_TRUE(Eventually([root]()
+        {
+            for (int node = 0; node != 7; ++node)
+            {
+                auto* mesh = root->findChild<QObject*>(QString{ "mesh%1" }.arg(node));
+                if (mesh == nullptr || !mesh->property("visible").toBool())
+                    return false;
+            }
+            return true;
+        }))
+        << LogText(window.Presenter());
+    EXPECT_FALSE(Logged(window.Presenter(), "mesh not loaded")) << LogText(window.Presenter());
+    if (const auto* capture = std::getenv("SIMULATOR_FRAME_CAPTURE"))
+        window.ArmView().grabFramebuffer().save(QString{ capture }.replace(".png", "-sample.png"));
+
+    QSettings{ "embedded-pro", "e-robot-arm Simulator" }.remove("profile");
+    QSettings{ "embedded-pro", "e-robot-arm Simulator" }.remove("recentProfiles");
+}
+
 TEST_F(SimulatorWindowTest, frame_arm_fits_the_posed_arm_and_the_overlays_follow_the_view_menu)
 {
     auto* root = window.ArmView().rootObject();

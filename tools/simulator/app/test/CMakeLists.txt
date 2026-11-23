@@ -22,7 +22,10 @@ target_sources(e_robot_arm.tool.simulator_window_test PRIVATE
     TestSimulatorWindow.cpp
 )
 
-target_compile_definitions(e_robot_arm.tool.simulator_window_test PRIVATE MESH_TEST_DATA="${CMAKE_CURRENT_LIST_DIR}/data")
+target_compile_definitions(e_robot_arm.tool.simulator_window_test PRIVATE
+    MESH_TEST_DATA="${CMAKE_CURRENT_LIST_DIR}/data"
+    SAMPLE_ARM_PROFILE="${e_robot_arm_SOURCE_DIR}/tools/simulator/samples/meshed-arm/profile.json"
+)
 
 add_executable(e_robot_arm.tool.simulator.mesh_files_test)
 emil_build_for(e_robot_arm.tool.simulator.mesh_files_test HOST All BOOL E_ROBOT_ARM_BUILD_TESTS)

@@ -2,7 +2,7 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.42.0
+version: 0.43.0
 component: "tool-simulator"
 date: 2026-11-23
 ---
@@ -286,6 +286,29 @@ camera are ui-cpp's `StudioView` with its defaults and the theme's colours:
   - **Selection and faults** stay visible on a meshed link: its accent hub is drawn over the mesh, translucent,
     while the joint is selected or faulted.
   - The ghost arm keeps the generated parts.
+- **Sample meshes:** `tools/simulator/samples/meshed-arm/` holds a profile on the reference geometry and a glTF mesh
+  for the base and each link. It shows the mesh path without CAD.
+  - **Look:** a cast industrial arm, unlike the generated arm. The materials are glTF metallic-roughness:
+
+    | Material | Colour  | Metalness | Roughness | Parts                       |
+    |----------|---------|-----------|-----------|-----------------------------|
+    | painted  | #f28c28 | 0         | 0.4       | Shells and housings         |
+    | cast     | #3c4043 | 0.6       | 0.55      | Base and wrist-roll housing |
+    | anodised | #9aa0a6 | 1         | 0.35      | Hubs and turntable          |
+    | rubber   | #1d1f21 | 0         | 0.8       | Motor caps                  |
+    | steel    | #c8ccd0 | 1         | 0.25      | Bolts and flange            |
+
+  - **Made, not drawn:** the developer tool `e-robot-arm-sample-meshes <directory>` writes the files. It builds each
+    node from ui-cpp's lathe and extrusion primitives in its link's frame. Each `.gltf` holds one primitive per
+    material and an embedded buffer.
+  - **Kept in step:** a unit test writes the files again and compares them with the committed files, byte for byte.
+    It runs on Linux only, because other C libraries can round `sin`, `cos` and `pow` differently. The test also
+    counts each node's triangles against the budget.
+  - **Checked in the window:** the window test opens the sample profile. It expects seven loaded meshes and no mesh
+    event. Its frame capture is a CI artifact.
+  - **Shipped:** both installers hold the sample ([tool-installers.md](tool-installers.md) Part A). **Profile → Open**
+    reads it like any other profile.
+  - **Lighting:** the sample does not change the scene's lights. Its materials were tuned against the frame capture.
 - **Tool triad** (phase 8c): three thin bars at the tool centre point along the tool frame's axes, x red, y green,
   z blue (the usual robotics convention, unlit so they read in both themes), each 12 % of the arm's height long. It
   follows the measured arm; the ghost has none.
