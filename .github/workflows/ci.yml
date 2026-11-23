@@ -22,6 +22,16 @@ env:
   GTEST_COLOR: 1
 
 jobs:
+  release_packaging:
+    name: Release Packaging Script
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Test the firmware packaging the release runs
+        run: scripts/test-package-firmware.sh
+
   host_build_test_ubuntu:
     name: Host Build & Test (ubuntu-latest)
     runs-on: ubuntu-latest
