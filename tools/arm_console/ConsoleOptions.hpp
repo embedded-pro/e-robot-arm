@@ -16,6 +16,7 @@ namespace arm_console
         std::string profile{};
         std::string virtualArm{};
         std::string engine{};
+        bool batch{ false };
     };
 
     std::optional<ConsoleOptions> ParseOptions(const std::vector<std::string>& arguments);

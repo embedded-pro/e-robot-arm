@@ -4,6 +4,7 @@
 #include "tools/arm_host/ArmEvent.hpp"
 #include "tools/arm_host/ArmSnapshot.hpp"
 #include "tools/tuning/TuningRun.hpp"
+#include <chrono>
 #include <cstdint>
 #include <filesystem>
 #include <mutex>
@@ -19,6 +20,8 @@ namespace arm_console
     {
         done,
         posted,
+        wait,
+        failed,
         quit
     };
 
@@ -26,6 +29,8 @@ namespace arm_console
     {
         Outcome outcome;
         uint32_t command{ 0 };
+        std::chrono::milliseconds waitFor{};
+        std::optional<arm::ArmState> waitState{};
     };
 
     class ArmConsole
@@ -50,11 +55,12 @@ namespace arm_console
         ExecuteResult MoveJoints(std::istringstream& arguments);
         ExecuteResult MoveLine(std::istringstream& arguments);
         void Points();
-        void Kinematics(std::string_view command, std::istringstream& arguments);
+        ExecuteResult Kinematics(std::string_view command, std::istringstream& arguments);
         void PrintPose(const arm::Placement& pose, const arm::Singularities& singularities);
         std::optional<arm_host::ArmCommand> Mode(std::istringstream& arguments) const;
         std::optional<arm_host::ArmCommand> Move(std::istringstream& arguments) const;
         void Status();
+        ExecuteResult Wait(std::istringstream& arguments);
         ExecuteResult Tune(std::istringstream& arguments);
         void ReportTuning();
         void PrintEvent(const arm_host::ArmEvent& event);
