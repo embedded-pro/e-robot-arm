@@ -1,7 +1,7 @@
 #include "tools/simulator/app/SimulatorWindow.hpp"
-#include "tools/simulator/app/AdapterDialog.hpp"
 #include "tools/arm_host/AdapterTargetLink.hpp"
 #include "tools/arm_host/ProfileFile.hpp"
+#include "tools/simulator/app/AdapterDialog.hpp"
 #include "tools/simulator/view_models/AdapterChoices.hpp"
 #include "ui/backend/qt/QtConversions.hpp"
 #include "ui/backend/qt/QtTheme.hpp"
