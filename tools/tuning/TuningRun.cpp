@@ -118,7 +118,7 @@ namespace tuning
             firstTime = sample.time;
         const auto time = std::chrono::duration<float>(sample.time - *firstTime).count();
         const auto torque = sample.torques.has_value() ? (*sample.torques)[test.joint].Value() : 0.0f;
-        samples.push_back({ time, sample.commanded[test.joint].Value(), sample.measured[test.joint].Value(), torque, droppedBefore });
+        samples.emplace_back(time, sample.commanded[test.joint].Value(), sample.measured[test.joint].Value(), torque, droppedBefore);
         droppedSamples += droppedBefore;
 
         const bool stepRecorded = test.kind == TestKind::step && time >= std::chrono::duration<float>(test.record).count();
