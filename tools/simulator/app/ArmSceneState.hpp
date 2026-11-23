@@ -9,9 +9,9 @@
 #include <QStringList>
 #include <QVariant>
 #include <QVariantList>
-#include <array>
 #include <QVector3D>
 #include <QtQml/qqmlregistration.h>
+#include <array>
 
 class QJSEngine;
 class QQmlEngine;
