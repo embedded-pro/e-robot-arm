@@ -2,9 +2,9 @@
 title: "Arm Profile Design"
 type: design
 status: draft
-version: 0.24.0
+version: 0.25.0
 component: "arm_profile"
-date: 2026-11-20
+date: 2026-11-23
 ---
 
 | Field     | Value              |
@@ -12,9 +12,9 @@ date: 2026-11-20
 | Title     | Arm Profile Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.24.0             |
+| Version   | 0.25.0             |
 | Component | arm_profile        |
-| Date      | 2026-11-20         |
+| Date      | 2026-11-23         |
 
 > The single description of an arm, as a JSON file: its control timing, and per joint the node, transmission,
 > limits and motor controller. Behaviour only; diagrams are Mermaid.
@@ -246,6 +246,22 @@ workspace, are written only when the profile names them. Real numbers have up to
 and trailing zeros dropped. Read back, every item is the same; a gain comes back within the joint configurator's
 comparison tolerance ([joint-configurator.md](joint-configurator.md) Part C), since nine decimals hold fewer
 significant digits than a float below 0.1.
+
+### Part D — Profile files on the host
+
+The host tools (simulator, console, virtual arm) read and write profile files through one pair of functions in
+`tools/arm_host` (`ReadProfileFile`, `WriteProfileFile`), so the rules below hold for every tool:
+
+- **Reading is bounded.** A file is read up to 64 KiB and one byte more; a longer file is refused with
+  `<path> is larger than 64 KiB` without the rest of it ever being read, so a wrong path (a log, an image, a device)
+  cannot make a tool read without limit.
+- **Saving never loses the last good file.** The profile is written in full to a temporary file next to the
+  destination (`<file>.saving`, in the same directory, so the replacement stays on the same file system), closed, and
+  only then renamed over the destination. Until that rename, the destination is untouched: if writing or closing
+  the temporary file fails (no space, no permission, a directory in the way), or the rename fails, the old profile is
+  still there, byte for byte, the temporary file is removed, and the message names the step: `cannot write <path>`
+  or `cannot replace <path>: <reason>`. A crash between the steps leaves at most a stray `<file>.saving` beside an
+  intact profile.
 
 ### Example
 
