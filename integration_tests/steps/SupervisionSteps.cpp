@@ -20,7 +20,8 @@ namespace
     {
         static const std::map<std::string, arm::SupervisionTrip> trips{ { "speed", arm::SupervisionTrip::speedLimit },
             { "reference speed", arm::SupervisionTrip::referenceSpeed }, { "reference acceleration", arm::SupervisionTrip::referenceAcceleration },
-            { "reference step", arm::SupervisionTrip::referenceStep }, { "tracking error", arm::SupervisionTrip::trackingError } };
+            { "reference step", arm::SupervisionTrip::referenceStep }, { "tracking error", arm::SupervisionTrip::trackingError },
+            { "position limit", arm::SupervisionTrip::positionLimit } };
         return trips.at(name);
     }
 
@@ -45,6 +46,34 @@ GIVEN(R"(an arm with six simulated joints whose joint {int} may drive at most {f
     auto config = ArmFixture::DefaultConfig();
     config.torqueLimits[static_cast<std::size_t>(joint - 1)] = foc::NewtonMeter{ torque };
     context.Emplace<ArmFixture>(config);
+}
+
+GIVEN(R"(an arm with six simulated joints whose joint {int} may move from {float} to {float} rad)", (std::int32_t joint, float lower, float upper))
+{
+    auto config = ArmFixture::DefaultConfig();
+    config.positionLimits[static_cast<std::size_t>(joint - 1)] = { foc::Radians{ lower }, foc::Radians{ upper } };
+    context.Emplace<ArmFixture>(config);
+}
+
+WHEN(R"(joint {int} is pushed with {float} N·m)", (std::int32_t joint, float torque))
+{
+    auto& fixture = context.Get<ArmFixture>();
+    fixture.simulatedArm.Push(static_cast<std::size_t>(joint - 1), foc::NewtonMeter{ torque });
+}
+
+WHEN(R"(the push on joint {int} ends)", (std::int32_t joint))
+{
+    auto& fixture = context.Get<ArmFixture>();
+    fixture.simulatedArm.Push(static_cast<std::size_t>(joint - 1), foc::NewtonMeter{ 0.0f });
+}
+
+THEN(R"(the arm shall report joint {int} measured beyond {float} rad)", (std::int32_t joint, float limit))
+{
+    auto& fixture = context.Get<ArmFixture>();
+    ASSERT_TRUE(fixture.events.protectiveStop.has_value());
+    EXPECT_EQ(static_cast<std::size_t>(joint - 1), fixture.events.protectiveStop->first);
+    std::cout << "[METRIC] supervision.position_limit_stop_rad=" << fixture.events.protectiveStopValue << " joint=" << joint << " limit=" << limit << "\n";
+    EXPECT_GT(std::abs(fixture.events.protectiveStopValue), std::abs(limit));
 }
 
 WHEN(R"(the arm moves joint {int} {float} rad further)", (std::int32_t joint, float distance))

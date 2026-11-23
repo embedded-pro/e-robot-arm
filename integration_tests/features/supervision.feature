@@ -35,3 +35,15 @@ Feature: Supervision of the moving arm
     And the arm is enabled
     And the arm is handed a reference that drives joint 3 at 3 radians per second
     Then within 100 ms the arm shall stop protectively, naming joint 3 on its "reference speed"
+
+  @REQ-ARM-015
+  Scenario: A joint pushed past its position limit stops the arm, which reports the joint and its position and holds
+    Given an arm with six simulated joints whose joint 1 may move from -0.05 to 0.05 rad
+    And the control loop is running
+    When the arm is brought up
+    And the arm is enabled
+    And joint 1 is pushed with 0.3 N·m
+    Then within 1000 ms the arm shall stop protectively, naming joint 1 on its "position limit"
+    And the arm shall report joint 1 measured beyond 0.05 rad
+    When the push on joint 1 ends
+    Then for 1000 ms every joint shall stay running within 0.02 rad of where the arm stopped

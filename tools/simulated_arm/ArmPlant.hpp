@@ -19,6 +19,7 @@ namespace simulation
         ArmPlant(const PlantConfig& config, const std::array<SimulatedJoint*, arm::jointCount>& joints);
 
         void Advance() override;
+        void Push(std::size_t joint, foc::NewtonMeter torque);
         foc::Radians MotorPosition(std::size_t joint) const override;
         foc::RadiansPerSecond MotorSpeed(std::size_t joint) const override;
 
@@ -28,6 +29,7 @@ namespace simulation
         arm::JointTransmissions transmissions;
         std::array<SimulatedJoint*, arm::jointCount> joints;
         ArmDynamics dynamics;
+        arm::JointTorques external{};
         infra::TimePoint simulated{ infra::Now() };
     };
 }

@@ -2,7 +2,7 @@
 title: "Simulator Design"
 type: design
 status: draft
-version: 0.35.0
+version: 0.35.1
 component: "simulator"
 date: 2026-11-23
 ---
@@ -12,7 +12,7 @@ date: 2026-11-23
 | Title     | Simulator Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.35.0           |
+| Version   | 0.35.1           |
 | Component | simulator        |
 | Date      | 2026-11-23       |
 
@@ -146,6 +146,9 @@ A `SimulatedJoint` is an e-foc node on the in-process bus (a `FocMotorCategorySe
   *stopping*.
 - **Takes injected failures:** `Fault(code)` reports a fault in its next telemetry, `Silence()` stops answering and
   `Resume()` answers again. The simulator offers them per joint (Part E, *Disturbances*).
+- **Can be pushed:** `SimulatedArm::Push(joint, torque)` adds an external torque on a joint to the dynamics above
+  until it is set back to zero, as a hand or an obstacle would. The integration scenarios use it to move a measured
+  joint where no command may take it, such as past its position limit.
 
 ### Part E — Arm host
 

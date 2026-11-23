@@ -29,6 +29,7 @@ namespace integration
         std::optional<std::size_t> motorApplied;
         std::optional<arm::MotorSettings> motorRead;
         std::optional<std::pair<std::size_t, arm::SupervisionTrip>> protectiveStop;
+        float protectiveStopValue{ 0.0f };
         bool configurationFailed{ false };
         uint32_t movesDone{ 0 };
         uint32_t movesAborted{ 0 };
@@ -77,5 +78,6 @@ namespace integration
         std::map<std::string, arm::JointPositions> points;
         arm::ToolPose lineFrom{};
         arm::ToolPose lineTo{};
+        arm::ArmConfig config;
     };
 }
