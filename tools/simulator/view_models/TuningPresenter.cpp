@@ -217,6 +217,11 @@ namespace simulator
             lastIsReference = false;
             status = "Done: " + runLabel;
             statusLevel = ui::theme::StatusLevel::Ok;
+            if (const auto dropped = run->DroppedSamples(); dropped != 0)
+            {
+                status += std::format(" — {} samples lost during the run; the metrics may be off", dropped);
+                statusLevel = ui::theme::StatusLevel::Warning;
+            }
             UpdateMetrics();
             UpdateChart();
         }

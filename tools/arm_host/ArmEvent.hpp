@@ -35,7 +35,8 @@ namespace arm_host
         armControllerChanged,
         supervisionTrip,
         protectiveStop,
-        hardwareStop
+        hardwareStop,
+        eventsDropped
     };
 
     inline constexpr std::size_t noJoint{ std::numeric_limits<std::size_t>::max() };
@@ -54,5 +55,6 @@ namespace arm_host
         arm::ControllerReading controller{};
         arm::MotorSettings motor{};
         std::string_view armController{};
+        uint64_t dropped{ 0 };
     };
 }

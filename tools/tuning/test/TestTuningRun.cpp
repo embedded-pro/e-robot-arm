@@ -35,11 +35,11 @@ namespace
             run.OnEvent(arm_host::ArmEvent{ .kind = kind });
         }
 
-        void Trace(std::size_t count, float measured)
+        void Trace(std::size_t count, float measured, uint64_t droppedBeforeFirst = 0)
         {
             for (std::size_t index = 0; index != count; ++index)
             {
-                arm_host::TraceSample sample{ .time = time };
+                arm_host::TraceSample sample{ .time = time, .droppedBefore = index == 0 ? droppedBeforeFirst : 0 };
                 sample.commanded[2] = foc::Radians{ 0.5f };
                 sample.measured[2] = foc::Radians{ measured };
                 arm::JointTorques torques{};
@@ -171,4 +171,22 @@ TEST_F(OutAndBackTest, moves_out_then_back_and_records_until_half_a_second_after
     EXPECT_FALSE(outAndBack.Step().has_value());
     EXPECT_NEAR(0.02f, outAndBack.Tracking().rms, 1.0e-4f);
     EXPECT_NEAR(0.0f, outAndBack.Samples().front().torque, 1.0e-6f);
+}
+
+TEST_F(TuningRunTest, counts_the_samples_lost_while_it_records_and_marks_where)
+{
+    EXPECT_CALL(arm, Post(_)).WillOnce(Return(7u));
+    run.Start();
+    Answer(arm_host::ArmEventKind::accepted, 7);
+    Event(arm_host::ArmEventKind::moveDone);
+
+    Trace(10, 0.5f, 99);
+    Trace(10, 0.5f, 4);
+    Trace(10, 0.5f, 2);
+
+    EXPECT_EQ(6u, run.DroppedSamples());
+    ASSERT_EQ(30u, run.Samples().size());
+    EXPECT_EQ(0u, run.Samples()[0].droppedBefore);
+    EXPECT_EQ(4u, run.Samples()[10].droppedBefore);
+    EXPECT_EQ(2u, run.Samples()[20].droppedBefore);
 }

@@ -225,6 +225,11 @@ namespace simulator
         UpdateControls();
     }
 
+    std::size_t SimulatorPresenter::NoteTraceGaps(const arm_host::ArmSnapshot& snapshot, std::span<const arm_host::TraceSample> trace)
+    {
+        return log.NoteTraceGaps(trace, snapshot.config.controlPeriod);
+    }
+
     void SimulatorPresenter::Note(LogLevel level, std::size_t joint, std::string message)
     {
         log.Note(level, joint, std::move(message));

@@ -1,5 +1,6 @@
 #include "tools/simulator/view_models/EventLog.hpp"
 #include "gmock/gmock.h"
+#include <array>
 #include <chrono>
 
 namespace
@@ -81,4 +82,36 @@ TEST_F(EventLogTest, a_note_from_the_simulator_is_logged_with_the_time_since_sta
     EXPECT_EQ(2u, line.joint);
     EXPECT_EQ("Link 3 mesh not loaded: cannot open forearm.glb", line.message);
     EXPECT_NEAR(2.0f, line.seconds, 0.5f);
+}
+
+TEST_F(EventLogTest, lost_events_are_a_warning_that_says_how_many)
+{
+    const auto line = simulator::Describe(At({ .kind = ArmEventKind::eventsDropped, .dropped = 12 }, 2s), start);
+
+    EXPECT_EQ(simulator::LogLevel::warning, line.level);
+    EXPECT_EQ("12 events lost before this line: the log fell behind the arm", line.message);
+    EXPECT_NEAR(2.0f, line.seconds, 1e-3f);
+}
+
+TEST_F(EventLogTest, a_trace_gap_is_logged_at_the_sample_after_it_with_its_length)
+{
+    const std::array samples{ arm_host::TraceSample{ .time = start + 3s, .droppedBefore = 0 }, arm_host::TraceSample{ .time = start + 5s, .droppedBefore = 40 },
+        arm_host::TraceSample{ .time = start + 5s + 10ms } };
+
+    EXPECT_EQ(1u, log.NoteTraceGaps(samples, 10ms));
+
+    ASSERT_EQ(1u, log.Lines().size());
+    const auto& line = log.Lines().front();
+    EXPECT_EQ(simulator::LogLevel::warning, line.level);
+    EXPECT_NEAR(5.0f, line.seconds, 1e-3f);
+    EXPECT_EQ("Trace gap: 40 samples (about 400 ms) lost before this time; the scope and tuning skip them", line.message);
+}
+
+TEST_F(EventLogTest, a_trace_without_gaps_logs_nothing)
+{
+    const std::array samples{ arm_host::TraceSample{ .time = start + 1s }, arm_host::TraceSample{ .time = start + 1s + 10ms } };
+
+    EXPECT_EQ(0u, log.NoteTraceGaps(samples, 10ms));
+
+    EXPECT_TRUE(log.Lines().empty());
 }

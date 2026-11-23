@@ -2,7 +2,7 @@
 title: "Simulator Design"
 type: design
 status: draft
-version: 0.34.0
+version: 0.35.0
 component: "simulator"
 date: 2026-11-23
 ---
@@ -12,7 +12,7 @@ date: 2026-11-23
 | Title     | Simulator Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.34.0           |
+| Version   | 0.35.0           |
 | Component | simulator        |
 | Date      | 2026-11-23       |
 
@@ -234,6 +234,16 @@ The snapshot is what the screen shows; events are what the log shows; traces are
   its event, still names it.
 - **Trace samples** — one per control period: the time, the six commanded positions, the six measured positions and,
   while the arm drives its joints, the six commanded torques and the six estimated external torques.
+- **Gaps.** A reader that falls behind loses the oldest entries of a full queue (Part B and the Data Model); it is
+  told what it lost and where, never left to guess. The queues drop from the front, so every entry lost since the last
+  take came just before the first entry this take returns:
+  - `TakeEvents()` then starts with an `eventsDropped` event carrying the count, at the time of the first event kept;
+  - `TakeTrace()` sets `droppedBefore` on its first sample to the count, so the gap sits between that sample and the
+    one before it.
+
+  The simulator logs each gap as a warning with its time and length and counts the lost samples on the scope
+  ([tool-simulator.md](tool-simulator.md) Part F); a tuning run counts the samples lost while it records and marks
+  them in its CSV ([tuning.md](tuning.md)); the console prints `events lost: <n>`.
 
 The commanded positions are the last setpoint set the active arm controller sent (`ArmControllers::LastSetpoints()`,
 empty until the arm has been enabled); nothing else in `core/` changes for the simulator.
@@ -312,8 +322,8 @@ empty until the arm has been enabled); nothing else in `core/` changes for the s
 | Snapshot        | tool pose             | m, rad; singularity flags           | —                     | From the measured joints ([arm-model.md](arm-model.md)) |
 | Snapshot        | virtual motors        | 6 × (plant, process state), folder  | —                     | Virtual arm only                                        |
 | Snapshot        | disturbances          | offered kinds; 6 × (silent, N·m)    | ±200 N·m              | Simulated joints and virtual arm only                   |
-| Event queue     | capacity              | events                              | 512                   | Oldest dropped when full; drops counted                 |
-| Trace queue     | capacity              | samples                             | 1024 (10 s at 100 Hz) | Oldest dropped when full; drops counted                 |
+| Event queue     | capacity              | events                              | 512                   | Oldest dropped when full; drops counted and reported    |
+| Trace queue     | capacity              | samples                             | 1024 (10 s at 100 Hz) | Oldest dropped when full; drops counted and reported    |
 | Simulated joint | τ                     | s                                   | ≥ 0                   | 0 follows exactly; simulator 0.05                       |
 
 ---

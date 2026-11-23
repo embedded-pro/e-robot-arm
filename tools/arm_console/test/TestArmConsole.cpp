@@ -443,3 +443,8 @@ TEST_F(ArmConsoleTest, wait_asks_to_wait_for_the_move_or_a_state_for_the_time_gi
     Run("wait soon", arm_console::Outcome::failed);
     Run("wait 1 2", arm_console::Outcome::failed);
 }
+
+TEST_F(ArmConsoleTest, lost_events_print_how_many)
+{
+    EXPECT_EQ("events lost: 7 (the console fell behind the arm)\n", Printed({ .kind = ArmEventKind::eventsDropped, .dropped = 7 }));
+}

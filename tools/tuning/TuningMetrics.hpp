@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <ostream>
 #include <vector>
@@ -15,6 +16,7 @@ namespace tuning
         float commanded{ 0.0f };
         float measured{ 0.0f };
         float torque{ 0.0f };
+        uint64_t droppedBefore{ 0 };
     };
 
     struct StepMetrics

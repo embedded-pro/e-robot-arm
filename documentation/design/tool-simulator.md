@@ -2,9 +2,9 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.41.0
+version: 0.42.0
 component: "tool-simulator"
-date: 2026-11-22
+date: 2026-11-23
 ---
 
 | Field     | Value                   |
@@ -12,9 +12,9 @@ date: 2026-11-22
 | Title     | Simulator Screen Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.41.0                  |
+| Version   | 0.42.0                  |
 | Component | tool-simulator          |
-| Date      | 2026-11-22              |
+| Date      | 2026-11-23              |
 
 > What the e-robot-arm Simulator shows, what each control does and when, and how it looks (phase 8a,
 > [#28](https://github.com/embedded-pro/e-robot-arm/issues/28)). Components and threads are in
@@ -350,7 +350,13 @@ camera are ui-cpp's `StudioView` with its defaults and the theme's colours:
 
 - **Scope** (`ui::scope::ScopeCore`, three channels): the selected joint's commanded and measured position and their
   difference, in rad, at the control period. Run and hold; trigger on a trip (normal mode, pre-trigger 1 s).
+  When the display falls behind the arm and trace samples are lost ([simulator.md](simulator.md) Part F), the scope
+  joins the samples on either side of the gap and its header shows **N samples lost** in `Warning`, with a tooltip
+  saying so, until another joint is chosen.
 - **Log:** time, level (`Info`, `Warning`, `Fault`), joint (or "arm"), message. At most 10 000 lines, oldest dropped.
+  A trace gap is a warning at the time of the sample after it, **Trace gap: 40 samples (about 400 ms) lost before
+  this time; the scope and tuning skip them**, and lost events read **12 events lost before this line: the log fell
+  behind the arm**.
   Filter by level and joint; **File → Save Log…** writes plain text.
 
 ### Part G — Theme and type

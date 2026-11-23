@@ -39,12 +39,12 @@ namespace
             Refresh(events);
         }
 
-        void Trace(std::size_t count, float measured)
+        void Trace(std::size_t count, float measured, uint64_t droppedBeforeFirst = 0)
         {
             std::vector<arm_host::TraceSample> samples;
             for (std::size_t index = 0; index != count; ++index)
             {
-                arm_host::TraceSample sample{ .time = time };
+                arm_host::TraceSample sample{ .time = time, .droppedBefore = index == 0 ? droppedBeforeFirst : 0 };
                 sample.commanded[2] = foc::Radians{ 0.05f };
                 sample.measured[2] = foc::Radians{ measured };
                 samples.push_back(sample);
@@ -113,7 +113,7 @@ TEST_F(TuningPresenterTest, run_steps_the_selected_joint_shows_its_progress_then
     EXPECT_TRUE(presenter.CanExport());
     std::ostringstream csv;
     presenter.WriteCsv(csv);
-    EXPECT_THAT(csv.str(), StartsWith("time_s,commanded_rad,measured_rad,tracking_error_rad,torque_nm\n0,0.05,0.05,0,0\n"));
+    EXPECT_THAT(csv.str(), StartsWith("time_s,commanded_rad,measured_rad,tracking_error_rad,torque_nm,dropped_before\n0,0.05,0.05,0,0,0\n"));
     ASSERT_EQ(3u, presenter.Chart().panels.size());
     EXPECT_EQ(201u, presenter.Chart().time.size());
 }
@@ -170,4 +170,18 @@ TEST_F(TuningPresenterTest, a_target_switch_drops_the_runs_and_the_reference)
     EXPECT_FALSE(presenter.Enabled(TuningAction::clearReference));
     EXPECT_EQ("", presenter.Status());
     EXPECT_TRUE(presenter.Chart().panels.empty());
+}
+
+TEST_F(TuningPresenterTest, a_run_that_lost_samples_says_so_as_a_warning)
+{
+    presenter.SelectJoint(2);
+    Refresh();
+    EXPECT_CALL(arm, Post(_)).WillOnce(Return(5u));
+    view.PressAction(TuningAction::run);
+    Accept(5);
+    Trace(100, 0.05f);
+    Trace(101, 0.05f, 12);
+
+    EXPECT_EQ("Done: gravity-pd · step 0.050 rad · J3 — 12 samples lost during the run; the metrics may be off", presenter.Status());
+    EXPECT_EQ(ui::theme::StatusLevel::Warning, presenter.StatusLevel());
 }

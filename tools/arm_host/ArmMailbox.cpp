@@ -1,4 +1,5 @@
 #include "tools/arm_host/ArmMailbox.hpp"
+#include <utility>
 
 namespace arm_host
 {
@@ -10,7 +11,7 @@ namespace arm_host
     void ArmMailbox::OnEvent(const ArmEvent& event)
     {
         std::scoped_lock lock{ mutex };
-        PushBounded(events, event, eventCapacity, droppedEvents);
+        PushBounded(events, event, eventCapacity, droppedEvents, eventsLostSinceTaken);
     }
 
     void ArmMailbox::OnSnapshot(const ArmSnapshot& newSnapshot)
@@ -24,7 +25,7 @@ namespace arm_host
     void ArmMailbox::OnTrace(const TraceSample& sample)
     {
         std::scoped_lock lock{ mutex };
-        PushBounded(trace, sample, traceCapacity, droppedTraceSamples);
+        PushBounded(trace, sample, traceCapacity, droppedTraceSamples, traceLostSinceTaken);
     }
 
     ArmSnapshot ArmMailbox::Snapshot() const
@@ -36,7 +37,11 @@ namespace arm_host
     std::vector<ArmEvent> ArmMailbox::TakeEvents()
     {
         std::scoped_lock lock{ mutex };
-        std::vector<ArmEvent> taken{ events.begin(), events.end() };
+        std::vector<ArmEvent> taken;
+        taken.reserve(events.size() + 1);
+        if (eventsLostSinceTaken != 0 && !events.empty())
+            taken.push_back({ .kind = ArmEventKind::eventsDropped, .time = events.front().time, .dropped = std::exchange(eventsLostSinceTaken, 0) });
+        taken.insert(taken.end(), events.begin(), events.end());
         events.clear();
         return taken;
     }
@@ -46,6 +51,8 @@ namespace arm_host
         std::scoped_lock lock{ mutex };
         std::vector<TraceSample> taken{ trace.begin(), trace.end() };
         trace.clear();
+        if (traceLostSinceTaken != 0 && !taken.empty())
+            taken.front().droppedBefore = std::exchange(traceLostSinceTaken, 0);
         return taken;
     }
 
@@ -62,12 +69,13 @@ namespace arm_host
     }
 
     template<class T>
-    void ArmMailbox::PushBounded(std::deque<T>& queue, const T& value, std::size_t capacity, uint64_t& dropped)
+    void ArmMailbox::PushBounded(std::deque<T>& queue, const T& value, std::size_t capacity, uint64_t& dropped, uint64_t& lost)
     {
         if (queue.size() == capacity)
         {
             queue.pop_front();
             ++dropped;
+            ++lost;
         }
         queue.push_back(value);
     }

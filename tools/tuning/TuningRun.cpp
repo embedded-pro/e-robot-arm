@@ -113,16 +113,23 @@ namespace tuning
             return;
         }
 
+        const auto droppedBefore = firstTime.has_value() ? sample.droppedBefore : 0;
         if (!firstTime.has_value())
             firstTime = sample.time;
         const auto time = std::chrono::duration<float>(sample.time - *firstTime).count();
         const auto torque = sample.torques.has_value() ? (*sample.torques)[test.joint].Value() : 0.0f;
-        samples.push_back({ time, sample.commanded[test.joint].Value(), sample.measured[test.joint].Value(), torque });
+        samples.emplace_back(time, sample.commanded[test.joint].Value(), sample.measured[test.joint].Value(), torque, droppedBefore);
+        droppedSamples += droppedBefore;
 
         const bool stepRecorded = test.kind == TestKind::step && time >= std::chrono::duration<float>(test.record).count();
         const bool settled = state == RunState::settling && time - settleStart >= settleSeconds;
         if (stepRecorded || settled)
             state = RunState::done;
+    }
+
+    uint64_t TuningRun::DroppedSamples() const
+    {
+        return droppedSamples;
     }
 
     void TuningRun::Fail(std::string reason)

@@ -47,6 +47,8 @@ namespace simulator
                     return { LogLevel::fault, Joint(event.joint) + " " + Text(event.reason) };
                 case hardwareStop:
                     return { LogLevel::fault, SentenceCase(event.reason) };
+                case eventsDropped:
+                    return { LogLevel::warning, std::format("{} events lost before this line: the log fell behind the arm", event.dropped) };
                 case protectiveStop:
                     return { LogLevel::warning, "Protective stop, holding: " + Joint(event.joint) + " " + Text(event.reason) };
                 case tripped:
@@ -111,6 +113,20 @@ namespace simulator
     void EventLog::Note(LogLevel level, std::size_t joint, std::string message)
     {
         Add({ std::chrono::duration<float>(std::chrono::system_clock::now() - start).count(), level, joint, std::move(message) });
+    }
+
+    std::size_t EventLog::NoteTraceGaps(std::span<const arm_host::TraceSample> samples, infra::Duration samplePeriod)
+    {
+        std::size_t noted{ 0 };
+        for (const auto& sample : samples)
+            if (sample.droppedBefore != 0)
+            {
+                ++noted;
+                const auto lost = std::chrono::duration<float, std::milli>(samplePeriod * sample.droppedBefore).count();
+                Add({ std::chrono::duration<float>(sample.time - start).count(), LogLevel::warning, arm_host::noJoint,
+                    std::format("Trace gap: {} samples (about {:.0f} ms) lost before this time; the scope and tuning skip them", sample.droppedBefore, lost) });
+            }
+        return noted;
     }
 
     const std::deque<LogLine>& EventLog::Lines() const

@@ -87,13 +87,13 @@ TEST_F(TuningMetricsTest, the_tracking_error_is_the_rms_and_the_peak_of_commande
 
 TEST_F(TuningMetricsTest, writes_a_header_and_one_row_per_sample_as_csv)
 {
-    samples = { { 0.0f, 0.5f, 0.25f, 1.5f }, { 0.01f, 0.5f, 0.5f, -2.0f } };
+    samples = { { 0.0f, 0.5f, 0.25f, 1.5f }, { 0.01f, 0.5f, 0.5f, -2.0f, 7 } };
     std::ostringstream csv;
 
     tuning::WriteCsv(samples, csv);
 
-    EXPECT_EQ("time_s,commanded_rad,measured_rad,tracking_error_rad,torque_nm\n"
-              "0,0.5,0.25,0.25,1.5\n"
-              "0.01,0.5,0.5,0,-2\n",
+    EXPECT_EQ("time_s,commanded_rad,measured_rad,tracking_error_rad,torque_nm,dropped_before\n"
+              "0,0.5,0.25,0.25,1.5,0\n"
+              "0.01,0.5,0.5,0,-2,7\n",
         csv.str());
 }
