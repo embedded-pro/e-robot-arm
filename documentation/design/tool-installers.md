@@ -2,9 +2,9 @@
 title: "Tool Installers"
 type: design
 status: draft
-version: 0.2.0
+version: 0.2.1
 component: "tool-installers"
-date: 2026-11-20
+date: 2026-11-23
 ---
 
 | Field     | Value           |
@@ -12,9 +12,9 @@ date: 2026-11-20
 | Title     | Tool Installers |
 | Type      | design          |
 | Status    | draft           |
-| Version   | 0.2.0           |
+| Version   | 0.2.1           |
 | Component | tool-installers |
-| Date      | 2026-11-20      |
+| Date      | 2026-11-23      |
 
 > How the host tools reach a computer that has no build tree: one installer per platform holding the simulator,
 > the console and the e-foc virtual motor, built and install-tested on every pull request and attached to every
@@ -35,7 +35,8 @@ date: 2026-11-20
 **Is NOT responsible for:**
 
 - the update check and its banner in the Simulator ([tool-simulator.md](tool-simulator.md) Part T);
-- firmware images, which the release builds and attaches on their own;
+- firmware images, which the release builds and attaches on their own, and only for the applications listed in
+  `FIRMWARE_APPLICATIONS` (none yet; [targets/README.md](../../targets/README.md));
 - the e-foc virtual motor's own behaviour: it is built unchanged from the e-foc revision the virtual arm scenarios
   pin.
 
