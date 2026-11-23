@@ -79,6 +79,7 @@ namespace simulator
         SimulatorPresenter& operator=(const SimulatorPresenter& other) = delete;
 
         void Refresh(const arm_host::ArmSnapshot& snapshot, std::span<const arm_host::ArmEvent> events);
+        std::size_t NoteTraceGaps(const arm_host::ArmSnapshot& snapshot, std::span<const arm_host::TraceSample> trace);
         void EmergencyStop();
         void SwitchTarget(const arm_host::ArmTarget& target);
         void LoadProfile(const arm::ArmProfile& profile);

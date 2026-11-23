@@ -74,8 +74,9 @@ namespace tuning
 
     void WriteCsv(const std::vector<TuningSample>& samples, std::ostream& output)
     {
-        output << "time_s,commanded_rad,measured_rad,tracking_error_rad,torque_nm\n";
+        output << "time_s,commanded_rad,measured_rad,tracking_error_rad,torque_nm,dropped_before\n";
         for (const auto& sample : samples)
-            output << sample.time << ',' << sample.commanded << ',' << sample.measured << ',' << sample.commanded - sample.measured << ',' << sample.torque << '\n';
+            output << sample.time << ',' << sample.commanded << ',' << sample.measured << ',' << sample.commanded - sample.measured << ',' << sample.torque << ','
+                   << sample.droppedBefore << '\n';
     }
 }

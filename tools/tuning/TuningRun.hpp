@@ -57,6 +57,7 @@ namespace tuning
         const std::vector<TuningSample>& Samples() const;
         std::optional<StepMetrics> Step() const;
         TrackingMetrics Tracking() const;
+        uint64_t DroppedSamples() const;
 
     private:
         void OnAnswer(const arm_host::ArmEvent& event);
@@ -74,5 +75,6 @@ namespace tuning
         std::optional<infra::TimePoint> firstTime;
         float settleStart{ 0.0f };
         std::vector<TuningSample> samples;
+        uint64_t droppedSamples{ 0 };
     };
 }

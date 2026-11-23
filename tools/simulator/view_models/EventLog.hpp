@@ -1,10 +1,12 @@
 #pragma once
 
 #include "tools/arm_host/ArmEvent.hpp"
+#include "tools/arm_host/ArmSnapshot.hpp"
 #include <cstddef>
 #include <cstdint>
 #include <deque>
 #include <optional>
+#include <span>
 #include <string>
 
 namespace simulator
@@ -42,6 +44,7 @@ namespace simulator
         void Add(const arm_host::ArmEvent& event);
         void Add(LogLine line);
         void Note(LogLevel level, std::size_t joint, std::string message);
+        std::size_t NoteTraceGaps(std::span<const arm_host::TraceSample> samples, infra::Duration samplePeriod);
         const std::deque<LogLine>& Lines() const;
         bool Passes(const LogLine& line, const LogFilter& filter) const;
         std::string Format(const LogLine& line) const;

@@ -710,6 +710,8 @@ namespace arm_console
         else
             output << std::format("tune move joint {} by {:.3f} rad and back: ", test.joint + 1, test.amplitude);
         output << std::format("tracking RMS {:.4f} rad, peak {:.4f} rad\n", tracking.rms, tracking.peak);
+        if (const auto dropped = tuningRun->DroppedSamples(); dropped != 0)
+            output << std::format("tune warning: {} samples lost during the run; the metrics may be off\n", dropped);
 
         if (!tuningCsv.empty())
         {
@@ -759,6 +761,9 @@ namespace arm_console
                 break;
             case hardwareStop:
                 output << event.reason << "\n";
+                break;
+            case eventsDropped:
+                output << "events lost: " << event.dropped << " (the console fell behind the arm)\n";
                 break;
             case tripped:
                 if (event.joint == arm_host::noJoint)

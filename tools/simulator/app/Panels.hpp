@@ -272,11 +272,15 @@ namespace simulator
     private:
         void Configure();
 
+        void ShowLost();
+
         ui::scope::ScopeCore scope;
         QComboBox* joints;
         QPushButton* runHold;
+        QLabel* lost;
         ui::backend::qt::QtPaintedWidget* plot;
         std::size_t joint{ 0 };
+        uint64_t lostSamples{ 0 };
     };
 
     class EventLogPanel

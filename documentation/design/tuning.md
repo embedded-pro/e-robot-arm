@@ -2,9 +2,9 @@
 title: "Tuning Runs Design"
 type: design
 status: draft
-version: 0.1.0
+version: 0.2.0
 component: "tuning"
-date: 2026-11-17
+date: 2026-11-23
 ---
 
 | Field     | Value              |
@@ -12,9 +12,9 @@ date: 2026-11-17
 | Title     | Tuning Runs Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.1.0              |
+| Version   | 0.2.0              |
 | Component | tuning             |
-| Date      | 2026-11-17         |
+| Date      | 2026-11-23         |
 
 > Runs a step or an out-and-back test on one joint through the arm host, records its response and computes the
 > metrics a control engineer tunes an arm controller by. Host tool; behaviour only; diagrams are Mermaid.
@@ -77,7 +77,11 @@ stateDiagram-v2
 
 Each trace sample of the arm host ([simulator.md](simulator.md) Part F) while the run records gives one sample of
 the tested joint: the time since the first recorded sample, its commanded and measured position, their difference,
-and its commanded torque (zero when the arm host traced none).
+and its commanded torque (zero when the arm host traced none). A sample that follows a gap in the trace
+([simulator.md](simulator.md) Part F) carries how many samples were lost before it. The run counts the samples lost
+while it records (a gap before its first sample does not count) and reports them with its metrics: the console prints
+`tune warning: <n> samples lost during the run; the metrics may be off`, and the Tuning dock's status says the same at
+`Warning`.
 
 ### Part C — Metrics
 
@@ -98,7 +102,8 @@ An out-and-back test reports the two tracking errors only.
 ### Part D — CSV
 
 A run is written as comma-separated values with a header row: `time_s`, `commanded_rad`, `measured_rad`,
-`tracking_error_rad`, `torque_nm`, one row per sample, so a run can be compared outside the simulator.
+`tracking_error_rad`, `torque_nm`, `dropped_before`, one row per sample, so a run can be compared outside the
+simulator. `dropped_before` is 0 except on a sample that follows a gap, where it is the number of samples lost.
 
 ---
 

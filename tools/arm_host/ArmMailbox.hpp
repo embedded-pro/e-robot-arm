@@ -27,7 +27,7 @@ namespace arm_host
 
     private:
         template<class T>
-        static void PushBounded(std::deque<T>& queue, const T& value, std::size_t capacity, uint64_t& dropped);
+        static void PushBounded(std::deque<T>& queue, const T& value, std::size_t capacity, uint64_t& dropped, uint64_t& lost);
 
         mutable std::mutex mutex;
         std::size_t eventCapacity;
@@ -37,5 +37,7 @@ namespace arm_host
         std::deque<TraceSample> trace;
         uint64_t droppedEvents{ 0 };
         uint64_t droppedTraceSamples{ 0 };
+        uint64_t eventsLostSinceTaken{ 0 };
+        uint64_t traceLostSinceTaken{ 0 };
     };
 }

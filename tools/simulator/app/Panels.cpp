@@ -504,8 +504,15 @@ namespace simulator
         : QWidget{ parent }
         , joints{ new QComboBox{ this } }
         , runHold{ new QPushButton{ "Hold", this } }
+        , lost{ new QLabel{ this } }
         , plot{ new ui::backend::qt::QtPaintedWidget{ scope, this } }
     {
+        lost->setObjectName("scopeLostSamples");
+        lost->setAccessibleName("Trace samples lost");
+        lost->setToolTip("The display fell behind the arm and the trace skipped these samples; the scope joins the samples on "
+                         "either side of each gap. The event log names each gap with its time.");
+        ui::backend::qt::StyleStatusLabel(*lost, ui::theme::StatusLevel::Warning);
+        lost->hide();
         for (std::size_t index = 1; index <= arm::jointCount; ++index)
             joints->addItem(QString{ "Joint %1" }.arg(index));
         joints->setAccessibleName("Scope joint");
@@ -518,6 +525,7 @@ namespace simulator
         controls->addWidget(new QLabel{ "Joint", this });
         controls->addWidget(joints);
         controls->addWidget(runHold);
+        controls->addWidget(lost);
         controls->addStretch();
 
         auto* layout = new QVBoxLayout{ this };
@@ -529,6 +537,8 @@ namespace simulator
             {
                 joint = static_cast<std::size_t>(index);
                 scope.Clear();
+                lostSamples = 0;
+                ShowLost();
             });
         connect(runHold, &QPushButton::toggled, this, [this](bool held)
             {
@@ -555,11 +565,19 @@ namespace simulator
     {
         for (const auto& sample : samples)
         {
+            lostSamples += sample.droppedBefore;
             const auto commanded = sample.commanded[joint].Value();
             const auto measured = sample.measured[joint].Value();
             const std::array values{ commanded, measured, commanded - measured };
             scope.AddSample(values);
         }
+        ShowLost();
+    }
+
+    void ScopePanel::ShowLost()
+    {
+        lost->setVisible(lostSamples != 0);
+        lost->setText(QString{ "%1 samples lost" }.arg(lostSamples));
     }
 
     void ScopePanel::SelectJoint(std::size_t newJoint)

@@ -270,6 +270,7 @@ namespace simulator
         const auto trace = host.TakeTrace();
 
         presenter.Refresh(snapshot, events);
+        const auto traceGaps = presenter.NoteTraceGaps(snapshot, trace);
         if (pendingMeshes && std::ranges::any_of(events, [](const arm_host::ArmEvent& event)
                                  {
                                      return event.kind == arm_host::ArmEventKind::profileLoaded;
@@ -321,7 +322,7 @@ namespace simulator
             scope->TriggerOnTrip();
         scope->Repaint();
 
-        ShowNewestLog(events.size());
+        ShowNewestLog(events.size() + traceGaps);
         updates.SetBlocked(DrivesJoints(snapshot));
         sceneState.Update(presenter.Scene());
         simulationMenu->setEnabled(snapshot.targetReady && snapshot.disturbances.has_value());
