@@ -3,6 +3,7 @@
 #include "tools/arm_host/test/ArmHostTestSupport.hpp"
 #include "gmock/gmock.h"
 #include <chrono>
+#include <future>
 #include <thread>
 
 namespace
@@ -93,16 +94,28 @@ TEST_F(ArmHostTest, a_loaded_profile_rebuilds_the_arm_and_answers_with_its_id)
         }));
 }
 
-TEST_F(ArmHostTest, detects_the_adapters_on_its_own_thread)
+TEST_F(ArmHostTest, detects_the_adapters_on_its_own_thread_and_answers_without_blocking_the_caller)
 {
+    std::promise<void> release;
+    auto released = release.get_future().share();
     std::thread::id detectedOn{};
-    const auto adapters = host->DetectAdapters([&detectedOn]()
+    std::promise<std::vector<std::string>> answer;
+    auto answered = answer.get_future();
+
+    host->DetectAdapters([&detectedOn, released]()
         {
             detectedOn = std::this_thread::get_id();
+            released.wait();
             return std::vector<std::string>{ "can0", "slcan:/dev/ttyACM0" };
+        },
+        [&answer](std::vector<std::string> adapters)
+        {
+            answer.set_value(std::move(adapters));
         });
 
-    EXPECT_EQ((std::vector<std::string>{ "can0", "slcan:/dev/ttyACM0" }), adapters);
-    EXPECT_NE(std::thread::id{}, detectedOn);
+    EXPECT_EQ(std::future_status::timeout, answered.wait_for(std::chrono::milliseconds{ 50 }));
+    release.set_value();
+    ASSERT_EQ(std::future_status::ready, answered.wait_for(std::chrono::seconds{ 5 }));
+    EXPECT_EQ((std::vector<std::string>{ "can0", "slcan:/dev/ttyACM0" }), answered.get());
     EXPECT_NE(std::this_thread::get_id(), detectedOn);
 }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "tools/arm_host/AdapterTargetLink.hpp"
 #include "tools/arm_host/ArmHost.hpp"
 #include "tools/simulator/app/ArmSceneState.hpp"
 #include "tools/simulator/app/EmergencyStopKey.hpp"
@@ -23,7 +24,9 @@
 #include <QMainWindow>
 #include <QString>
 #include <QTimer>
+#include <functional>
 #include <optional>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -34,6 +37,8 @@ class QQuickWidget;
 
 namespace simulator
 {
+    class AdapterDialog;
+
     class SimulatorWindow
         : public QMainWindow
     {
@@ -53,6 +58,8 @@ namespace simulator
         void StartUpdateChecks();
         const FrameStatistics& Frames() const;
         void LoadProfileFrom(const QString& path);
+        void ChooseRealArm();
+        void SetAdapterDetector(std::function<std::vector<std::string>()> detector);
         void SaveProfileTo(const QString& path);
         void Frame();
 
@@ -98,6 +105,8 @@ namespace simulator
         void UpdateDisturbances(const arm_host::ArmSnapshot& snapshot);
         void ExportTuningRun();
         void ChooseVirtualArm();
+        void SearchAdapters(AdapterDialog& dialog);
+        void ConfirmRealArm(const QString& adapter);
         void ApplyMeshes(const MeshNames& names, const QString& directory);
         void NoteMesh(int node, const QString& problem);
         void ShowNewestLog(std::size_t count);
@@ -143,6 +152,7 @@ namespace simulator
         QString profilePath;
         RecentProfiles recentProfiles;
         QMenu* recentMenu{ nullptr };
+        std::function<std::vector<std::string>()> adapterDetector{ arm_host::DetectedAdapters };
         MeshNames meshNames{};
         QString meshDirectory;
         std::optional<std::pair<MeshNames, QString>> pendingMeshes;

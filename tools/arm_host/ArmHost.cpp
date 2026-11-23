@@ -62,23 +62,19 @@ namespace arm_host
         return Enqueue(profile);
     }
 
-    std::vector<std::string> ArmHost::DetectAdapters(const std::function<std::vector<std::string>()>& detect)
+    void ArmHost::DetectAdapters(const std::function<std::vector<std::string>()>& detect, const std::function<void(std::vector<std::string>)>& found)
     {
         struct Detection
         {
             std::function<std::vector<std::string>()> detect;
-            std::promise<std::vector<std::string>> detected;
+            std::function<void(std::vector<std::string>)> found;
         };
 
-        auto detection = std::make_shared<Detection>(detect, std::promise<std::vector<std::string>>{});
-        auto result = detection->detected.get_future();
+        auto detection = std::make_shared<Detection>(detect, found);
         dispatcher.Schedule([detection]()
             {
-                detection->detected.set_value(detection->detect());
+                detection->found(detection->detect());
             });
-        if (result.wait_for(detectTimeout) != std::future_status::ready)
-            return {};
-        return result.get();
     }
 
     uint32_t ArmHost::SetCommissioning(bool on)

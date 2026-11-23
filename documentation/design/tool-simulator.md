@@ -2,7 +2,7 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.40.0
+version: 0.41.0
 component: "tool-simulator"
 date: 2026-11-22
 ---
@@ -12,7 +12,7 @@ date: 2026-11-22
 | Title     | Simulator Screen Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.40.0                  |
+| Version   | 0.41.0                  |
 | Component | tool-simulator          |
 | Date      | 2026-11-22              |
 
@@ -148,11 +148,22 @@ joints. A remembered real target is not reconnected on launch: the simulator ope
 selector shows the real adapter as the last used.
 
 **Choose a target.** The selector lists *Simulated joints*, *Virtual arm…* (asks for the e-foc virtual motor
-binary, Part L), *Virtual bus…* (asks for the bus name) and *Real arm…*. *Real arm…* lists the CAN adapters
-detected on this computer, SocketCAN interfaces by name (`can0`) and serial adapters as `slcan:<port>`
-(`slcan:/dev/ttyACM0`), never a virtual bus; the last one used is selected, and kept in the list when it is not
-detected now; the field is editable for an adapter that is not listed. With nothing detected the list is empty and
-the label says so with an example. The switch shows
+binary, Part L), *Virtual bus…* (asks for the bus name) and *Real arm…*. *Real arm…* opens the **Real Arm** dialog at once and searches for the CAN adapters on this computer
+meanwhile, so the window never waits for the search: the arm host runs it on the arm thread and hands the result
+back ([simulator.md](simulator.md) Part E). The dialog lists SocketCAN interfaces by name (`can0`) and serial
+adapters as `slcan:<port>` (`slcan:/dev/ttyACM0`), never a virtual bus; the last one used is selected, and kept in
+the list when it is not detected now; the field is editable for an adapter that is not listed. Its label keeps the
+search's three outcomes apart, so a slow search never reads as an empty computer:
+
+| Search             | Label                                                                                   | Search Again |
+|--------------------|-----------------------------------------------------------------------------------------|--------------|
+| Running            | Searching for CAN adapters on this computer… (the last adapter used is already offered) | Disabled     |
+| Found adapters     | CAN adapter (detected on this computer, or type another):                               | Enabled      |
+| Found none         | No CAN adapter detected: type one, for example can0 or slcan:/dev/ttyACM0               | Enabled      |
+| Not done after 3 s | The adapter search did not finish in 3 s: type an adapter, or Search Again              | Enabled      |
+
+A result that comes after the 3 s still fills the list. Cancel closes the dialog at any time, and a result that
+comes after it is dropped. **Connect…** goes on to the confirmation below. The switch shows
 "Switch to … requested…" and then "done" or "failed: <reason>" in the status bar. Choosing *Real arm*
 opens a confirmation: "Connect to the real arm on `<adapter>`? Joints start stopped." with **Connect** and
 **Cancel** (default). A failed adapter is logged as a fault with its reason, and the arm returns to the previous
