@@ -1,12 +1,14 @@
 #include "tools/arm_host/AdapterTargetLink.hpp"
 #include "tools/arm_host/DefaultArmConfig.hpp"
 #include "tools/arm_host/ProfileFile.hpp"
+#include "tools/simulator/app/ArmSceneState.hpp"
 #include "tools/simulator/app/SimulatorWindow.hpp"
 #include "ui/backend/qt/QtTheme.hpp"
 #include "gmock/gmock.h"
 #ifdef E_ROBOT_ARM_VIRTUAL_ARM
 #include "tools/arm_host/VirtualArmTargetLink.hpp"
 #endif
+#include <QAction>
 #include <QApplication>
 #include <QComboBox>
 #include <QDockWidget>
@@ -25,6 +27,8 @@
 #include <QSettings>
 #include <QSurfaceFormat>
 #include <QTableWidget>
+#include <QVariantMap>
+#include <QVector3D>
 #include <QtQml/QQmlExtensionPlugin>
 #include <algorithm>
 #include <cstdio>
@@ -92,6 +96,34 @@ namespace
             if (button->text() == text)
                 return button;
         return nullptr;
+    }
+
+    QAction* MenuAction(QWidget& window, const QString& text)
+    {
+        for (auto* action : window.findChildren<QAction*>())
+            if (action->text().remove('&').section('\t', 0, 0) == text)
+                return action;
+        return nullptr;
+    }
+
+    QVector3D Corner(const QVariantMap& bounds, int corner)
+    {
+        const auto min = bounds["min"].value<QVector3D>();
+        const auto max = bounds["max"].value<QVector3D>();
+        return { (corner & 1) != 0 ? max.x() : min.x(), (corner & 2) != 0 ? max.y() : min.y(), (corner & 4) != 0 ? max.z() : min.z() };
+    }
+
+    bool FramesAllCorners(QQuickItem& studio, const QVariantMap& bounds)
+    {
+        auto* view = studio.property("view").value<QObject*>();
+        for (int corner = 0; corner != 8; ++corner)
+        {
+            QVector3D screen;
+            QMetaObject::invokeMethod(view, "mapFrom3DScene", Q_RETURN_ARG(QVector3D, screen), Q_ARG(QVector3D, Corner(bounds, corner)));
+            if (screen.x() < 0.0f || screen.y() < 0.0f || screen.x() > studio.width() || screen.y() > studio.height())
+                return false;
+        }
+        return true;
     }
 
     arm_host::TargetOpener Opener()
@@ -523,6 +555,89 @@ TEST_F(SimulatorWindowTest, a_profile_draws_its_link_meshes_and_names_a_mesh_it_
 
     std::filesystem::remove_all(directory);
     QSettings{ "embedded-pro", "e-robot-arm Simulator" }.remove("profile");
+}
+
+TEST_F(SimulatorWindowTest, frame_arm_fits_the_posed_arm_and_the_overlays_follow_the_view_menu)
+{
+    auto* root = window.ArmView().rootObject();
+    auto* studio = root->findChild<QQuickItem*>("studio");
+    ASSERT_NE(nullptr, studio);
+    auto* state = simulator::ArmSceneState::Current();
+    ASSERT_NE(nullptr, state);
+    const auto frameAndSettle = [this, state]()
+    {
+        state->RequestCameraPreset(4);
+        QElapsedTimer settle;
+        settle.start();
+        while (settle.elapsed() < 600)
+            QApplication::processEvents(QEventLoop::AllEvents, 10);
+    };
+    const auto capture = [this](const char* suffix)
+    {
+        if (const auto* path = std::getenv("SIMULATOR_FRAME_CAPTURE"))
+            window.ArmView().grabFramebuffer().save(QString{ path }.replace(".png", suffix));
+    };
+
+    frameAndSettle();
+    EXPECT_TRUE(FramesAllCorners(*studio, state->FrameBounds().toMap()));
+    capture("-folded.png");
+
+    BringUpAndMove(arm::JointPositions{ foc::Radians{ 0.6f }, foc::Radians{ 1.2f }, foc::Radians{ -0.9f }, foc::Radians{ 0.0f }, foc::Radians{ 0.5f },
+        foc::Radians{ 0.0f } });
+    ASSERT_TRUE(Eventually([this]()
+        {
+            return Logged(window.Presenter(), "Move done");
+        },
+        15000));
+    frameAndSettle();
+    EXPECT_TRUE(FramesAllCorners(*studio, state->FrameBounds().toMap()));
+
+    window.Presenter().SelectJoint(1);
+    auto* label = root->findChild<QQuickItem*>("jointLabel");
+    auto* ring = root->findChild<QObject*>("selectionRing");
+    ASSERT_NE(nullptr, label);
+    ASSERT_NE(nullptr, ring);
+    EXPECT_TRUE(Eventually([label, ring, state]()
+        {
+            return label->isVisible() && ring->property("visible").toBool() && state->SelectionText().startsWith("J2 \u00b7 measured");
+        }));
+    capture("-extended.png");
+
+    auto* focus = MenuAction(window, "Focus Selected Joint");
+    ASSERT_NE(nullptr, focus);
+    focus->trigger();
+    EXPECT_TRUE(Eventually([studio, state]()
+        {
+            const auto pivot = studio->property("pivot").value<QObject*>()->property("position").value<QVector3D>();
+            return (pivot - state->SelectionAnchor()).length() < 0.5f;
+        }));
+
+    auto* orthographic = MenuAction(window, "Orthographic");
+    ASSERT_NE(nullptr, orthographic);
+    orthographic->trigger();
+    auto* view = studio->property("view").value<QObject*>();
+    EXPECT_EQ(studio->property("orthographicCamera").value<QObject*>(), view->property("camera").value<QObject*>());
+    orthographic->trigger();
+    EXPECT_EQ(studio->property("camera").value<QObject*>(), view->property("camera").value<QObject*>());
+
+    auto* trailToggle = MenuAction(window, "Tool Trail");
+    auto* trail = root->findChild<QObject*>("toolTrail");
+    ASSERT_NE(nullptr, trailToggle);
+    ASSERT_NE(nullptr, trail);
+    ASSERT_TRUE(trail->property("visible").toBool());
+    trailToggle->trigger();
+    EXPECT_FALSE(trail->property("visible").toBool());
+    const QSettings settings{ "embedded-pro", "e-robot-arm Simulator" };
+    EXPECT_FALSE(settings.value("overlays/trail", true).toBool());
+    trailToggle->trigger();
+    EXPECT_TRUE(trail->property("visible").toBool());
+
+    auto* light = MenuAction(window, "Light");
+    ASSERT_NE(nullptr, light);
+    light->trigger();
+    frameAndSettle();
+    capture("-extended-light.png");
+    MenuAction(window, "Instrument")->trigger();
 }
 
 int main(int argc, char* argv[])

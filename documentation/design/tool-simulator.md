@@ -2,9 +2,9 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.39.0
+version: 0.40.0
 component: "tool-simulator"
-date: 2026-11-20
+date: 2026-11-22
 ---
 
 | Field     | Value                   |
@@ -12,9 +12,9 @@ date: 2026-11-20
 | Title     | Simulator Screen Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.39.0                  |
+| Version   | 0.40.0                  |
 | Component | tool-simulator          |
-| Date      | 2026-11-20              |
+| Date      | 2026-11-22              |
 
 > What the e-robot-arm Simulator shows, what each control does and when, and how it looks (phase 8a,
 > [#28](https://github.com/embedded-pro/e-robot-arm/issues/28)). Components and threads are in
@@ -196,6 +196,8 @@ arm only the joints whose motor changed restart, and the Virtual Motors dock sho
 | Ctrl+.        | Abort                                                                                                                                              |
 | 1 / 2 / 3 / 4 | Camera front, side, top, iso (3-D view focused)                                                                                                    |
 | F             | Frame the arm (3-D view focused)                                                                                                                   |
+| O             | Orthographic or perspective camera (3-D view focused)                                                                                              |
+| J             | Focus the camera on the selected joint (3-D view focused)                                                                                          |
 | Ctrl+S        | Save the event log                                                                                                                                 |
 | Ctrl+Shift+R  | Reset layout                                                                                                                                       |
 | 1–6           | Choose the jog axis (Jog dock focused, Part R)                                                                                                     |
@@ -278,16 +280,34 @@ camera are ui-cpp's `StudioView` with its defaults and the theme's colours:
   follows the measured arm; the ghost has none.
 - **Tool trail** (phase 8c): a line through the tool centre point's recent positions, in the accent colour. A
   point is added when the tool has moved 2 mm from the last one, and the trail keeps the newest 500 points, so its
-  memory and drawing cost are bounded. It is a one-pixel line strip (ui-cpp's `PolylineGeometry`): Qt 6.4 has no line width. It is cleared when a profile changes the geometry and while the arm is not
+  memory and drawing cost are bounded. It is a one-pixel line strip (ui-cpp's `PolylineGeometry`): Qt 6.4 has no line width. It is drawn in the theme's
+  `SceneTrail` colour (cyan in the instrument theme, purple in the light one), so it is never mistaken for the
+  commanded arm (accent) or the selection. It is cleared when a profile changes the geometry and while the arm is not
   live (no target, or a joint silent), so it never joins positions of two different arms.
 - **Target pose** (phase 8c): a smaller triad, at 60 % of the tool triad's length, marks the tool pose the Move form's
   six targets would reach, from the arm model at those joints. It shows while the targets are within their limits and
   the target pose is more than 2 mm from the measured tool, so the operator sees where **Move** will take the tool
   before pressing it; it hides with an invalid target and without a live arm.
-- **Joint-limit arc** (phase 8c): while a joint is selected, a line in the accent colour sweeps its range, from the
+- **Joint-limit arc** (phase 8c): while a joint is selected, a line in the selection colour sweeps its range, from the
   lower to the upper limit of the profile, in the plane the joint turns in, around its axis at a radius of 8 % of the
   arm's height: 33 points, each the joint frame's x axis at that angle with every other joint where it is measured.
   The arm's own link shows where in the range the joint is now. No joint selected, no arc.
+- **Selected joint:** besides its lit hubs, the selected joint gets a closed ring around its axis at 4.5 % of the
+  arm's height (49 points, the joint frame's x axis turned a full turn from where it is measured) and a label next
+  to it, `J2 · measured 0.35 rad`, with `· commanded 0.50 rad` added while the ghost shows. The ring and the arc
+  share the theme's `SceneSelection` colour (gold in the instrument theme, darkened in the light one so it reads on
+  a light floor). The label is a 2-D item placed where the joint projects, kept inside the view, monospaced so its
+  digits do not jitter, and not interactive: a click through it still picks the part under it. With colour gone (a
+  greyscale capture), the label still names the joint and the ghost still reads as a translucent second arm.
+- **Legend:** a compact key in the bottom-left corner names what is drawn — measured arm, commanded arm (ghost),
+  tool trail, selected joint and its limits, tool and target frames — each with its colour as a swatch or a line,
+  and the grid spacing in physical units (`Grid 10 cm`, plus `· orthographic` in that mode). A row disappears with
+  its overlay.
+- **Overlays** (View → Overlays): the commanded arm, the tool trail, the tool and target frames, the joint limits,
+  the workspace and zones, and the legend each have a checkable action, all on by default and remembered across
+  launches (`QSettings`, `overlays/<name>`). Hiding an overlay never hides a fault: a box the workspace rule stopped
+  on stays drawn in the `Fault` colour, and the status strip names the link and the zone either way. The selection
+  ring and label follow the selection, not a switch.
 - **Workspace and zones** (phase 6): the workspace box the safety supervisor checks ([safety.md](safety.md) Part H),
   the profile's or the default one around the arm's reach, is drawn as its twelve edges in the grid colour; each
   forbidden zone is a translucent box in the `Warning` colour (opacity 0.18, blended, no depth write, casting and
@@ -298,8 +318,22 @@ camera are ui-cpp's `StudioView` with its defaults and the theme's colours:
   and are rebuilt only when the workspace, the zones or the stop change.
 - **Selection:** clicking a part selects its joint (in the table too, both ways); its housing's emissive rises in
   the accent colour. A faulted joint's housing pulses in the `Fault` colour, and the table says it in text.
-- **Camera:** perspective, 40° field of view, framed on the arm's height (the sum of its OPW lengths); orbit, pan,
-  zoom; presets animate over 250 ms with ease-out.
+- **Camera:** perspective, 40° field of view; orbit, pan, zoom; presets animate over 250 ms with ease-out, the
+  pivot moving with them. ui-cpp's `StudioView` does the camera work (`doc/scene3d.md` in ui-cpp):
+  - **Frame Arm** (F, double click, View → Camera) and every preset fit the **posed** arm: the scene model gives
+    the box around each link's generated parts at the measured pose and the tool frame's reach (12 % of the arm's
+    height around the tool centre point), and the view fits that box's eight corners with an 8 % margin on every
+    side, using the view's aspect, at the preset's direction. A folded and a stretched arm both fill the view.
+  - The view frames itself on first launch, as soon as it has a size, and when a profile changes the arm's
+    geometry. Telemetry never moves the camera: a framing the operator chose stays while the arm moves.
+  - **Orthographic** (O, View → Camera): an orthographic camera on the same pivot, its scale matched to the
+    perspective camera's distance, for checking alignment against the grid.
+  - **Focus Selected Joint** (J, View → Camera, enabled while a joint is selected): the pivot moves to the
+    selected joint and keeps the distance, so orbiting turns about that joint. **Frame Arm** recovers the view.
+  - **Orientation gizmo:** the base frame's X, Y and Z (red, green, blue) in the bottom-right corner, as seen from
+    the camera; clicking either end of an axis looks along it. The labels are the base frame's, converted like
+    every pose ($(x, y, z) \mapsto (x, z, -y)$ in scene axes), so from Top a learner sees where base +X points and
+    which way a base-frame jog will go.
 
 ### Part F — Scope and log
 

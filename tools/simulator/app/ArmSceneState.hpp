@@ -7,9 +7,11 @@
 #include <QObject>
 #include <QQuaternion>
 #include <QStringList>
+#include <QVariant>
 #include <QVariantList>
 #include <QVector3D>
 #include <QtQml/qqmlregistration.h>
+#include <array>
 
 class QJSEngine;
 class QQmlEngine;
@@ -47,6 +49,21 @@ namespace simulator
         Q_PROPERTY(QColor gridColor READ GridColor NOTIFY themeChanged)
         Q_PROPERTY(QColor accentColor READ AccentColor NOTIFY themeChanged)
         Q_PROPERTY(QColor faultColor READ FaultColor NOTIFY themeChanged)
+        Q_PROPERTY(QColor trailColor READ TrailColor NOTIFY themeChanged)
+        Q_PROPERTY(QColor selectionColor READ SelectionColor NOTIFY themeChanged)
+        Q_PROPERTY(QColor textColor READ TextColor NOTIFY themeChanged)
+        Q_PROPERTY(QColor panelColor READ PanelColor NOTIFY themeChanged)
+        Q_PROPERTY(QVariantList selectionRing READ SelectionRing NOTIFY selectionRingChanged)
+        Q_PROPERTY(QString selectionText READ SelectionText NOTIFY changed)
+        Q_PROPERTY(QVector3D selectionAnchor READ SelectionAnchor NOTIFY changed)
+        Q_PROPERTY(QVariant frameBounds READ FrameBounds NOTIFY changed)
+        Q_PROPERTY(bool orthographic READ Orthographic WRITE SetOrthographic NOTIFY overlaysChanged)
+        Q_PROPERTY(bool showGhost READ ShowGhost NOTIFY overlaysChanged)
+        Q_PROPERTY(bool showTrail READ ShowTrail NOTIFY overlaysChanged)
+        Q_PROPERTY(bool showFrames READ ShowFrames NOTIFY overlaysChanged)
+        Q_PROPERTY(bool showLimits READ ShowLimits NOTIFY overlaysChanged)
+        Q_PROPERTY(bool showWorkspace READ ShowWorkspace NOTIFY overlaysChanged)
+        Q_PROPERTY(bool showLegend READ ShowLegend NOTIFY overlaysChanged)
 
     public:
         static ArmSceneState* create(QQmlEngine* engine, QJSEngine* scriptEngine);
@@ -84,6 +101,37 @@ namespace simulator
         QColor GridColor() const;
         QColor AccentColor() const;
         QColor FaultColor() const;
+        QColor TrailColor() const;
+        QColor SelectionColor() const;
+        QColor TextColor() const;
+        QColor PanelColor() const;
+        QVariantList SelectionRing() const;
+        QString SelectionText() const;
+        QVector3D SelectionAnchor() const;
+        QVariant FrameBounds() const;
+
+        enum class Overlay : uint8_t
+        {
+            ghost,
+            trail,
+            frames,
+            limits,
+            workspace,
+            legend
+        };
+
+        static constexpr std::size_t overlayCount{ 6 };
+        bool Shows(Overlay overlay) const;
+        void SetShown(Overlay overlay, bool shown);
+        bool ShowGhost() const;
+        bool ShowTrail() const;
+        bool ShowFrames() const;
+        bool ShowLimits() const;
+        bool ShowWorkspace() const;
+        bool ShowLegend() const;
+        bool Orthographic() const;
+        void SetOrthographic(bool on);
+        void RequestFocusSelected();
 
         Q_INVOKABLE void Pick(int joint);
         Q_INVOKABLE void ReportMeshFailure(int node, const QString& reason);
@@ -100,6 +148,10 @@ namespace simulator
         void meshFailed(int node, const QString& reason);
         void jointPicked(int joint);
         void cameraPresetRequested(int preset);
+        void selectionRingChanged();
+        void overlaysChanged();
+        void frameRequested();
+        void focusSelectedRequested();
 
     private:
         QVariantList measuredNodes;
@@ -130,5 +182,17 @@ namespace simulator
         QColor grid;
         QColor accent;
         QColor fault;
+        QColor trailTone;
+        QColor selectionTone;
+        QColor text;
+        QColor panel;
+        QVariantList selectionRing;
+        uint32_t selectionRingRevision{ 0 };
+        QString selectionText;
+        QVector3D selectionAnchor;
+        QVariant frameBounds;
+        std::array<bool, overlayCount> shown{ true, true, true, true, true, true };
+        bool orthographic{ false };
+        bool reframe{ false };
     };
 }

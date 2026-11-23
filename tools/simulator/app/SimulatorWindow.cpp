@@ -15,6 +15,7 @@
 #include <QGroupBox>
 #include <QInputDialog>
 #include <QLabel>
+#include <QMenu>
 #include <QMenuBar>
 #include <QMessageBox>
 #include <QProcess>
@@ -31,8 +32,10 @@
 #include <QUrl>
 #include <QVBoxLayout>
 #include <QtGlobal>
+#include <array>
 #include <cstdio>
 #include <fstream>
+#include <utility>
 
 namespace simulator
 {
@@ -670,6 +673,26 @@ namespace simulator
                 {
                     sceneState.RequestCameraPreset(preset);
                 });
+        camera->addSeparator();
+        auto* focusJoint = camera->addAction("Focus Selected &Joint\tJ", this, [this]()
+            {
+                sceneState.RequestFocusSelected();
+            });
+        connect(camera, &QMenu::aboutToShow, this, [this, focusJoint]()
+            {
+                focusJoint->setEnabled(!sceneState.SelectionText().isEmpty());
+                focusJoint->setToolTip(sceneState.SelectionText().isEmpty() ? "Select a joint in the 3-D view or the joint table first" : QString{});
+            });
+        auto* orthographic = camera->addAction("&Orthographic\tO");
+        orthographic->setCheckable(true);
+        orthographic->setChecked(sceneState.Orthographic());
+        connect(orthographic, &QAction::toggled, &sceneState, &ArmSceneState::SetOrthographic);
+        connect(&sceneState, &ArmSceneState::overlaysChanged, orthographic, [this, orthographic]()
+            {
+                orthographic->setChecked(sceneState.Orthographic());
+            });
+
+        BuildOverlaysMenu(*view->addMenu("&Overlays"));
 
         auto* theme = view->addMenu("&Theme");
         theme->addAction("&Instrument", this, [this]()
@@ -686,6 +709,37 @@ namespace simulator
             view->addAction(dock->toggleViewAction());
         view->addSeparator();
         view->addAction("&Reset Layout", QKeySequence{ "Ctrl+Shift+R" }, this, &SimulatorWindow::ResetLayout);
+    }
+
+    void SimulatorWindow::BuildOverlaysMenu(QMenu& menu)
+    {
+        using Overlay = ArmSceneState::Overlay;
+        const std::array<std::pair<Overlay, const char*>, ArmSceneState::overlayCount> overlays{ {
+            { Overlay::ghost, "&Commanded Arm (Ghost)" },
+            { Overlay::trail, "Tool &Trail" },
+            { Overlay::frames, "Tool and Target &Frames" },
+            { Overlay::limits, "Joint &Limits" },
+            { Overlay::workspace, "&Workspace and Zones" },
+            { Overlay::legend, "L&egend" },
+        } };
+        const std::array<const char*, ArmSceneState::overlayCount> keys{ "ghost", "trail", "frames", "limits", "workspace", "legend" };
+        for (std::size_t index = 0; index != overlays.size(); ++index)
+        {
+            const auto [overlay, label] = overlays[index];
+            const auto key = QString{ "overlays/" } + keys[index];
+            sceneState.SetShown(overlay, Settings().value(key, true).toBool());
+            auto* action = menu.addAction(label);
+            action->setCheckable(true);
+            action->setChecked(sceneState.Shows(overlay));
+            connect(action, &QAction::toggled, this, [this, overlay, key](bool on)
+                {
+                    sceneState.SetShown(overlay, on);
+                    Settings().setValue(key, on);
+                });
+        }
+        menu.addSeparator();
+        auto* note = menu.addAction("A stop by the workspace rule always shows its box");
+        note->setEnabled(false);
     }
 
     void SimulatorWindow::ConnectSignals()

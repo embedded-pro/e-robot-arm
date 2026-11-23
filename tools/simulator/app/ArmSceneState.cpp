@@ -4,6 +4,7 @@
 #include <QQuaternion>
 #include <QVariantMap>
 #include <QVector3D>
+#include <utility>
 
 namespace simulator
 {
@@ -81,6 +82,7 @@ namespace simulator
                     catalog.Set(PartKey(node, finish), model.Meshes()[node][finish]);
             extent = model.Extent();
             emit partsChanged();
+            reframe = true;
         }
         anyFault = false;
         for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
@@ -122,8 +124,22 @@ namespace simulator
                 limitArc.append(Vector(point));
             emit limitArcChanged();
         }
+        if (model.SelectionRingRevision() != selectionRingRevision)
+        {
+            selectionRingRevision = model.SelectionRingRevision();
+            selectionRing.clear();
+            for (const auto& point : model.SelectionRing())
+                selectionRing.append(Vector(point));
+            emit selectionRingChanged();
+        }
+        selectionText = model.Selection() ? QString::fromStdString(model.Selection()->text) : QString{};
+        selectionAnchor = model.Selection() ? Vector(model.Selection()->anchor) : QVector3D{};
+        const auto& bounds = model.FrameBounds();
+        frameBounds = QVariantMap{ { "min", Vector(bounds.min) }, { "max", Vector(bounds.max) } };
         selectedJoint = model.Selected() ? static_cast<int>(*model.Selected()) : -1;
         emit changed();
+        if (std::exchange(reframe, false))
+            emit frameRequested();
     }
 
     void ArmSceneState::ApplyTheme(const ui::theme::Theme& theme)
@@ -139,6 +155,10 @@ namespace simulator
         accent = ToQt(theme.Get(ColorRole::Accent));
         fault = ToQt(theme.Get(ColorRole::Fault));
         warning = ToQt(theme.Get(ColorRole::Warning));
+        trailTone = ToQt(theme.Get(ColorRole::SceneTrail));
+        selectionTone = dark ? ToQt(theme.Get(ColorRole::SceneSelection)) : ToQt(theme.Get(ColorRole::SceneSelection)).darker(140);
+        text = ToQt(theme.Get(ColorRole::Text));
+        panel = ToQt(theme.Get(ColorRole::Surface));
         emit themeChanged();
     }
 
@@ -293,5 +313,106 @@ namespace simulator
     void ArmSceneState::RequestCameraPreset(int preset)
     {
         emit cameraPresetRequested(preset);
+    }
+
+    QColor ArmSceneState::TrailColor() const
+    {
+        return trailTone;
+    }
+
+    QColor ArmSceneState::SelectionColor() const
+    {
+        return selectionTone;
+    }
+
+    QColor ArmSceneState::TextColor() const
+    {
+        return text;
+    }
+
+    QColor ArmSceneState::PanelColor() const
+    {
+        return panel;
+    }
+
+    QVariantList ArmSceneState::SelectionRing() const
+    {
+        return selectionRing;
+    }
+
+    QString ArmSceneState::SelectionText() const
+    {
+        return selectionText;
+    }
+
+    QVector3D ArmSceneState::SelectionAnchor() const
+    {
+        return selectionAnchor;
+    }
+
+    QVariant ArmSceneState::FrameBounds() const
+    {
+        return frameBounds;
+    }
+
+    bool ArmSceneState::Shows(Overlay overlay) const
+    {
+        return shown[static_cast<std::size_t>(overlay)];
+    }
+
+    void ArmSceneState::SetShown(Overlay overlay, bool on)
+    {
+        if (shown[static_cast<std::size_t>(overlay)] == on)
+            return;
+        shown[static_cast<std::size_t>(overlay)] = on;
+        emit overlaysChanged();
+    }
+
+    bool ArmSceneState::ShowGhost() const
+    {
+        return Shows(Overlay::ghost);
+    }
+
+    bool ArmSceneState::ShowTrail() const
+    {
+        return Shows(Overlay::trail);
+    }
+
+    bool ArmSceneState::ShowFrames() const
+    {
+        return Shows(Overlay::frames);
+    }
+
+    bool ArmSceneState::ShowLimits() const
+    {
+        return Shows(Overlay::limits);
+    }
+
+    bool ArmSceneState::ShowWorkspace() const
+    {
+        return Shows(Overlay::workspace);
+    }
+
+    bool ArmSceneState::ShowLegend() const
+    {
+        return Shows(Overlay::legend);
+    }
+
+    bool ArmSceneState::Orthographic() const
+    {
+        return orthographic;
+    }
+
+    void ArmSceneState::SetOrthographic(bool on)
+    {
+        if (orthographic == on)
+            return;
+        orthographic = on;
+        emit overlaysChanged();
+    }
+
+    void ArmSceneState::RequestFocusSelected()
+    {
+        emit focusSelectedRequested();
     }
 }
