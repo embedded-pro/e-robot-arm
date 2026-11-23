@@ -49,7 +49,7 @@ jobs:
   host_build_test_ubuntu:
     name: Host Build & Test (ubuntu-latest)
     runs-on: ubuntu-latest
-    container: gabrielfrasantos/embedded-devcontainer-cpp:v7.4.0@sha256:80d80475b5609f83ddde34f1e251f7b388779b99c7a308943767a2c8228bdc99
+    container: gabrielfrasantos/embedded-devcontainer-cpp:v7.5.1@sha256:58615703161844d1b53db6342f9c962fac0a29f46bb0d457dd1a459811a97644
     steps:
       - name: Configure Git
         run: |
@@ -145,7 +145,7 @@ jobs:
   simulator_build_test:
     name: Simulator Build & Test (host-qt)
     runs-on: ubuntu-latest
-    container: gabrielfrasantos/embedded-devcontainer-cpp:v7.4.0@sha256:80d80475b5609f83ddde34f1e251f7b388779b99c7a308943767a2c8228bdc99
+    container: gabrielfrasantos/embedded-devcontainer-cpp:v7.5.1@sha256:58615703161844d1b53db6342f9c962fac0a29f46bb0d457dd1a459811a97644
     steps:
       - name: Configure Git
         run: |
@@ -196,7 +196,7 @@ jobs:
   virtual_arm_scenarios:
     name: Virtual Arm Scenarios (e-foc virtual motors)
     runs-on: ubuntu-latest
-    container: gabrielfrasantos/embedded-devcontainer-cpp:v7.4.0@sha256:80d80475b5609f83ddde34f1e251f7b388779b99c7a308943767a2c8228bdc99
+    container: gabrielfrasantos/embedded-devcontainer-cpp:v7.5.1@sha256:58615703161844d1b53db6342f9c962fac0a29f46bb0d457dd1a459811a97644
     steps:
       - name: Configure Git
         run: |
@@ -263,7 +263,7 @@ jobs:
   host_cross_windows:
     name: Host Cross-Compile (Linux → Windows)
     runs-on: ubuntu-latest
-    container: gabrielfrasantos/embedded-devcontainer-cpp:v7.4.0@sha256:80d80475b5609f83ddde34f1e251f7b388779b99c7a308943767a2c8228bdc99
+    container: gabrielfrasantos/embedded-devcontainer-cpp:v7.5.1@sha256:58615703161844d1b53db6342f9c962fac0a29f46bb0d457dd1a459811a97644
     steps:
       - name: Configure Git
         run: |
@@ -292,7 +292,7 @@ jobs:
   embedded_build:
     name: Embedded Build
     runs-on: ubuntu-latest
-    container: gabrielfrasantos/embedded-devcontainer-cpp:v7.4.0@sha256:80d80475b5609f83ddde34f1e251f7b388779b99c7a308943767a2c8228bdc99
+    container: gabrielfrasantos/embedded-devcontainer-cpp:v7.5.1@sha256:58615703161844d1b53db6342f9c962fac0a29f46bb0d457dd1a459811a97644
     needs: [host_build_test_ubuntu, host_cross_windows]
     strategy:
       fail-fast: false
