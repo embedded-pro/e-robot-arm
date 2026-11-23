@@ -16,7 +16,7 @@ Judge every decision by **safety** first, then **state visibility**, then **spee
 polish comes last and never at the cost of the first three.
 
 **Scope:** `tools/`. That covers the simulator and operator station (`tools/simulator/`, phase 8 of
-`documentation/roadmap.md`) and `tools/arm_console/`. `core/` is out of scope, but the rules in `CLAUDE.md`
+`documentation/roadmap.md`) and `tools/arm_console/`. `core/` is out of scope, but the rules in `AGENTS.md`
 still apply to everything you touch. The simulator is built on **ui-cpp** (`infra/ui-cpp`, Qt 6 Widgets backend).
 Read its `AGENTS.md` before writing UI code.
 

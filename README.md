@@ -131,7 +131,7 @@ copies of embedded-infra-lib, can-lite and numerical-toolbox rather than fetchin
 | [Simulator Screen Design](documentation/design/tool-simulator.md)                        | Layout, controls, flows and look of the simulator      |
 | [Documentation Templates](documentation/templates/)                                      | Starting points for new documents                      |
 | [Performance Optimization Guide](documentation/performance-optimization/README.md)       | Embedded performance techniques and cycle budgets      |
-| [AI Agent Instructions](CLAUDE.md)                                                       | Development guidelines, patterns and constraints       |
+| [AI Agent Instructions](AGENTS.md)                                                       | Development guidelines, patterns and constraints       |
 
 ## License
 
