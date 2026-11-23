@@ -71,16 +71,18 @@ namespace arm_console
     std::optional<ConsoleOptions> ParseOptions(const std::vector<std::string>& arguments)
     {
         ConsoleOptions options;
-        for (std::size_t index = 1; index < arguments.size(); index += 2)
+        std::size_t index{ 1 };
+        while (index < arguments.size())
         {
             if (arguments[index] == "--batch")
             {
                 options.batch = true;
-                --index;
-                continue;
+                ++index;
             }
-            if (index + 1 == arguments.size() || !Apply(options, arguments[index], arguments[index + 1]))
+            else if (index + 1 == arguments.size() || !Apply(options, arguments[index], arguments[index + 1]))
                 return std::nullopt;
+            else
+                index += 2;
         }
 
         if (options.virtualArm.empty())
