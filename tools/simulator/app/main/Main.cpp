@@ -29,6 +29,8 @@ int main(int argc, char* argv[])
     QApplication application{ argc, argv };
     QApplication::setApplicationName("e-robot-arm Simulator");
     QApplication::setOrganizationName("embedded-pro");
+    // The Windows 11 style draws spin box and combo box arrows invisible under a custom palette.
+    QApplication::setStyle("Fusion");
     ui::backend::qt::ApplyTheme(ui::theme::Instrument());
 
     const auto profile = arm_host::DefaultArmProfile(arm_host::defaultNodes);

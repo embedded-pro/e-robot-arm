@@ -45,8 +45,8 @@ date: 2026-11-23
 
 ### Part A — Layout
 
-Default layout at 1600 × 900, instrument (dark) theme. Every panel is a dock and can be moved; **View → Reset
-Layout** restores this one.
+Default layout at 1600 × 900, instrument (dark) theme, Qt Fusion style on every platform. Every panel is a dock
+and can be moved; **View → Reset Layout** restores this one.
 
 ```text
 ┌ e-robot-arm Simulator — Simulated joints ────────────────────────────────────────────────────────────┐
