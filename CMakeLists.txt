@@ -30,7 +30,7 @@ else()
     add_definitions(-DE_ROBOT_ARM_TARGET_BOARD="host")
 endif()
 
-project(e_robot_arm LANGUAGES C CXX ASM VERSION 1.1.0) # x-release-please-version
+project(e_robot_arm LANGUAGES C CXX ASM VERSION 1.1.1) # x-release-please-version
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED On)
