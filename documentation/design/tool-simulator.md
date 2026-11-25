@@ -348,7 +348,8 @@ camera are ui-cpp's `StudioView` with its defaults and the theme's colours:
   Render Driver", llvmpipe, softpipe or SwiftShader), otherwise High. On such a renderer one High frame can take
   tens of seconds, which freezes the window. The switch is announced once, in the event log and the status bar:
   `Software renderer <name>: 3-D view at low quality (View → Render Quality changes it)`. Safe start uses
-  Automatic. On Qt before 6.6 the renderer is not known, and Automatic keeps High.
+  Automatic. On Qt before 6.6, or where Qt's RHI header is not installed, the renderer is not
+  known, and Automatic keeps High.
 - **Workspace and zones** (phase 6): the workspace box the safety supervisor checks ([safety.md](safety.md) Part H),
   the profile's or the default one around the arm's reach, is drawn as its twelve edges in the grid colour; each
   forbidden zone is a translucent box in the `Warning` colour (opacity 0.18, blended, no depth write, casting and

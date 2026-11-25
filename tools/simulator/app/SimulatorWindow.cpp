@@ -35,8 +35,10 @@
 #include <QUrl>
 #include <QVBoxLayout>
 #include <QtGlobal>
-#if QT_VERSION >= QT_VERSION_CHECK(6, 6, 0)
+// Some distributions ship the RHI header only with Qt's private headers; without it the renderer is not known.
+#if QT_VERSION >= QT_VERSION_CHECK(6, 6, 0) && __has_include(<rhi/qrhi.h>)
 #include <rhi/qrhi.h>
+#define E_ROBOT_ARM_HAS_RHI_DRIVER_INFO
 #endif
 #include <array>
 #include <cstdio>
@@ -218,7 +220,7 @@ namespace simulator
     {
         if (renderer.has_value() || armView->quickWindow() == nullptr)
             return;
-#if QT_VERSION >= QT_VERSION_CHECK(6, 6, 0)
+#ifdef E_ROBOT_ARM_HAS_RHI_DRIVER_INFO
         const auto* rhi = armView->quickWindow()->rhi();
         if (rhi == nullptr)
             return;
