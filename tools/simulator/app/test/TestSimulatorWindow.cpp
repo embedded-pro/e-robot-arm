@@ -237,6 +237,13 @@ TEST_F(SimulatorWindowTest, writes_the_start_up_milestones_to_the_issue_log)
     EXPECT_TRUE(IssueLogged(issueLog, "Saved settings restored"));
 }
 
+TEST_F(SimulatorWindowTest, closing_the_window_is_logged)
+{
+    window.close();
+
+    EXPECT_TRUE(IssueLogged(issueLog, "Window closing; saving settings"));
+}
+
 TEST_F(SimulatorWindowTest, help_opens_the_log_folder)
 {
     EXPECT_NE(nullptr, MenuAction(window, "Open Log Folder"));

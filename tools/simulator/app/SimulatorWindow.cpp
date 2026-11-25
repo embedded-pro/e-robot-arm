@@ -1202,6 +1202,7 @@ namespace simulator
 
     void SimulatorWindow::closeEvent(QCloseEvent* event)
     {
+        issueLog.Write(ui::backend::qt::update::IssueSeverity::info, "Window closing; saving settings");
         auto settings = Settings();
         settings.setValue("geometry", saveGeometry());
         settings.setValue("layout", saveState());
