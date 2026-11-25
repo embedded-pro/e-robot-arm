@@ -3,6 +3,7 @@
 #include "tools/arm_host/AdapterTargetLink.hpp"
 #include "tools/arm_host/ArmHost.hpp"
 #include "tools/simulator/app/ArmSceneState.hpp"
+#include "tools/simulator/app/Diagnostics.hpp"
 #include "tools/simulator/app/EmergencyStopKey.hpp"
 #include "tools/simulator/app/JointTable.hpp"
 #include "tools/simulator/app/MeshFiles.hpp"
@@ -14,6 +15,7 @@
 #include "tools/simulator/view_models/MotorControllerPresenter.hpp"
 #include "tools/simulator/view_models/MotorPresenter.hpp"
 #include "tools/simulator/view_models/RecentProfiles.hpp"
+#include "tools/simulator/view_models/RenderQuality.hpp"
 #include "tools/simulator/view_models/SimulatorPresenter.hpp"
 #include "tools/simulator/view_models/TuningPresenter.hpp"
 #include "ui/backend/qt/QtAppShell.hpp"
@@ -24,12 +26,14 @@
 #include <QMainWindow>
 #include <QString>
 #include <QTimer>
+#include <cstdint>
 #include <functional>
 #include <optional>
 #include <string>
 #include <utility>
 #include <vector>
 
+class QAction;
 class QGroupBox;
 class QLabel;
 class QMenu;
@@ -47,7 +51,7 @@ namespace simulator
     public:
         static constexpr int framePeriodMilliseconds{ 16 };
 
-        SimulatorWindow(arm_host::ArmHost& host, const arm::JointLimits& limits, infra::TimePoint start);
+        SimulatorWindow(arm_host::ArmHost& host, const arm::JointLimits& limits, infra::TimePoint start, ui::backend::qt::update::IssueLog& issueLog, StartOptions options = {});
 
         QQuickWidget& ArmView();
         SimulatorPresenter& Presenter();
@@ -67,7 +71,15 @@ namespace simulator
         void closeEvent(QCloseEvent* event) override;
 
     private:
-        void EnableAmbientOcclusion();
+        QObject* Studio() const;
+        void EnableAmbientOcclusion(bool on);
+        void DetectRenderer();
+        void ApplyRenderQuality();
+        void SelectRenderQuality(RenderQualitySetting setting);
+        void BuildRenderQualityMenu(QMenu& menu);
+        void CheckRenderQualityAction();
+        void LogSceneStatus();
+        void LogFirstFrame();
         void ShowFrameStatistics();
         void UpdateFrameStatistics(std::chrono::nanoseconds guiFrame);
         void BuildDocks();
@@ -163,7 +175,14 @@ namespace simulator
         QAction* commissioningAction{ nullptr };
         QTimer frameTimer;
         QByteArray defaultLayout;
-        ui::backend::qt::update::IssueLog issueLog;
+        ui::backend::qt::update::IssueLog& issueLog;
+        StartOptions options;
+        bool firstFrameLogged{ false };
+        uint32_t frameSummaries{ 0 };
+        RenderQualitySetting renderQualitySetting{ RenderQualitySetting::automatic };
+        std::optional<RendererInfo> renderer;
+        bool softwareRendererAnnounced{ false };
+        std::vector<std::pair<QAction*, RenderQualitySetting>> renderQualityActions;
         ui::backend::qt::update::UpdateAssistant updates;
         QAction* automaticUpdatesAction{ nullptr };
     };

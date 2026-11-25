@@ -342,6 +342,14 @@ camera are ui-cpp's `StudioView` with its defaults and the theme's colours:
   launches (`QSettings`, `overlays/<name>`). Hiding an overlay never hides a fault: a box the workspace rule stopped
   on stays drawn in the `Fault` colour, and the status strip names the link and the zone either way. The selection
   ring and label follow the selection, not a switch.
+- **Render quality** (View → Render Quality: Automatic, High, Low; remembered as `renderQuality`): High keeps
+  shadows, ambient occlusion, MSAA, specular antialiasing and the light probe; Low turns all five off. Automatic
+  picks Low when the renderer is a software one (Qt RHI reports a CPU device, or its name is WARP's "Microsoft Basic
+  Render Driver", llvmpipe, softpipe or SwiftShader), otherwise High. On such a renderer one High frame can take
+  tens of seconds, which freezes the window. The switch is announced once, in the event log and the status bar:
+  `Software renderer <name>: 3-D view at low quality (View → Render Quality changes it)`. Safe start uses
+  Automatic. On Qt before 6.6, or where Qt's RHI header is not installed, the renderer is not
+  known, and Automatic keeps High.
 - **Workspace and zones** (phase 6): the workspace box the safety supervisor checks ([safety.md](safety.md) Part H),
   the profile's or the default one around the arm's reach, is drawn as its twelve edges in the grid colour; each
   forbidden zone is a translucent box in the `Warning` colour (opacity 0.18, blended, no depth write, casting and

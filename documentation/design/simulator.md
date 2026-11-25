@@ -271,6 +271,21 @@ empty until the arm has been enabled); nothing else in `core/` changes for the s
     module is built with `NO_CACHEGEN` and its three QML files compile at load time;
   - a `QML_SINGLETON` that is default-constructible is created by the engine, which ignores the static `create()`.
     `ArmSceneState` therefore has no default constructor.
+- **Diagnostics.** The Windows build is a GUI-subsystem program with no console, so the log file is the only
+  output. `main` sets the organisation and application names, then opens ui-cpp's `IssueLog` before anything else:
+  `%LOCALAPPDATA%\embedded-pro\e-robot-arm Simulator\logs\simulator.log` on Windows,
+  `~/.local/share/embedded-pro/e-robot-arm Simulator/logs/` on Linux. It captures every Qt message, debug included,
+  and installs ui-cpp's `CrashReporter`: a crash writes a `FATAL` line and, on Windows, a `simulator-<UTC time>.dmp`
+  beside the log; a run that did not close normally is noted at the next start. The log records the start-up
+  milestones (version, OS, Qt, arguments, arm host, scene status, settings restore, last profile, first frame with its
+  graphics API, window close, end of the event loop) and the frame statistics each second for 30 s, then each
+  minute. Help ▸ Open Log Folder opens the folder; Help ▸ Report Issue attaches the recent lines.
+- **Render quality.** After the first frame the window reads the RHI driver info of the 3-D view and logs the
+  renderer. `ChooseRenderQuality` (view model, no Qt) maps the setting and that renderer to High or Low, and the
+  window sets `StudioView`'s `shadows`, `ambientOcclusion`, `antialiasing` and `lightProbeEnabled`
+  ([tool-simulator.md](tool-simulator.md) Part E).
+- **Safe start.** `--safe-start` skips the saved theme, geometry, layout and last profile, so a saved state that
+  breaks start-up can be bypassed and then overwritten.
 - **Window test.** `e_robot_arm.tool.simulator_window_test` opens the window on simulated joints, brings the arm up,
   moves it, captures a frame mid-move (`SIMULATOR_FRAME_CAPTURE=<path>.png` saves it and the whole window), prints
   the frame statistics of a move and a tuning step ([tool-simulator.md](tool-simulator.md) Part O) as `[METRIC]`

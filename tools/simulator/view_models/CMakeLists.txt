@@ -47,6 +47,8 @@ target_sources(e_robot_arm.tool.simulator.view_models PRIVATE
     ProfileView.hpp
     RecentProfiles.cpp
     RecentProfiles.hpp
+    RenderQuality.cpp
+    RenderQuality.hpp
     SimulatorPresenter.cpp
     SimulatorPresenter.hpp
     TeachPresenter.cpp
