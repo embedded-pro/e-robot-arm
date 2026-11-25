@@ -169,14 +169,16 @@ jobs:
             Start-Sleep -Seconds 10
             if ($app.HasExited) { throw "the Simulator exited with $($app.ExitCode) instead of running" }
             # Close through the window, so the Simulator saves its settings as a user's run does.
-            $null = $app.CloseMainWindow()
+            if (-not $app.CloseMainWindow()) { Stop-Process -Id $app.Id -Force; throw "the Simulator has no main window to close" }
             if (-not $app.WaitForExit(15000)) { Stop-Process -Id $app.Id -Force; throw "the Simulator did not close" }
             $settings = "HKCU:\Software\embedded-pro\e-robot-arm Simulator"
-            $null = New-Item -Path $settings -Force -ErrorAction SilentlyContinue
+            if (-not (Test-Path $settings)) { $null = New-Item -Path $settings }
             Set-ItemProperty -Path $settings -Name profile -Value (Join-Path $target "samples\meshed-arm\profile.json")
             $app = Start-Process -FilePath $simulator -PassThru
             Start-Sleep -Seconds 10
             if ($app.HasExited) { throw "the second start of the Simulator exited with $($app.ExitCode) instead of running" }
+            if (-not (Select-String -Path $log -Pattern "Last profile:" -Quiet)) { throw "the second start did not restore the last profile" }
+            if (Select-String -Path $log -Pattern "\[FATAL\]" -Quiet) { throw "the Simulator logged a crash" }
             Stop-Process -Id $app.Id -Force
             Start-Sleep -Seconds 2
           } finally {
