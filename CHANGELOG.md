@@ -1,5 +1,32 @@
 # Changelog
 
+## [1.1.0](https://github.com/embedded-pro/e-robot-arm/compare/v1.0.2...v1.1.0) (2026-11-25)
+
+
+### Features
+
+* **arm_host:** Report lost events and trace samples where they were lost ([8049729](https://github.com/embedded-pro/e-robot-arm/commit/8049729423a51d8e8e90ad82bacebaf8ebea7bb5))
+* **arm_host:** Report lost events and trace samples where they were lost ([5d8d79d](https://github.com/embedded-pro/e-robot-arm/commit/5d8d79d039fb643a4729565e474704737e618018))
+* **console:** Report refused and unanswered commands, wait, batch mode ([7cf326b](https://github.com/embedded-pro/e-robot-arm/commit/7cf326b9dfaee6b6afad8318c544b7d0ac7d0efe))
+* **console:** Report refused and unanswered commands, wait, batch mode ([2c6362f](https://github.com/embedded-pro/e-robot-arm/commit/2c6362fc4d61dc07da5ea10137d862465bd18d1a))
+* **simulator:** A sample meshed arm, its glTF meshes and the tool that makes them ([b427553](https://github.com/embedded-pro/e-robot-arm/commit/b4275539740309c9ed3ff798f0b14a382c16f97c))
+* **simulator:** A sample meshed arm, its glTF meshes and the tool that makes them ([6e524d2](https://github.com/embedded-pro/e-robot-arm/commit/6e524d292af225acb0b36bc955f8393bf3bcafe7))
+* **simulator:** Frame the posed arm, distinct overlay cues, overlay toggles ([38efbf6](https://github.com/embedded-pro/e-robot-arm/commit/38efbf6a45198a56dced50a2033d192033113ed2))
+* **simulator:** Frame the posed arm, distinct overlay cues, overlay toggles ([5076030](https://github.com/embedded-pro/e-robot-arm/commit/507603090ba1c337315e6589d0feb3bd367e2362))
+
+
+### Bug Fixes
+
+* **arm_host:** Keep the last good profile when a save fails ([f98c14a](https://github.com/embedded-pro/e-robot-arm/commit/f98c14a7d93cdc587506ffec003da4cdd5a97c83))
+* **arm_host:** Keep the last good profile when a save fails ([119a51b](https://github.com/embedded-pro/e-robot-arm/commit/119a51b1b172a1607e145b349a7c8983a3d93e62))
+* **release:** Publish board firmware only when an application exists ([2ee56fd](https://github.com/embedded-pro/e-robot-arm/commit/2ee56fdb2129c3eab7d20e62b230d9165674b3a9))
+* **release:** Publish board firmware only when an application exists ([358bf09](https://github.com/embedded-pro/e-robot-arm/commit/358bf099ce3b035ebbc5c229cab1a837b5df8a48))
+* **simulator:** Fusion style, so spin box and combo box arrows show on Windows ([401f8d5](https://github.com/embedded-pro/e-robot-arm/commit/401f8d54bc8d09024c21b593aad236aeabae294a))
+* **simulator:** No console window and an executable icon on Windows ([b45afd2](https://github.com/embedded-pro/e-robot-arm/commit/b45afd2c9ff5e30cfa183786875100cb78bba099))
+* **simulator:** No console window, an executable icon and visible arrows on Windows ([2268ff4](https://github.com/embedded-pro/e-robot-arm/commit/2268ff438ba2146157021e3b6005751418f74b19))
+* **simulator:** Search for CAN adapters without freezing the window ([19a148c](https://github.com/embedded-pro/e-robot-arm/commit/19a148c695d8248a57ccd8c25d21b0f2ebed0847))
+* **simulator:** Search for CAN adapters without freezing the window ([8728cb1](https://github.com/embedded-pro/e-robot-arm/commit/8728cb13441160183cb81a91610993a3359bd8a4))
+
 ## [1.0.2](https://github.com/embedded-pro/e-robot-arm/compare/v1.0.1...v1.0.2) (2026-11-21)
 
 
