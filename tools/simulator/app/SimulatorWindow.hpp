@@ -15,6 +15,7 @@
 #include "tools/simulator/view_models/MotorControllerPresenter.hpp"
 #include "tools/simulator/view_models/MotorPresenter.hpp"
 #include "tools/simulator/view_models/RecentProfiles.hpp"
+#include "tools/simulator/view_models/RenderQuality.hpp"
 #include "tools/simulator/view_models/SimulatorPresenter.hpp"
 #include "tools/simulator/view_models/TuningPresenter.hpp"
 #include "ui/backend/qt/QtAppShell.hpp"
@@ -32,6 +33,7 @@
 #include <utility>
 #include <vector>
 
+class QAction;
 class QGroupBox;
 class QLabel;
 class QMenu;
@@ -69,7 +71,13 @@ namespace simulator
         void closeEvent(QCloseEvent* event) override;
 
     private:
-        void EnableAmbientOcclusion();
+        QObject* Studio() const;
+        void EnableAmbientOcclusion(bool on);
+        void DetectRenderer();
+        void ApplyRenderQuality();
+        void SelectRenderQuality(RenderQualitySetting setting);
+        void BuildRenderQualityMenu(QMenu& menu);
+        void CheckRenderQualityAction();
         void LogSceneStatus();
         void LogFirstFrame();
         void ShowFrameStatistics();
@@ -171,6 +179,10 @@ namespace simulator
         StartOptions options;
         bool firstFrameLogged{ false };
         uint32_t frameSummaries{ 0 };
+        RenderQualitySetting renderQualitySetting{ RenderQualitySetting::automatic };
+        std::optional<RendererInfo> renderer;
+        bool softwareRendererAnnounced{ false };
+        std::vector<std::pair<QAction*, RenderQualitySetting>> renderQualityActions;
         ui::backend::qt::update::UpdateAssistant updates;
         QAction* automaticUpdatesAction{ nullptr };
     };

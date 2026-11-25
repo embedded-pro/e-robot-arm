@@ -248,6 +248,24 @@ TEST_F(SimulatorWindowTest, closing_the_window_is_logged)
     EXPECT_TRUE(IssueLogged(issueLog, "Window closing; saving settings"));
 }
 
+TEST_F(SimulatorWindowTest, low_render_quality_turns_off_the_costly_effects_and_is_remembered)
+{
+    auto* low = MenuAction(window, "Low");
+    ASSERT_NE(nullptr, low);
+    low->trigger();
+
+    auto* studio = window.ArmView().rootObject()->findChild<QObject*>("studio");
+    ASSERT_NE(nullptr, studio);
+    for (const auto* name : { "shadows", "ambientOcclusion", "antialiasing", "lightProbeEnabled" })
+        EXPECT_FALSE(studio->property(name).toBool()) << name;
+    EXPECT_EQ(2, QSettings("embedded-pro", "e-robot-arm Simulator").value("renderQuality").toInt());
+
+    MenuAction(window, "Automatic")->trigger();
+    EXPECT_TRUE(studio->property("antialiasing").toBool());
+    EXPECT_EQ(0, QSettings("embedded-pro", "e-robot-arm Simulator").value("renderQuality").toInt());
+    QSettings{ "embedded-pro", "e-robot-arm Simulator" }.remove("renderQuality");
+}
+
 TEST_F(SimulatorWindowTest, help_opens_the_log_folder)
 {
     EXPECT_NE(nullptr, MenuAction(window, "Open Log Folder"));

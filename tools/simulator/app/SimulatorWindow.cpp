@@ -6,6 +6,7 @@
 #include "ui/backend/qt/QtConversions.hpp"
 #include "ui/backend/qt/QtTheme.hpp"
 #include <QAction>
+#include <QActionGroup>
 #include <QApplication>
 #include <QCloseEvent>
 #include <QCoreApplication>
@@ -34,6 +35,9 @@
 #include <QUrl>
 #include <QVBoxLayout>
 #include <QtGlobal>
+#if QT_VERSION >= QT_VERSION_CHECK(6, 6, 0)
+#include <rhi/qrhi.h>
+#endif
 #include <array>
 #include <cstdio>
 #include <fstream>
@@ -160,7 +164,9 @@ namespace simulator
         armView->engine()->addImportPath(":/");
         armView->setSource(QUrl{ "qrc:/Simulator/qml/ArmScene.qml" });
         LogSceneStatus();
-        EnableAmbientOcclusion();
+        EnableAmbientOcclusion(true);
+        if (armView->quickWindow() != nullptr)
+            connect(armView->quickWindow(), &QQuickWindow::sceneGraphInitialized, this, &SimulatorWindow::DetectRenderer, Qt::QueuedConnection);
         ShowFrameStatistics();
         auto* content = new QWidget{ this };
         auto* contentLayout = new QVBoxLayout{ content };
@@ -193,14 +199,59 @@ namespace simulator
         Frame();
     }
 
-    void SimulatorWindow::EnableAmbientOcclusion()
+    QObject* SimulatorWindow::Studio() const
     {
         auto* root = armView->rootObject();
-        auto* studio = root != nullptr ? root->findChild<QObject*>("studio") : nullptr;
+        return root != nullptr ? root->findChild<QObject*>("studio") : nullptr;
+    }
+
+    void SimulatorWindow::EnableAmbientOcclusion(bool on)
+    {
+        auto* studio = Studio();
         auto* view = studio != nullptr ? studio->property("view").value<QObject*>() : nullptr;
         auto* environment = view != nullptr ? view->property("environment").value<QObject*>() : nullptr;
         if (environment != nullptr && environment->metaObject()->indexOfProperty("aoEnabled") >= 0)
-            environment->setProperty("aoEnabled", true);
+            environment->setProperty("aoEnabled", on);
+    }
+
+    void SimulatorWindow::DetectRenderer()
+    {
+        if (renderer.has_value() || armView->quickWindow() == nullptr)
+            return;
+#if QT_VERSION >= QT_VERSION_CHECK(6, 6, 0)
+        const auto* rhi = armView->quickWindow()->rhi();
+        if (rhi == nullptr)
+            return;
+        const auto info = rhi->driverInfo();
+        renderer = RendererInfo{ info.deviceName.toStdString(), info.deviceType == QRhiDriverInfo::CpuDevice };
+        issueLog.Write(ui::backend::qt::update::IssueSeverity::info,
+            QString{ "Renderer: %1 (%2)" }.arg(QString::fromStdString(renderer->deviceName), renderer->cpuDevice ? "CPU device" : "GPU"));
+        ApplyRenderQuality();
+#endif
+    }
+
+    void SimulatorWindow::ApplyRenderQuality()
+    {
+        const auto high = ChooseRenderQuality(renderQualitySetting, renderer) == RenderQuality::high;
+        if (auto* studio = Studio(); studio != nullptr)
+            for (const auto* name : { "shadows", "ambientOcclusion", "antialiasing", "lightProbeEnabled" })
+                studio->setProperty(name, high);
+        EnableAmbientOcclusion(high);
+
+        if (high || renderQualitySetting != RenderQualitySetting::automatic || !renderer || softwareRendererAnnounced)
+            return;
+        softwareRendererAnnounced = true;
+        const auto notice = SoftwareRendererNotice(*renderer);
+        presenter.Note(LogLevel::warning, arm_host::noJoint, notice);
+        ShowNewestLog(1);
+        statusBar()->showMessage(QString::fromStdString(notice), 15000);
+    }
+
+    void SimulatorWindow::SelectRenderQuality(RenderQualitySetting setting)
+    {
+        renderQualitySetting = setting;
+        Settings().setValue("renderQuality", static_cast<int>(setting));
+        ApplyRenderQuality();
     }
 
     void SimulatorWindow::LogSceneStatus()
@@ -223,6 +274,7 @@ namespace simulator
             return;
 
         firstFrameLogged = true;
+        DetectRenderer();
         issueLog.Write(ui::backend::qt::update::IssueSeverity::info,
             "First frame rendered with " + GraphicsApiName(armView->quickWindow()->rendererInterface()->graphicsApi()));
     }
@@ -692,6 +744,31 @@ namespace simulator
         }
     }
 
+    void SimulatorWindow::BuildRenderQualityMenu(QMenu& menu)
+    {
+        auto* group = new QActionGroup{ &menu };
+        const std::array<std::pair<const char*, RenderQualitySetting>, 3> choices{ { { "&Automatic", RenderQualitySetting::automatic },
+            { "&High", RenderQualitySetting::high }, { "&Low", RenderQualitySetting::low } } };
+        for (const auto& [text, setting] : choices)
+        {
+            auto* action = menu.addAction(text);
+            action->setCheckable(true);
+            action->setActionGroup(group);
+            renderQualityActions.emplace_back(action, setting);
+            connect(action, &QAction::triggered, this, [this, setting]()
+                {
+                    SelectRenderQuality(setting);
+                });
+        }
+        CheckRenderQualityAction();
+    }
+
+    void SimulatorWindow::CheckRenderQualityAction()
+    {
+        for (const auto& [action, setting] : renderQualityActions)
+            action->setChecked(setting == renderQualitySetting);
+    }
+
     void SimulatorWindow::BuildViewMenu()
     {
         auto* view = menuBar()->addMenu("&View");
@@ -722,6 +799,7 @@ namespace simulator
             });
 
         BuildOverlaysMenu(*view->addMenu("&Overlays"));
+        BuildRenderQualityMenu(*view->addMenu("Render &Quality"));
 
         auto* theme = view->addMenu("&Theme");
         theme->addAction("&Instrument", this, [this]()
@@ -1191,6 +1269,9 @@ namespace simulator
         }
 
         UseTheme(settings.value("lightTheme", false).toBool());
+        renderQualitySetting = RenderQualitySettingFrom(settings.value("renderQuality", 0).toInt());
+        CheckRenderQualityAction();
+        ApplyRenderQuality();
         restoreGeometry(settings.value("geometry").toByteArray());
         restoreState(settings.value("layout").toByteArray());
         issueLog.Write(ui::backend::qt::update::IssueSeverity::info, "Saved settings restored");

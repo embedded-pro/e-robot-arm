@@ -280,6 +280,10 @@ empty until the arm has been enabled); nothing else in `core/` changes for the s
   milestones (version, OS, Qt, arguments, arm host, scene status, settings restore, last profile, first frame with its
   graphics API, window close, end of the event loop) and the frame statistics each second for 30 s, then each
   minute. Help ▸ Open Log Folder opens the folder; Help ▸ Report Issue attaches the recent lines.
+- **Render quality.** After the first frame the window reads the RHI driver info of the 3-D view and logs the
+  renderer. `ChooseRenderQuality` (view model, no Qt) maps the setting and that renderer to High or Low, and the
+  window sets `StudioView`'s `shadows`, `ambientOcclusion`, `antialiasing` and `lightProbeEnabled`
+  ([tool-simulator.md](tool-simulator.md) Part E).
 - **Safe start.** `--safe-start` skips the saved theme, geometry, layout and last profile, so a saved state that
   breaks start-up can be bypassed and then overwritten.
 - **Window test.** `e_robot_arm.tool.simulator_window_test` opens the window on simulated joints, brings the arm up,
