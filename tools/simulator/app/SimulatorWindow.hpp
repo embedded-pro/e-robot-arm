@@ -25,6 +25,7 @@
 #include <QMainWindow>
 #include <QString>
 #include <QTimer>
+#include <cstdint>
 #include <functional>
 #include <optional>
 #include <string>
@@ -169,6 +170,7 @@ namespace simulator
         ui::backend::qt::update::IssueLog& issueLog;
         StartOptions options;
         bool firstFrameLogged{ false };
+        uint32_t frameSummaries{ 0 };
         ui::backend::qt::update::UpdateAssistant updates;
         QAction* automaticUpdatesAction{ nullptr };
     };

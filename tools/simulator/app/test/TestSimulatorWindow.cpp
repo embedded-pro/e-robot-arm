@@ -233,6 +233,10 @@ TEST_F(SimulatorWindowTest, writes_the_start_up_milestones_to_the_issue_log)
             return IssueLogged(issueLog, "First frame rendered with ");
         }))
         << issueLog.RecentLines(50).join('\n').toStdString();
+    EXPECT_TRUE(Eventually([this]()
+        {
+            return IssueLogged(issueLog, "Frames: ");
+        }));
     EXPECT_TRUE(IssueLogged(issueLog, "Arm scene: ready"));
     EXPECT_TRUE(IssueLogged(issueLog, "Saved settings restored"));
 }

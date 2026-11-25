@@ -278,7 +278,8 @@ empty until the arm has been enabled); nothing else in `core/` changes for the s
   and installs ui-cpp's `CrashReporter`: a crash writes a `FATAL` line and, on Windows, a `simulator-<UTC time>.dmp`
   beside the log; a run that did not close normally is noted at the next start. The log records the start-up
   milestones (version, OS, Qt, arguments, arm host, scene status, settings restore, last profile, first frame with its
-  graphics API). Help ▸ Open Log Folder opens the folder; Help ▸ Report Issue attaches the recent lines.
+  graphics API, window close, end of the event loop) and the frame statistics each second for 30 s, then each
+  minute. Help ▸ Open Log Folder opens the folder; Help ▸ Report Issue attaches the recent lines.
 - **Safe start.** `--safe-start` skips the saved theme, geometry, layout and last profile, so a saved state that
   breaks start-up can be bypassed and then overwritten.
 - **Window test.** `e_robot_arm.tool.simulator_window_test` opens the window on simulated joints, brings the arm up,

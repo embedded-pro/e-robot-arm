@@ -164,6 +164,21 @@ jobs:
           Write-Output $status
           if ($status -notmatch "joint 1:") { throw "the console did not report the joints" }
           $log = Join-Path $env:LOCALAPPDATA "embedded-pro\e-robot-arm Simulator\logs\simulator.log"
+          Add-Type -TypeDefinition @"
+          using System; using System.IO; using System.Runtime.InteropServices;
+          public static class HangDump {
+            [DllImport("dbghelp.dll", SetLastError = true)]
+            static extern bool MiniDumpWriteDump(IntPtr process, uint processId, Microsoft.Win32.SafeHandles.SafeFileHandle file, uint type, IntPtr exception, IntPtr user, IntPtr callback);
+            public static void Write(System.Diagnostics.Process process, string path) {
+              using (var file = File.Create(path)) { MiniDumpWriteDump(process.Handle, (uint)process.Id, file.SafeFileHandle, 0x1006, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero); }
+            }
+          }
+          "@
+          function Stop-Hung($process, $reason) {
+            [HangDump]::Write($process, (Join-Path (Split-Path $log) "simulator-hang.dmp"))
+            Stop-Process -Id $process.Id -Force
+            throw $reason
+          }
           try {
             $app = Start-Process -FilePath $simulator -PassThru
             Start-Sleep -Seconds 10
@@ -172,7 +187,7 @@ jobs:
             $app.Refresh()
             Write-Output "closing main window $($app.MainWindowHandle) '$($app.MainWindowTitle)'"
             if (-not $app.CloseMainWindow()) { Stop-Process -Id $app.Id -Force; throw "the Simulator has no main window to close" }
-            if (-not $app.WaitForExit(30000)) { Stop-Process -Id $app.Id -Force; throw "the Simulator did not close within 30 s" }
+            if (-not $app.WaitForExit(30000)) { Stop-Hung $app "the Simulator did not close within 30 s" }
             $settings = "HKCU:\Software\embedded-pro\e-robot-arm Simulator"
             if (-not (Test-Path $settings)) { $null = New-Item -Path $settings }
             Set-ItemProperty -Path $settings -Name profile -Value (Join-Path $target "samples\meshed-arm\profile.json")

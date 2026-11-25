@@ -247,6 +247,9 @@ namespace simulator
 #ifndef NDEBUG
         std::fprintf(stderr, "[frames] %s\n", frameStatistics.Text().c_str());
 #endif
+        // Each second while starting, then each minute: shows a slow or stalled GUI thread in the log.
+        if (++frameSummaries <= 30 || frameSummaries % 60 == 0)
+            issueLog.Write(ui::backend::qt::update::IssueSeverity::info, "Frames: " + QString::fromStdString(frameStatistics.Text()));
     }
 
     const FrameStatistics& SimulatorWindow::Frames() const
