@@ -75,7 +75,8 @@ the desktop entry under the applications directory and the icon in the scalable 
 
 A per-machine NSIS setup, built with MSVC and Qt from the Qt online installer, holding the Simulator and the console
 with the Qt runtime, the Qt Quick 3D QML modules the scene imports and the Visual C++ runtime deployed beside them; a
-Start menu and desktop shortcut for the Simulator; and an uninstaller. It leaves out the virtual arm launcher and the
+Start menu and desktop shortcut for the Simulator; and an uninstaller. The Simulator is a GUI-subsystem program, so
+it opens no console window, and its icon is a resource in the executable. It leaves out the virtual arm launcher and the
 e-foc virtual motor: the launcher starts motor processes and opens their plant ports with POSIX calls, so the Virtual
 arm target exists on Linux only ([virtual-arm.md](virtual-arm.md)). On Windows the Simulator drives simulated joints,
 a `virtual:` bus another program hosts, or the real arm through a PCAN, Kvaser, gs_usb or slcan adapter.
