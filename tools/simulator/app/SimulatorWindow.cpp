@@ -9,6 +9,7 @@
 #include <QApplication>
 #include <QCloseEvent>
 #include <QCoreApplication>
+#include <QDesktopServices>
 #include <QDir>
 #include <QDockWidget>
 #include <QFileDialog>
@@ -28,7 +29,6 @@
 #include <QQuickWindow>
 #include <QScrollArea>
 #include <QSettings>
-#include <QStandardPaths>
 #include <QStatusBar>
 #include <QToolBar>
 #include <QUrl>
@@ -51,14 +51,6 @@ namespace simulator
             return { "e-robot-arm Simulator", "Simulator", version, QUrl{ "https://api.github.com/repos/embedded-pro/e-robot-arm/releases/latest" },
                 QUrl{ "https://github.com/embedded-pro/e-robot-arm/releases" }, QUrl{ "https://github.com/embedded-pro/e-robot-arm/issues/new" },
                 QByteArray{ "e-robot-arm-simulator/" } + version.toUtf8(), "Disable the arm" };
-        }
-
-        ui::backend::qt::update::IssueLog::Config IssueLogConfig()
-        {
-            ui::backend::qt::update::IssueLog::Config config;
-            config.directory = QDir{ QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) }.filePath("logs");
-            config.baseName = "simulator";
-            return config;
         }
 
         ui::backend::qt::update::IssueSeverity SeverityOf(LogLevel level)
@@ -102,7 +94,7 @@ namespace simulator
         }
     }
 
-    SimulatorWindow::SimulatorWindow(arm_host::ArmHost& host, const arm::JointLimits& limits, infra::TimePoint start)
+    SimulatorWindow::SimulatorWindow(arm_host::ArmHost& host, const arm::JointLimits& limits, infra::TimePoint start, ui::backend::qt::update::IssueLog& issueLog, StartOptions options)
         : host{ host }
         , shell{ *this, shellSpec }
         , strip{ new StatusStripBar{ this } }
@@ -156,7 +148,8 @@ namespace simulator
             {
                 presenter.EmergencyStop();
             } }
-        , issueLog{ IssueLogConfig() }
+        , issueLog{ issueLog }
+        , options{ options }
         , updates{ Product(), *this }
     {
         setMinimumSize(1280, 720);
@@ -166,6 +159,7 @@ namespace simulator
         armView->setFocusPolicy(Qt::StrongFocus);
         armView->engine()->addImportPath(":/");
         armView->setSource(QUrl{ "qrc:/Simulator/qml/ArmScene.qml" });
+        LogSceneStatus();
         EnableAmbientOcclusion();
         ShowFrameStatistics();
         auto* content = new QWidget{ this };
@@ -207,6 +201,30 @@ namespace simulator
         auto* environment = view != nullptr ? view->property("environment").value<QObject*>() : nullptr;
         if (environment != nullptr && environment->metaObject()->indexOfProperty("aoEnabled") >= 0)
             environment->setProperty("aoEnabled", true);
+    }
+
+    void SimulatorWindow::LogSceneStatus()
+    {
+        if (armView->status() == QQuickWidget::Ready)
+        {
+            issueLog.Write(ui::backend::qt::update::IssueSeverity::info, "Arm scene: ready");
+            return;
+        }
+
+        QStringList errors;
+        for (const auto& error : armView->errors())
+            errors.append(error.toString());
+        issueLog.Write(ui::backend::qt::update::IssueSeverity::error, "Arm scene: not loaded: " + errors.join("; "));
+    }
+
+    void SimulatorWindow::LogFirstFrame()
+    {
+        if (firstFrameLogged || !isVisible() || armView->quickWindow() == nullptr)
+            return;
+
+        firstFrameLogged = true;
+        issueLog.Write(ui::backend::qt::update::IssueSeverity::info,
+            "First frame rendered with " + GraphicsApiName(armView->quickWindow()->rendererInterface()->graphicsApi()));
     }
 
     void SimulatorWindow::ShowFrameStatistics()
@@ -328,6 +346,7 @@ namespace simulator
         simulationMenu->setEnabled(snapshot.targetReady && snapshot.disturbances.has_value());
         faultMenu->setEnabled(snapshot.disturbances.has_value() && snapshot.disturbances->injectFault);
         UpdateFrameStatistics(std::chrono::nanoseconds{ guiFrame.nsecsElapsed() });
+        LogFirstFrame();
     }
 
     void SimulatorWindow::ApplyMeshes(const MeshNames& names, const QString& directory)
@@ -507,6 +526,10 @@ namespace simulator
         help->addAction("&Report Issue…", this, [this]()
             {
                 ui::backend::qt::update::OpenIssueReport(Product(), issueLog, this);
+            });
+        help->addAction("Open &Log Folder", this, [this]()
+            {
+                QDesktopServices::openUrl(QUrl::fromLocalFile(issueLog.Directory()));
             });
         help->addSeparator();
         help->addAction("&About", this, &SimulatorWindow::ShowAbout);
@@ -1151,19 +1174,30 @@ namespace simulator
     void SimulatorWindow::RestoreSettings()
     {
         auto settings = Settings();
-        UseTheme(settings.value("lightTheme", false).toBool());
-        restoreGeometry(settings.value("geometry").toByteArray());
-        restoreState(settings.value("layout").toByteArray());
-
         std::vector<std::string> stored;
         for (const auto& recent : settings.value("recentProfiles").toStringList())
             stored.push_back(recent.toStdString());
         recentProfiles.Restore(stored);
         BuildRecentMenu();
 
+        if (options.safeStart)
+        {
+            UseTheme(false);
+            issueLog.Write(ui::backend::qt::update::IssueSeverity::warning, "Safe start: saved settings and last profile not restored");
+            return;
+        }
+
+        UseTheme(settings.value("lightTheme", false).toBool());
+        restoreGeometry(settings.value("geometry").toByteArray());
+        restoreState(settings.value("layout").toByteArray());
+        issueLog.Write(ui::backend::qt::update::IssueSeverity::info, "Saved settings restored");
+
         const auto profile = settings.value("profile").toString();
         if (!profile.isEmpty() && QFileInfo::exists(profile))
+        {
+            issueLog.Write(ui::backend::qt::update::IssueSeverity::info, "Last profile: " + QDir::toNativeSeparators(profile));
             LoadProfileFrom(profile);
+        }
     }
 
     void SimulatorWindow::closeEvent(QCloseEvent* event)

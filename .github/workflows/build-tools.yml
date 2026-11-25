@@ -163,13 +163,35 @@ jobs:
           $status = "status`nquit`n" | & (Join-Path $bin "e-robot-arm-console.exe") | Out-String
           Write-Output $status
           if ($status -notmatch "joint 1:") { throw "the console did not report the joints" }
-          $app = Start-Process -FilePath $simulator -PassThru
-          Start-Sleep -Seconds 10
-          if ($app.HasExited) { throw "the Simulator exited with $($app.ExitCode) instead of running" }
-          Stop-Process -Id $app.Id -Force
-          Start-Sleep -Seconds 2
+          $log = Join-Path $env:LOCALAPPDATA "embedded-pro\e-robot-arm Simulator\logs\simulator.log"
+          try {
+            $app = Start-Process -FilePath $simulator -PassThru
+            Start-Sleep -Seconds 10
+            if ($app.HasExited) { throw "the Simulator exited with $($app.ExitCode) instead of running" }
+            # Close through the window, so the Simulator saves its settings as a user's run does.
+            $null = $app.CloseMainWindow()
+            if (-not $app.WaitForExit(15000)) { Stop-Process -Id $app.Id -Force; throw "the Simulator did not close" }
+            $settings = "HKCU:\Software\embedded-pro\e-robot-arm Simulator"
+            $null = New-Item -Path $settings -Force -ErrorAction SilentlyContinue
+            Set-ItemProperty -Path $settings -Name profile -Value (Join-Path $target "samples\meshed-arm\profile.json")
+            $app = Start-Process -FilePath $simulator -PassThru
+            Start-Sleep -Seconds 10
+            if ($app.HasExited) { throw "the second start of the Simulator exited with $($app.ExitCode) instead of running" }
+            Stop-Process -Id $app.Id -Force
+            Start-Sleep -Seconds 2
+          } finally {
+            if (Test-Path $log) { Get-Content $log } else { Write-Output "the Simulator wrote no log at $log" }
+          }
           Start-Process -FilePath (Join-Path $target "Uninstall.exe") -ArgumentList "/S", "_?=$target" -Wait
           if (Test-Path $simulator) { throw "the uninstaller left $simulator behind" }
+      - name: Upload the Simulator log and crash dumps
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-simulator-logs
+          path: ~/AppData/Local/embedded-pro/e-robot-arm Simulator/logs/
+          if-no-files-found: ignore
+          retention-days: ${{ inputs.retention_days }}
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: windows-tools-installer

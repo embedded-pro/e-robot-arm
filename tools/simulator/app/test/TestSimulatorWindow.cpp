@@ -3,6 +3,7 @@
 #include "tools/arm_host/ProfileFile.hpp"
 #include "tools/simulator/app/AdapterDialog.hpp"
 #include "tools/simulator/app/ArmSceneState.hpp"
+#include "tools/simulator/app/Diagnostics.hpp"
 #include "tools/simulator/app/SimulatorWindow.hpp"
 #include "ui/backend/qt/QtTheme.hpp"
 #include "gmock/gmock.h"
@@ -29,6 +30,7 @@
 #include <QSettings>
 #include <QSurfaceFormat>
 #include <QTableWidget>
+#include <QTemporaryDir>
 #include <QTimer>
 #include <QVariantMap>
 #include <QVector3D>
@@ -131,6 +133,21 @@ namespace
         return true;
     }
 
+    ui::backend::qt::update::IssueLog::Config LogConfig(const QTemporaryDir& directory)
+    {
+        auto config = simulator::IssueLogConfig();
+        config.directory = directory.path();
+        return config;
+    }
+
+    bool IssueLogged(const ui::backend::qt::update::IssueLog& log, const QString& message)
+    {
+        return std::ranges::any_of(log.RecentLines(200), [&message](const QString& line)
+            {
+                return line.contains(message);
+            });
+    }
+
     arm_host::TargetOpener Opener()
     {
         auto opener = arm_host::HostTargetOpener(arm_host::simulatedTimeConstant, 1000000);
@@ -175,8 +192,62 @@ namespace
         arm::ArmProfile profile{ arm_host::DefaultArmProfile(arm_host::defaultNodes) };
         infra::TimePoint start{ std::chrono::system_clock::now() };
         arm_host::ArmHost host{ profile, Opener(), {} };
-        simulator::SimulatorWindow window{ host, profile.config.positionLimits, start };
+        QTemporaryDir logDirectory;
+        ui::backend::qt::update::IssueLog issueLog{ LogConfig(logDirectory) };
+        simulator::SimulatorWindow window{ host, profile.config.positionLimits, start, issueLog };
     };
+
+    class SafeStartTest
+        : public testing::Test
+    {
+    public:
+        SafeStartTest()
+        {
+            window.show();
+        }
+
+        ~SafeStartTest() override
+        {
+            QSettings{ "embedded-pro", "e-robot-arm Simulator" }.remove("profile");
+        }
+
+        static bool StoreLastProfile()
+        {
+            QSettings{ "embedded-pro", "e-robot-arm Simulator" }.setValue("profile", SAMPLE_ARM_PROFILE);
+            return true;
+        }
+
+        bool stored{ StoreLastProfile() };
+        arm::ArmProfile profile{ arm_host::DefaultArmProfile(arm_host::defaultNodes) };
+        arm_host::ArmHost host{ profile, Opener(), {} };
+        QTemporaryDir logDirectory;
+        ui::backend::qt::update::IssueLog issueLog{ LogConfig(logDirectory) };
+        simulator::SimulatorWindow window{ host, profile.config.positionLimits, std::chrono::system_clock::now(), issueLog, simulator::StartOptions{ true } };
+    };
+}
+
+TEST_F(SimulatorWindowTest, writes_the_start_up_milestones_to_the_issue_log)
+{
+    EXPECT_TRUE(Eventually([this]()
+        {
+            return IssueLogged(issueLog, "First frame rendered with ");
+        }))
+        << issueLog.RecentLines(50).join('\n').toStdString();
+    EXPECT_TRUE(IssueLogged(issueLog, "Arm scene: ready"));
+    EXPECT_TRUE(IssueLogged(issueLog, "Saved settings restored"));
+}
+
+TEST_F(SimulatorWindowTest, help_opens_the_log_folder)
+{
+    EXPECT_NE(nullptr, MenuAction(window, "Open Log Folder"));
+}
+
+TEST_F(SafeStartTest, skips_the_saved_settings_and_the_last_profile)
+{
+    QApplication::processEvents();
+
+    EXPECT_TRUE(IssueLogged(issueLog, "Safe start: saved settings and last profile not restored"));
+    EXPECT_FALSE(IssueLogged(issueLog, "Last profile:"));
 }
 
 TEST_F(SimulatorWindowTest, loads_the_lit_scene_and_shows_a_move_with_its_ghost)

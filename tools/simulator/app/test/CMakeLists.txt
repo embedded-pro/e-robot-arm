@@ -41,3 +41,18 @@ target_sources(e_robot_arm.tool.simulator.mesh_files_test PRIVATE
 )
 
 target_compile_definitions(e_robot_arm.tool.simulator.mesh_files_test PRIVATE MESH_TEST_DATA="${CMAKE_CURRENT_LIST_DIR}/data")
+
+add_executable(e_robot_arm.tool.simulator.diagnostics_test)
+emil_build_for(e_robot_arm.tool.simulator.diagnostics_test HOST All BOOL E_ROBOT_ARM_BUILD_TESTS)
+emil_add_test(e_robot_arm.tool.simulator.diagnostics_test)
+
+target_link_libraries(e_robot_arm.tool.simulator.diagnostics_test PUBLIC
+    gmock_main
+    e_robot_arm.tool.simulator.app
+)
+
+target_sources(e_robot_arm.tool.simulator.diagnostics_test PRIVATE
+    TestDiagnostics.cpp
+)
+
+target_compile_definitions(e_robot_arm.tool.simulator.diagnostics_test PRIVATE E_ROBOT_ARM_VERSION="${e_robot_arm_VERSION}")

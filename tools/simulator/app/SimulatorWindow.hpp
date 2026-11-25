@@ -3,6 +3,7 @@
 #include "tools/arm_host/AdapterTargetLink.hpp"
 #include "tools/arm_host/ArmHost.hpp"
 #include "tools/simulator/app/ArmSceneState.hpp"
+#include "tools/simulator/app/Diagnostics.hpp"
 #include "tools/simulator/app/EmergencyStopKey.hpp"
 #include "tools/simulator/app/JointTable.hpp"
 #include "tools/simulator/app/MeshFiles.hpp"
@@ -47,7 +48,7 @@ namespace simulator
     public:
         static constexpr int framePeriodMilliseconds{ 16 };
 
-        SimulatorWindow(arm_host::ArmHost& host, const arm::JointLimits& limits, infra::TimePoint start);
+        SimulatorWindow(arm_host::ArmHost& host, const arm::JointLimits& limits, infra::TimePoint start, ui::backend::qt::update::IssueLog& issueLog, StartOptions options = {});
 
         QQuickWidget& ArmView();
         SimulatorPresenter& Presenter();
@@ -68,6 +69,8 @@ namespace simulator
 
     private:
         void EnableAmbientOcclusion();
+        void LogSceneStatus();
+        void LogFirstFrame();
         void ShowFrameStatistics();
         void UpdateFrameStatistics(std::chrono::nanoseconds guiFrame);
         void BuildDocks();
@@ -163,7 +166,9 @@ namespace simulator
         QAction* commissioningAction{ nullptr };
         QTimer frameTimer;
         QByteArray defaultLayout;
-        ui::backend::qt::update::IssueLog issueLog;
+        ui::backend::qt::update::IssueLog& issueLog;
+        StartOptions options;
+        bool firstFrameLogged{ false };
         ui::backend::qt::update::UpdateAssistant updates;
         QAction* automaticUpdatesAction{ nullptr };
     };

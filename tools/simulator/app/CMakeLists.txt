@@ -29,6 +29,8 @@ target_include_directories(e_robot_arm.tool.simulator.app PUBLIC
 target_sources(e_robot_arm.tool.simulator.app PRIVATE
     AdapterDialog.cpp
     AdapterDialog.hpp
+    Diagnostics.cpp
+    Diagnostics.hpp
     EmergencyStopKey.cpp
     EmergencyStopKey.hpp
     JointTable.cpp

@@ -98,7 +98,9 @@ flowchart LR
 The same workflow runs on every pull request and on a release, so a release never publishes a package the pull
 requests did not build and install. On Linux the Simulator is started under a virtual display with software
 rendering; on Windows it starts on the runner's desktop; on both it must still be running after ten seconds, and the
-console must report the six joints.
+console must report the six joints. On Windows the Simulator then closes through its window, so it saves its settings,
+and starts a second time with the sample meshed arm as its last profile: a crash that only a saved state causes fails
+the run. Each Windows run prints the Simulator's log, and a failed run uploads the log folder with any crash dump.
 
 A release attaches whatever its build jobs produced even when one of them fails, so a broken host package or
 firmware build never holds back the installers; the failed job still marks the release run red.
