@@ -62,11 +62,17 @@ target_link_libraries(e_robot_arm.tool.simulator.app PUBLIC
 )
 
 add_executable(e_robot_arm.tool.simulator)
-set_target_properties(e_robot_arm.tool.simulator PROPERTIES OUTPUT_NAME e-robot-arm-simulator)
+set_target_properties(e_robot_arm.tool.simulator PROPERTIES OUTPUT_NAME e-robot-arm-simulator WIN32_EXECUTABLE ON)
 
 target_sources(e_robot_arm.tool.simulator PRIVATE
     main/Main.cpp
 )
+
+if (WIN32)
+    set(E_ROBOT_ARM_SIMULATOR_ICON "${PROJECT_SOURCE_DIR}/tools/installer/resources/e-robot-arm-simulator.ico")
+    configure_file(main/Simulator.rc.in Simulator.rc @ONLY)
+    target_sources(e_robot_arm.tool.simulator PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/Simulator.rc)
+endif()
 
 target_link_libraries(e_robot_arm.tool.simulator PRIVATE
     e_robot_arm.tool.simulator.qml_plugin
