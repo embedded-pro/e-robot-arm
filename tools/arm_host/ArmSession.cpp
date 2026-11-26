@@ -34,6 +34,7 @@ namespace arm_host
         }
 
         constexpr float maximumCollisionTorque{ 200.0f };
+        constexpr infra::Duration guideDeadMan{ std::chrono::milliseconds{ 200 } };
 
         bool PassiveKind(arm::ArmControllerKind kind)
         {
@@ -57,7 +58,7 @@ namespace arm_host
         bool TargetCommand(const ArmCommand& command)
         {
             return std::holds_alternative<InjectFault>(command) || std::holds_alternative<SilenceJoint>(command) ||
-                   std::holds_alternative<ResumeJoint>(command) || std::holds_alternative<CollideJoint>(command) ||
+                   std::holds_alternative<ResumeJoint>(command) || std::holds_alternative<CollideJoint>(command) || std::holds_alternative<GuideArm>(command) ||
                    std::holds_alternative<PowerOffMotor>(command) || std::holds_alternative<RestartMotor>(command);
         }
 
@@ -209,6 +210,13 @@ namespace arm_host
 
     void ArmSession::Execute(uint32_t id, const ArmCommand& command)
     {
+        if (const auto* guide = std::get_if<GuideArm>(&command))
+        {
+            if (!Guide(*guide))
+                Emit({ .kind = ArmEventKind::refused, .command = id, .commandName = CommandName(command), .reason = refusal });
+            return;
+        }
+
         holdTimer.Cancel();
         if (DeliveredByTheJoints(command))
             Deliver(id, command);
@@ -396,6 +404,11 @@ namespace arm_host
             return session.Collide(collide);
         }
 
+        bool operator()(const GuideArm& guide) const
+        {
+            return session.Guide(guide);
+        }
+
         bool operator()(const PowerOffMotor& powerOff) const
         {
             return session.PowerOff(powerOff.joint);
@@ -521,21 +534,57 @@ namespace arm_host
         return true;
     }
 
-    bool ArmSession::Collide(const CollideJoint& collide)
+    std::optional<std::string_view> ArmSession::PushRefusal() const
     {
         if (virtualMotors == nullptr && simulation == nullptr)
-            return Refuse("not a simulation");
+            return "not a simulation";
         if (virtualMotors == nullptr && !simulation->Dynamic())
-            return Refuse("the simulated joints have no dynamics");
+            return "the simulated joints have no dynamics";
+        return std::nullopt;
+    }
+
+    void ArmSession::PushJoint(std::size_t joint)
+    {
+        const foc::NewtonMeter torque{ collisionTorques[joint].Value() + guideTorques[joint].Value() };
+        if (virtualMotors != nullptr)
+            virtualMotors->Collide(joint, torque);
+        else
+            simulation->Push(joint, torque);
+    }
+
+    bool ArmSession::Collide(const CollideJoint& collide)
+    {
+        if (const auto reason = PushRefusal())
+            return Refuse(*reason);
         if (collide.joint >= arm::jointCount)
             return Refuse("no such joint");
         if (!(std::abs(collide.torque.Value()) <= maximumCollisionTorque))
             return Refuse("torque outside ±200 N·m");
 
-        if (virtualMotors != nullptr)
-            virtualMotors->Collide(collide.joint, collide.torque);
-        else
-            simulation->Push(collide.joint, collide.torque);
+        collisionTorques[collide.joint] = collide.torque;
+        PushJoint(collide.joint);
+        return true;
+    }
+
+    bool ArmSession::Guide(const GuideArm& guide)
+    {
+        if (const auto reason = PushRefusal())
+            return Refuse(*reason);
+        if (!std::ranges::all_of(guide.torques, [](foc::NewtonMeter torque)
+                {
+                    return std::abs(torque.Value()) <= maximumCollisionTorque;
+                }))
+            return Refuse("torque outside ±200 N·m");
+
+        guideTorques = guide.torques;
+        for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+            PushJoint(joint);
+        guideTimer.Start(guideDeadMan, [this]()
+            {
+                guideTorques = {};
+                for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+                    PushJoint(joint);
+            });
         return true;
     }
 
@@ -939,7 +988,7 @@ namespace arm_host
             for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
             {
                 disturbances.silent[joint] = simulation->Joint(joint).Silent();
-                disturbances.torque[joint] = simulation->Pushed(joint);
+                disturbances.torque[joint] = collisionTorques[joint];
             }
             snapshot.disturbances = disturbances;
         }
@@ -947,7 +996,7 @@ namespace arm_host
         {
             snapshot.virtualMotors = virtualMotors->Status();
             snapshot.disturbances =
-                Disturbances{ .collision = true, .powerOff = true, .silent = snapshot.virtualMotors->silenced, .torque = snapshot.virtualMotors->torques };
+                Disturbances{ .collision = true, .powerOff = true, .silent = snapshot.virtualMotors->silenced, .torque = collisionTorques };
         }
     }
 

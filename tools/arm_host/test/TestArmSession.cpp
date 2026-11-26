@@ -1034,3 +1034,54 @@ TEST_F(ArmSessionTest, refuses_every_move_in_free_mode_with_the_reason)
     Execute(7, arm_host::MoveTo{ target });
     EXPECT_EQ(ArmEventKind::accepted, sink.Last()->kind);
 }
+
+namespace
+{
+    arm::JointTorques GuideTorques(float second, float third)
+    {
+        arm::JointTorques torques{};
+        torques[1] = foc::NewtonMeter{ second };
+        torques[2] = foc::NewtonMeter{ third };
+        return torques;
+    }
+}
+
+TEST_F(ArmSessionTest, a_guide_adds_its_torques_to_a_collision_torque_without_an_event_and_lapses_after_200_ms)
+{
+    Execute(1, arm_host::CollideJoint{ 1, foc::NewtonMeter{ 5.0f } });
+    const auto events = sink.events.size();
+
+    session.Execute(2, arm_host::GuideArm{ GuideTorques(3.0f, -2.0f) });
+    ForwardTime(100ms);
+
+    EXPECT_EQ(events, sink.events.size());
+    EXPECT_FLOAT_EQ(8.0f, simulatedArm.Pushed(1).Value());
+    EXPECT_FLOAT_EQ(-2.0f, simulatedArm.Pushed(2).Value());
+    EXPECT_FLOAT_EQ(5.0f, sink.snapshot.disturbances->torque[1].Value());
+
+    session.Execute(3, arm_host::GuideArm{ GuideTorques(4.0f, 0.0f) });
+    ForwardTime(150ms);
+    EXPECT_FLOAT_EQ(9.0f, simulatedArm.Pushed(1).Value());
+
+    ForwardTime(100ms);
+    EXPECT_FLOAT_EQ(5.0f, simulatedArm.Pushed(1).Value());
+    EXPECT_FLOAT_EQ(0.0f, simulatedArm.Pushed(2).Value());
+}
+
+TEST_F(ArmSessionTest, refuses_a_guide_torque_beyond_200_n_m)
+{
+    session.Execute(1, arm_host::GuideArm{ GuideTorques(250.0f, 0.0f) });
+
+    ASSERT_NE(nullptr, sink.Last());
+    EXPECT_EQ(ArmEventKind::refused, sink.Last()->kind);
+    EXPECT_EQ("guide arm", sink.Last()->commandName);
+    EXPECT_EQ("torque outside ±200 N·m", sink.Last()->reason);
+    EXPECT_FLOAT_EQ(0.0f, simulatedArm.Pushed(1).Value());
+}
+
+TEST_F(RealArmSessionTest, refuses_a_guide_off_a_simulation)
+{
+    session.Execute(1, arm_host::GuideArm{ GuideTorques(3.0f, 0.0f) });
+
+    EXPECT_EQ("not a simulation", sink.Last()->reason);
+}
