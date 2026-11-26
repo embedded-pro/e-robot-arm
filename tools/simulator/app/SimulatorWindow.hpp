@@ -12,6 +12,7 @@
 #include "tools/simulator/app/TimedQuickWidget.hpp"
 #include "tools/simulator/view_models/DisturbancePresenter.hpp"
 #include "tools/simulator/view_models/FrameStatistics.hpp"
+#include "tools/simulator/view_models/HandGuide.hpp"
 #include "tools/simulator/view_models/MotorControllerPresenter.hpp"
 #include "tools/simulator/view_models/MotorPresenter.hpp"
 #include "tools/simulator/view_models/RecentProfiles.hpp"
@@ -95,6 +96,7 @@ namespace simulator
         void ConnectSignals();
         void ConnectJog();
         void ConnectTeach();
+        void ConnectGuide();
         void RestoreSettings();
         QGroupBox* Group(const QString& title, QWidget* content);
         QDockWidget* Dock(const QString& title, const QString& name, QWidget* content, Qt::DockWidgetArea area);
@@ -156,6 +158,7 @@ namespace simulator
         std::optional<bool> disturbancesShown;
         TuningPanel* tuningPanel;
         TuningPresenter tuning;
+        HandGuide guide;
         QLabel* frameReadout;
         QElapsedTimer clock;
         QMenu* faultMenu{ nullptr };

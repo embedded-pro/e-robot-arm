@@ -310,6 +310,70 @@ namespace simulator
         emit jointPicked(joint);
     }
 
+    void ArmSceneState::GuideGrab(int joint, QVector3D hit, QVector3D origin, QVector3D direction)
+    {
+        GuidePointer(origin, direction);
+        emit guideGrabbed(joint, hit);
+    }
+
+    void ArmSceneState::GuidePointer(QVector3D origin, QVector3D direction)
+    {
+        pointerOrigin = origin;
+        pointerDirection = direction;
+    }
+
+    void ArmSceneState::GuideRelease()
+    {
+        emit guideReleased();
+    }
+
+    SceneRay ArmSceneState::GuideRay() const
+    {
+        return { { pointerOrigin.x(), pointerOrigin.y(), pointerOrigin.z() }, { pointerDirection.x(), pointerDirection.y(), pointerDirection.z() } };
+    }
+
+    void ArmSceneState::SetGuide(bool offered, const HandGuide& guide)
+    {
+        QVariantList arrow;
+        if (guide.Arrow())
+            arrow << Vector(guide.Arrow()->from) << Vector(guide.Arrow()->to);
+        const auto point = guide.Arrow() ? Vector(guide.Arrow()->from) : QVector3D{};
+        const auto label = ui::backend::qt::ToQt(guide.Label());
+        if (offered == guideOffered && guide.Active() == guideActive && arrow == guideArrow && label == guideLabel)
+            return;
+        guideOffered = offered;
+        guideActive = guide.Active();
+        guideArrow = arrow;
+        guidePoint = point;
+        guideLabel = label;
+        emit guideChanged();
+    }
+
+    bool ArmSceneState::GuideOffered() const
+    {
+        return guideOffered;
+    }
+
+    bool ArmSceneState::GuideActive() const
+    {
+        return guideActive;
+    }
+
+    QVariantList ArmSceneState::GuideArrow() const
+    {
+        return guideArrow;
+    }
+
+    QVector3D ArmSceneState::GuidePoint() const
+    {
+        return guidePoint;
+    }
+
+    QString ArmSceneState::GuideLabel() const
+    {
+        return guideLabel;
+    }
+
     void ArmSceneState::RequestCameraPreset(int preset)
     {
         emit cameraPresetRequested(preset);

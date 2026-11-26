@@ -1,6 +1,7 @@
 #pragma once
 
 #include "tools/simulator/view_models/ArmSceneModel.hpp"
+#include "tools/simulator/view_models/HandGuide.hpp"
 #include "ui/backend/qt/quick3d/MeshCatalog.hpp"
 #include "ui/theme/Theme.hpp"
 #include <QColor>
@@ -64,6 +65,11 @@ namespace simulator
         Q_PROPERTY(bool showLimits READ ShowLimits NOTIFY overlaysChanged)
         Q_PROPERTY(bool showWorkspace READ ShowWorkspace NOTIFY overlaysChanged)
         Q_PROPERTY(bool showLegend READ ShowLegend NOTIFY overlaysChanged)
+        Q_PROPERTY(bool guideOffered READ GuideOffered NOTIFY guideChanged)
+        Q_PROPERTY(bool guideActive READ GuideActive NOTIFY guideChanged)
+        Q_PROPERTY(QVariantList guideArrow READ GuideArrow NOTIFY guideChanged)
+        Q_PROPERTY(QVector3D guidePoint READ GuidePoint NOTIFY guideChanged)
+        Q_PROPERTY(QString guideLabel READ GuideLabel NOTIFY guideChanged)
 
     public:
         static ArmSceneState* create(QQmlEngine* engine, QJSEngine* scriptEngine);
@@ -132,10 +138,20 @@ namespace simulator
         bool Orthographic() const;
         void SetOrthographic(bool on);
         void RequestFocusSelected();
+        void SetGuide(bool offered, const HandGuide& guide);
+        bool GuideOffered() const;
+        bool GuideActive() const;
+        QVariantList GuideArrow() const;
+        QVector3D GuidePoint() const;
+        QString GuideLabel() const;
+        SceneRay GuideRay() const;
 
         Q_INVOKABLE void Pick(int joint);
         Q_INVOKABLE void ReportMeshFailure(int node, const QString& reason);
         Q_INVOKABLE void RequestCameraPreset(int preset);
+        Q_INVOKABLE void GuideGrab(int joint, QVector3D hit, QVector3D origin, QVector3D direction);
+        Q_INVOKABLE void GuidePointer(QVector3D origin, QVector3D direction);
+        Q_INVOKABLE void GuideRelease();
 
     signals:
         void changed();
@@ -152,6 +168,9 @@ namespace simulator
         void overlaysChanged();
         void frameRequested();
         void focusSelectedRequested();
+        void guideChanged();
+        void guideGrabbed(int joint, QVector3D hit);
+        void guideReleased();
 
     private:
         QVariantList measuredNodes;
@@ -194,5 +213,12 @@ namespace simulator
         std::array<bool, overlayCount> shown{ true, true, true, true, true, true };
         bool orthographic{ false };
         bool reframe{ false };
+        bool guideOffered{ false };
+        bool guideActive{ false };
+        QVariantList guideArrow;
+        QVector3D guidePoint;
+        QString guideLabel;
+        QVector3D pointerOrigin;
+        QVector3D pointerDirection;
     };
 }
