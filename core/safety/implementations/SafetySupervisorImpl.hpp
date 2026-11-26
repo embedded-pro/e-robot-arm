@@ -38,6 +38,7 @@ namespace arm
         bool Holding() const override;
         bool Rearm() override;
         void Supervise(const std::optional<JointReference>& reference, const std::optional<JointTorques>& externalTorques) override;
+        void SupervisePassive() override;
         const JointFlags& TorqueClamped() const override;
         std::optional<WorkspaceViolation> LastWorkspaceViolation() const override;
         bool HardwareStopOpen() const override;
@@ -64,6 +65,7 @@ namespace arm
         std::optional<JointPositions> FreshMeasuredPose() const;
         void SuperviseHold(const JointPositions& held);
         std::optional<float> TrackingErrorHeld(std::size_t joint, foc::Radians reference);
+        bool SuperviseMeasuredPose();
         void Protect(std::size_t joint, SupervisionTrip cause, float value);
 
         JointBus& bus;
@@ -81,5 +83,6 @@ namespace arm
         std::array<uint32_t, jointCount> stepsOutside{};
         bool tripped{ false };
         bool holding{ false };
+        bool passive{ false };
     };
 }
