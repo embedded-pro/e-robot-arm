@@ -45,6 +45,11 @@ namespace simulation
         external[joint] = torque;
     }
 
+    foc::NewtonMeter ArmPlant::Pushed(std::size_t joint) const
+    {
+        return external[joint];
+    }
+
     foc::Radians ArmPlant::MotorPosition(std::size_t joint) const
     {
         return transmissions[joint].MotorPosition(dynamics.Positions()[joint]);
