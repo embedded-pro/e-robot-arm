@@ -28,6 +28,13 @@ namespace simulator::test
         return snapshot;
     }
 
+    inline arm_host::ArmSnapshot Free()
+    {
+        auto snapshot = Running();
+        snapshot.armControllers = { { "gravity-pd", true, false }, { "free", true, true, true } };
+        return snapshot;
+    }
+
     inline arm::JointLimits Limits()
     {
         arm::JointLimits limits{};

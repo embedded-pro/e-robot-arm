@@ -112,8 +112,12 @@ TEST_F(TuningRunTest, refuses_to_start_unless_the_arm_is_enabled_and_idle_with_a
     snapshot.moving = true;
     EXPECT_EQ("the arm is moving", run.Start());
 
-    tuning::TuningRun large{ arm, tuning::TuningTest{ .kind = tuning::TestKind::step, .joint = 2, .amplitude = 0.25f } };
     snapshot.moving = false;
+    snapshot.armControllers = { { "free", true, true, true } };
+    EXPECT_EQ("free mode: select a tracking controller", run.Start());
+    snapshot.armControllers.clear();
+
+    tuning::TuningRun large{ arm, tuning::TuningTest{ .kind = tuning::TestKind::step, .joint = 2, .amplitude = 0.25f } };
     EXPECT_EQ("a step is not 0 and at most 0.2 rad", large.Start());
     tuning::TuningRun seventh{ arm, tuning::TuningTest{ .kind = tuning::TestKind::step, .joint = 6, .amplitude = 0.1f } };
     EXPECT_EQ("the joint is 1 to 6", seventh.Start());

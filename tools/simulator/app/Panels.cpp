@@ -332,12 +332,12 @@ namespace simulator
 
     ArmControllersPanel::ArmControllersPanel(QWidget* parent)
         : QWidget{ parent }
-        , table{ new QTableWidget{ 0, 3, this } }
+        , table{ new QTableWidget{ 0, 4, this } }
         , hint{ new QLabel{ this } }
     {
         table->setObjectName("armControllersTable");
         table->setAccessibleName("Arm controllers");
-        table->setHorizontalHeaderLabels({ "Controller", "State", "Parameters" });
+        table->setHorizontalHeaderLabels({ "Controller", "State", "Parameters", "" });
         table->verticalHeader()->setVisible(false);
         table->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
         table->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Stretch);
@@ -392,6 +392,14 @@ namespace simulator
                 ui::backend::qt::StyleStatusLabel(*state, shown[row].level);
                 table->setCellWidget(index, 1, state);
                 table->setItem(index, 2, new QTableWidgetItem{ ui::backend::qt::ToQt(shown[row].parameters) });
+                if (shown[row].simulationOnly)
+                {
+                    auto* tag = new QLabel{ QStringLiteral("Simulation only"), table };
+                    ui::backend::qt::StyleStatusLabel(*tag, ui::theme::StatusLevel::Warning);
+                    table->setCellWidget(index, 3, tag);
+                }
+                else
+                    table->removeCellWidget(index, 3);
             }
             if (presenter.Chosen().has_value())
                 table->selectRow(static_cast<int>(*presenter.Chosen()));

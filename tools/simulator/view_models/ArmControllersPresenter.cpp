@@ -65,7 +65,8 @@ namespace simulator
         {
             const auto* state = StateText(controller);
             const auto level = controller.active ? ui::theme::StatusLevel::Ok : ui::theme::StatusLevel::Neutral;
-            return ArmControllerRow{ controller.name, state, level, Parameters(config, controller.name), controller.enabled };
+            return ArmControllerRow{ controller.name, state, level, controller.passive ? std::string{ "walls 0.1 rad" } : Parameters(config, controller.name),
+                controller.enabled, controller.passive };
         }
 
         ControlState Allowed()
