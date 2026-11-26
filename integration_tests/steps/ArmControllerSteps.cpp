@@ -26,6 +26,13 @@ GIVEN(R"(an arm with six simulated joints {word} experimental controllers)", (co
     context.Emplace<ArmFixture>(config);
 }
 
+GIVEN(R"(an arm with six simulated joints on a simulation)")
+{
+    auto config = ArmFixture::DefaultConfig();
+    config.simulation = true;
+    context.Emplace<ArmFixture>(config);
+}
+
 WHEN(R"({int} ms pass)", (std::int32_t milliseconds))
 {
     context.Get<ArmFixture>().ForwardTime(std::chrono::milliseconds{ milliseconds });
@@ -102,4 +109,24 @@ THEN(R"(for {int} ms every joint shall stay within {float} rad of where it was)"
     }
     std::cout << "[METRIC] arm_controllers.switch_drift_rad=" << largest << " limit=" << tolerance << std::endl;
     EXPECT_LE(largest, tolerance);
+}
+
+THEN(R"(within {int} ms joint {int} shall move more than {float} rad)", (std::int32_t milliseconds, std::int32_t number, float distance))
+{
+    auto& fixture = context.Get<ArmFixture>();
+    const auto joint = static_cast<std::size_t>(number - 1);
+    const auto from = fixture.arm.Safety().Reading(joint).position.Value();
+    float largest{ 0.0f };
+    for (std::int32_t elapsed = 0; elapsed < milliseconds && largest <= distance; elapsed += 10)
+    {
+        fixture.ForwardTime(10ms);
+        largest = std::max(largest, std::abs(fixture.arm.Safety().Reading(joint).position.Value() - from));
+    }
+    std::cout << "[METRIC] free_dynamics.fall_rad=" << largest << " limit=" << distance << std::endl;
+    EXPECT_GT(largest, distance);
+}
+
+THEN(R"(the arm shall still be enabled)")
+{
+    EXPECT_EQ(arm::ArmState::enabled, context.Get<ArmFixture>().arm.Lifecycle().State());
 }

@@ -24,6 +24,8 @@ namespace simulation
         bool Idle() const;
         SimulatedHardwareStop& HardwareStop();
         void Push(std::size_t joint, foc::NewtonMeter torque);
+        foc::NewtonMeter Pushed(std::size_t joint) const;
+        bool Dynamic() const;
 
     private:
         VirtualCanBus bus;

@@ -22,6 +22,7 @@ namespace arm_host
         std::string name;
         bool enabled{ false };
         bool active{ false };
+        bool passive{ false };
     };
 
     struct Disturbances
@@ -80,6 +81,14 @@ namespace arm_host
         std::optional<VirtualMotorsStatus> virtualMotors{};
         std::optional<Disturbances> disturbances{};
     };
+
+    inline bool FreeMode(const ArmSnapshot& snapshot)
+    {
+        for (const auto& controller : snapshot.armControllers)
+            if (controller.active && controller.passive)
+                return true;
+        return false;
+    }
 
     struct TraceSample
     {

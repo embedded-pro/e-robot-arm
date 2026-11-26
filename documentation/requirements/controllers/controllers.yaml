@@ -9,3 +9,16 @@
   shall: >
     Whichever arm controller the operator selects before enabling the arm, the arm shall bring every joint onto a
     commanded joint-space target and hold it there.
+
+- id: REQ-CTL-003
+  title: A floating arm stays where it is left
+  shall: >
+    On a simulation, when the operator selects the gravity-float arm controller, the arm shall cancel gravity alone,
+    keep every joint within 0.01 rad of where it was for a second, and refuse every move.
+
+- id: REQ-CTL-004
+  title: A free arm moves under gravity until a tracking controller catches it
+  shall: >
+    On a simulation, when the operator selects the free arm controller, the arm shall send no torque but the
+    joint-limit walls, so gravity moves it, and shall refuse every move. A tracking controller selected afterwards
+    shall hold the arm where it is.

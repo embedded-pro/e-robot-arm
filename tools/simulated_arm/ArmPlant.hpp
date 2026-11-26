@@ -20,6 +20,7 @@ namespace simulation
 
         void Advance() override;
         void Push(std::size_t joint, foc::NewtonMeter torque);
+        foc::NewtonMeter Pushed(std::size_t joint) const;
         foc::Radians MotorPosition(std::size_t joint) const override;
         foc::RadiansPerSecond MotorSpeed(std::size_t joint) const override;
 
