@@ -164,20 +164,36 @@ jobs:
           Write-Output $status
           if ($status -notmatch "joint 1:") { throw "the console did not report the joints" }
           $log = Join-Path $env:LOCALAPPDATA "embedded-pro\e-robot-arm Simulator\logs\simulator.log"
+          function LogLineCount { if (Test-Path $log) { @(Get-Content $log).Count } else { 0 } }
+          # Waits for a log line of this start, not a fixed time: start-up time depends on the runner's software renderer.
+          function WaitForLog($app, $from, $pattern, $what) {
+            $deadline = (Get-Date).AddSeconds(180)
+            while ((Get-Date) -lt $deadline) {
+              if ($app.HasExited) { throw "the $what exited with $($app.ExitCode) instead of running" }
+              if ((Test-Path $log) -and (@(Get-Content $log | Select-Object -Skip $from) -match $pattern)) { return }
+              Start-Sleep -Seconds 1
+            }
+            throw "the $what did not log '$pattern' within 180 s"
+          }
           try {
+            $from = LogLineCount
             $app = Start-Process -FilePath $simulator -PassThru
-            Start-Sleep -Seconds 10
-            if ($app.HasExited) { throw "the Simulator exited with $($app.ExitCode) instead of running" }
+            WaitForLog $app $from "Target ready" "Simulator"
+            Start-Sleep -Seconds 5
+            if ($app.HasExited) { throw "the Simulator exited with $($app.ExitCode) after the target was ready" }
             # Stopped, not closed: the runner has no GPU, so close time depends on its software renderer.
             Stop-Process -Id $app.Id -Force
             Start-Sleep -Seconds 2
             $settings = "HKCU:\Software\embedded-pro\e-robot-arm Simulator"
-            if (-not (Test-Path $settings)) { $null = New-Item -Path $settings }
+            # -Force creates the parent keys: a Simulator stopped early has saved no settings.
+            if (-not (Test-Path $settings)) { $null = New-Item -Path $settings -Force }
             Set-ItemProperty -Path $settings -Name profile -Value (Join-Path $target "samples\meshed-arm\profile.json")
+            $from = LogLineCount
             $app = Start-Process -FilePath $simulator -PassThru
-            Start-Sleep -Seconds 10
-            if ($app.HasExited) { throw "the second start of the Simulator exited with $($app.ExitCode) instead of running" }
-            if (-not (Select-String -Path $log -Pattern "Last profile:" -Quiet)) { throw "the second start did not restore the last profile" }
+            WaitForLog $app $from "Profile loaded" "second start of the Simulator"
+            Start-Sleep -Seconds 5
+            if ($app.HasExited) { throw "the second start of the Simulator exited with $($app.ExitCode) after the profile loaded" }
+            if (-not (@(Get-Content $log | Select-Object -Skip $from) -match "Last profile:")) { throw "the second start did not restore the last profile" }
             if (Select-String -Path $log -Pattern "\[FATAL\]" -Quiet) { throw "the Simulator logged a crash" }
             Stop-Process -Id $app.Id -Force
             Start-Sleep -Seconds 2

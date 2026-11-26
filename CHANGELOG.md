@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.1.1](https://github.com/embedded-pro/e-robot-arm/compare/v1.1.0...v1.1.1) (2026-11-25)
+
+
+### Bug Fixes
+
+* **simulator:** Build where Qt's RHI header is not installed ([556c7bc](https://github.com/embedded-pro/e-robot-arm/commit/556c7bc80764152e0646be7e4d1c4d813b7e90dd))
+* **simulator:** Frame statistics in the log; dump a hung Simulator in CI ([cc2df1f](https://github.com/embedded-pro/e-robot-arm/commit/cc2df1fcc6bc109e0fe8cde08615564e2f92ee24))
+* **simulator:** Log from the first line of main and report crashes ([8372109](https://github.com/embedded-pro/e-robot-arm/commit/83721098ec2b645ce55ef5e5c087bd2163885684))
+* **simulator:** Log from the first line of main and report crashes ([68d69d9](https://github.com/embedded-pro/e-robot-arm/commit/68d69d997a23d2cae5a0626e53b7bde5c5107efe))
+* **simulator:** Log the close path; ui-cpp on main ([6333f24](https://github.com/embedded-pro/e-robot-arm/commit/6333f24332c80906ee79a4c3273c20e79ecfb25f))
+* **simulator:** Low render quality on a software renderer ([370dfec](https://github.com/embedded-pro/e-robot-arm/commit/370dfecdbf0d34bdc6a042731abf67ba80915522))
+
 ## [1.1.0](https://github.com/embedded-pro/e-robot-arm/compare/v1.0.2...v1.1.0) (2026-11-25)
 
 
