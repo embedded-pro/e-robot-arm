@@ -141,13 +141,13 @@ start, stop, align) still work for debugging. The lifecycle shows where they lea
 
 ### Required
 
-| Interface          | Purpose                                                         | Contract                              |
-|--------------------|-----------------------------------------------------------------|---------------------------------------|
-| Safety supervisor  | Commands, readings, contract outcome, faults, delivery outcomes | The lifecycle is one of its observers |
-| Joint motion       | Moves, and their end                                            | The lifecycle is one of its observers |
-| Joint configurator | Applies and reads a joint's motor controller                    | The lifecycle is one of its observers |
-| Control loop       | One step per control period, after the setpoint step            | Drives Part C                         |
-| Safety supervisor  | Detects faults and silent joints, and stops the joints          | The lifecycle only follows its events |
+| Interface          | Purpose                                                         | Contract                                         |
+|--------------------|-----------------------------------------------------------------|--------------------------------------------------|
+| Safety supervisor  | Commands, readings, contract outcome, faults, delivery outcomes | The lifecycle is one of its observers            |
+| Joint motion       | Moves, and their end                                            | The lifecycle is one of its observers            |
+| Joint configurator | Applies and reads a joint's motor controller                    | The lifecycle is one of its observers            |
+| Control loop       | One step per control period, after the setpoint step            | Drives Part C                                    |
+| Safety supervisor  | Detects faults and silent joints, and stops the joints          | The lifecycle only follows its events            |
 | Joint motion       | Plans and steps a move                                          | The lifecycle only decides whether one may start |
 
 ---

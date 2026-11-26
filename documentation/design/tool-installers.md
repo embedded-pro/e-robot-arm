@@ -118,10 +118,10 @@ firmware build never holds back the installers. The failed job still marks the r
 
 ### Required
 
-| Interface             | Purpose                      | Contract                                                            |
-|-----------------------|------------------------------|---------------------------------------------------------------------|
-| e-foc source          | Builds `e-foc-virtual-motor` | The revision the virtual arm scenarios pin, so both test one engine |
-| Qt 6 with Qt Quick 3D | The Simulator's runtime      | From the distribution on Linux; deployed into the setup on Windows  |
+| Interface             | Purpose                      | Contract                                                              |
+|-----------------------|------------------------------|-----------------------------------------------------------------------|
+| e-foc source          | Builds `e-foc-virtual-motor` | The revision the virtual arm scenarios pin, so both test one engine   |
+| Qt 6 with Qt Quick 3D | The Simulator's runtime      | From the distribution on Linux; deployed into the setup on Windows    |
 | Update check          | Finds and offers updates     | The Simulator owns it ([tool-simulator.md](tool-simulator.md) Part T) |
 
 ---

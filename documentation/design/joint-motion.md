@@ -238,14 +238,14 @@ current profile (Part F). Saving the profile keeps the points.
 
 ### Required
 
-| Interface | Purpose                                       | Contract                                 |
-|-----------|-----------------------------------------------|------------------------------------------|
-| Joint bus | Latest positions                              | The safety supervisor                    |
-| Arm model | Tool pose, inverse kinematics, manipulability | [arm-model.md](arm-model.md)             |
-| Workspace | Whether a pose is allowed                     | [safety.md](safety.md) Part H            |
-| Step      | One step per control period                   | Run by the control loop's setpoint phase |
-| Arm controllers | Setpoint sets from the reference        | The supervisor guards them; a refused set aborts the move |
-| Control loop | Telemetry requests                         | The loop paces the requests              |
+| Interface       | Purpose                                       | Contract                                                  |
+|-----------------|-----------------------------------------------|-----------------------------------------------------------|
+| Joint bus       | Latest positions                              | The safety supervisor                                     |
+| Arm model       | Tool pose, inverse kinematics, manipulability | [arm-model.md](arm-model.md)                              |
+| Workspace       | Whether a pose is allowed                     | [safety.md](safety.md) Part H                             |
+| Step            | One step per control period                   | Run by the control loop's setpoint phase                  |
+| Arm controllers | Setpoint sets from the reference              | The supervisor guards them; a refused set aborts the move |
+| Control loop    | Telemetry requests                            | The loop paces the requests                               |
 
 Joint motion only refuses a target outside the position limits up front. The arm model computes poses, inverse
 kinematics and manipulability; joint motion only asks it. The workspace check judges a pose; joint motion asks it

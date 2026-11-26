@@ -131,11 +131,11 @@ The profile keeps the active controller and nothing else about the registry. The
 back into its copy of the profile, so saving it keeps the choice. Enabling and disabling stay run-time choices that a
 reload undoes (decision 1).
 
-| Request      | Accepted when                                                                           | Effect                                                              |
-|--------------|-----------------------------------------------------------------------------------------|---------------------------------------------------------------------|
-| enable *id*  | *id* is registered                                                                      | The controller may be selected                                      |
-| disable *id* | *id* is registered, and it is not the active controller while the arm drives the joints | It may not be selected; if it was active, no controller is active   |
-| select *id*  | *id* is enabled, and no move runs or the controller is bumpless                         | Reset from the measured joints, it becomes active; reported         |
+| Request      | Accepted when                                                                           | Effect                                                            |
+|--------------|-----------------------------------------------------------------------------------------|-------------------------------------------------------------------|
+| enable *id*  | *id* is registered                                                                      | The controller may be selected                                    |
+| disable *id* | *id* is registered, and it is not the active controller while the arm drives the joints | It may not be selected; if it was active, no controller is active |
+| select *id*  | *id* is enabled, and no move runs or the controller is bumpless                         | Reset from the measured joints, it becomes active; reported       |
 
 Selecting the active controller again is accepted and changes nothing. In torque mode, only the active controller
 holds the joints. So it cannot be disabled while the arm streams (Enabling, Enabled, Moving or Holding). The arm
@@ -176,12 +176,12 @@ Phase 5 ([#21](https://github.com/embedded-pro/e-robot-arm/issues/21)) adds four
 manipulator controllers over the arm model. Each has its parameters in the arm profile. The arm registers and enables
 each beside the others (Part B). It enables `slotine-li` only when the profile allows it:
 
-| Name                  | Law                                                                                                                                                           | Bumpless |
-|-----------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|
+| Name                  | Law                                                                                                                                                               | Bumpless |
+|-----------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|
 | `joint-impedance`     | `τ = ID(q, q̇*, q̈*) + K·(q* − q) + D·(q̇* − q̇)`: the reference's inverse dynamics, a spring per joint and a coupled damper                                      | yes      |
 | `cartesian-impedance` | `τ = ID(q, q̇*, q̈*) + Jᵀ·K·e + D·(q̇* − q̇)`: the reference's inverse dynamics, a spring on the tool's pose error e in the base frame and a coupled joint damper | yes      |
-| `operational-space`   | `τ = Jᵀ·Λ·(ẍ* + Kd·ė + Kp·e − J̇·q̇) + C + G`: the tool follows the reference as a decoupled system; joint-space computed torque near a singularity             | yes      |
-| `slotine-li`          | `τ = Y·â − Kd·s, with s = q̇ − q̇r and â adapted as â̇ = −Γ·Yᵀ·s`: learns the arm's inertial parameters                                                          | yes      |
+| `operational-space`   | `τ = Jᵀ·Λ·(ẍ* + Kd·ė + Kp·e − J̇·q̇) + C + G`: the tool follows the reference as a decoupled system; joint-space computed torque near a singularity               | yes      |
+| `slotine-li`          | `τ = Y·â − Kd·s, with s = q̇ − q̇r and â adapted as â̇ = −Γ·Yᵀ·s`: learns the arm's inertial parameters                                                           | yes      |
 
 **Joint impedance.** The arm yields to a push as a spring of stiffness K per joint and a damper D, centred on the
 reference. The law feeds the reference's own dynamics forward: `M(q)·q̈* + C(q, q̇*)·q̇* + G(q)`. That is the model's
@@ -303,12 +303,12 @@ arm is for slow moves and for being guided. Decision 4 tracks whether the window
 
 ### Required
 
-| Interface         | Purpose                                        | Contract                                 |
-|-------------------|------------------------------------------------|------------------------------------------|
-| Safety supervisor | Latest readings; setpoint sets                 | Refuses sets while tripped or off limits |
-| Joint motion      | Whether a move runs; the reference each period | Advanced before the controllers' step    |
-| Joint motion      | Generating the reference                       | Plans and samples it ([joint-motion.md](joint-motion.md)) |
-| Safety supervisor | Guarding the setpoints                         | Checks every set it is sent ([safety.md](safety.md)) |
+| Interface         | Purpose                                        | Contract                                                                                                                            |
+|-------------------|------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------|
+| Safety supervisor | Latest readings; setpoint sets                 | Refuses sets while tripped or off limits                                                                                            |
+| Joint motion      | Whether a move runs; the reference each period | Advanced before the controllers' step                                                                                               |
+| Joint motion      | Generating the reference                       | Plans and samples it ([joint-motion.md](joint-motion.md))                                                                           |
+| Safety supervisor | Guarding the setpoints                         | Checks every set it is sent ([safety.md](safety.md))                                                                                |
 | Lifecycle         | When setpoints stream                          | The arm starts and stops the streaming with the Enabling, Enabled, Moving and Holding states ([arm-lifecycle.md](arm-lifecycle.md)) |
 
 ---
@@ -391,14 +391,14 @@ sequenceDiagram
 
 ## Constraints & Limitations
 
-| Constraint | Value / Description                                                                      |
-|------------|------------------------------------------------------------------------------------------|
-| Capacity   | Eight controllers                                                                        |
-| Bumpless   | From the measured joints: the setpoints move by at most the tracking error at the switch |
-| Traffic    | One setpoint set per control period while the arm is enabled                             |
-| Memory     | No heap; every controller's state is fixed-size                                          |
+| Constraint | Value / Description                                                                                                                                |
+|------------|----------------------------------------------------------------------------------------------------------------------------------------------------|
+| Capacity   | Eight controllers                                                                                                                                  |
+| Bumpless   | From the measured joints: the setpoints move by at most the tracking error at the switch                                                           |
+| Traffic    | One setpoint set per control period while the arm is enabled                                                                                       |
+| Memory     | No heap; every controller's state is fixed-size                                                                                                    |
 | Catalogue  | The rest of the robotics-toolbox and numerical-toolbox controllers: phase 8d step 6 ([#31](https://github.com/embedded-pro/e-robot-arm/issues/31)) |
-| Profile    | The arm profile keeps the active controller only (decision 1, [arm-profile.md](arm-profile.md)) |
+| Profile    | The arm profile keeps the active controller only (decision 1, [arm-profile.md](arm-profile.md))                                                    |
 
 ---
 

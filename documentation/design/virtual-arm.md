@@ -335,13 +335,13 @@ one (decision 3).
 
 ### Required
 
-| Interface                   | Purpose                                      | Contract                                                                                 |
-|-----------------------------|----------------------------------------------|------------------------------------------------------------------------------------------|
-| `e-foc-virtual-motor`       | One joint's drive                            | e-foc's release; start options and plant port per `virtual-motor.md`, protocol version 3 |
-| Arm profile                 | Nodes, transmissions, motors, geometry, mass | [arm-profile.md](arm-profile.md)                                                         |
-| Arm model                   | Mass matrix, Coriolis and gravity terms      | [arm-model.md](arm-model.md)                                                             |
-| can-lite `virtual:` adapter | The arm's side of the bus                    | Unchanged                                                                                |
-| Arm                         | Controlling the arm                          | Reaches the motors through `virtual:<bus>` like any other CAN bus; nothing in the arm core knows the motors are virtual |
+| Interface                   | Purpose                                      | Contract                                                                                                                  |
+|-----------------------------|----------------------------------------------|---------------------------------------------------------------------------------------------------------------------------|
+| `e-foc-virtual-motor`       | One joint's drive                            | e-foc's release; start options and plant port per `virtual-motor.md`, protocol version 3                                  |
+| Arm profile                 | Nodes, transmissions, motors, geometry, mass | [arm-profile.md](arm-profile.md)                                                                                          |
+| Arm model                   | Mass matrix, Coriolis and gravity terms      | [arm-model.md](arm-model.md)                                                                                              |
+| can-lite `virtual:` adapter | The arm's side of the bus                    | Unchanged                                                                                                                 |
+| Arm                         | Controlling the arm                          | Reaches the motors through `virtual:<bus>` like any other CAN bus; nothing in the arm core knows the motors are virtual   |
 | e-foc virtual motor         | Simulating a motor                           | Runs e-foc's shipping application on e-foc's plant; the virtual arm only chooses the plant and pushes torque on its shaft |
 
 ---
@@ -381,15 +381,15 @@ stateDiagram-v2
 
 ## Constraints & Limitations
 
-| Constraint | Value / Description                                                                                                                                                                                                                                                                    |
-|------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Coupling   | The arm's full dynamics, integrated by the virtual arm; each motor's shaft driven at its joint's speed (Part C)                                                                                                                                                                        |
-| Motors     | The motor model's values; e-foc's other plant values (encoder, noise, supply limits) are the preset's                                                                                                                                                                                  |
-| Time       | Real time: virtual motors run on the wall clock; the arm steps each joint by its own motor's control periods                                                                                                                                                                           |
-| Platform   | Linux first, as CI; Windows when e-foc's Windows archive is wired the same way                                                                                                                                                                                                         |
-| Verification | A virtual motor is a bench, not a test oracle (`virtual-motor.md` Part I) |
-| Network    | Loopback only                                                                                                                                                                                                                                                                          |
-| Bus load   | One telemetry request and two answers per joint per period: 1800 frames/s at 100 Hz. can-lite's hub must deliver every frame whose transmission time has passed at once; one per pass of its host's event loop (about 500 frames/s in an e-foc virtual motor) leaves the joints silent |
+| Constraint   | Value / Description                                                                                                                                                                                                                                                                    |
+|--------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Coupling     | The arm's full dynamics, integrated by the virtual arm; each motor's shaft driven at its joint's speed (Part C)                                                                                                                                                                        |
+| Motors       | The motor model's values; e-foc's other plant values (encoder, noise, supply limits) are the preset's                                                                                                                                                                                  |
+| Time         | Real time: virtual motors run on the wall clock; the arm steps each joint by its own motor's control periods                                                                                                                                                                           |
+| Platform     | Linux first, as CI; Windows when e-foc's Windows archive is wired the same way                                                                                                                                                                                                         |
+| Verification | A virtual motor is a bench, not a test oracle (`virtual-motor.md` Part I)                                                                                                                                                                                                              |
+| Network      | Loopback only                                                                                                                                                                                                                                                                          |
+| Bus load     | One telemetry request and two answers per joint per period: 1800 frames/s at 100 Hz. can-lite's hub must deliver every frame whose transmission time has passed at once; one per pass of its host's event loop (about 500 frames/s in an e-foc virtual motor) leaves the joints silent |
 
 ---
 

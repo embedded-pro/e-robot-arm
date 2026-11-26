@@ -323,11 +323,11 @@ The example shows one joint; a profile lists six.
 
 ### Required
 
-| Interface   | Purpose                                    | Contract                       |
-|-------------|--------------------------------------------|--------------------------------|
-| EMIL JSON   | Tokenising, navigating and formatting JSON | Heap-free, over a bounded text |
-| e-foc range | Each gain's accepted range                 | The contract's parameter table |
-| Host tools  | Profile files                              | They read and write the files and hand over the text |
+| Interface   | Purpose                                    | Contract                                                                                        |
+|-------------|--------------------------------------------|-------------------------------------------------------------------------------------------------|
+| EMIL JSON   | Tokenising, navigating and formatting JSON | Heap-free, over a bounded text                                                                  |
+| e-foc range | Each gain's accepted range                 | The contract's parameter table                                                                  |
+| Host tools  | Profile files                              | They read and write the files and hand over the text                                            |
 | Lifecycle   | Applying the profile                       | Applies the motor controllers while it brings the arm up ([arm-lifecycle.md](arm-lifecycle.md)) |
 
 ---

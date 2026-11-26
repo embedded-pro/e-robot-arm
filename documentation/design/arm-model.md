@@ -180,14 +180,14 @@ feed-forward and the tools' snapshots are the links' alone.
 
 ### Required
 
-| Interface         | Purpose                           | Contract                                            |
-|-------------------|-----------------------------------|-----------------------------------------------------|
-| robotics-toolbox  | OPW forward and inverse, Jacobian | Analytical OPW inverse kinematics, geometric Jacobian, float |
-| robotics-toolbox  | Dynamics                          | Chain dynamics model (RNEA, CRBA), float            |
-| Arm configuration | Geometry, mass, joint limits      | From the profile ([arm-profile.md](arm-profile.md)) |
-| Joint motion      | Moves the arm, Cartesian moves included (phase 4) | The model only converts                  |
-| Arm controllers   | Gravity compensation, torque feed-forward (phase 5) | They feed the torques to the joints    |
-| Joint drives      | Friction and rotor inertia                        | Each joint's drive ([arm-dynamics.md](../theory/arm-dynamics.md)); the driven arm adds the rotors (Part G) |
+| Interface         | Purpose                                             | Contract                                                                                                   |
+|-------------------|-----------------------------------------------------|------------------------------------------------------------------------------------------------------------|
+| robotics-toolbox  | OPW forward and inverse, Jacobian                   | Analytical OPW inverse kinematics, geometric Jacobian, float                                               |
+| robotics-toolbox  | Dynamics                                            | Chain dynamics model (RNEA, CRBA), float                                                                   |
+| Arm configuration | Geometry, mass, joint limits                        | From the profile ([arm-profile.md](arm-profile.md))                                                        |
+| Joint motion      | Moves the arm, Cartesian moves included (phase 4)   | The model only converts                                                                                    |
+| Arm controllers   | Gravity compensation, torque feed-forward (phase 5) | They feed the torques to the joints                                                                        |
+| Joint drives      | Friction and rotor inertia                          | Each joint's drive ([arm-dynamics.md](../theory/arm-dynamics.md)); the driven arm adds the rotors (Part G) |
 
 ---
 

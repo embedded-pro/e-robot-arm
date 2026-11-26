@@ -249,17 +249,17 @@ Until then, the simulated joints carry a hardware stop that the tests open and c
 Each rule has a scenario at the arm's boundary, besides the supervisor's unit tests. The scenario runs on the
 simulated joints, or on the e-foc virtual motors where the table says virtual:
 
-| Rule                                      | Stop                       | Scenario (feature)                                                                                  | Requirement              |
-|-------------------------------------------|----------------------------|-----------------------------------------------------------------------------------------------------|--------------------------|
-| Joint fault, silent joint                 | Emergency                  | A faulted joint stops every joint; a silent joint stops every joint (arm)                           | REQ-ARM-004, 005         |
-| Hardware stop                             | Emergency                  | The hardware stop stops every joint (arm)                                                           | REQ-SAF-010              |
-| Drive watchdog                            | Drive                      | Every drive stops on its own (lifecycle)                                                            | REQ-SAF-009              |
-| Speed; the hold and the re-arm            | Protective                 | A joint faster than its speed limit stops the arm, holds and moves again (supervision)              | REQ-SAF-005, 001, 003    |
-| Torque limit                              | Clamp                      | A torque above a joint's limit is clamped and reported (supervision)                                | REQ-SAF-004              |
-| Reference beyond the motion limits        | Protective                 | A reference faster than the motion limits allow stops the arm (supervision)                         | REQ-SAF-006              |
-| Workspace, forbidden zone, self-collision | Refusal                    | A move into a zone or onto the arm itself moves nothing (workspace)                                 | REQ-SAF-007, 008         |
-| Tracking error                            | Protective                 | A collision that holds a joint back stops the arm (tracking supervision, virtual)                   | REQ-ARM-014              |
-| Collision; a lost hold                    | Protective, then emergency | A collision stops the arm protectively, and a push it cannot hold trips it (virtual arm, virtual)   | REQ-ARM-016, REQ-SAF-002 |
+| Rule                                      | Stop                       | Scenario (feature)                                                                                | Requirement              |
+|-------------------------------------------|----------------------------|---------------------------------------------------------------------------------------------------|--------------------------|
+| Joint fault, silent joint                 | Emergency                  | A faulted joint stops every joint; a silent joint stops every joint (arm)                         | REQ-ARM-004, 005         |
+| Hardware stop                             | Emergency                  | The hardware stop stops every joint (arm)                                                         | REQ-SAF-010              |
+| Drive watchdog                            | Drive                      | Every drive stops on its own (lifecycle)                                                          | REQ-SAF-009              |
+| Speed; the hold and the re-arm            | Protective                 | A joint faster than its speed limit stops the arm, holds and moves again (supervision)            | REQ-SAF-005, 001, 003    |
+| Torque limit                              | Clamp                      | A torque above a joint's limit is clamped and reported (supervision)                              | REQ-SAF-004              |
+| Reference beyond the motion limits        | Protective                 | A reference faster than the motion limits allow stops the arm (supervision)                       | REQ-SAF-006              |
+| Workspace, forbidden zone, self-collision | Refusal                    | A move into a zone or onto the arm itself moves nothing (workspace)                               | REQ-SAF-007, 008         |
+| Tracking error                            | Protective                 | A collision that holds a joint back stops the arm (tracking supervision, virtual)                 | REQ-ARM-014              |
+| Collision; a lost hold                    | Protective, then emergency | A collision stops the arm protectively, and a push it cannot hold trips it (virtual arm, virtual) | REQ-ARM-016, REQ-SAF-002 |
 
 The reference scenario hands the supervisor a reference the arm's own joint motion never produces, as a faulty arm
 controller would. Only the supervisor's unit tests cover the workspace rules while the arm drives. Joint motion refuses
@@ -282,15 +282,15 @@ every path that would break them, so no scenario can drive the arm into one.
 
 ### Required
 
-| Interface     | Purpose                          | Contract                                        |
-|---------------|----------------------------------|-------------------------------------------------|
-| Joint bus     | The six joints behind the guard  | The supervisor is the joint bus's only observer |
-| Hardware stop | Whether the stop circuit is open | Reports each change; the platform reads the input (Part J) |
-| Joint bus     | Fault and silence detection      | Reports them; the supervisor reacts             |
-| Collision observer | Estimated external torque   | [collision.md](collision.md)                    |
-| Workspace check | Poses and distances            | Over the arm model (Part H)                     |
-| Arm controllers | The reference and the hold     | They choose the reference and hold the pose; the supervisor tells the arm to hold |
-| Caller        | Clearing a node's fault          | Through the supervisor, which passes the command on |
+| Interface          | Purpose                          | Contract                                                                          |
+|--------------------|----------------------------------|-----------------------------------------------------------------------------------|
+| Joint bus          | The six joints behind the guard  | The supervisor is the joint bus's only observer                                   |
+| Hardware stop      | Whether the stop circuit is open | Reports each change; the platform reads the input (Part J)                        |
+| Joint bus          | Fault and silence detection      | Reports them; the supervisor reacts                                               |
+| Collision observer | Estimated external torque        | [collision.md](collision.md)                                                      |
+| Workspace check    | Poses and distances              | Over the arm model (Part H)                                                       |
+| Arm controllers    | The reference and the hold       | They choose the reference and hold the pose; the supervisor tells the arm to hold |
+| Caller             | Clearing a node's fault          | Through the supervisor, which passes the command on                               |
 
 ---
 
@@ -382,12 +382,12 @@ sequenceDiagram
 
 ## Constraints & Limitations
 
-| Constraint      | Value / Description                                                                                     |
-|-----------------|---------------------------------------------------------------------------------------------------------|
-| Single observer | The supervisor observes the joint bus; the arm observes the supervisor                                  |
-| Stop categories | Emergency stop: category 0; protective stop: category 2 (IEC 60204-1 terms), both software only for now |
-| Commissioning   | The commissioning limits halve the trips and quarter the motion and speed limits; torque limits stay    |
-| Memory          | No heap; all state is fixed-size                                                                        |
+| Constraint      | Value / Description                                                                                                                  |
+|-----------------|--------------------------------------------------------------------------------------------------------------------------------------|
+| Single observer | The supervisor observes the joint bus; the arm observes the supervisor                                                               |
+| Stop categories | Emergency stop: category 0; protective stop: category 2 (IEC 60204-1 terms), both software only for now                              |
+| Commissioning   | The commissioning limits halve the trips and quarter the motion and speed limits; torque limits stay                                 |
+| Memory          | No heap; all state is fixed-size                                                                                                     |
 | Hardware stop   | The relay or safe-torque-off circuit comes with the bring-up hardware ([#25](https://github.com/embedded-pro/e-robot-arm/issues/25)) |
 
 ---

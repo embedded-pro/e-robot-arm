@@ -152,12 +152,12 @@ not. The value is the profile's drive-watchdog period count times the control pe
 
 ### Required
 
-| Interface     | Purpose                                                      | Contract                        |
-|---------------|--------------------------------------------------------------|---------------------------------|
-| Joint bus     | Per-joint algorithm and parameter requests and their answers | Through the safety supervisor   |
-| Arm lifecycle | Whether the arm is Ready or Configuring                      | Read before an operation starts |
-| Timer         | Retry after a millisecond, give up after the silence window  | The event loop's timer service  |
-| Arm profile   | Stores the settings                                          | The configurator only applies and reads ([arm-profile.md](arm-profile.md)) |
+| Interface     | Purpose                                                      | Contract                                                                            |
+|---------------|--------------------------------------------------------------|-------------------------------------------------------------------------------------|
+| Joint bus     | Per-joint algorithm and parameter requests and their answers | Through the safety supervisor                                                       |
+| Arm lifecycle | Whether the arm is Ready or Configuring                      | Read before an operation starts                                                     |
+| Timer         | Retry after a millisecond, give up after the silence window  | The event loop's timer service                                                      |
+| Arm profile   | Stores the settings                                          | The configurator only applies and reads ([arm-profile.md](arm-profile.md))          |
 | Arm lifecycle | Selects the control mode                                     | Enabling selects one mode for all six joints ([arm-lifecycle.md](arm-lifecycle.md)) |
 
 ---
@@ -197,11 +197,11 @@ sequenceDiagram
 
 ## Constraints & Limitations
 
-| Constraint | Value / Description                                                                     |
-|------------|-----------------------------------------------------------------------------------------|
-| Pace       | One request in flight; an apply takes seventeen round trips, about 20 ms on an idle bus |
-| Lifecycle  | Ready or Configuring only: a running joint is never reconfigured                        |
-| Memory     | No heap; one operation's state at a time                                                |
+| Constraint | Value / Description                                                                         |
+|------------|---------------------------------------------------------------------------------------------|
+| Pace       | One request in flight; an apply takes seventeen round trips, about 20 ms on an idle bus     |
+| Lifecycle  | Ready or Configuring only: a running joint is never reconfigured                            |
+| Memory     | No heap; one operation's state at a time                                                    |
 | Scope      | No other e-foc parameters (supervision, temperatures, encoder, homing): phase 6 and phase 9 |
 
 ---

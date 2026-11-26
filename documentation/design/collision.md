@@ -92,10 +92,10 @@ in its snapshot and trace.
 
 ### Required
 
-| Interface | Purpose                                        | Contract                                   |
-|-----------|------------------------------------------------|--------------------------------------------|
-| Arm model | Links, gravity, joint-space conversions        | Built from the profile's geometry and mass |
-| Rotors    | Each joint's reflected rotor inertia, in kg·m² | From the profile's motors and gear ratios  |
+| Interface | Purpose                                        | Contract                                                                                       |
+|-----------|------------------------------------------------|------------------------------------------------------------------------------------------------|
+| Arm model | Links, gravity, joint-space conversions        | Built from the profile's geometry and mass                                                     |
+| Rotors    | Each joint's reflected rotor inertia, in kg·m² | From the profile's motors and gear ratios                                                      |
 | Safety    | Collision decision and stop                    | The supervisor compares each estimate with its collision limit ([safety.md](safety.md) Part F) |
 
 ---

@@ -37,11 +37,11 @@ date: 2026-11-26
 
 ### Part A — Libraries
 
-| Component             | Qt  | Contents                                                                                       |
-|-----------------------|-----|------------------------------------------------------------------------------------------------|
-| Simulated arm         | no  | The in-process CAN bus, the simulated joints (lag, fault, silence), six joints on one bus      |
-| Arm host              | no  | The arm and its target on a thread; commands in; snapshot, events, traces out                  |
-| Simulator view models | no  | Operate and Move forms, status, hints, log, pending requests, control rules, joint rows, scene |
+| Component             | Qt  | Contents                                                                                        |
+|-----------------------|-----|-------------------------------------------------------------------------------------------------|
+| Simulated arm         | no  | The in-process CAN bus, the simulated joints (lag, fault, silence), six joints on one bus       |
+| Arm host              | no  | The arm and its target on a thread; commands in; snapshot, events, traces out                   |
+| Simulator view models | no  | Operate and Move forms, status, hints, log, pending requests, control rules, joint rows, scene  |
 | Simulator application | yes | The window on ui-cpp's Qt shell, status strip, joint table, scope and log panels, the 3-D scene |
 
 The integration tests and the console use the simulated arm and the arm host too. So the simulator, the console
@@ -152,16 +152,16 @@ integration tests' support code. It accepts every command the arm sends, answers
 
 The arm host owns the arm thread and, on it, the target and the arm. Its operator-facing surface:
 
-| Operation        | Effect                                                                                     |
-|------------------|--------------------------------------------------------------------------------------------|
-| Post a command   | Runs one command (list below); an event answers it                                         |
-| Switch target    | Part C; its result arrives as an event                                                     |
-| Load profile     | Rebuilds the arm from a profile on the current target, as a target switch does (below)    |
-| Set commissioning | Turns the commissioning limits on or off (below); answered *accepted* or *refused*        |
-| Detect adapters  | The CAN adapters can-lite finds on this computer, virtual buses left out (below)           |
-| Take snapshot    | A copy of the latest snapshot                                                              |
-| Take events      | Every event since the last call, in order                                                  |
-| Take trace       | Every trace sample since the last call, in order                                           |
+| Operation         | Effect                                                                                 |
+|-------------------|----------------------------------------------------------------------------------------|
+| Post a command    | Runs one command (list below); an event answers it                                     |
+| Switch target     | Part C; its result arrives as an event                                                 |
+| Load profile      | Rebuilds the arm from a profile on the current target, as a target switch does (below) |
+| Set commissioning | Turns the commissioning limits on or off (below); answered *accepted* or *refused*     |
+| Detect adapters   | The CAN adapters can-lite finds on this computer, virtual buses left out (below)       |
+| Take snapshot     | A copy of the latest snapshot                                                          |
+| Take events       | Every event since the last call, in order                                              |
+| Take trace        | Every trace sample since the last call, in order                                       |
 
 A posted command is one of these:
 
@@ -184,13 +184,13 @@ callback there, so the caller never waits for them.
 
 It is built in layers, each tested on its own:
 
-| Layer         | Thread    | Does                                                                                     |
-|---------------|-----------|------------------------------------------------------------------------------------------|
-| Request queue | any       | Holds posted requests in order; an emergency stop goes ahead of everything queued        |
+| Layer         | Thread    | Does                                                                                      |
+|---------------|-----------|-------------------------------------------------------------------------------------------|
+| Request queue | any       | Holds posted requests in order; an emergency stop goes ahead of everything queued         |
 | Host          | owns both | The arm thread with EMIL's event loop and timer service; turns each post into one request |
-| Runtime       | arm       | Opens the target through a target opener, owns the session, switches targets (Part C)   |
-| Session       | arm       | The FOC motor client and the arm stack on one target link; runs commands; publishes      |
-| Mailbox       | any       | The snapshot under a mutex and the two bounded queues; numbers the snapshots             |
+| Runtime       | arm       | Opens the target through a target opener, owns the session, switches targets (Part C)     |
+| Session       | arm       | The FOC motor client and the arm stack on one target link; runs commands; publishes       |
+| Mailbox       | any       | The snapshot under a mutex and the two bounded queues; numbers the snapshots              |
 
 Every command answers with exactly one event, *accepted* or *refused* with a reason. The event carries the id that
 the post returned. The joint bus ([joint-bus.md](joint-bus.md) Part B) delivers check contracts, select mode, start,
@@ -464,7 +464,7 @@ The simulator models no motor physics in-process. Motor dynamics come with e-foc
 
 ## Decisions
 
-| # | Decision                                               | Options                                                  | Status            |
-|---|--------------------------------------------------------|----------------------------------------------------------|-------------------|
-| 1 | Whether the simulated joints should model speed limits | Lag only (8a), virtual motors for dynamics (phase 7)     | decided: lag only |
-| 2 | A status-coloured read-only joint table in ui-cpp      | A ui-cpp model read-out table with a status per cell     | open              |
+| # | Decision                                               | Options                                              | Status            |
+|---|--------------------------------------------------------|------------------------------------------------------|-------------------|
+| 1 | Whether the simulated joints should model speed limits | Lag only (8a), virtual motors for dynamics (phase 7) | decided: lag only |
+| 2 | A status-coloured read-only joint table in ui-cpp      | A ui-cpp model read-out table with a status per cell | open              |

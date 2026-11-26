@@ -178,12 +178,12 @@ quitting stops the motors. It takes no `--profile` and no bus but a `virtual:` o
 
 ### Required
 
-| Interface                 | Purpose                  | Contract                                |
-|---------------------------|--------------------------|-----------------------------------------|
-| FOC motor category client | The six e-foc nodes      | Observed by the joint bus only          |
-| CAN bus adapter           | The bus, real or virtual | can-lite's platform adapter on the host |
-| Component designs         | Limits, trips, planning, pacing | Each rule stays in its own design |
-| CAN Commander             | Node ids, gains, calibration    | Configures the e-foc nodes        |
+| Interface                 | Purpose                         | Contract                                |
+|---------------------------|---------------------------------|-----------------------------------------|
+| FOC motor category client | The six e-foc nodes             | Observed by the joint bus only          |
+| CAN bus adapter           | The bus, real or virtual        | can-lite's platform adapter on the host |
+| Component designs         | Limits, trips, planning, pacing | Each rule stays in its own design       |
+| CAN Commander             | Node ids, gains, calibration    | Configures the e-foc nodes              |
 
 ---
 

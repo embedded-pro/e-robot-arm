@@ -135,4 +135,4 @@ sequenceDiagram
 
 | # | Decision | Status | Options Considered | Rationale |
 |---|----------|--------|--------------------|-----------|
-| 1 | …                   | open   | …                  | …         |
+| 1 | …        | open   | …                  | …         |

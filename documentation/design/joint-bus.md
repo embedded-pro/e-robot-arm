@@ -154,11 +154,11 @@ paces them one at a time.
 
 ### Required
 
-| Interface                 | Purpose                                    | Contract                                    |
-|---------------------------|--------------------------------------------|---------------------------------------------|
-| FOC motor category client | Commands to and telemetry from e-foc nodes | The joint bus is the client's only observer |
-| Platform                  | The bus, opened on a CAN adapter           | Chooses the real arm or virtual motors      |
-| Safety component          | Reaction to a fault                        | Decides to stop the other joints            |
+| Interface                 | Purpose                                    | Contract                                             |
+|---------------------------|--------------------------------------------|------------------------------------------------------|
+| FOC motor category client | Commands to and telemetry from e-foc nodes | The joint bus is the client's only observer          |
+| Platform                  | The bus, opened on a CAN adapter           | Chooses the real arm or virtual motors               |
+| Safety component          | Reaction to a fault                        | Decides to stop the other joints                     |
 | Caller                    | Pacing                                     | Decides when to request telemetry and send setpoints |
 
 ---
