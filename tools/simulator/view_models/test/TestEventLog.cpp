@@ -115,3 +115,17 @@ TEST_F(EventLogTest, a_trace_without_gaps_logs_nothing)
 
     EXPECT_TRUE(log.Lines().empty());
 }
+
+TEST_F(EventLogTest, names_each_arm_controller_change_and_warns_about_none_or_a_fallback)
+{
+    const auto changed = simulator::Describe({ .kind = ArmEventKind::armControllerChanged, .armController = "gravity-pid" }, start);
+    EXPECT_EQ("Arm controller: gravity-pid", changed.message);
+    EXPECT_EQ(simulator::LogLevel::info, changed.level);
+
+    EXPECT_EQ(simulator::LogLevel::warning, simulator::Describe({ .kind = ArmEventKind::armControllerChanged, .armController = "none" }, start).level);
+
+    const auto fallback = simulator::Describe(
+        { .kind = ArmEventKind::armControllerChanged, .reason = "free is offered on a simulation only", .armController = "gravity-pd" }, start);
+    EXPECT_EQ("Arm controller: gravity-pd (free is offered on a simulation only)", fallback.message);
+    EXPECT_EQ(simulator::LogLevel::warning, fallback.level);
+}

@@ -561,4 +561,14 @@ TEST_F(SimulatorPresenterTest, free_mode_shows_in_the_lifecycle_field_as_a_warni
 
     presenter.Refresh(simulator::test::Running(), {});
     EXPECT_EQ("Enabled", presenter.Status().stage);
+
+    auto ready = simulator::test::Free();
+    ready.state = arm::ArmState::ready;
+    presenter.Refresh(ready, {});
+    EXPECT_EQ("Ready", presenter.Status().stage);
+
+    auto disconnected = simulator::test::Free();
+    disconnected.targetReady = false;
+    presenter.Refresh(disconnected, {});
+    EXPECT_EQ("Disconnected", presenter.Status().stage);
 }

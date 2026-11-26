@@ -538,7 +538,7 @@ namespace simulator
             status.connectionLevel = snapshot.targetReady ? ui::theme::StatusLevel::Ok : ui::theme::StatusLevel::Neutral;
         }
         std::tie(status.stage, status.stageLevel) = Stage(snapshot);
-        if (snapshot.targetReady && arm_host::FreeMode(snapshot) && (snapshot.state == arm::ArmState::enabling || snapshot.state == arm::ArmState::enabled))
+        if (snapshot.targetReady && snapshot.state == arm::ArmState::enabled && arm_host::FreeMode(snapshot))
         {
             status.stage += " · Free: nothing holds the arm";
             status.stageLevel = ui::theme::StatusLevel::Warning;
