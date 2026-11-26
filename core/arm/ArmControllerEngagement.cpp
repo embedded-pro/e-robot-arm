@@ -8,11 +8,18 @@ namespace arm
         , controllers(controllers)
     {}
 
+    bool ArmControllerEngagement::MotionPermitted() const
+    {
+        return !controllers.ActivePassive();
+    }
+
     void ArmControllerEngagement::OnStateChanged(ArmState state)
     {
         Follow(state);
         if (state == ArmState::holding && controllers.Streaming())
             controllers.Hold();
+        else
+            controllers.Resume();
     }
 
     void ArmControllerEngagement::OnActiveControllerChanged(std::optional<ArmControllerId> active)
@@ -31,6 +38,10 @@ namespace arm
         if (!Streams(state))
             controllers.Disengage();
         else if (!controllers.Streaming() && controllers.Active().has_value())
+        {
             controllers.Engage();
+            if (state == ArmState::holding)
+                controllers.Hold();
+        }
     }
 }
