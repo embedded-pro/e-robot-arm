@@ -41,6 +41,10 @@ namespace
         , public infra::ClockFixture
     {
     public:
+        explicit ArmTest(const arm::ArmConfig& config = Config())
+            : config(config)
+        {}
+
         void Receive(uint16_t node, uint8_t messageType, const services::CanPayloadWriter& payload)
         {
             receive(hal::Can::Id::Create29BitId(services::MakeCanId(services::CanPriority::response, can::focMotorCategoryId, messageType, node)), payload.Message());
@@ -115,7 +119,25 @@ namespace
                         }));
             } };
         can::FocMotorCanClient client{ canMock };
-        arm::Arm arm{ client.CategoryClient(), Config() };
+        arm::ArmConfig config;
+        arm::Arm arm{ client.CategoryClient(), config };
+    };
+
+    arm::ArmConfig SimulationConfig()
+    {
+        auto config = Config();
+        config.simulation = true;
+        config.activeController = arm::ArmControllerKind::free;
+        return config;
+    }
+
+    class SimulationArmTest
+        : public ArmTest
+    {
+    public:
+        SimulationArmTest()
+            : ArmTest(SimulationConfig())
+        {}
     };
 
     arm::ArmConfig ExperimentalConfig()
@@ -382,4 +404,53 @@ TEST_F(ArmTest, bring_up_writes_and_reads_back_every_drives_command_timeout_befo
 
     EXPECT_EQ(arm::jointCount, SentOf(can::focSetParameterId));
     EXPECT_EQ(arm::jointCount, SentOf(can::focQueryParameterId));
+}
+
+TEST_F(ArmTest, offers_no_passive_controller_off_a_simulation_and_falls_back_to_gravity_pd)
+{
+    EXPECT_EQ(std::nullopt, arm.Controllers().Find("free"));
+    EXPECT_EQ(std::nullopt, arm.Controllers().Find("gravity-float"));
+    EXPECT_EQ(6u, arm.Controllers().Count());
+}
+
+TEST_F(SimulationArmTest, offers_both_passive_controllers_on_a_simulation_and_selects_the_profiles_one)
+{
+    const auto free = arm.Controllers().Find("free");
+    const auto gravityFloat = arm.Controllers().Find("gravity-float");
+    ASSERT_TRUE(free.has_value());
+    ASSERT_TRUE(gravityFloat.has_value());
+    EXPECT_TRUE(arm.Controllers().Passive(*free));
+    EXPECT_TRUE(arm.Controllers().Enabled(*gravityFloat));
+    EXPECT_EQ(free, arm.Controllers().Active());
+    EXPECT_EQ(8u, arm.Controllers().Count());
+}
+
+TEST_F(SimulationArmTest, refuses_moves_in_free_mode_and_takes_them_again_under_a_tracking_controller)
+{
+    EnableArm();
+    arm::JointPositions target{};
+    target[0] = foc::Radians{ 0.5f };
+
+    EXPECT_FALSE(arm.Lifecycle().MoveTo(target));
+    EXPECT_FALSE(arm.Lifecycle().Jog(arm::JointJog{ 0, foc::RadiansPerSecond{ 0.1f } }));
+    EXPECT_EQ(arm::ArmState::enabled, arm.Lifecycle().State());
+
+    EXPECT_TRUE(arm.Controllers().Select(0));
+    EXPECT_TRUE(arm.Lifecycle().MoveTo(target));
+}
+
+TEST_F(SimulationArmTest, streams_in_free_mode_without_a_collision_estimate)
+{
+    EnableArm();
+    const auto streamed = SentOf(can::SetpointCommandId(can::FocSetpointKind::torqueNewtonMeter));
+
+    for (int period = 0; period != 3; ++period)
+    {
+        ReportMotionFromEveryJoint();
+        ForwardTime(10ms);
+    }
+
+    EXPECT_EQ(streamed + 3 * arm::jointCount, SentOf(can::SetpointCommandId(can::FocSetpointKind::torqueNewtonMeter)));
+    EXPECT_EQ(std::nullopt, arm.EstimatedExternalTorques());
+    EXPECT_FALSE(arm.Safety().Tripped());
 }

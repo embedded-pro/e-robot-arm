@@ -37,6 +37,7 @@ namespace arm
         virtual infra::BoundedConstString Name(ArmControllerId id) const = 0;
         virtual std::optional<ArmControllerId> Find(infra::BoundedConstString name) const = 0;
         virtual bool Enabled(ArmControllerId id) const = 0;
+        virtual bool Passive(ArmControllerId id) const = 0;
         virtual std::optional<ArmControllerId> Active() const = 0;
         virtual std::optional<JointSetpoints> LastSetpoints() const = 0;
         virtual std::optional<JointPositions> Reference() const = 0;

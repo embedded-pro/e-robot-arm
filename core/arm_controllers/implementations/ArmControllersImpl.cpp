@@ -11,10 +11,10 @@ namespace arm
         , periodSeconds(std::chrono::duration<float>{ period }.count())
     {}
 
-    ArmControllerId ArmControllersImpl::Register(infra::BoundedConstString name, ArmController& controller)
+    ArmControllerId ArmControllersImpl::Register(infra::BoundedConstString name, ArmController& controller, bool passive)
     {
         really_assert(!entries.full() && !Find(name).has_value());
-        entries.push_back(Entry{ name, &controller });
+        entries.push_back(Entry{ name, &controller, false, passive });
         return static_cast<ArmControllerId>(entries.size() - 1);
     }
 
@@ -40,6 +40,16 @@ namespace arm
     bool ArmControllersImpl::Enabled(ArmControllerId id) const
     {
         return Registered(id) && entries[id].enabled;
+    }
+
+    bool ArmControllersImpl::Passive(ArmControllerId id) const
+    {
+        return Registered(id) && entries[id].passive;
+    }
+
+    bool ArmControllersImpl::ActivePassive() const
+    {
+        return active.has_value() && entries[*active].passive;
     }
 
     std::optional<ArmControllerId> ArmControllersImpl::Active() const
@@ -87,11 +97,13 @@ namespace arm
     void ArmControllersImpl::Engage()
     {
         Hold();
+        holding = false;
         streaming = true;
     }
 
     void ArmControllersImpl::Hold()
     {
+        holding = true;
         const auto measured = Measured();
         heldReference = AtRest(measured.positions);
         if (active.has_value())
@@ -101,6 +113,17 @@ namespace arm
     void ArmControllersImpl::Disengage()
     {
         streaming = false;
+        holding = false;
+    }
+
+    void ArmControllersImpl::Resume()
+    {
+        holding = false;
+    }
+
+    bool ArmControllersImpl::StreamingPassive() const
+    {
+        return streaming && !holding && ActivePassive();
     }
 
     bool ArmControllersImpl::Streaming() const
@@ -113,18 +136,21 @@ namespace arm
         if (!streaming)
             return true;
 
-        if (reference.has_value())
-            heldReference = *reference;
-        else
-            heldReference = AtRest(heldReference.positions);
-
         if (!active.has_value())
         {
             Disengage();
             return false;
         }
 
-        const auto setpoints = entries[*active].controller->Step(Measured(), heldReference);
+        const auto measured = Measured();
+        if (ActivePassive() && !holding)
+            heldReference = AtRest(measured.positions);
+        else if (reference.has_value())
+            heldReference = *reference;
+        else
+            heldReference = AtRest(heldReference.positions);
+
+        const auto setpoints = entries[*active].controller->Step(measured, heldReference);
         if (!bus.SendTorques(setpoints.torques))
         {
             Disengage();

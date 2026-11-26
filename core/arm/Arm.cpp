@@ -45,7 +45,8 @@ namespace arm
         , safety(jointBus, config.positionLimits, config.tracking, config.collision, config.controlPeriod, Supervision(config), SupervisionInputs{ &workspace, hardwareStop })
         , motion(safety, config.positionLimits, config.motionLimits, config.controlPeriod, &workspace, config.jerkLimits, ToolLineSetup{ &model, config.toolLimits })
         , configurator(safety, lifecycle, SilenceWindow(config))
-        , lifecycle(safety, motion, configurator, config.controllers, config.motors, DriveWatchdogSeconds(config))
+        // Only the address is stored; the lifecycle asks the permit after construction
+        , lifecycle(safety, motion, configurator, config.controllers, config.motors, DriveWatchdogSeconds(config), &engagement)
         , model(config.geometry, config.mass, config.positionLimits)
         , drivenArm(model, ReflectedRotors(config))
         , workspace(model, config.geometry, config.workspace)
@@ -56,6 +57,8 @@ namespace arm
         , cartesianImpedance(drivenArm, config.cartesianImpedance)
         , operationalSpace(drivenArm, config.operationalSpace, config.toolLimits.manipulabilityMin)
         , slotineLi(drivenArm, config.slotineLi, config.controlPeriod)
+        , freeController(drivenArm, config.positionLimits, PassiveLaw::free)
+        , gravityFloat(drivenArm, config.positionLimits, PassiveLaw::gravityFloat)
         , experimental(config.experimental)
         , collision(drivenArm, config.collisionObserverGain)
         , period(config.controlPeriod)
@@ -76,6 +79,11 @@ namespace arm
         controllers.Enable(controllers.Register(ArmControllerName(ArmControllerKind::operationalSpace), operationalSpace));
         if (experimental)
             controllers.Enable(controllers.Register(ArmControllerName(ArmControllerKind::slotineLi), slotineLi));
+        if (config.simulation)
+        {
+            controllers.Enable(controllers.Register(ArmControllerName(ArmControllerKind::free), freeController, true));
+            controllers.Enable(controllers.Register(ArmControllerName(ArmControllerKind::gravityFloat), gravityFloat, true));
+        }
         controllers.Select(controllers.Find(ArmControllerName(config.activeController)).value_or(gravityPdId));
         motion.SelectProfile(config.motionProfile);
     }
@@ -177,9 +185,17 @@ namespace arm
         const auto reference = motion.Step();
         if (!controllers.Step(reference))
             motion.Abort();
-        const auto tracked = controllers.TrackedReference();
-        externalTorques = ExternalTorques(applied, tracked.has_value());
-        safety.Supervise(tracked, externalTorques);
+        if (controllers.StreamingPassive())
+        {
+            externalTorques = ExternalTorques(applied, false);
+            safety.SupervisePassive();
+        }
+        else
+        {
+            const auto tracked = controllers.TrackedReference();
+            externalTorques = ExternalTorques(applied, tracked.has_value());
+            safety.Supervise(tracked, externalTorques);
+        }
         lifecycle.Step();
     }
 

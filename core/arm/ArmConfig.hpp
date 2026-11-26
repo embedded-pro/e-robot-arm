@@ -31,11 +31,13 @@ namespace arm
         jointImpedance,
         cartesianImpedance,
         operationalSpace,
-        slotineLi
+        slotineLi,
+        free,
+        gravityFloat
     };
 
-    inline constexpr std::array<const char*, 7> armControllerNames{ "gravity-pd", "computed-torque", "gravity-pid", "joint-impedance", "cartesian-impedance",
-        "operational-space", "slotine-li" };
+    inline constexpr std::array<const char*, 9> armControllerNames{ "gravity-pd", "computed-torque", "gravity-pid", "joint-impedance", "cartesian-impedance",
+        "operational-space", "slotine-li", "free", "gravity-float" };
 
     inline const char* ArmControllerName(ArmControllerKind kind)
     {
@@ -73,6 +75,7 @@ namespace arm
         OperationalSpaceTuning operationalSpace{};
         SlotineLiTuning slotineLi{};
         bool experimental{ false };
+        bool simulation{ false };
         ArmControllerKind activeController{ ArmControllerKind::gravityPd };
         TrackingLimits tracking{};
         CollisionLimits collision{ DefaultCollisionLimits() };

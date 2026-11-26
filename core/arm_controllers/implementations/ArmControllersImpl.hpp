@@ -9,7 +9,7 @@
 
 namespace arm
 {
-    inline constexpr std::size_t maxArmControllers{ 8 };
+    inline constexpr std::size_t maxArmControllers{ 10 };
 
     class ArmControllersImpl
         : public ArmControllers
@@ -19,12 +19,14 @@ namespace arm
 
         ArmControllersImpl(JointBus& bus, const JointMotion& motion, infra::Duration period = {});
 
-        ArmControllerId Register(infra::BoundedConstString name, ArmController& controller);
+        ArmControllerId Register(infra::BoundedConstString name, ArmController& controller, bool passive = false);
 
         std::size_t Count() const override;
         infra::BoundedConstString Name(ArmControllerId id) const override;
         std::optional<ArmControllerId> Find(infra::BoundedConstString name) const override;
         bool Enabled(ArmControllerId id) const override;
+        bool Passive(ArmControllerId id) const override;
+        bool ActivePassive() const;
         std::optional<ArmControllerId> Active() const override;
         std::optional<JointSetpoints> LastSetpoints() const override;
         std::optional<JointPositions> Reference() const override;
@@ -37,7 +39,9 @@ namespace arm
         void Engage();
         void Hold();
         void Disengage();
+        void Resume();
         bool Streaming() const;
+        bool StreamingPassive() const;
         bool Step(const std::optional<JointReference>& reference);
 
     private:
@@ -46,6 +50,7 @@ namespace arm
             infra::BoundedConstString name;
             ArmController* controller;
             bool enabled{ false };
+            bool passive{ false };
         };
 
         bool Registered(ArmControllerId id) const;
@@ -58,6 +63,7 @@ namespace arm
         infra::BoundedVector<Entry>::WithMaxSize<maxArmControllers> entries;
         std::optional<ArmControllerId> active;
         bool streaming{ false };
+        bool holding{ false };
         JointReference heldReference{};
         std::optional<JointSetpoints> lastSetpoints;
     };

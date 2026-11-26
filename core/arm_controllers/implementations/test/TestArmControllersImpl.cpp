@@ -253,3 +253,54 @@ TEST_F(ArmControllersExtrapolatingTest, a_reading_from_an_earlier_period_is_adva
         }));
     extrapolating.Engage();
 }
+
+TEST_F(ArmControllersImplTest, marks_a_controller_registered_as_passive)
+{
+    StrictMock<arm::ArmControllerMock> passive;
+    const auto passiveId = controllers.Register("free", passive, true);
+
+    EXPECT_TRUE(controllers.Passive(passiveId));
+    EXPECT_FALSE(controllers.Passive(statelessId));
+    EXPECT_FALSE(controllers.Passive(7));
+    EXPECT_FALSE(controllers.ActivePassive());
+}
+
+TEST_F(ArmControllersImplTest, a_passive_controller_reports_the_measured_pose_at_rest_as_its_reference)
+{
+    StrictMock<arm::ArmControllerMock> passive;
+    const auto passiveId = controllers.Register("free", passive, true);
+    controllers.Enable(passiveId);
+    EXPECT_CALL(observer, OnActiveControllerChanged(std::optional<arm::ArmControllerId>{ passiveId }));
+    EXPECT_TRUE(controllers.Select(passiveId));
+    EXPECT_TRUE(controllers.ActivePassive());
+    EXPECT_CALL(passive, Reset(MeasuredAt(Uniform(0.25f)), _));
+    controllers.Engage();
+
+    EXPECT_CALL(passive, Step(MeasuredAt(Uniform(0.25f)), arm::AtRest(Uniform(0.25f)))).WillOnce(Return(arm::JointSetpoints{ Uniform(0.25f), Torques(0.0f) }));
+    EXPECT_CALL(bus, SendTorques(Torques(0.0f))).WillOnce(Return(true));
+    EXPECT_TRUE(controllers.Step(arm::AtRest(Uniform(1.0f))));
+
+    EXPECT_EQ(std::optional<arm::JointReference>{ arm::AtRest(Uniform(0.25f)) }, controllers.TrackedReference());
+}
+
+TEST_F(ArmControllersImplTest, a_passive_controller_keeps_the_held_pose_during_a_hold_until_resumed)
+{
+    StrictMock<arm::ArmControllerMock> passive;
+    const auto passiveId = controllers.Register("free", passive, true);
+    controllers.Enable(passiveId);
+    EXPECT_CALL(observer, OnActiveControllerChanged(std::optional<arm::ArmControllerId>{ passiveId }));
+    EXPECT_TRUE(controllers.Select(passiveId));
+    EXPECT_CALL(passive, Reset(_, _)).Times(2);
+    controllers.Engage();
+    EXPECT_TRUE(controllers.StreamingPassive());
+
+    controllers.Hold();
+    EXPECT_FALSE(controllers.StreamingPassive());
+    readings[0].position = foc::Radians{ 0.75f };
+    EXPECT_CALL(passive, Step(_, arm::AtRest(Uniform(0.25f)))).WillOnce(Return(arm::JointSetpoints{ Uniform(0.25f), Torques(0.0f) }));
+    EXPECT_CALL(bus, SendTorques(Torques(0.0f))).WillOnce(Return(true));
+    EXPECT_TRUE(controllers.Step(std::nullopt));
+
+    controllers.Resume();
+    EXPECT_TRUE(controllers.StreamingPassive());
+}

@@ -6,11 +6,14 @@
 namespace arm
 {
     class ArmControllerEngagement
-        : private ArmLifecycleObserver
+        : public MotionPermit
+        , private ArmLifecycleObserver
         , private ArmControllersObserver
     {
     public:
         ArmControllerEngagement(ArmLifecycle& lifecycle, ArmControllersImpl& controllers);
+
+        bool MotionPermitted() const override;
 
     private:
         void OnStateChanged(ArmState state) override;
