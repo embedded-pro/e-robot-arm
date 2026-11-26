@@ -128,11 +128,11 @@ sequenceDiagram
 
 ---
 
-## Open Questions & Decisions
+## Decisions
 
-> Track unresolved design questions and key architectural decisions already made. For each decision,
-> record the options considered and the rationale for the chosen option.
+> Record each architectural decision: the options considered, the status and the rationale.
+> A decision that is still open links its GitHub issue.
 
-| # | Question / Decision | Status | Options Considered | Rationale |
-|---|---------------------|--------|--------------------|-----------|
-| 1 | …                   | open   | …                  | …         |
+| # | Decision | Status | Options Considered | Rationale |
+|---|----------|--------|--------------------|-----------|
+| 1 | …        | open   | …                  | …         |

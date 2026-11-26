@@ -2,9 +2,9 @@
 title: "Arm Model Design"
 type: design
 status: draft
-version: 0.4.0
+version: 0.4.1
 component: "arm_model"
-date: 2026-11-20
+date: 2026-11-26
 ---
 
 | Field     | Value            |
@@ -12,9 +12,9 @@ date: 2026-11-20
 | Title     | Arm Model Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.4.0            |
+| Version   | 0.4.1            |
 | Component | arm_model        |
-| Date      | 2026-11-20       |
+| Date      | 2026-11-26       |
 
 > The arm's geometry and mass, and what follows from them: the tool pose of a set of joint positions, the joint
 > positions of a tool pose, the Jacobian and the singularities, the gravity torque, the joint torques of a motion and
@@ -24,8 +24,6 @@ date: 2026-11-20
 ---
 
 ## Responsibilities
-
-**Is responsible for:**
 
 - Holding the arm's geometry: the seven OPW lengths, a sign and an offset per joint, the tool transform and the base
   mount.
@@ -37,14 +35,6 @@ date: 2026-11-20
 - Dynamics: the gravity torque, the inverse dynamics (joint torques of positions, speeds and accelerations) and the
   mass matrix, in joint space.
 - Staying heap-free, with a fixed cost per call, so it can run in the control loop.
-
-**Is NOT responsible for:**
-
-- Moving the arm: Cartesian moves are joint motion's (phase 4); the model only converts.
-- Feeding torques to the joints: gravity compensation and torque feed-forward are the arm controllers' (phase 5).
-- Friction and rotor inertia: they belong to each joint's drive ([arm-dynamics.md](../theory/arm-dynamics.md)). The
-  driven arm beside the model adds the rotors for those that need them (Part G).
-- Arms of another shape: only the OPW family (see the theory's limitations).
 
 ---
 
@@ -70,8 +60,8 @@ reaches the model. Without a geometry in the profile the arm uses the reference 
 
 It is invented: about 0.56 m of reach from the shoulder, standing for a desktop arm until the real one is measured.
 
-The signs and offsets are one affine map between joint space and the model's angles, `JointFrameMap`: with S the
-diagonal matrix of the signs (so S⁻¹ = S) and o the offsets,
+The signs and offsets are one affine map between joint space and the model's angles, the joint frame map. Let S be
+the diagonal matrix of the signs (so S⁻¹ = S) and o the offsets. Then:
 
 $$\theta = S\,q - o, \qquad \dot\theta = S\,\dot q, \qquad \tau_\theta = S\,\tau, \qquad J_q = J_\theta\,S, \qquad M_q = S\,M_\theta\,S.$$
 
@@ -81,20 +71,20 @@ The map keeps S as its diagonal, so each product costs one multiplication per en
 
 - **Tool pose** of six joint positions: base · flange · tool.
 - **Jacobian**: 6 × 6, linear rows first, in the base frame, at the tool centre point.
-- **Task Jacobian**: the same Jacobian, tool pose and bias acceleration J̇·q̇ as robotics-toolbox's
-  `JacobianProvider`, in the dynamics' coordinates (each joint's sign and offset applied), so the toolbox's
-  manipulator controllers take the model's Jacobian with its mass matrix and gravity
+- **Task Jacobian**: the same Jacobian, tool pose and bias acceleration J̇·q̇ in the form that robotics-toolbox's
+  manipulator controllers read. It is in the dynamics' coordinates (each joint's sign and offset applied). Thus the
+  toolbox's manipulator controllers take the model's Jacobian with its mass matrix and gravity
   ([arm-controllers.md](arm-controllers.md) Part D).
 - **Manipulability**: |det J|.
 - **Singularities**: wrist, elbow and shoulder, each flagged on its own by the thresholds of the theory.
 - **Link frames**: the pose of each of the six links in the base frame, at its joint, as
-  [arm-dynamics.md](../theory/arm-dynamics.md) defines them; link 6 with the flange at (0, 0, c4) and the tool
+  [arm-dynamics.md](../theory/arm-dynamics.md) defines them. Link 6 with the flange at (0, 0, c4) and the tool
   gives the tool pose. The simulator draws the arm from them ([tool-simulator.md](tool-simulator.md) Part E).
 
 ### Part C — Inverse kinematics
 
 Given a tool pose and the current joints, the model returns the solution within the joint limits that is closest to
-the current joints, or one of two failures:
+the current joints. Otherwise it returns one of two failures:
 
 | Failure              | When                                                      |
 |----------------------|-----------------------------------------------------------|
@@ -107,15 +97,15 @@ says so.
 ### Part D — Where the tools use it
 
 - The arm host publishes the measured tool pose and the singularity flags in each snapshot.
-- The console prints them (`pose`), and converts on request without moving the arm: `fk q1 … q6` prints a tool pose,
-  `ik x y z roll pitch yaw` prints the joints or the failure ([arm-console.md](arm-console.md)).
+- The console prints them (`pose`), and converts on request without moving the arm ([arm-console.md](arm-console.md)).
+  The command `fk q1 … q6` prints a tool pose. The command `ik x y z roll pitch yaw` prints the joints or the failure.
 
 ### Part F — Mass properties and dynamics
 
 Each link has a mass, a centre of mass and an inertia tensor about it, in the link's frame
-([arm-dynamics.md](../theory/arm-dynamics.md)); the payload has the same, relative to the flange, and is merged into
-the last link. Without mass properties in the profile the arm uses the reference desktop arm's, invented like its
-geometry (aluminium tubes and small geared motors, about 3.7 kg moving), and no payload:
+([arm-dynamics.md](../theory/arm-dynamics.md)). The payload has the same, relative to the flange, and is merged into
+the last link. Without mass properties in the profile, the arm uses the reference desktop arm's and no payload.
+They are invented like its geometry (aluminium tubes and small geared motors, about 3.7 kg moving):
 
 | Link | Mass kg | Centre m (x, y, z) | Ixx, Iyy, Izz kg·m²       | Body                      |
 |------|---------|--------------------|---------------------------|---------------------------|
@@ -138,8 +128,8 @@ The arm host publishes the gravity torque at the measured joints in each snapsho
 
 ### Part E — Measured cost
 
-The arm model test times each call over 20 000 calls at varying joints (Debug build, float, one core of the
-development container's x86-64 CPU) and prints a `[METRIC]` line:
+The arm model test times each call over 20 000 calls at varying joints and prints a `[METRIC]` line. The
+measurement uses a Debug build, float, and one PC core in the development container:
 
 | Call               | Time per call | Share of the 10 ms period |
 |--------------------|---------------|---------------------------|
@@ -155,14 +145,14 @@ The test fails if any call exceeds 2 ms, a fifth of the period.
 
 ### Part G — The driven arm: the model with its drives' rotors
 
-The arm controllers and the collision observer need the inertia the drives move, and on a geared joint the motor's
-rotor is a large part of it: its inertia times the gear ratio squared is of the order of the links' own on a 50:1
-gear. `DrivenArm` holds the arm model and each joint's reflected rotor inertia, and puts the rotor on the joint's link
-as its armature. The links' dynamics, robotics-toolbox's `ChainDynamicsModel` over those links, then carry the rotors
-without a correction around them:
+The arm controllers and the collision observer need the inertia the drives move. On a geared joint the motor's
+rotor is a large part of it. Its inertia times the gear ratio squared is of the order of the links' own on a 50:1
+gear. The driven arm holds the arm model and each joint's reflected rotor inertia. It puts the rotor on the joint's
+link as its armature. The links' dynamics, robotics-toolbox's chain dynamics model over those links, then carry the
+rotors without a correction around them:
 
-- **Mass matrix**: M(q) + diag(Jᵣ), in the dynamics' coordinates or in joint space (the joints' signs flip only the
-  coupling terms, so each rotor stays on its own diagonal entry).
+- **Mass matrix**: M(q) + diag(Jᵣ), in the dynamics' coordinates or in joint space. The joints' signs flip only the
+  coupling terms, so each rotor stays on its own diagonal entry.
 - **Inverse dynamics**: the arm's torques plus Jᵣ·q̈.
 - **Gravity and Coriolis terms**: the arm's; a rotor turning about its own axis adds neither.
 
@@ -190,11 +180,14 @@ feed-forward and the tools' snapshots are the links' alone.
 
 ### Required
 
-| Interface         | Purpose                           | Contract                                            |
-|-------------------|-----------------------------------|-----------------------------------------------------|
-| robotics-toolbox  | OPW forward and inverse, Jacobian | `AnalyticalIkOpw`, `GeometricJacobian`, float       |
-| robotics-toolbox  | Dynamics                          | `ChainDynamicsModel` (RNEA, CRBA), float            |
-| Arm configuration | Geometry, mass, joint limits      | From the profile ([arm-profile.md](arm-profile.md)) |
+| Interface         | Purpose                                             | Contract                                                                                                   |
+|-------------------|-----------------------------------------------------|------------------------------------------------------------------------------------------------------------|
+| robotics-toolbox  | OPW forward and inverse, Jacobian                   | Analytical OPW inverse kinematics, geometric Jacobian, float                                               |
+| robotics-toolbox  | Dynamics                                            | Chain dynamics model (RNEA, CRBA), float                                                                   |
+| Arm configuration | Geometry, mass, joint limits                        | From the profile ([arm-profile.md](arm-profile.md))                                                        |
+| Joint motion      | Moves the arm, Cartesian moves included (phase 4)   | The model only converts                                                                                    |
+| Arm controllers   | Gravity compensation, torque feed-forward (phase 5) | They feed the torques to the joints                                                                        |
+| Joint drives      | Friction and rotor inertia                          | Each joint's drive ([arm-dynamics.md](../theory/arm-dynamics.md)); the driven arm adds the rotors (Part G) |
 
 ---
 
@@ -235,13 +228,13 @@ sequenceDiagram
 |------------|---------------------------------------------------------------------|
 | Memory     | No heap; the model holds the geometry and the limits                |
 | Time       | Each call well under a fifth of the 10 ms period on the PC (Part E) |
-| Shape      | OPW family only                                                     |
+| Shape      | OPW family only (see the theory's limitations)                      |
 
 ---
 
-## Open Questions
+## Decisions
 
-| # | Question                    | Options                                     | Status                         |
+| # | Decision                    | Options                                     | Status                         |
 |---|-----------------------------|---------------------------------------------|--------------------------------|
 | 1 | Geometry description        | OPW, DH, both                               | decided: OPW                   |
 | 2 | The real arm's dimensions   | Measured, from the CAD                      | open: the reference arm stands |
