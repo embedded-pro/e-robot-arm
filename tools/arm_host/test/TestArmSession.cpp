@@ -73,6 +73,24 @@ namespace
         return config;
     }
 
+    arm::ArmProfile FreeProfile()
+    {
+        auto profile = arm_host::test::Profile();
+        profile.config.activeController = arm::ArmControllerKind::free;
+        return profile;
+    }
+
+    class RealArmSessionTest
+        : public testing::Test
+        , public infra::ClockFixture
+    {
+    public:
+        arm_host::ArmTarget target{ arm_host::TargetKind::real, "socketcan:can0" };
+        simulation::SimulatedArm simulatedArm{ arm_host::test::nodes, 50ms, arm_host::PlantFor(arm_host::test::Config()) };
+        arm_host::test::RecordingSink sink;
+        arm_host::ArmSession session{ simulatedArm.ArmSide(), FreeProfile(), target, sink, nullptr };
+    };
+
     class SlowToolSessionTest
         : public testing::Test
         , public infra::ClockFixture
@@ -635,7 +653,7 @@ TEST_F(ArmSessionConfiguringTest, names_the_joint_whose_motor_controller_reads_b
 TEST_F(ArmSessionTest, lists_the_arm_controllers_and_reports_each_change_of_the_active_one)
 {
     Execute(1, arm_host::CheckContracts{});
-    ASSERT_EQ(6u, sink.snapshot.armControllers.size());
+    ASSERT_EQ(8u, sink.snapshot.armControllers.size());
     EXPECT_EQ("gravity-pd", sink.snapshot.armControllers[0].name);
     EXPECT_EQ("computed-torque", sink.snapshot.armControllers[1].name);
     EXPECT_TRUE(sink.snapshot.armControllers[1].enabled);
@@ -643,6 +661,11 @@ TEST_F(ArmSessionTest, lists_the_arm_controllers_and_reports_each_change_of_the_
     EXPECT_EQ("joint-impedance", sink.snapshot.armControllers[3].name);
     EXPECT_EQ("cartesian-impedance", sink.snapshot.armControllers[4].name);
     EXPECT_EQ("operational-space", sink.snapshot.armControllers[5].name);
+    EXPECT_EQ("free", sink.snapshot.armControllers[6].name);
+    EXPECT_EQ("gravity-float", sink.snapshot.armControllers[7].name);
+    EXPECT_TRUE(sink.snapshot.armControllers[6].passive);
+    EXPECT_TRUE(sink.snapshot.armControllers[7].passive);
+    EXPECT_FALSE(sink.snapshot.armControllers[0].passive);
     EXPECT_TRUE(sink.snapshot.armControllers[0].active);
     EXPECT_TRUE(sink.snapshot.armControllers[0].enabled);
 
@@ -708,7 +731,7 @@ TEST_F(ArmSessionTest, offers_faults_and_silence_on_simulated_joints_and_reports
     Execute(6, arm_host::SilenceJoint{ 3 });
     ASSERT_TRUE(sink.snapshot.disturbances.has_value());
     EXPECT_TRUE(sink.snapshot.disturbances->injectFault);
-    EXPECT_FALSE(sink.snapshot.disturbances->collision);
+    EXPECT_TRUE(sink.snapshot.disturbances->collision);
     EXPECT_FALSE(sink.snapshot.disturbances->powerOff);
     EXPECT_TRUE(sink.snapshot.disturbances->silent[3]);
 
@@ -718,7 +741,9 @@ TEST_F(ArmSessionTest, offers_faults_and_silence_on_simulated_joints_and_reports
     EXPECT_FALSE(sink.snapshot.disturbances->silent[3]);
 
     Execute(8, arm_host::CollideJoint{ 1, foc::NewtonMeter{ 5.0f } });
-    EXPECT_EQ("not on simulated joints", sink.Last()->reason);
+    EXPECT_EQ(ArmEventKind::accepted, sink.Last()->kind);
+    EXPECT_FLOAT_EQ(5.0f, sink.snapshot.disturbances->torque[1].Value());
+    EXPECT_FLOAT_EQ(5.0f, simulatedArm.Pushed(1).Value());
     Execute(9, arm_host::PowerOffMotor{ 1 });
     EXPECT_EQ("not on simulated joints", sink.Last()->reason);
     Execute(10, arm_host::ResumeJoint{ 6 });
@@ -970,4 +995,42 @@ TEST_F(JerkLimitedSessionTest, selects_the_motion_profile_at_rest_and_refuses_it
 
     EXPECT_EQ("moving", sink.Last()->reason);
     EXPECT_EQ(arm::MotionProfile::sCurve, sink.snapshot.config.motionProfile);
+}
+
+TEST_F(RealArmSessionTest, offers_no_passive_controller_and_falls_back_to_gravity_pd_with_a_warning)
+{
+    ASSERT_EQ(6u, sink.snapshot.armControllers.size());
+    EXPECT_TRUE(sink.snapshot.armControllers[0].active);
+    EXPECT_EQ(arm::ArmControllerKind::gravityPd, sink.snapshot.config.activeController);
+    const auto* changed = sink.Find(ArmEventKind::armControllerChanged);
+    ASSERT_NE(nullptr, changed);
+    EXPECT_EQ("gravity-pd", changed->armController);
+    EXPECT_EQ("free is offered on a simulation only", changed->reason);
+}
+
+TEST_F(RealArmSessionTest, refuses_a_torque_push_off_a_simulation)
+{
+    session.Execute(1, arm_host::CollideJoint{ 1, foc::NewtonMeter{ 5.0f } });
+
+    EXPECT_EQ("not a simulation", sink.Last()->reason);
+}
+
+TEST_F(ArmSessionTest, refuses_every_move_in_free_mode_with_the_reason)
+{
+    Execute(1, arm_host::BringUp{});
+    Execute(2, arm_host::Enable{});
+    ASSERT_EQ(arm::ArmState::enabled, sink.snapshot.state);
+    Execute(3, arm_host::SelectArmController{ 6 });
+    ASSERT_TRUE(arm_host::FreeMode(sink.snapshot));
+
+    arm::JointPositions target{};
+    target[0] = foc::Radians{ 0.2f };
+    Execute(4, arm_host::MoveTo{ target });
+    EXPECT_EQ("free mode: select a tracking controller", sink.Last()->reason);
+    Execute(5, arm_host::JogJoint{ 0, foc::RadiansPerSecond{ 0.1f } });
+    EXPECT_EQ("free mode: select a tracking controller", sink.Last()->reason);
+
+    Execute(6, arm_host::SelectArmController{ 0 });
+    Execute(7, arm_host::MoveTo{ target });
+    EXPECT_EQ(ArmEventKind::accepted, sink.Last()->kind);
 }

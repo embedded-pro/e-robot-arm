@@ -35,6 +35,25 @@ namespace arm_host
 
         constexpr float maximumCollisionTorque{ 200.0f };
 
+        bool PassiveKind(arm::ArmControllerKind kind)
+        {
+            return kind == arm::ArmControllerKind::free || kind == arm::ArmControllerKind::gravityFloat;
+        }
+
+        arm::ArmConfig SessionConfig(const arm::ArmConfig& config, bool commissioning, bool simulated)
+        {
+            auto result = commissioning ? CommissioningConfig(config) : config;
+            result.simulation = simulated;
+            return result;
+        }
+
+        bool GeneratesMotion(const ArmCommand& command)
+        {
+            return std::holds_alternative<MoveTo>(command) || std::holds_alternative<StepTo>(command) || std::holds_alternative<MoveThrough>(command) ||
+                   std::holds_alternative<MoveLine>(command) || std::holds_alternative<JogJoint>(command) || std::holds_alternative<JogTool>(command) ||
+                   std::holds_alternative<HoldJog>(command) || std::holds_alternative<GoTo>(command);
+        }
+
         bool TargetCommand(const ArmCommand& command)
         {
             return std::holds_alternative<InjectFault>(command) || std::holds_alternative<SilenceJoint>(command) ||
@@ -160,7 +179,7 @@ namespace arm_host
         , commissioning(options.commissioning)
         , meter(can, options.bitrate)
         , client(meter)
-        , arm(client.CategoryClient(), commissioning ? CommissioningConfig(profile.config) : profile.config,
+        , arm(client.CategoryClient(), SessionConfig(profile.config, commissioning, simulation != nullptr || options.virtualMotors != nullptr),
               simulation != nullptr ? &simulation->HardwareStop() : nullptr)
         , model(profile.config.geometry, profile.config.mass, profile.config.positionLimits)
         , target(target)
@@ -172,6 +191,13 @@ namespace arm_host
                   Publish();
               })
     {
+        if (simulation == nullptr && virtualMotors == nullptr && PassiveKind(this->profile.config.activeController))
+        {
+            Emit({ .kind = ArmEventKind::armControllerChanged,
+                .reason = std::string{ arm::ArmControllerName(this->profile.config.activeController) } + " is offered on a simulation only",
+                .armController = arm::ArmControllerName(arm::ArmControllerKind::gravityPd) });
+            this->profile.config.activeController = arm::ArmControllerKind::gravityPd;
+        }
         arm.Loop().Start();
         Publish();
     }
@@ -497,14 +523,19 @@ namespace arm_host
 
     bool ArmSession::Collide(const CollideJoint& collide)
     {
-        if (virtualMotors == nullptr)
-            return Refuse(simulation != nullptr ? "not on simulated joints" : "not a simulation");
+        if (virtualMotors == nullptr && simulation == nullptr)
+            return Refuse("not a simulation");
+        if (virtualMotors == nullptr && !simulation->Dynamic())
+            return Refuse("the simulated joints have no dynamics");
         if (collide.joint >= arm::jointCount)
             return Refuse("no such joint");
         if (!(std::abs(collide.torque.Value()) <= maximumCollisionTorque))
             return Refuse("torque outside ±200 N·m");
 
-        virtualMotors->Collide(collide.joint, collide.torque);
+        if (virtualMotors != nullptr)
+            virtualMotors->Collide(collide.joint, collide.torque);
+        else
+            simulation->Push(collide.joint, collide.torque);
         return true;
     }
 
@@ -551,6 +582,8 @@ namespace arm_host
             return arm.Configurator().Busy() ? "busy" : "the arm is not ready";
         if (const auto reason = MotionPermissionRefusal(); NeedsMotionPermission(command) && reason.has_value())
             return *reason;
+        if (const auto active = arm.Controllers().Active(); GeneratesMotion(command) && active.has_value() && arm.Controllers().Passive(*active))
+            return "free mode: select a tracking controller";
         if (const auto reason = GeneratorRefusal(command); reason.has_value())
             return *reason;
         if (DeliveredByTheJoints(command))
@@ -902,9 +935,12 @@ namespace arm_host
     {
         if (simulation != nullptr)
         {
-            Disturbances disturbances{ .injectFault = true };
+            Disturbances disturbances{ .injectFault = true, .collision = simulation->Dynamic() };
             for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+            {
                 disturbances.silent[joint] = simulation->Joint(joint).Silent();
+                disturbances.torque[joint] = simulation->Pushed(joint);
+            }
             snapshot.disturbances = disturbances;
         }
         else if (virtualMotors != nullptr)
@@ -964,7 +1000,7 @@ namespace arm_host
         for (arm::ArmControllerId id = 0; id != controllers.Count(); ++id)
         {
             const auto name = controllers.Name(id);
-            snapshot.armControllers.emplace_back(std::string{ name.data(), name.size() }, controllers.Enabled(id), controllers.Active() == id);
+            snapshot.armControllers.emplace_back(std::string{ name.data(), name.size() }, controllers.Enabled(id), controllers.Active() == id, controllers.Passive(id));
         }
         sample.commanded = snapshot.commanded.value_or(sample.measured);
         PublishDisturbances(snapshot);

@@ -44,4 +44,14 @@ namespace simulation
         if (plant)
             plant->Push(joint, torque);
     }
+
+    foc::NewtonMeter SimulatedArm::Pushed(std::size_t joint) const
+    {
+        return plant ? plant->Pushed(joint) : foc::NewtonMeter{};
+    }
+
+    bool SimulatedArm::Dynamic() const
+    {
+        return plant.has_value();
+    }
 }
