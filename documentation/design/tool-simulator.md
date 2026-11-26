@@ -2,9 +2,9 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.43.0
+version: 0.43.1
 component: "tool-simulator"
-date: 2026-11-23
+date: 2026-11-26
 ---
 
 | Field     | Value                   |
@@ -12,9 +12,9 @@ date: 2026-11-23
 | Title     | Simulator Screen Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.42.0                  |
+| Version   | 0.43.1                  |
 | Component | tool-simulator          |
-| Date      | 2026-11-23              |
+| Date      | 2026-11-26              |
 
 > What the e-robot-arm Simulator shows, what each control does and when, and how it looks (phase 8a,
 > [#28](https://github.com/embedded-pro/e-robot-arm/issues/28)). Components and threads are in
@@ -24,20 +24,10 @@ date: 2026-11-23
 
 ## Responsibilities
 
-**Is responsible for:**
-
-- Showing, without the operator moving: the target, the connection, each joint's state, trips with their source,
-  the arm in 3-D with its commanded ghost, and the emergency stop.
-- Offering each arm operation only when `core/` would accept it, and saying why when it would not.
+- Showing, without the operator moving: the target, the connection, each joint's state and trips with their source.
+  Also the arm in 3-D with its commanded ghost, and the emergency stop.
+- Offering each arm operation only when the arm stack would accept it, and saying why when it would not.
 - Plotting commanded against measured position, and keeping a log that can be saved.
-
-**Is NOT responsible for:**
-
-- Deciding any arm rule. The enable rules below mirror `core/`'s preconditions so a control can say why it is
-  disabled; `core/` still decides, and a refusal is reported in the log and the status area.
-- Configuration of controllers, motor controllers and motors: phase 8b
-  ([#29](https://github.com/embedded-pro/e-robot-arm/issues/29)).
-- Jogging and real geometry: phase 8c ([#30](https://github.com/embedded-pro/e-robot-arm/issues/30)).
 
 ---
 
@@ -80,34 +70,38 @@ and can be moved; **View → Reset Layout** restores this one.
 └───────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-- **Status strip** (top, not a dock, cannot be hidden): target selector, connection, the arm's state, contracts,
-  the stop in effect with its category and source, the torque-limited joints, the overrun count, on the real arm the
-  limits in effect (Part P), and the emergency stop at the far right, apart from every other button.
+- **Status strip** (top, not a dock, cannot be hidden): target selector, connection, the arm's state, contracts.
+  Then the stop in effect with its category and source, the torque-limited joints and the overrun count.
+  On the real arm it shows the limits in effect (Part P).
+  The emergency stop sits at the far right, apart from every other button.
   - **Connection** reads Connected, Disconnected, or **No data from the arm** (`Warning`) when the snapshot has not
-    changed for 30 frames (half a second): a stalled arm thread is never shown as live.
+    changed for 30 frames (half a second). The strip never shows a stalled arm thread as live.
   - **Arm state** is the lifecycle's state ([arm-lifecycle.md](arm-lifecycle.md)) as the snapshot reports it:
-    Disconnected and Unpowered (`Neutral`), Checking contracts…, Contracts incompatible (`Fault`), **Waiting for
-    calibration: J2, J5** (`Warning`, naming every joint not yet ready), Ready, Enabling…, Enabled (`Ok`), Moving
-    (`Ok`), Disabling…, Tripped (`Fault`).
+    - Disconnected and Unpowered (`Neutral`), Checking contracts…, Contracts incompatible (`Fault`);
+    - **Waiting for calibration: J2, J5** (`Warning`, naming every joint not yet ready);
+    - Ready, Enabling…, Enabled (`Ok`), Moving (`Ok`), Disabling…, Tripped (`Fault`).
   - **Stop** names the stop in effect, from the snapshot ([simulator.md](simulator.md) Part F), with its category:
-    **Protective stop (category 2) — `<source>`: re-arm or disable** at `Warning` while the arm holds, **Emergency
-    stop (category 0) — `<source>`** at `Fault` once tripped, and **Stop: —** (`Neutral`) otherwise. Its tooltip
-    says what the category means: the joints stay powered and hold the pose, or every drive's power stage is off.
+    - **Protective stop (category 2) — `<source>`: re-arm or disable** at `Warning` while the arm holds;
+    - **Emergency stop (category 0) — `<source>`** at `Fault` once tripped;
+    - **Stop: —** (`Neutral`) otherwise.
+    - Its tooltip says what the category means.
+      The joints stay powered and hold the pose, or every drive's power stage is off.
   - **Torque limited: J2, J3** (`Warning`) names the joints whose last torque was clamped to its limit
-    ([safety.md](safety.md) Part B), held for half a second after the last clamped period so a clamp that comes and
-    goes does not flicker; hidden otherwise.
-  - **Overruns** shows the control loop's count of late phases ([control-loop.md](control-loop.md) Part C):
-    `Neutral` at 0, `Warning` from the first one, with a tooltip saying what it counts.
-  - **Bus** shows the CAN bus load of the last second from the snapshot ([simulator.md](simulator.md) Part F),
-    as **Bus: 43 %**: `Neutral` below 70 %, `Warning` from 70 %, and **Bus: —** until a first second has been
-    measured. Its tooltip says what it counts: the frames the arm sent and received over the bitrate, without bit
-    stuffing, so the real load is somewhat higher.
-- **Torque-limited joints:** a joint whose torque is clamped reads **Running · torque limit** at `Warning` in the
-  joint table, for as long as the status strip names it.
-- **Silent joints:** a joint that stopped answering shows **Silent** at `Fault` level, with position and speed as
-  "—", until it answers again; its last values are never shown as live.
-- **Real-arm banner:** on the real target a full-width strip under the menu reads **REAL ARM — `<adapter>`** in the
-  theme's `Warning` colour with an icon, and the window title gains the same text. It cannot be hidden.
+    ([safety.md](safety.md) Part B). The label stays for half a second after the last clamped period.
+    So a clamp that comes and goes does not flicker. Otherwise the label is hidden.
+  - **Overruns** shows the control loop's count of late phases ([control-loop.md](control-loop.md) Part C).
+    It is `Neutral` at 0 and `Warning` from the first one, with a tooltip that says what it counts.
+  - **Bus** shows the CAN bus load of the last second from the snapshot ([simulator.md](simulator.md) Part F).
+    It reads **Bus: 43 %**: `Neutral` below 70 % and `Warning` from 70 %.
+    It reads **Bus: —** until a first second has been measured.
+    Its tooltip says what it counts: the frames the arm sent and received over the bitrate, without bit stuffing.
+    So the real load is somewhat higher.
+- **Torque-limited joints:** a joint whose torque is clamped reads **Running · torque limit** at `Warning`.
+  The joint table shows it for as long as the status strip names the joint.
+- **Silent joints:** a joint that stopped answering shows **Silent** at `Fault` level until it answers again.
+  Its position and speed show "—": its last values are never shown as live.
+- **Real-arm banner:** on the real target a full-width strip under the menu reads **REAL ARM — `<adapter>`**.
+  It has the theme's `Warning` colour and an icon, and the window title gains the same text. It cannot be hidden.
 - **Centre:** the 3-D view (Part E).
 - **Right:** one scrollable **Arm** dock with four groups: Joints (the table and a limit bar per joint), Tool
   (Part K), Operate and Move.
@@ -115,8 +109,8 @@ and can be moved; **View → Reset Layout** restores this one.
 
 ### Part B — Controls and their states
 
-Every disabled control carries its reason: in a hint under its group, one line per disabled control, and as a
-tooltip on the status strip's controls. "Connected" means
+Every disabled control carries its reason. A hint under its group has one line per disabled control.
+The status strip's controls show it as a tooltip. "Connected" means
 the target is built and at least one joint has answered. Joints are numbered 1–6, base first.
 
 | Control              | Enabled when                                                                           | Disabled reason shown                                                                                                                                                                                      | Action                                                                   |
@@ -134,9 +128,12 @@ the target is built and at least one joint has answered. Joints are numbered 1�
 | Restart (motor)      | Virtual arm, arm not enabling, enabled, moving or disabling, motor not starting        | "Disable the arm first", "Starting"                                                                                                                                                                        | Restart that joint's virtual motor (Part L)                              |
 | Commissioning Limits | Real arm, arm not enabling, enabled, moving or disabling                               | "Not the real arm", "Disable the arm first"                                                                                                                                                                | Arm menu toggle; off asks first (Part P)                                 |
 
-- **Arm → Single Step** holds the joints' own commands for debugging: Check Contracts (connected, no move
-  running), Torque Mode and Start (contracts compatible, not tripped), Stop (any joint running). A disabled item
-  shows its reason in the status bar when hovered. The lifecycle follows where they leave the arm.
+- **Arm → Single Step** holds the joints' own commands for debugging:
+  - Check Contracts (connected, no move running);
+  - Torque Mode and Start (contracts compatible, not tripped);
+  - Stop (any joint running).
+
+  A disabled item shows its reason in the status bar when hovered. The lifecycle follows where they leave the arm.
 - A clicked action shows "requested…" in the status strip within 100 ms and is replaced by the result event.
 - Spin boxes have keyboard tracking off; Enter in a target field does not move — only **Move** or Ctrl+Enter does.
 - Nothing is enabled by a past click: every rule reads the latest snapshot.
@@ -144,16 +141,23 @@ the target is built and at least one joint has answered. Joints are numbered 1�
 ### Part C — Flows
 
 **Launch.** The last target, layout, camera and theme are restored. The simulated target never auto-starts the
-joints. A remembered real target is not reconnected on launch: the simulator opens on simulated joints and the
-selector shows the real adapter as the last used.
+joints. The simulator does not reconnect a remembered real target on launch.
+It opens on simulated joints, and the selector shows the real adapter as the last used.
 
-**Choose a target.** The selector lists *Simulated joints*, *Virtual arm…* (asks for the e-foc virtual motor
-binary, Part L), *Virtual bus…* (asks for the bus name) and *Real arm…*. *Real arm…* opens the **Real Arm** dialog at once and searches for the CAN adapters on this computer
-meanwhile, so the window never waits for the search: the arm host runs it on the arm thread and hands the result
-back ([simulator.md](simulator.md) Part E). The dialog lists SocketCAN interfaces by name (`can0`) and serial
-adapters as `slcan:<port>` (`slcan:/dev/ttyACM0`), never a virtual bus; the last one used is selected, and kept in
-the list when it is not detected now; the field is editable for an adapter that is not listed. Its label keeps the
-search's three outcomes apart, so a slow search never reads as an empty computer:
+**Choose a target.** The selector lists these targets:
+
+- *Simulated joints*;
+- *Virtual arm…*, which asks for the e-foc virtual motor binary (Part L);
+- *Virtual bus…*, which asks for the bus name;
+- *Real arm…*.
+
+*Real arm…* opens the **Real Arm** dialog at once and meanwhile searches for the CAN adapters on this computer.
+So the window never waits for the search. The arm host runs the search on the arm thread and hands the result back
+([simulator.md](simulator.md) Part E). The dialog lists SocketCAN interfaces by name (`can0`).
+It lists serial adapters as `slcan:<port>` (`slcan:/dev/ttyACM0`), never a virtual bus.
+The last one used is selected, and it stays in the list when it is not detected now.
+The field is editable for an adapter that is not listed.
+Its label keeps the search's three outcomes apart, so a slow search never reads as an empty computer:
 
 | Search             | Label                                                                                   | Search Again |
 |--------------------|-----------------------------------------------------------------------------------------|--------------|
@@ -169,23 +173,29 @@ opens a confirmation: "Connect to the real arm on `<adapter>`? Joints start stop
 **Cancel** (default). A failed adapter is logged as a fault with its reason, and the arm returns to the previous
 target.
 
-**Bring up and move.** Bring Up → the arm waits for calibration, naming the joints not ready (calibration is done on
-the node) → Configuring motor controllers: every drive's watchdog, then the motors and motor controllers the
-configuration names → Ready → Enable → Enabled → set targets → Move. A drive watchdog, motor or motor controller that
-cannot be applied or reads back different shows **Misconfigured: `<joint>` `<reason>`** in `Fault`, for example
-"drive watchdog reads back different", and Bring Up starts again. The ghost shows the commanded arm while moving; the scope
+**Bring up and move.** The sequence is:
+
+1. Bring Up. The arm waits for calibration and names the joints not ready. The node does the calibration.
+2. Configuring motor controllers: every drive's watchdog, then the motors and motor controllers the configuration
+   names.
+3. Ready → Enable → Enabled → set targets → Move.
+
+A drive watchdog, motor or motor controller can fail to apply or read back different.
+It then shows **Misconfigured: `<joint>` `<reason>`** in `Fault`, for example "drive watchdog reads back different".
+Bring Up then starts again. The ghost shows the commanded arm while moving; the scope
 shows the selected joint. Disable stops the joints and returns the arm to Ready.
 
-**Trip and recover.** On a trip the status strip shows **Emergency stop (category 0) — `<source>`** in `Fault`: the
-joint and its fault, silence, or the supervisor's reason, such as **Joint 2 (tracking error 0.214 rad)**
-([safety.md](safety.md) Part F). The joint table marks the joint, the log records it, and the scope triggers. Clear
+**Trip and recover.** On a trip the status strip shows **Emergency stop (category 0) — `<source>`** in `Fault`.
+The source is the joint and its fault, silence, or the supervisor's reason.
+An example is **Joint 2 (tracking error 0.214 rad)** ([safety.md](safety.md) Part F). The joint table marks the joint, the log records it, and the scope triggers. Clear
 Faults, then Re-arm…, whose confirmation names the source. Re-arm returns the arm to Waiting for calibration, then
 (configuring the joints again) Ready; Enable starts it again.
 
-**Protective stop and recover.** A supervision rule ([safety.md](safety.md) Parts F and G) does not trip the arm: the
-joints stay powered and hold the pose the arm had when it stopped. The stage reads **Holding** and the status strip
-**Protective stop (category 2) — `<source>`: re-arm or disable** in `Warning`, for example **Joint 2 (collision 12.0
-N·m)**, or the link and the zone for a workspace rule; the log records it and the scope triggers. Moves, Enable and
+**Protective stop and recover.** A supervision rule ([safety.md](safety.md) Parts F and G) does not trip the arm.
+The joints stay powered and hold the pose the arm had when it stopped. The stage reads **Holding**.
+The status strip reads **Protective stop (category 2) — `<source>`: re-arm or disable** in `Warning`.
+An example source is **Joint 2 (collision 12.0 N·m)**, or the link and the zone for a workspace rule.
+The log records it and the scope triggers. Moves, Enable and
 Bring Up are disabled with "Holding: re-arm first". Re-arm… asks "Re-arm after the protective stop by `<source>`? The
 arm resumes from the held pose." and returns the arm to Enabled. Disable is offered too, behind a warning: "Disabling
 stops the joints: an arm without brakes falls", with Cancel the default. A hold that drifts out of its tracking window
@@ -194,9 +204,9 @@ becomes a trip ("hold lost").
 **Inject a failure** (simulated joints and virtual arm only). The Disturbances dock (Part M), or **Simulation →
 Inject Fault → Joint N** and **Silence Joint N**.
 
-**Change a virtual joint's motor.** Edit the joint's motor in the profile file and open it (Part I): on the virtual
-arm only the joints whose motor changed restart, and the Virtual Motors dock shows them go from Starting to Up
-(Part L). Bring Up applies the new motor model to the node.
+**Change a virtual joint's motor.** Edit the joint's motor in the profile file and open it (Part I).
+On the virtual arm only the joints whose motor changed restart.
+The Virtual Motors dock shows them go from Starting to Up (Part L). Bring Up applies the new motor model to the node.
 
 ### Part D — Keyboard
 
@@ -216,22 +226,24 @@ arm only the joints whose motor changed restart, and the Virtual Motors dock sho
 
 ### Part E — 3-D view: look
 
-Qt Quick 3D in a `QQuickWidget`, scene in QML, following the `qt-3d-gui` skill. Environment, lights, floor and
-camera are ui-cpp's `StudioView` with its defaults and the theme's colours:
+Qt Quick 3D in a Qt Quick widget, scene in QML, following the `qt-3d-gui` skill. Environment, lights, floor and
+camera are ui-cpp's studio view with its defaults and the theme's colours:
 
-- **Environment:** theme background colour; image-based lighting from a small studio HDR probe
-  (`probeExposure` 1.4); filmic tone mapping; MSAA High; specular antialiasing; ambient occlusion (strength 55,
-  distance 5 cm, softness 40).
-- **Lights:** key directional light at 50° elevation, 35° left of the camera, brightness 1.6, casting shadows at
-  very high shadow-map quality, shadow factor 70, soft filter; fill at 0.6 from the right, low; rim at 0.9 from
-  behind, high, to outline the arm against the background.
-- **Floor:** 3 m × 3 m matte (roughness 0.9) receiving shadows, mid grey in the dark theme and the theme's scene surface
-  in the light one, with a 10 cm grid at half opacity.
+- **Environment:** theme background colour; image-based lighting from a small studio HDR probe (exposure 1.4).
+  Filmic tone mapping; MSAA High; specular antialiasing.
+  Ambient occlusion: strength 55, distance 5 cm, softness 40.
+- **Lights:**
+  - key: directional light at 50° elevation, 35° left of the camera, brightness 1.6;
+  - the key casts shadows at very high shadow-map quality, shadow factor 70, soft filter;
+  - fill: 0.6 from the right, low;
+  - rim: 0.9 from behind, high, to outline the arm against the background.
+- **Floor:** 3 m × 3 m matte (roughness 0.9) receiving shadows, with a 10 cm grid at half opacity.
+  It is mid grey in the dark theme and the theme's scene surface in the light one.
 - **Arm** (phase 8c): built from the profile's geometry ([arm-model.md](arm-model.md) Part A), so the arm on
   screen is the arm the model computes. The arm model gives each link's frame at the measured (or commanded)
-  joints, base mount included ([arm-model.md](arm-model.md) Part B); each link is drawn in its frame as a desktop
-  arm generated by the mesh kit from the OPW lengths, with a size unit $R$ of 15 % of the longer of c2 and c3,
-  between 1.5 and 8 cm:
+  joints, base mount included ([arm-model.md](arm-model.md) Part B).
+  Each link is drawn in its frame as a desktop arm that the mesh kit generates from the OPW lengths.
+  The size unit $R$ is 15 % of the longer of c2 and c3, between 1.5 and 8 cm:
 
 | Link           | Generated parts, in the link's frame                                                   |
 |----------------|----------------------------------------------------------------------------------------|
@@ -255,9 +267,9 @@ camera are ui-cpp's `StudioView` with its defaults and the theme's colours:
 | Rubber    | #4a4f56       | 0.0       | 0.75      | Motor caps                                  |
 
   The hubs are signal orange (#f28c28) whatever the theme's accent, so the joints stand out; the ghost keeps the
-  theme's accent. In the dark theme the scene is a bright studio of its own, lighter than the panels around it: a
-  slate background (#434b56), a mid-grey floor (#656a72) with a lighter grid at half opacity, so the arm, its dark
-  motors and its shadow all read against it.
+  theme's accent. In the dark theme the scene is a bright studio of its own, lighter than the panels around it.
+  It has a slate background (#434b56) and a mid-grey floor (#656a72) with a lighter grid at half opacity.
+  So the arm, its dark motors and its shadow all read against it.
 
   A selected or faulted joint lights its link's hubs. The meshes are rebuilt only when the OPW lengths
   change; each frame moves the seven link nodes.
@@ -265,28 +277,29 @@ camera are ui-cpp's `StudioView` with its defaults and the theme's colours:
   Joint axes follow the model: J1, J4 and J6 along z of their links, J2, J3 and J5 along y. Every pose is
   converted once from the model's frame (Z-up, metres) to the scene's (Y-up, centimetres):
   $(x, y, z) \mapsto 100\,(x, z, -y)$.
-- **Mesh kit:** the simulator builds its shapes, in metres, with ui-cpp's `ui::stage` primitives: a *lathe*
-  (`MakeLathe`) turns a profile of (radius, height) points about an axis (hubs, housings, gearboxes, flanges, discs)
-  and an *extrusion* (`MakeExtrusion`) sweeps a convex outline along an axis (plates, tubes, motor bodies, bolt heads).
-  Outlines: rounded rectangle, stadium, regular polygon. Each part is placed by a frame (origin and axis) and appended
-  to one mesh per material per link; `Shade` then gives each corner a normal, smooth within 35° (around a lathe and
-  across a rounded corner) and hard beyond it, so machined edges stay crisp. The app hands the shaded meshes to Qt
-  Quick 3D through ui-cpp's `Ui.Quick3D` module: a `MeshCatalog` keyed `node/finish` and one `ShadedMeshGeometry`
-  per part.
-- **Ghost arm:** the same nodes, accent colour, opacity 0.3, blended, no depth write; visible only while a move
-  runs or the commanded and measured arms differ by more than 0.5°.
+- **Mesh kit:** the simulator builds its shapes, in metres, with ui-cpp's stage primitives.
+  A *lathe* turns a profile of (radius, height) points about an axis (hubs, housings, gearboxes, flanges, discs).
+  An *extrusion* sweeps a convex outline along an axis (plates, tubes, motor bodies, bolt heads).
+  Outlines: rounded rectangle, stadium, regular polygon. A frame (origin and axis) places each part.
+  The kit appends each part to one mesh per material per link.
+  The kit's shading step then gives each corner a normal, smooth within 35° and hard beyond it.
+  Smooth covers the turn of a lathe and a rounded corner, so machined edges stay crisp.
+  The app hands the shaded meshes to Qt Quick 3D through ui-cpp's Quick 3D module.
+  The module keeps a mesh catalog keyed by node and finish, and gives one shaded mesh geometry per part.
+- **Ghost arm:** the same nodes, accent colour, opacity 0.3, blended, no depth write.
+  It is visible only while a move runs or the commanded and measured arms differ by more than 0.5°.
 - **Link meshes** (phase 8c): a link whose profile names a mesh ([arm-profile.md](arm-profile.md) Part A) draws
-  that glTF file instead of its generated parts, loaded at run time with its own materials.
-  - **Frame:** the mesh is in its link's frame, as the arm model defines it: Z up, metres, origin at the joint
-    (export from CAD with +Z up). The base mesh is in the base frame.
+  that glTF file instead of its generated parts. The file loads at run time with its own materials.
+  - **Frame:** the mesh is in its link's frame, as the arm model defines it: Z up, metres, origin at the joint.
+    Export it from CAD with +Z up. The base mesh is in the base frame.
   - **Budget:** at most 50 000 triangles per mesh, counted from the file's index (or position) accessors before
-    loading (ui-cpp's `CheckGltf`). A larger mesh is not loaded: decimate it.
+    loading (ui-cpp's glTF check). A larger mesh is not loaded: decimate it.
   - **Fallback:** a file that is missing, unreadable, over budget or fails to load leaves the link's generated
-    parts in place, and the event log names the link and the reason, once per profile load.
+    parts in place. The event log names the link and the reason, once per profile load.
   - **Selection and faults** stay visible on a meshed link: its accent hub is drawn over the mesh, translucent,
     while the joint is selected or faulted.
   - The ghost arm keeps the generated parts.
-- **Sample meshes:** `tools/simulator/samples/meshed-arm/` holds a profile on the reference geometry and a glTF mesh
+- **Sample meshes:** the meshed-arm sample holds a profile on the reference geometry and a glTF mesh
   for the base and each link. It shows the mesh path without CAD.
   - **Look:** a cast industrial arm, unlike the generated arm. The materials are glTF metallic-roughness:
 
@@ -309,85 +322,103 @@ camera are ui-cpp's `StudioView` with its defaults and the theme's colours:
   - **Shipped:** both installers hold the sample ([tool-installers.md](tool-installers.md) Part A). **Profile → Open**
     reads it like any other profile.
   - **Lighting:** the sample does not change the scene's lights. Its materials were tuned against the frame capture.
-- **Tool triad** (phase 8c): three thin bars at the tool centre point along the tool frame's axes, x red, y green,
-  z blue (the usual robotics convention, unlit so they read in both themes), each 12 % of the arm's height long. It
-  follows the measured arm; the ghost has none.
-- **Tool trail** (phase 8c): a line through the tool centre point's recent positions, in the accent colour. A
-  point is added when the tool has moved 2 mm from the last one, and the trail keeps the newest 500 points, so its
-  memory and drawing cost are bounded. It is a one-pixel line strip (ui-cpp's `PolylineGeometry`): Qt 6.4 has no line width. It is drawn in the theme's
-  `SceneTrail` colour (cyan in the instrument theme, purple in the light one), so it is never mistaken for the
-  commanded arm (accent) or the selection. It is cleared when a profile changes the geometry and while the arm is not
-  live (no target, or a joint silent), so it never joins positions of two different arms.
-- **Target pose** (phase 8c): a smaller triad, at 60 % of the tool triad's length, marks the tool pose the Move form's
-  six targets would reach, from the arm model at those joints. It shows while the targets are within their limits and
-  the target pose is more than 2 mm from the measured tool, so the operator sees where **Move** will take the tool
-  before pressing it; it hides with an invalid target and without a live arm.
-- **Joint-limit arc** (phase 8c): while a joint is selected, a line in the selection colour sweeps its range, from the
-  lower to the upper limit of the profile, in the plane the joint turns in, around its axis at a radius of 8 % of the
-  arm's height: 33 points, each the joint frame's x axis at that angle with every other joint where it is measured.
+- **Tool triad** (phase 8c): three thin bars at the tool centre point along the tool frame's axes.
+  They are x red, y green, z blue: the usual robotics convention, unlit so they read in both themes.
+  Each is 12 % of the arm's height long. It follows the measured arm; the ghost has none.
+- **Tool trail** (phase 8c): a line through the tool centre point's recent positions, in the accent colour.
+  A point is added when the tool has moved 2 mm from the last one. The trail keeps the newest 500 points.
+  So its memory and drawing cost are bounded.
+  It is a one-pixel line strip (ui-cpp's polyline geometry): Qt 6.4 has no line width.
+  It is drawn in the theme's scene-trail colour: cyan in the instrument theme, purple in the light one.
+  So it is never mistaken for the commanded arm (accent) or the selection.
+  It is cleared when a profile changes the geometry and while the arm is not live (no target, or a joint silent).
+  So it never joins positions of two different arms.
+- **Target pose** (phase 8c): a smaller triad, at 60 % of the tool triad's length, marks a tool pose.
+  It is the pose that the Move form's six targets would reach, from the arm model at those joints.
+  It shows while the targets are within their limits and the target pose is more than 2 mm from the measured tool.
+  So the operator sees where **Move** will take the tool before pressing it.
+  It hides with an invalid target and without a live arm.
+- **Joint-limit arc** (phase 8c): while a joint is selected, a line in the selection colour sweeps its range.
+  The arc runs from the lower to the upper limit of the profile, in the plane the joint turns in.
+  It lies around the joint's axis at a radius of 8 % of the arm's height.
+  It has 33 points, each the joint frame's x axis at that angle with every other joint where it is measured.
   The arm's own link shows where in the range the joint is now. No joint selected, no arc.
-- **Selected joint:** besides its lit hubs, the selected joint gets a closed ring around its axis at 4.5 % of the
-  arm's height (49 points, the joint frame's x axis turned a full turn from where it is measured) and a label next
-  to it, `J2 · measured 0.35 rad`, with `· commanded 0.50 rad` added while the ghost shows. The ring and the arc
-  share the theme's `SceneSelection` colour (gold in the instrument theme, darkened in the light one so it reads on
-  a light floor). The label is a 2-D item placed where the joint projects, kept inside the view, monospaced so its
-  digits do not jitter, and not interactive: a click through it still picks the part under it. With colour gone (a
+- **Selected joint:** besides its lit hubs, the selected joint gets a closed ring around its axis.
+  The ring is at 4.5 % of the arm's height: 49 points, the joint frame's x axis turned a full turn from where it is
+  measured. A label next to it reads `J2 · measured 0.35 rad`, with `· commanded 0.50 rad` added while the ghost
+  shows. The ring and the arc share the theme's scene-selection colour.
+  It is gold in the instrument theme, and darkened in the light one so it reads on a light floor.
+  The label is a 2-D item placed where the joint projects, kept inside the view.
+  It is monospaced so its digits do not jitter.
+  It is not interactive: a click through it still picks the part under it. With colour gone (a
   greyscale capture), the label still names the joint and the ghost still reads as a translucent second arm.
-- **Legend:** a compact key in the bottom-left corner names what is drawn — measured arm, commanded arm (ghost),
-  tool trail, selected joint and its limits, tool and target frames — each with its colour as a swatch or a line,
-  and the grid spacing in physical units (`Grid 10 cm`, plus `· orthographic` in that mode). A row disappears with
-  its overlay.
-- **Overlays** (View → Overlays): the commanded arm, the tool trail, the tool and target frames, the joint limits,
-  the workspace and zones, and the legend each have a checkable action, all on by default and remembered across
-  launches (`QSettings`, `overlays/<name>`). Hiding an overlay never hides a fault: a box the workspace rule stopped
-  on stays drawn in the `Fault` colour, and the status strip names the link and the zone either way. The selection
-  ring and label follow the selection, not a switch.
-- **Render quality** (View → Render Quality: Automatic, High, Low; remembered as `renderQuality`): High keeps
-  shadows, ambient occlusion, MSAA, specular antialiasing and the light probe; Low turns all five off. Automatic
-  picks Low when the renderer is a software one (Qt RHI reports a CPU device, or its name is WARP's "Microsoft Basic
-  Render Driver", llvmpipe, softpipe or SwiftShader), otherwise High. On such a renderer one High frame can take
+- **Legend:** a compact key in the bottom-left corner names what is drawn:
+  - measured arm, commanded arm (ghost), tool trail;
+  - selected joint and its limits, tool and target frames;
+  - the grid spacing in physical units (`Grid 10 cm`, plus `· orthographic` in that mode).
+
+  Each row has its colour as a swatch or a line. A row disappears with its overlay.
+- **Overlays** (View → Overlays): each of these has a checkable action, all on by default and remembered across
+  launches in the settings:
+  - the commanded arm, the tool trail, the tool and target frames;
+  - the joint limits, the workspace and zones, and the legend.
+
+  Hiding an overlay never hides a fault. A box the workspace rule stopped on stays drawn in the `Fault` colour.
+  The status strip names the link and the zone either way. The selection ring and label follow the selection, not a
+  switch.
+- **Render quality** (View → Render Quality: Automatic, High, Low; remembered).
+  High keeps shadows, ambient occlusion, MSAA, specular antialiasing and the light probe; Low turns all five off.
+  Automatic picks Low when the renderer is a software one, otherwise High.
+  A software renderer is one where Qt RHI reports a CPU device.
+  It is also one named WARP's "Microsoft Basic Render Driver", llvmpipe, softpipe or SwiftShader.
+  On such a renderer one High frame can take
   tens of seconds, which freezes the window. The switch is announced once, in the event log and the status bar:
   `Software renderer <name>: 3-D view at low quality (View → Render Quality changes it)`. Safe start uses
   Automatic. On Qt before 6.6, or where Qt's RHI header is not installed, the renderer is not
   known, and Automatic keeps High.
-- **Workspace and zones** (phase 6): the workspace box the safety supervisor checks ([safety.md](safety.md) Part H),
-  the profile's or the default one around the arm's reach, is drawn as its twelve edges in the grid colour; each
-  forbidden zone is a translucent box in the `Warning` colour (opacity 0.18, blended, no depth write, casting and
-  receiving no shadow, not pickable) with its edges. While a protective stop by the workspace rule is in effect the
-  workspace box turns to the `Fault` colour; by a zone, that zone does, filled at opacity 0.35. The status strip names
+- **Workspace and zones** (phase 6): the view draws the workspace box the safety supervisor checks
+  ([safety.md](safety.md) Part H). The box is the profile's, or the default one around the arm's reach.
+  The view draws it as its twelve edges in the grid colour.
+  Each forbidden zone is a translucent box with its edges in the `Warning` colour.
+  The zone box has opacity 0.18, is blended, writes no depth, casts and receives no shadow and is not pickable.
+  While a protective stop by the workspace rule is in effect, the workspace box turns to the `Fault` colour.
+  For a stop by a zone, that zone does, filled at opacity 0.35. The status strip names
   the link and the zone in text, so colour is never the only signal. A self-collision stop draws no box: the strip names
-  the two links. The boxes come from the snapshot, converted like every pose ($(x, y, z) \mapsto 100\,(x, z, -y)$),
-  and are rebuilt only when the workspace, the zones or the stop change.
+  the two links. The boxes come from the snapshot, converted like every pose ($(x, y, z) \mapsto 100\,(x, z, -y)$).
+  They are rebuilt only when the workspace, the zones or the stop change.
 - **Selection:** clicking a part selects its joint (in the table too, both ways); its housing's emissive rises in
   the accent colour. A faulted joint's housing pulses in the `Fault` colour, and the table says it in text.
-- **Camera:** perspective, 40° field of view; orbit, pan, zoom; presets animate over 250 ms with ease-out, the
-  pivot moving with them. ui-cpp's `StudioView` does the camera work (`doc/scene3d.md` in ui-cpp):
-  - **Frame Arm** (F, double click, View → Camera) and every preset fit the **posed** arm: the scene model gives
-    the box around each link's generated parts at the measured pose and the tool frame's reach (12 % of the arm's
-    height around the tool centre point), and the view fits that box's eight corners with an 8 % margin on every
-    side, using the view's aspect, at the preset's direction. A folded and a stretched arm both fill the view.
+- **Camera:** perspective, 40° field of view; orbit, pan, zoom.
+  Presets animate over 250 ms with ease-out, and the pivot moves with them.
+  ui-cpp's studio view does the camera work (ui-cpp's 3-D scene document):
+  - **Frame Arm** (F, double click, View → Camera) and every preset fit the **posed** arm.
+    The scene model gives the box around each link's generated parts at the measured pose.
+    The box also holds the tool frame's reach: 12 % of the arm's height around the tool centre point.
+    The view fits that box's eight corners with an 8 % margin on every side, using the view's aspect.
+    It looks at the preset's direction. A folded and a stretched arm both fill the view.
   - The view frames itself on first launch, as soon as it has a size, and when a profile changes the arm's
     geometry. Telemetry never moves the camera: a framing the operator chose stays while the arm moves.
-  - **Orthographic** (O, View → Camera): an orthographic camera on the same pivot, its scale matched to the
-    perspective camera's distance, for checking alignment against the grid.
-  - **Focus Selected Joint** (J, View → Camera, enabled while a joint is selected): the pivot moves to the
-    selected joint and keeps the distance, so orbiting turns about that joint. **Frame Arm** recovers the view.
-  - **Orientation gizmo:** the base frame's X, Y and Z (red, green, blue) in the bottom-right corner, as seen from
-    the camera; clicking either end of an axis looks along it. The labels are the base frame's, converted like
-    every pose ($(x, y, z) \mapsto (x, z, -y)$ in scene axes), so from Top a learner sees where base +X points and
-    which way a base-frame jog will go.
+  - **Orthographic** (O, View → Camera): an orthographic camera on the same pivot.
+    Its scale matches the perspective camera's distance, for checking alignment against the grid.
+  - **Focus Selected Joint** (J, View → Camera, enabled while a joint is selected).
+    The pivot moves to the selected joint and keeps the distance, so orbiting turns about that joint.
+    **Frame Arm** recovers the view.
+  - **Orientation gizmo:** the base frame's X, Y and Z (red, green, blue) in the bottom-right corner.
+    It shows them as seen from the camera. Clicking either end of an axis looks along it.
+    The labels are the base frame's, converted like every pose ($(x, y, z) \mapsto (x, z, -y)$ in scene axes).
+    So from Top a learner sees where base +X points and which way a base-frame jog will go.
 
 ### Part F — Scope and log
 
-- **Scope** (`ui::scope::ScopeCore`, three channels): the selected joint's commanded and measured position and their
+- **Scope** (ui-cpp's scope, three channels): the selected joint's commanded and measured position and their
   difference, in rad, at the control period. Run and hold; trigger on a trip (normal mode, pre-trigger 1 s).
-  When the display falls behind the arm and trace samples are lost ([simulator.md](simulator.md) Part F), the scope
-  joins the samples on either side of the gap and its header shows **N samples lost** in `Warning`, with a tooltip
-  saying so, until another joint is chosen.
+  The display can fall behind the arm and lose trace samples ([simulator.md](simulator.md) Part F).
+  The scope then joins the samples on either side of the gap.
+  Its header shows **N samples lost** in `Warning`, with a tooltip that says so, until another joint is chosen.
 - **Log:** time, level (`Info`, `Warning`, `Fault`), joint (or "arm"), message. At most 10 000 lines, oldest dropped.
-  A trace gap is a warning at the time of the sample after it, **Trace gap: 40 samples (about 400 ms) lost before
-  this time; the scope and tuning skip them**, and lost events read **12 events lost before this line: the log fell
-  behind the arm**.
+  A trace gap is a warning at the time of the sample after it.
+  It reads **Trace gap: 40 samples (about 400 ms) lost before this time; the scope and tuning skip them**.
+  Lost events read **12 events lost before this line: the log fell behind the arm**.
   Filter by level and joint; **File → Save Log…** writes plain text.
 
 ### Part G — Theme and type
@@ -395,7 +426,7 @@ camera are ui-cpp's `StudioView` with its defaults and the theme's colours:
 ui-cpp's `Instrument` theme by default and `Light` from **View → Theme**; the 3-D background, floor and accent come
 from the same theme roles. The platform UI font; tabular digits in every numeric cell; fixed precision per unit
 (rad 3 decimals, rad/s 2). A 4 px grid: 8 px within a group, 16 px between groups. Status colours follow
-`StatusLevel`; disconnected is `Neutral`; every colour has a text or icon alongside it.
+ui-cpp's status levels; disconnected is `Neutral`; every colour has a text or icon alongside it.
 
 ### Part H — Motor Controller panel (phase 8b)
 
@@ -644,7 +675,7 @@ The three columns sit in a splitter: the controls keep their width, the plot tak
   **Done: `<controller>` · `<test>` · `<joint>`**, or **Failed: `<reason>`** (a refusal, an aborted move or a trip,
   with its source). The label names the arm controller that was active when the run started, so two runs are told
   apart by what changed.
-- **Plot** (`ui::charts::ChartCore`, time axis in s): three panels, position (commanded and measured), tracking
+- **Plot** (ui-cpp's chart, time axis in s): three panels, position (commanded and measured), tracking
   error and commanded torque, each with the reference run's measured position, error and torque overlaid in the
   theme's next series colours. The cursor read-out shows the values under the pointer.
 - **Metrics** (read-only table): rise time, overshoot, settling time and steady-state error for a step, RMS and
@@ -760,13 +791,13 @@ holds the dead-man.
 ```
 
 - **Hold-to-move.** Pressing a **−** or **+** button starts a jog of that axis at the scaled speed, and the dock sends
-  it again every half of the arm's dead-man time (jogDeadManPeriods control periods, 100 ms at 10 ms) while the
+  it again every half of the arm's dead-man time (the profile's dead-man periods, 100 ms at 10 ms) while the
   button stays down. Release sends a jog of zero speed on the same axis, so the arm comes to rest within its
   acceleration limits. The window losing focus, the dock being hidden, or the arm leaving Enabled and Moving release
   it the same way; a frozen window stops being refreshed, and the arm's own dead-man stops the jog.
 - **Speed** is a share from 1 to 100 % (10 % by default, remembered) of each joint's speed limit in joint space, and
   of the tool's linear or angular speed limit along X, Y, Z or about Rx, Ry, Rz ([arm-profile.md](arm-profile.md)
-  `toolLimits`). Each row shows the speed it would jog at, with its unit. A change applies at the next refresh.
+  tool limits). Each row shows the speed it would jog at, with its unit. A change applies at the next refresh.
 - **State:** the line under the rows reads **Jogging `<axis>` `<speed>`** while held, and the jog's refusal from the
   arm host otherwise (the status strip and the log carry it too).
 
@@ -812,7 +843,7 @@ Part J), teaches the current pose under a name and moves to a chosen one through
 ### Part T — Updates and issue reports
 
 The Simulator updates itself from the e-robot-arm releases ([tool-installers.md](tool-installers.md)) and opens a
-prefilled issue, through ui-cpp's update widgets (`ui/backend/qt/update/widgets`), as the e-foc tools do.
+prefilled issue, through ui-cpp's update widgets, as the e-foc tools do.
 
 ```text
 ┌ e-robot-arm Simulator 0.3.0 is available — you have 0.2.0. [Install Update…] [Release Notes] [Skip This Version] [Later] ┐
@@ -829,7 +860,7 @@ prefilled issue, through ui-cpp's update widgets (`ui/backend/qt/update/widgets`
   Automatically* (checked by default; once at start and then daily; remembered), *Report Issue…* and *About*.
 - **Skip This Version** stops automatic checks from offering that release again; a check from the menu still does.
 - **Log:** every check, offer, download, install and failure is a line in the event log and in a log file kept for
-  issue reports (`logs/simulator.log` under the application data, rotated at 1 MB, three files kept).
+  issue reports (simulator.log in the logs folder under the application data, rotated at 1 MB, three files kept).
 - **Report Issue…** opens the e-robot-arm new-issue page with the Simulator's version, the operating system, Qt and
   the last lines of that log, and names the log file to attach; without a browser it says where to report instead.
 
@@ -847,6 +878,9 @@ prefilled issue, through ui-cpp's update widgets (`ui/backend/qt/update/widgets`
 |-------------|--------------------------------------|-------------------------------------|
 | View models | State, enable rules, reasons, values | [simulator.md](simulator.md) Part A |
 
+The arm stack decides every arm rule. The enable rules in Part B mirror its preconditions, so a control can say why
+it is disabled. The arm stack still decides, and the log and the status area report a refusal.
+
 ---
 
 ## Data Model
@@ -856,7 +890,7 @@ prefilled issue, through ui-cpp's update widgets (`ui/backend/qt/update/widgets`
 | Move targets | J1–J6                         | rad         | The joint limits | Defaults ±π until the profile exists |
 | Scope        | channels                      | rad         | —                | Commanded, measured, difference      |
 | Log          | lines                         | count       | ≤ 10 000         | Oldest dropped                       |
-| Settings     | target, layout, camera, theme | —           | —                | `QSettings`                          |
+| Settings     | target, layout, camera, theme | —           | —                | Qt settings                          |
 
 ---
 
@@ -888,10 +922,10 @@ sequenceDiagram
     actor O as Operator
     participant S as Screen
     participant V as View models
-    participant H as ArmHost
+    participant H as Arm host
     O->>S: Esc
     S->>V: emergency stop
-    V->>H: Post(emergency stop), ahead of the queue
+    V->>H: post emergency stop, ahead of the queue
     V-->>S: "requested…"
     H-->>V: event: emergency stop sent (joints not reached named)
     V-->>S: status strip, log
@@ -904,24 +938,28 @@ sequenceDiagram
 | Constraint            | Value / Description                                                                                                                                                                                                                                                               |
 |-----------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Frame rate            | 60 fps target at 1080p on an integrated GPU with the loop at 100 Hz; never below 30 fps                                                                                                                                                                                           |
-| Measured, setup       | Mesa llvmpipe (software, 4 cores, no GPU), Qt 6.4.2, Debug build, 1600 × 900, MSAA High, shadows, AO, loop at 100 Hz, the Scope (three channels) and the Tuning plot; Part O's statistics while the arm moves and a tuning step records (window test `frame_statistics_report_…`) |
+| Measured, setup       | Mesa llvmpipe (software, 4 cores, no GPU), Qt 6.4.2, Debug build, 1600 × 900, MSAA High, shadows, AO, loop at 100 Hz, the Scope (three channels) and the Tuning plot; Part O's statistics while the arm moves and a tuning step records (the window test) |
 | Measured, simulated   | 3-D 8–9 fps, render 92–99 ms, GUI 2.4–3.7 ms (largest 6.8 ms); 96–104 control-loop overruns in 18 s                                                                                                                                                                               |
 | Measured, virtual arm | Six e-foc virtual motors: 3-D 6.2–6.8 fps, render 115–130 ms, GUI 1.9–8.8 ms (largest 24.8 ms); 119 overruns in 20 s                                                                                                                                                              |
 | Reading               | The GUI work fits a 60 fps frame; the 3-D view does not without a GPU, and llvmpipe's four render threads most likely take the cores the control loop needs, hence the overruns. A GPU desktop is read from Part O's status line                                                  |
 | First frame           | Without a GPU the first 3-D frame compiles the scene's shaders for about 14 s, with the GUI frozen; the arm is not enabled yet at that point                                                                                                                                      |
-| Qt                    | 6.4.2 in the dev container; `ExtendedSceneEnvironment`, `InfiniteGrid`, `DebugView` only on 6.5+, guarded                                                                                                                                                                         |
+| Qt                    | 6.4.2 in the dev container; the extended scene environment, infinite grid and debug view only on 6.5+, guarded                                                                                                                                                                         |
 | Minimum size          | 1280 × 720 at 100 %; no clipped text at 150 %                                                                                                                                                                                                                                     |
+
+Phase 8b ([#29](https://github.com/embedded-pro/e-robot-arm/issues/29)) brings the configuration of controllers,
+motor controllers and motors. Phase 8c ([#30](https://github.com/embedded-pro/e-robot-arm/issues/30)) brings jogging
+and the real geometry.
 
 ---
 
-## Open Questions
+## Decisions
 
-| # | Question                                                                                     | Options                                               | Status                                                             |
+| # | Decision                                                                                     | Options                                               | Status                                                             |
 |---|----------------------------------------------------------------------------------------------|-------------------------------------------------------|--------------------------------------------------------------------|
 | 1 | Esc as the emergency-stop key                                                                | Esc, a function key, a dedicated USB button too       | open                                                               |
 | 2 | Joint-limit defaults before the arm profile exists                                           | ±π for every joint, per-joint guesses                 | decided: ±π                                                        |
-| 3 | Default-role buttons (Check Contracts, Position Mode) draw flat in ui-cpp's Instrument theme | Give `ButtonRole::Default` a raised surface in ui-cpp | resolved: ui-cpp#24 gives Default buttons a raised fill and border |
+| 3 | Default-role buttons (Check Contracts, Position Mode) draw flat in ui-cpp's Instrument theme | Give the default button role a raised surface in ui-cpp | resolved: ui-cpp#24 gives Default buttons a raised fill and border |
 | 4 | Naming every joint an emergency stop did not reach                                           | Per-joint delivery reports from the joint bus         | phase 1a (#17)                                                     |
 | 5 | Bus load and period overruns in the status strip                                             | Control-loop overrun count, bus-load estimate         | decided: both shown (Part A)                                       |
-| 6 | Marking a differing gain on its field rather than in the hint                                | A per-field status in ui-cpp forms                    | resolved: ui-cpp#30 `FormView::SetFieldStatus` (Parts H and J)     |
+| 6 | Marking a differing gain on its field rather than in the hint                                | A per-field status in ui-cpp forms                    | resolved: ui-cpp#30 per-field form status (Parts H and J)     |
 | 7 | Editing a profile in the simulator                                                           | A profile editor form, a file edited outside          | decided: edited as a file, shown read-only                         |

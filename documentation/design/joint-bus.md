@@ -2,9 +2,9 @@
 title: "Joint Bus Design"
 type: design
 status: draft
-version: 0.14.0
+version: 0.14.1
 component: "joint_bus"
-date: 2026-11-20
+date: 2026-11-26
 ---
 
 | Field     | Value            |
@@ -12,17 +12,15 @@ date: 2026-11-20
 | Title     | Joint Bus Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.14.0           |
+| Version   | 0.14.1           |
 | Component | joint_bus        |
-| Date      | 2026-11-20       |
+| Date      | 2026-11-26       |
 
 > The six joints of the arm as one set of commands and readings. Behaviour only; diagrams are Mermaid.
 
 ---
 
 ## Responsibilities
-
-**Is responsible for:**
 
 - Mapping the six joints, in kinematic order from the base, to the CAN node of each e-foc motor node.
 - Sending one command to every joint at once: select a control mode, start, stop, clear a fault, align,
@@ -36,13 +34,6 @@ date: 2026-11-20
 - Converting between joint space and each motor's shaft through the joint's transmission, so that everything
   above the bus speaks joint angles.
 
-**Is NOT responsible for:**
-
-- Deciding what to do about a fault: stopping the other joints is the safety component's decision.
-- Opening the CAN adapter or choosing between the real arm and virtual motors: the platform provides the bus.
-- Trajectories, kinematics or control laws.
-- Pacing: the caller decides when to request telemetry and when to send setpoints.
-
 ---
 
 ## Component Details
@@ -54,12 +45,12 @@ joint. Every frame from a node outside the map is ignored, so other nodes may sh
 
 ### Part B — Commands
 
-Every command goes to all six joints, in joint order. An emergency stop is sent at once at emergency priority:
-the bus attempts every joint after a refused one, so it reaches every node it can, and it reports success only
-when all six frames were accepted.
+Every command goes to all six joints, in joint order. An emergency stop is sent at once at emergency priority.
+The bus attempts every joint after a refused one, so it reaches every node it can. It reports success only when all
+six frames were accepted.
 
-The other commands (check contracts, select a control mode, start, stop, clear a fault, align) are delivered: the bus
-holds one command and remembers which joints have accepted its frame. A joint whose frame is refused because
+The other commands (check contracts, select a control mode, start, stop, clear a fault, align) are delivered. The
+bus holds one command and remembers which joints have accepted its frame. A joint whose frame is refused because
 can-lite's transmit queue is full is retried every millisecond until it is accepted. The command is reported
 delivered once all six joints have accepted it, or failed when one of these comes first:
 
@@ -70,20 +61,22 @@ delivered once all six joints have accepted it, or failed when one of these come
 | An emergency stop is issued | failed: emergency stop        |
 
 A control mode counts as delivered only once every joint has also answered that the mode is active. An e-foc node
-switches its control mode in the background and refuses a start until the switch is done, so a start sent on the
-mode's heels would be lost. An answer naming another mode does not count. A joint that has accepted the frame but not
-confirmed the mode is sent it again every fifth of the command timeout: a frame lost on the way, or an answer lost on
-the way back, costs a fifth of the timeout instead of the command. Selecting the active mode again only confirms it.
+switches its control mode in the background and refuses a start until the switch is done. Thus a start sent on the
+mode's heels would be lost. An answer naming another mode does not count. A joint can accept the frame but not
+confirm the mode. The bus then sends it again every fifth of the command timeout. Thus a frame lost on the way, or
+an answer lost on the way back, costs a fifth of the timeout instead of the command. Selecting the active mode again only confirms it.
 
-A command accepted by all six joints at once is reported delivered before the call returns. A command to an
-arm with a joint whose contract is known to be incompatible is refused before any frame is sent; the contract
-check itself is never refused. A command that has failed is not
-retracted from the joints that already accepted it: the caller decides what to do, and the safety component
+A command accepted by all six joints at once is reported delivered before the call returns. The bus refuses a command before it sends any frame when a joint's
+contract is known to be incompatible. The contract check itself is never refused. A command that has failed is not
+retracted from the joints that already accepted it. The caller decides what to do, and the safety component
 stops the arm on any fault.
 
-Setpoints are joint positions, converted to motor positions (Part F) and sent as position setpoints in radians,
-or joint torques, converted to motor torques and sent as torque setpoints in N·m, once per control period and never
-held: the next period sends newer ones. Which the joints obey follows the control mode selected at enable. A
+Setpoints are one of these, sent once per control period:
+
+- joint positions, converted to motor positions (Part F) and sent as position setpoints in radians;
+- joint torques, converted to motor torques and sent as torque setpoints in N·m.
+
+Setpoints are never held: the next period sends newer ones. Which the joints obey follows the control mode selected at enable. A
 non-finite value is refused by the client and makes the whole call report failure.
 
 ### Part C — Contract check
@@ -93,13 +86,13 @@ A contract check queries the contract version of all six nodes. It resolves once
 - **compatible**: all six nodes answered with a compatible version;
 - **incompatible**: the first node that answers with an incompatible version resolves it at once.
 
-The outcome is reported to the observer, and the aggregate is also available on demand: incompatible if any
-node is incompatible, compatible if all six are, unknown otherwise.
+The bus reports the outcome to the observer. The aggregate is also available on demand: incompatible if any node is
+incompatible, compatible if all six are, unknown otherwise.
 
 ### Part D — Readings and faults
 
 Motion telemetry updates the joint's position and speed, converted to joint space (Part F); status telemetry updates its state and fault code. A
-joint that moves into the fault state is reported once, with its fault code; it is reported again only after it
+joint that moves into the fault state is reported once, with its fault code. It is reported again only after it
 has left the fault state.
 
 ### Part E — Telemetry requests and liveness
@@ -108,15 +101,19 @@ An e-foc node sends its status and motion telemetry when asked, not on its own. 
 joints at once; the caller makes one each control period.
 
 Before it sends a request, the bus counts, per joint, whether motion telemetry arrived since the previous request.
-A joint that has not answered the configured number of requests in a row is silent: it is reported once, naming
-the joint, and reported again only after it has answered once more. The first request starts the count, so
+A joint that has not answered the configured number of requests in a row is silent. The bus reports it once, naming
+the joint. It reports it again only after the joint has answered once more. The first request starts the count, so
 nothing is missed before the caller starts asking. Motion telemetry from the joint resets its count.
 
 The bus numbers its telemetry requests from 1; the number of the latest one is the current period. Each reading
-records the number of the request it answered, so a caller can tell how old it is: a reading from the current
-request is fresh, one from the request before is a period old, and anything older, or a joint that has never
-answered, is stale. It also records when that request went out: a host that runs late sends its requests further
-apart than the period, and the joints sample their motion when the request reaches them.
+records the number of the request it answered, so a caller can tell how old it is:
+
+- a reading from the current request is fresh;
+- a reading from the request before is a period old;
+- anything older, or a joint that has never answered, is stale.
+
+Each reading also records when that request went out. A host that runs late sends its requests further apart than
+the period, and the joints sample their motion when the request reaches them.
 
 ### Part F — Transmission
 
@@ -128,18 +125,18 @@ Each joint has a transmission between its motor's shaft and the joint: a gear ra
 | Speed    | motor speed = direction · ratio · joint speed                  | joint speed = motor speed / (direction · ratio)              |
 | Torque   | motor torque = joint torque / (direction · ratio · efficiency) | joint torque = direction · ratio · efficiency · motor torque |
 
-The ratio is positive (motor turns per joint turn), the direction is +1 or −1 and the offset is the joint angle
-at the motor's zero, in radians. Torque setpoints follow the torque row with an efficiency of 1 until the profile
+The ratio is positive (motor turns per joint turn). The direction is +1 or −1. The offset is the joint angle at the
+motor's zero, in radians. Torque setpoints follow the torque row with an efficiency of 1 until the profile
 carries one; torque is not read yet. The
-bus converts every setpoint on the way out and every motion reading on the way in, so position limits, motion
+bus converts every setpoint on the way out and every motion reading on the way in. Thus position limits, motion
 limits and trajectories stay in joint space. The e-foc node's own position limits are in motor space: whoever
 brings a joint up sets them from the joint limits through the same transformation. An identity transmission
 (ratio 1, direction +1, offset 0) sends joint angles unchanged.
 
 ### Part G — Per-joint configuration
 
-Besides the commands to all six joints, the bus sends four requests to one joint: select a loop's algorithm,
-query the algorithms, set a parameter and query a parameter. Each is one frame, sent at once or refused when the
+Besides the commands to all six joints, the bus sends four requests to one joint. These are: select a loop's
+algorithm, query the algorithms, set a parameter and query a parameter. Each is one frame, sent at once or refused when the
 transmit queue is full; nothing is held or retried. Their answers are passed on naming the joint: the algorithms
 (with the active mode) and a parameter's value. The joint configurator ([joint-configurator.md](joint-configurator.md))
 paces them one at a time.
@@ -160,6 +157,9 @@ paces them one at a time.
 | Interface                 | Purpose                                    | Contract                                    |
 |---------------------------|--------------------------------------------|---------------------------------------------|
 | FOC motor category client | Commands to and telemetry from e-foc nodes | The joint bus is the client's only observer |
+| Platform                  | The bus, opened on a CAN adapter           | Chooses the real arm or virtual motors      |
+| Safety component          | Reaction to a fault                        | Decides to stop the other joints            |
+| Caller                    | Pacing                                     | Decides when to request telemetry and send setpoints |
 
 ---
 
@@ -274,12 +274,13 @@ sequenceDiagram
 | Retry interval    | One millisecond while a command is held; the bus owns one timer for retries and one for the timeout                                                                                                                                                                                                                                        |
 | Delivery spread   | A held command reaches the joints that had room first and the others on a later retry, a few milliseconds apart at most                                                                                                                                                                                                                    |
 | Memory            | No heap; all state is fixed-size                                                                                                                                                                                                                                                                                                           |
+| Scope             | No trajectories, kinematics or control laws                                                                                                                                                                                                                                                                                                |
 
 ---
 
-## Open Questions
+## Decisions
 
-| # | Question                                                                                                                                                                                                                                                                         | Options                                                                                                                                 | Status                                                                                                                                       |
+| # | Decision                                                                                                                                                                                                                                                                         | Options                                                                                                                                 | Status                                                                                                                                       |
 |---|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------|
 | 1 | How the bus detects a silent node                                                                                                                                                                                                                                                | Requests missed in a row, counted per joint                                                                                             | closed                                                                                                                                       |
 | 2 | Whether setpoints carry speed and torque as well                                                                                                                                                                                                                                 | Position only, combined command (contract 4.x)                                                                                          | closed: neither; setpoints are torques, and the arm controllers hold the position and speed loops ([arm-controllers.md](arm-controllers.md)) |

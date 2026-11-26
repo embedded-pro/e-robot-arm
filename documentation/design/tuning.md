@@ -2,9 +2,9 @@
 title: "Tuning Runs Design"
 type: design
 status: draft
-version: 0.2.0
+version: 0.2.1
 component: "tuning"
-date: 2026-11-23
+date: 2026-11-26
 ---
 
 | Field     | Value              |
@@ -12,9 +12,9 @@ date: 2026-11-23
 | Title     | Tuning Runs Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.2.0              |
+| Version   | 0.2.1              |
 | Component | tuning             |
-| Date      | 2026-11-23         |
+| Date      | 2026-11-26         |
 
 > Runs a step or an out-and-back test on one joint through the arm host, records its response and computes the
 > metrics a control engineer tunes an arm controller by. Host tool; behaviour only; diagrams are Mermaid.
@@ -23,20 +23,11 @@ date: 2026-11-23
 
 ## Responsibilities
 
-**Is responsible for:**
-
 - Running one test on one joint of an enabled arm: a reference step, or a move out by an amplitude and back.
 - Recording, once per control period, the joint's commanded and measured position and its commanded torque.
 - Computing the test's metrics: rise time, overshoot, settling time and steady-state error for a step; RMS and peak
   tracking error for both.
 - Writing the recorded run as CSV.
-
-**Is NOT responsible for:**
-
-- Moving the arm by itself: every motion is a command to the arm host ([simulator.md](simulator.md) Part D), so the
-  lifecycle and the safety supervisor apply as they do to any move.
-- Choosing gains: it measures the arm controller that is active; the operator tunes it through the profile.
-- Plotting or overlaying runs: the simulator's Tuning dock does ([tool-simulator.md](tool-simulator.md) Part N).
 
 ---
 
@@ -46,15 +37,15 @@ date: 2026-11-23
 
 A test names a joint, its kind and an amplitude in radians:
 
-- **Step.** The joint's reference jumps by the amplitude at once ([joint-motion.md](joint-motion.md) Part C); the
+- **Step.** The joint's reference jumps by the amplitude at once ([joint-motion.md](joint-motion.md) Part C). The
   other joints keep their reference. The amplitude is at most 0.2 rad either way. The run records for a set time,
-  two seconds by default, from the first trace sample after the step is accepted.
-- **Out and back.** The joint moves by the amplitude and back to where it started, each a move through joint
-  motion with the profile's speed and acceleration limits; the other joints keep their reference. The run records
+  two seconds by default, from the first trace sample after the arm host accepts the step.
+- **Out and back.** The joint moves by the amplitude and back to where it started. Each is a move through joint
+  motion with the profile's speed and acceleration limits. The other joints keep their reference. The run records
   from the first move's acceptance until half a second after the second move is done.
 
-A test starts only while the arm is enabled and not moving, from each joint's commanded position, or its measured
-position when nothing is commanded yet. A test the arm host refuses, a move aborted and a trip end the run as
+A test starts only while the arm is enabled and not moving. It starts from each joint's commanded position, or its
+measured position when nothing is commanded yet. A test the arm host refuses, a move aborted and a trip end the run as
 failed, with the reason.
 
 ```mermaid
@@ -75,18 +66,23 @@ stateDiagram-v2
 
 ### Part B — Samples
 
-Each trace sample of the arm host ([simulator.md](simulator.md) Part F) while the run records gives one sample of
-the tested joint: the time since the first recorded sample, its commanded and measured position, their difference,
-and its commanded torque (zero when the arm host traced none). A sample that follows a gap in the trace
+While the run records, each trace sample of the arm host ([simulator.md](simulator.md) Part F) gives one sample of
+the tested joint. The sample holds:
+
+- the time since the first recorded sample;
+- the joint's commanded and measured position, and their difference;
+- the joint's commanded torque (zero when the arm host traced none).
+
+ A sample that follows a gap in the trace
 ([simulator.md](simulator.md) Part F) carries how many samples were lost before it. The run counts the samples lost
-while it records (a gap before its first sample does not count) and reports them with its metrics: the console prints
-`tune warning: <n> samples lost during the run; the metrics may be off`, and the Tuning dock's status says the same at
-`Warning`.
+while it records (a gap before its first sample does not count). It reports them with its metrics. The console
+prints `tune warning: <n> samples lost during the run; the metrics may be off`. The Tuning dock's status says the
+same at `Warning`.
 
 ### Part C — Metrics
 
 For a step the response is normalised: the measured position minus the position before the step, over the
-amplitude, so a perfect step goes from 0 to 1. On it numerical-toolbox's step-response metrics give:
+amplitude. Thus a perfect step goes from 0 to 1. On it numerical-toolbox's step-response metrics give:
 
 | Metric              | Definition                                                                        |
 |---------------------|-----------------------------------------------------------------------------------|
@@ -101,9 +97,9 @@ An out-and-back test reports the two tracking errors only.
 
 ### Part D — CSV
 
-A run is written as comma-separated values with a header row: `time_s`, `commanded_rad`, `measured_rad`,
-`tracking_error_rad`, `torque_nm`, `dropped_before`, one row per sample, so a run can be compared outside the
-simulator. `dropped_before` is 0 except on a sample that follows a gap, where it is the number of samples lost.
+The run writes comma-separated values with one row per sample, so a run can be compared outside the simulator.
+The header row is `time_s`, `commanded_rad`, `measured_rad`, `tracking_error_rad`, `torque_nm`, `dropped_before`.
+The last column is 0 except on a sample that follows a gap, where it is the number of samples lost.
 
 ---
 
@@ -125,6 +121,9 @@ simulator. `dropped_before` is 0 except on a sample that follows a gap, where it
 |--------------|---------------------------------------------------|---------------------------------------------|
 | Arm commands | Post a step or a move; the snapshot to start from | The arm host ([simulator.md](simulator.md)) |
 
+Every motion is a command to the arm host ([simulator.md](simulator.md) Part D). Thus the lifecycle and the safety
+supervisor apply as they do to any move.
+
 ---
 
 ## Data Model
@@ -142,13 +141,17 @@ simulator. `dropped_before` is 0 except on a sample that follows a gap, where it
 ## Constraints & Limitations
 
 - A run holds at most 2000 samples, 20 s at a 10 ms period; a longer run stops recording and fails.
-- The metrics are those of the joint position the drives report, so they include the gear and the encoder; on a
+- The metrics are those of the joint position the drives report. Thus they include the gear and the encoder. On a
   real arm the encoder sits on the motor side.
+- The run does not choose gains. It measures the arm controller that is active; the operator tunes it through the
+  profile.
+- The run does not plot or overlay runs. The simulator's Tuning dock does ([tool-simulator.md](tool-simulator.md)
+  Part N).
 
 ---
 
-## Open Questions
+## Decisions
 
-| # | Question                                    | Options                        | Status |
+| # | Decision                                    | Options                        | Status |
 |---|---------------------------------------------|--------------------------------|--------|
 | 1 | Whether a run also records the other joints | The tested joint only, all six | open   |
