@@ -117,8 +117,8 @@ A simulated joint is an e-foc node on the in-process bus: a FOC motor category s
 integration tests' support code. It accepts every command the arm sends, answers telemetry, and:
 
 - **In position mode, follows its setpoint through a first-order lag** with time constant τ. The position advances
-  when telemetry is requested, from the time since the last update: θ ← θ* + (θ − θ*)·e^(−Δt/τ).
-  Its speed reads (θ* − θ)/τ. τ = 0 follows exactly, which is what the scenarios use. The simulator uses τ = 50 ms.
+  when telemetry is requested, from the time since the last update: `θ ← θ* + (θ − θ*)·e^(−Δt/τ)`.
+  Its speed reads `(θ* − θ)/τ`. τ = 0 follows exactly, which is what the scenarios use. The simulator uses τ = 50 ms.
 - **In torque mode, moves with the arm's dynamics.** The simulated arm built from an arm configuration integrates
   the six joints together. It uses the arm model's mass matrix, Coriolis and gravity terms.
   These come from robotics-toolbox's chain dynamics over the configuration's geometry and masses.
