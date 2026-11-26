@@ -2,7 +2,7 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.44.1
+version: 0.45.0
 component: "tool-simulator"
 date: 2026-11-26
 ---
@@ -902,6 +902,43 @@ prefilled issue, through ui-cpp's update widgets, as the e-foc tools do.
 - **Report Issue…** opens the e-robot-arm new-issue page.
   The page has the Simulator's version, the operating system, Qt and the last lines of that log.
   The Simulator names the log file to attach. Without a browser it says where to report instead.
+
+### Part U — Hand guiding (phase 8e C3)
+
+On a simulation, the operator pulls the arm with the mouse: a virtual spring from a grabbed point on a link to the
+pointer. The arm host turns the spring force into joint torques on the plant. The arm controller answers the push as
+it would answer a hand: `free` and `gravity-float` follow it, an impedance controller yields, and a stiff controller
+holds or trips the collision rule ([safety.md](safety.md) Part F).
+
+```text
+            pointer ●
+                    ╲  force arrow, accent colour, length ∝ force
+     grabbed point ◉
+   ┌────────────────┐
+   │ link 3 (J3)    │   Ctrl + drag on a link: guide · drag elsewhere: orbit
+```
+
+- **Start.** Ctrl and left button pressed on a link part. The pick gives the link and the hit point; the point is
+  kept in the link's frame, so it moves with the link. A press on the base, the floor or empty space orbits the
+  camera as before.
+- **Spring.** Each frame, the pointer's ray meets the plane through the grabbed point that faces the camera; that
+  meeting point is the target. The force is F = k·(target − point), k = 400 N/m, at most 100 N. The joint torques are
+  τ = Jₚᵀ·F, with Jₚ the grabbed point's Jacobian at the measured pose (finite differences of forward kinematics),
+  each clamped to ±200 N·m like a disturbance (Part M). Only the joints up to the grabbed link get torque.
+- **Sending.** One `GuideArm` command per frame, at most 60 Hz, carries the six torques. It is not logged when
+  accepted; a refusal is logged once and stops the drag.
+- **Dead-man.** Release, Ctrl released, focus loss or the dock layout hiding the 3-D view send zero torques. The arm
+  host also drops guide torques that are not refreshed within 200 ms, so a frozen window cannot leave a push on.
+- **Feedback.** While guiding: the grabbed point as a small sphere, the force arrow, and the label
+  `J3 · guided · 42 N` at the point. The cursor is a closed hand. A disturbance torque from Part M adds to the guide
+  torque; the Disturbances dock's **Active** line shows its own torques only.
+- **Where.** Offered on the simulated joints and the virtual arm, with any controller and any arm state; the plant
+  only moves joints that are driven. The real arm and a virtual bus refuse with "not a simulation", and the scene does
+  not start a drag there.
+
+| Control   | Enabled when                                     | Otherwise                                           |
+|-----------|--------------------------------------------------|-----------------------------------------------------|
+| Ctrl-drag | Connected to the simulated joints or virtual arm | The drag orbits; tooltip "Guiding: simulation only" |
 
 ## Interfaces
 

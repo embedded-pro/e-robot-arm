@@ -2,7 +2,7 @@
 title: "Simulator Design"
 type: design
 status: draft
-version: 0.36.1
+version: 0.37.0
 component: "simulator"
 date: 2026-11-26
 ---
@@ -12,7 +12,7 @@ date: 2026-11-26
 | Title     | Simulator Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.36.1           |
+| Version   | 0.37.0           |
 | Component | simulator        |
 | Date      | 2026-11-26       |
 
@@ -225,6 +225,11 @@ copy. So saving the profile never saves commissioning limits. The snapshot carri
 | Silence, resume  | The joint stops or answers again           | The plant port pauses or resumes                      | Refused: "not a simulation" |
 | Collision torque | Joint-side torque held until set back to 0 | Joint-side torque held until set back to 0            | Refused: "not a simulation" |
 | Power off motor  | Refused: "not on simulated joints"         | The motor's process ends; restart brings it back      | Refused: "not a simulation" |
+
+**Guiding** ([tool-simulator.md](tool-simulator.md) Part U) is a command of its own, `GuideArm`, with six joint
+torques. It is offered where the collision torque is, and refused elsewhere with "not a simulation". The arm host
+adds the guide torques to the collision torques on each joint, sends the sum to the target, and sets the guide
+torques back to zero when no `GuideArm` has arrived for 200 ms. An accepted `GuideArm` emits no event.
 
 None depends on the arm's state. The snapshot carries what the target offers and what is applied: each joint
 silent or not and its collision torque.
