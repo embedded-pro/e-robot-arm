@@ -920,15 +920,16 @@ holds or trips the collision rule ([safety.md](safety.md) Part F).
 
 - **Start.** Ctrl and left button pressed on a link part. The pick gives the link and the hit point; the point is
   kept in the link's frame, so it moves with the link. A press on the base, the floor or empty space orbits the
-  camera as before.
+  camera as before, with or without Ctrl. The legend names the gesture while guiding is offered.
 - **Spring.** Each frame, the pointer's ray meets the plane through the grabbed point that faces the camera; that
   meeting point is the target. The force is F = k·(target − point), k = 400 N/m, at most 100 N. The joint torques are
   τ = Jₚᵀ·F, with Jₚ the grabbed point's Jacobian at the measured pose (finite differences of forward kinematics),
   each clamped to ±200 N·m like a disturbance (Part M). Only the joints up to the grabbed link get torque.
 - **Sending.** One `GuideArm` command per frame, at most 60 Hz, carries the six torques. It is not logged when
   accepted; a refusal is logged once and stops the drag.
-- **Dead-man.** Release, Ctrl released, focus loss or the dock layout hiding the 3-D view send zero torques. The arm
-  host also drops guide torques that are not refreshed within 200 ms, so a frozen window cannot leave a push on.
+- **Dead-man.** Release, Ctrl released or the application losing focus send zero torques. The window refreshes the
+  spring every frame while guiding, and the arm host drops guide torques that are not refreshed within 200 ms, so a
+  frozen window cannot leave a push on.
 - **Feedback.** While guiding: the grabbed point as a small sphere, the force arrow, and the label
   `J3 · guided · 42 N` at the point. The cursor is a closed hand. A disturbance torque from Part M adds to the guide
   torque; the Disturbances dock's **Active** line shows its own torques only.

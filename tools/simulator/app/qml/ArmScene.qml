@@ -78,6 +78,13 @@ Item {
 
         onPicked: (result) => ArmSceneState.Pick(result.objectHit && result.objectHit.joint !== undefined ? result.objectHit.joint : -1)
 
+        Keys.onReleased: (event) => {
+            if (event.key === Qt.Key_Control && guideArea.guiding) {
+                guideArea.guiding = false
+                ArmSceneState.GuideRelease()
+            }
+        }
+
         Keys.onPressed: (event) => {
             if (event.key === Qt.Key_O) {
                 ArmSceneState.orthographic = !ArmSceneState.orthographic
@@ -108,6 +115,36 @@ Item {
 
             AxisTriad {
                 length: ArmSceneState.extent * 0.12
+            }
+        }
+
+        Model {
+            objectName: "guideArrow"
+            visible: ArmSceneState.guideActive && ArmSceneState.guideArrow.length > 1
+            castsShadows: false
+            receivesShadows: false
+            pickable: false
+            geometry: PolylineGeometry {
+                points: ArmSceneState.guideArrow
+            }
+            materials: DefaultMaterial {
+                lighting: DefaultMaterial.NoLighting
+                diffuseColor: ArmSceneState.accentColor
+            }
+        }
+
+        Model {
+            objectName: "guidePoint"
+            visible: ArmSceneState.guideActive && ArmSceneState.guideArrow.length > 1
+            source: "#Sphere"
+            position: ArmSceneState.guidePoint
+            scale: Qt.vector3d(0.025, 0.025, 0.025)
+            castsShadows: false
+            receivesShadows: false
+            pickable: false
+            materials: DefaultMaterial {
+                lighting: DefaultMaterial.NoLighting
+                diffuseColor: ArmSceneState.accentColor
             }
         }
 
@@ -262,6 +299,93 @@ Item {
         }
     }
 
+    MouseArea {
+        id: guideArea
+        objectName: "guideArea"
+
+        property bool guiding: false
+
+        function ray(x, y) {
+            const near = studio.view.mapTo3DScene(Qt.vector3d(x, y, 0))
+            const far = studio.view.mapTo3DScene(Qt.vector3d(x, y, 100))
+            return [near, far.minus(near)]
+        }
+
+        anchors.fill: parent
+        enabled: ArmSceneState.guideOffered
+        acceptedButtons: Qt.LeftButton
+        cursorShape: guideArea.guiding ? Qt.ClosedHandCursor : Qt.ArrowCursor
+
+        onPressed: (mouse) => {
+            mouse.accepted = false
+            if (!(mouse.modifiers & Qt.ControlModifier))
+                return
+            const hit = studio.view.pick(mouse.x, mouse.y)
+            if (!hit.objectHit || hit.objectHit.joint === undefined || hit.objectHit.joint < 0)
+                return
+            const pointer = guideArea.ray(mouse.x, mouse.y)
+            studio.forceActiveFocus()
+            guideArea.guiding = true
+            mouse.accepted = true
+            ArmSceneState.GuideGrab(hit.objectHit.joint, hit.scenePosition, pointer[0], pointer[1])
+        }
+        onPositionChanged: (mouse) => {
+            if (!guideArea.guiding)
+                return
+            const pointer = guideArea.ray(mouse.x, mouse.y)
+            ArmSceneState.GuidePointer(pointer[0], pointer[1])
+        }
+        onReleased: guideArea.stop()
+        onCanceled: guideArea.stop()
+
+        function stop() {
+            if (!guideArea.guiding)
+                return
+            guideArea.guiding = false
+            ArmSceneState.GuideRelease()
+        }
+    }
+
+    Rectangle {
+        id: guideLabel
+        objectName: "guideLabel"
+
+        readonly property vector3d screen: {
+            studio.pivot.position
+            studio.pivot.eulerRotation
+            studio.camera.position
+            studio.orthographic
+            studio.width
+            studio.height
+            if (!ArmSceneState.guideActive || !studio.view.camera)
+                return Qt.vector3d(0, 0, -1)
+            return studio.view.mapFrom3DScene(ArmSceneState.guidePoint)
+        }
+
+        visible: ArmSceneState.guideActive && ArmSceneState.guideLabel.length > 0 && guideLabel.screen.z > 0
+        enabled: false
+        x: Math.max(8, Math.min(root.width - width - 8, guideLabel.screen.x + 14))
+        y: Math.max(8, Math.min(root.height - height - 8, guideLabel.screen.y + 14))
+        width: guideText.implicitWidth + 16
+        height: guideText.implicitHeight + 8
+        radius: 3
+        color: Qt.rgba(ArmSceneState.panelColor.r, ArmSceneState.panelColor.g, ArmSceneState.panelColor.b, 0.88)
+        border.color: ArmSceneState.accentColor
+        border.width: 1
+
+        Accessible.role: Accessible.StaticText
+        Accessible.name: ArmSceneState.guideLabel
+
+        Text {
+            id: guideText
+            anchors.centerIn: parent
+            text: ArmSceneState.guideLabel
+            color: ArmSceneState.textColor
+            font.family: "monospace"
+            font.pixelSize: 12
+        }
+    }
+
     Rectangle {
         id: legend
         objectName: "legend"
@@ -289,6 +413,7 @@ Item {
             Entry { visible: ArmSceneState.showTrail; label: qsTr("Tool trail"); tone: ArmSceneState.trailColor }
             Entry { visible: ArmSceneState.showLimits; label: qsTr("Selected joint and its limits"); tone: ArmSceneState.selectionColor }
             Entry { visible: ArmSceneState.showFrames; label: qsTr("Tool and target frames (x, y, z)"); tone: "#e53935" }
+            Entry { visible: ArmSceneState.guideOffered; label: qsTr("Hand guide: Ctrl + drag a link"); tone: ArmSceneState.accentColor }
             Text {
                 text: qsTr("Grid %1 cm%2").arg(studio.gridSpacing).arg(ArmSceneState.orthographic ? qsTr(" · orthographic") : "")
                 color: ArmSceneState.textColor
