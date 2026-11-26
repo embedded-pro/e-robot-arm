@@ -2,9 +2,9 @@
 title: "Synchronised Trapezoidal Moves"
 type: theory
 status: draft
-version: 0.1.0
+version: 0.1.1
 component: "motion"
-date: 2026-11-13
+date: 2026-11-26
 ---
 
 | Field     | Value                          |
@@ -13,8 +13,8 @@ date: 2026-11-13
 | Type      | theory                         |
 | Status    | draft                          |
 | Component | motion                         |
-| Version   | 0.1.0                          |
-| Date      | 2026-11-13                     |
+| Version   | 0.1.1                          |
+| Date      | 2026-11-26                     |
 
 > The mathematics behind joint motion's point-to-point moves ([joint-motion.md](../design/joint-motion.md)):
 > one trapezoidal velocity profile per joint, stretched so that all six joints start and stop together.
@@ -24,10 +24,10 @@ date: 2026-11-13
 ## Overview
 
 A point-to-point move takes each joint from rest at its start to rest at its target. Each joint is limited in speed
-and acceleration. Moving every joint as fast as it can would make the joints arrive at different times, and the arm
-would trace a path that depends on which joint finishes first. Joint motion therefore plans every joint, finds the
-slowest one, and re-plans every other joint to take exactly as long, at its own acceleration limit and a lower
-cruise speed. The arm then starts and stops as one.
+and acceleration. Moving every joint as fast as it can would make the joints arrive at different times. The arm
+would then trace a path that depends on which joint finishes first. Joint motion therefore plans every joint and
+finds the slowest one. It re-plans every other joint to take exactly as long, at its own acceleration limit and a
+lower cruise speed. The arm then starts and stops as one.
 
 ---
 
@@ -51,9 +51,13 @@ cruise speed. The arm then starts and stops as one.
 
 ### Model / Setup
 
-Each joint follows a velocity profile with three phases: constant acceleration $a_{max}$ for $t_a$, constant speed
-$v$ for $t_c$, and constant deceleration $a_{max}$ for $t_a$, with $t_a = v / a_{max}$. The distance travelled is the
-area under the velocity profile:
+Each joint follows a velocity profile with three phases, with $t_a = v / a_{max}$:
+
+1. constant acceleration $a_{max}$ for $t_a$;
+2. constant speed $v$ for $t_c$;
+3. constant deceleration $a_{max}$ for $t_a$.
+
+The distance travelled is the area under the velocity profile:
 
 $$
 d = v \, (t_a + t_c) = v \, (T - t_a), \qquad T = 2 t_a + t_c
@@ -92,7 +96,7 @@ $$
 - The discriminant is non-negative exactly when $T^\ast \ge 2 \sqrt{d / a_{max}}$, the joint's shortest possible move
   at unlimited speed. Since $T^\ast \ge T_i \ge 2 \sqrt{d / a_{max}}$, every joint can always be stretched.
 - The stretched cruise speed never exceeds $v_{max}$: a longer duration for the same distance needs a lower speed.
-- Every joint is at rest at $t = 0$ and at $t = T^\ast$ and moves monotonically in between, so a target within the
+- Every joint is at rest at $t = 0$ and at $t = T^\ast$ and moves monotonically in between. Thus a target within the
   joint's position limits keeps the whole move within them.
 - A joint with $d = 0$ stays where it is; its profile is identically zero.
 
@@ -146,10 +150,11 @@ Check: $v (T^\ast - t_a) = 0.225 \cdot 0.887 = 0.200$ rad.
 
 ## Limitations & Assumptions
 
-- **Assumes**: every joint starts and ends at rest; limits are symmetric (the same for acceleration and
-  deceleration); the six joints are independent, so joint-space synchronisation is enough.
-- **Does not handle**: jerk limits (an S-curve is open question 1 of joint-motion.md), moves that start while the
-  arm is moving, Cartesian paths, or torque and power limits that depend on the arm's dynamics (phase 3).
+- **Assumes**: every joint starts and ends at rest. Limits are symmetric (the same for acceleration and
+  deceleration). The six joints are independent, so joint-space synchronisation is enough.
+- **Does not handle**: jerk limits (an S-curve is decision 1 of [joint-motion.md](../design/joint-motion.md)). It
+  also does not handle moves that start while the arm is moving, or Cartesian paths. Nor does it handle torque and
+  power limits that depend on the arm's dynamics (phase 3).
 
 ---
 

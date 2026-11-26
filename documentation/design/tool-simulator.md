@@ -344,8 +344,8 @@ camera are ui-cpp's studio view with its defaults and the theme's colours:
   It has 33 points, each the joint frame's x axis at that angle with every other joint where it is measured.
   The arm's own link shows where in the range the joint is now. No joint selected, no arc.
 - **Selected joint:** besides its lit hubs, the selected joint gets a closed ring around its axis.
-  The ring is at 4.5 % of the arm's height: 49 points, the joint frame's x axis turned a full turn from where it is
-  measured. A label next to it reads `J2 · measured 0.35 rad`, with `· commanded 0.50 rad` added while the ghost
+  The ring is at 4.5 % of the arm's height. It has 49 points: the joint frame's x axis turned a full turn from where
+  it is measured. A label next to it reads `J2 · measured 0.35 rad`, with `· commanded 0.50 rad` added while the ghost
   shows. The ring and the arc share the theme's scene-selection colour.
   It is gold in the instrument theme, and darkened in the light one so it reads on a light floor.
   The label is a 2-D item placed where the joint projects, kept inside the view.
@@ -465,13 +465,21 @@ through the joint configurator ([joint-configurator.md](joint-configurator.md)).
 | Verify              | As Read, and the form was applied      | As Read, "Nothing applied yet" | Reads the joint back and compares with what was applied |
 | Apply to All Joints | As Read                                | As Read                        | Applies the form to J1 to J6, one after the other       |
 
-The form's **state** is shown under the gains: **Read** (as the joint reported it), **Edited** (changed since),
-**Applying…**, **Applied**, **Verified** (`Ok`, the joint reports exactly what was applied), **Differs** (`Fault`,
-with every differing item listed in the hint, for example "Speed bandwidth: applied 150, joint reports 120", and
-each differing algorithm or gain marked `Fault` on its own field with "applied 150, joint reports 120" as its note),
-or **Failed** (`Fault`, with the reason). The field marks stay until the form is edited, applied or read again. Selecting another joint reads it while the panel's tab is showing; a panel
-behind another tab reads its joint when its tab is brought forward, so two panels never ask the joint configurator
-at once.
+The form's **state** is shown under the gains:
+
+- **Read**: as the joint reported it;
+- **Edited**: changed since;
+- **Applying…** and **Applied**;
+- **Verified** (`Ok`): the joint reports exactly what was applied;
+- **Differs** (`Fault`): the hint lists every differing item, for example "Speed bandwidth: applied 150, joint
+  reports 120". Each differing algorithm or gain is also marked `Fault` on its own field.
+  Its note reads "applied 150, joint reports 120";
+- **Failed** (`Fault`), with the reason.
+
+The field marks stay until the form is edited, applied or read again.
+Selecting another joint reads it while the panel's tab is showing.
+A panel behind another tab reads its joint when its tab is brought forward.
+So two panels never ask the joint configurator at once.
 
 ### Part I — Profile panel and files (phase 8b)
 
@@ -496,27 +504,31 @@ loaded, so the file stays the single description of the arm.
 | File → Open Recent   | —            | A target is built | The five profiles last opened or saved, newest first         |
 | File → Save Profile… | Ctrl+Shift+S | A target is built | Writes the profile in effect, under the name and path chosen |
 
-**Open** reads the file first. A file that cannot be read or that the profile reader refuses shows one dialog with
-the reader's message, which names the item (a broken profile blocks the task, so it is modal); nothing is loaded.
+**Open** reads the file first. A file that cannot be read or that the profile reader refuses shows one dialog.
+The dialog has the reader's message, which names the item. It is modal, because a broken profile blocks the task.
+Nothing is loaded.
 On the real arm a confirmation names the profile and the adapter and says that the arm is rebuilt and must be
-brought up again. Loading rebuilds the arm on the same target ([simulator.md](simulator.md) Part E): it is refused
-while the arm is enabling, enabled, moving or disabling, with that reason in the status bar and the log, and
-otherwise the arm starts again unpowered and Bring Up configures the motor controllers the profile names. The Move
+brought up again. Loading rebuilds the arm on the same target ([simulator.md](simulator.md) Part E).
+The arm host refuses it while the arm is enabling, enabled, moving or disabling.
+The status bar and the log then show that reason.
+Otherwise the arm starts again unpowered, and Bring Up configures the motor controllers the profile names. The Move
 form's ranges follow the loaded limits. The path of the last profile opened or saved is kept and the profile is
 loaded again on launch.
 
-**Open Recent** lists the five profiles last opened or saved, newest first, each by its file name with the full
-path as its tooltip; opening or saving one moves it to the top, and a path appears once. A file that no longer
-exists stays in the list, disabled, with "File not found" as its tooltip, until a newer one pushes it out, and
-**Clear Recent** empties the list. The window title names the profile in effect after the product and before the
+**Open Recent** lists the five profiles last opened or saved, newest first.
+Each shows its file name, with the full path as its tooltip.
+Opening or saving one moves it to the top, and a path appears once.
+A file that no longer exists stays in the list, disabled, with "File not found" as its tooltip.
+It stays until a newer one pushes it out. **Clear Recent** empties the list. The window title names the profile in effect after the product and before the
 target: **e-robot-arm Simulator — `<profile>` — `<target>`**. The simulator never edits a profile, so there is no
 plain Save and no modified mark: what it shows is always the file as loaded.
 
 ### Part J — Motor panel (phase 8b)
 
 A **Motor** dock, tabbed with the others, shows one joint's motor ([joint-configurator.md](joint-configurator.md)
-Part D) and applies it like the Motor Controller panel (Part H): same joint selection, same actions and enablement
-(Read, Apply, Verify, Apply to All Joints, while the arm is Ready), same states.
+Part D). It applies the motor like the Motor Controller panel (Part H).
+It has the same joint selection, the same states, and the same actions and enablement.
+The actions are Read, Apply, Verify and Apply to All Joints, while the arm is Ready.
 
 ```text
 ┌ Motor ───────────────────────────────────────────────┐
@@ -541,11 +553,13 @@ Part D) and applies it like the Motor Controller panel (Part H): same joint sele
 └──────────────────────────────────────────────────────┘
 ```
 
-- **Preset** lists e-foc's reference motors and **Custom**. Choosing a preset fills the thirteen fields; editing a
-  field turns the choice to Custom, and the hint names the preset it came from and every field that differs from it.
+- **Preset** lists e-foc's reference motors and **Custom**. Choosing a preset fills the thirteen fields.
+  Editing a field turns the choice to Custom.
+  The hint then names the preset it came from and every field that differs from it.
   Each of those fields is also marked `Warning`, with the preset's value as its note ("Teknic M-2310P-LN-04K: 0.36 Ω").
-- **Verify** marks every parameter the joint reports differently `Fault` on its field, with "applied 20 A, joint reports
-  15 A" as its note; the marks give way to the preset marks once the form is edited, applied or read again.
+- **Verify** marks every parameter the joint reports differently `Fault` on its field.
+  The note reads "applied 20 A, joint reports 15 A".
+  The marks give way to the preset marks once the form is edited, applied or read again.
 - **Fields** carry the display units of Part D and the contract's ranges; pole pairs is a whole number.
 - Applying replaces what the node holds, its own identification included; the confirmation is the read-back
   (Verify).
@@ -562,20 +576,20 @@ The arm model's view of the measured arm ([arm-model.md](arm-model.md) Parts B a
   - **Manipulability** |det J|, three significant digits in scientific notation, so its magnitude reads at a
     glance as the arm nears a singularity;
   - **Singularity:** "—", or the singularities the arm is near (wrist, elbow, shoulder) at `Warning` level.
-- **Singularity warning** over the 3-D view, top left: "Near wrist singularity" (or elbow, shoulder, several
-  joined by commas) on a `Warning` badge, hidden when the arm is near none. The text carries the meaning, not only
+- **Singularity warning** over the 3-D view, top left, on a `Warning` badge: "Near wrist singularity".
+  It can also name the elbow or the shoulder, or several joined by commas. It hides when the arm is near none. The text carries the meaning, not only
   the colour.
-- Without a target, or while any joint is silent, every read-out shows "—" and the warning hides: the model of a
-  stale arm is not shown as live.
+- Without a target, or while any joint is silent, every read-out shows "—" and the warning hides.
+  The model of a stale arm is not shown as live.
 
 ### Part L — Virtual arm target and Virtual Motors dock (phase 8d)
 
 **Choosing it.** *Virtual arm…* asks for the e-foc virtual motor binary, offering the last one used, else the
 `E_FOC_VIRTUAL_MOTOR` environment variable, else `e-foc-virtual-motor` on the path. The target starts six virtual
 motors from the profile in effect, one per joint, each with the joint's motor ([simulator.md](simulator.md) Part C).
-Starting takes seconds: the status strip's connection reads **Starting virtual motors: `n` of 6 up** (`Neutral`)
-until the target is ready, and a failure names its reason ("joint 3 has node 300: …", "the virtual CAN hub
-port 29536 is in use …") in the status bar and the log. The window title and the target selector read **Virtual
+Starting takes seconds. Until the target is ready, the status strip's connection reads **Starting virtual motors:
+`n` of 6 up** (`Neutral`). A failure names its reason in the status bar and the log.
+Examples are "joint 3 has node 300: …" and "the virtual CAN hub port 29536 is in use …". The window title and the target selector read **Virtual
 arm**. Closing the window or switching target stops every motor.
 
 **Virtual Motors dock**, tabbed with the Profile dock, shown while the target is the virtual arm and hidden
@@ -605,8 +619,9 @@ otherwise:
 ### Part M — Disturbances dock (phase 8d)
 
 A **Disturbances** dock, tabbed with the Profile dock, injects failures into a simulation. It is shown on the
-simulated joints and the virtual arm and hidden on a virtual bus and on the real arm, where the arm host refuses every
-disturbance ("not a simulation"), so no disturbance control ever sits on a screen that drives hardware.
+simulated joints and the virtual arm. It is hidden on a virtual bus and on the real arm.
+There the arm host refuses every disturbance ("not a simulation").
+So no disturbance control ever sits on a screen that drives hardware.
 
 ```text
 ┌ Disturbances ───────────────────────────────── Simulation only ┐
@@ -629,8 +644,8 @@ disturbance ("not a simulation"), so no disturbance control ever sits on a scree
 | Power Off    | —                                        | The motor's process ends; Restart (Part L) brings it back   | Offered, the motor up ("J N's motor is not up")    |
 
 - **Simulation only** sits in the title row in the `Warning` colour, as in the Virtual Motors dock.
-- **Active** lists what the target reports as applied, from the snapshot, never from the last click: silent joints
-  and torques per joint, "Active: —" when nothing is. A disturbance shows "requested…" in the status bar until the
+- **Active** lists what the target reports as applied, from the snapshot, never from the last click.
+  It lists silent joints and torques per joint, and reads "Active: —" when nothing is applied. A disturbance shows "requested…" in the status bar until the
   answer arrives, like every command.
 - The torque field has keyboard tracking off; changing it never applies a torque, only **Apply Torque** does.
 - A disturbance is allowed whatever the arm's state: tripping the arm is what it is for.
@@ -640,8 +655,8 @@ disturbance ("not a simulation"), so no disturbance control ever sits on a scree
 ### Part N — Tuning dock (phase 8d)
 
 A **Tuning** dock, tabbed with the Scope, runs a step or out-and-back test on one joint through the tuning runner
-([tuning.md](tuning.md)), plots it, shows its metrics and keeps one earlier run beside it for comparison: two arm
-controllers, or two motors, on the same test.
+([tuning.md](tuning.md)). It plots the test and shows its metrics.
+It keeps one earlier run beside it for comparison: two arm controllers, or two motors, on the same test.
 
 ```text
 ┌ Tuning ──────────────────┬───────────────────────────────────────────────┬──────────────────────────────────┐
@@ -666,21 +681,23 @@ The three columns sit in a splitter: the controls keep their width, the plot tak
 | Clear Reference   | Drops the reference                                                                      | A reference                                                                     |
 | Export CSV…       | Writes the last finished run's samples ([tuning.md](tuning.md) Part D)                   | A finished run                                                                  |
 
-- **Run is an explicit action:** a test moves the arm, so it starts only on the button, never when a field changes;
-  the amplitude field has keyboard tracking off. The amplitude's rules are the runner's: a step is not 0 and at
-  most 0.2 rad either way, an out-and-back test is not 0; the joint limits are the arm's, which refuses a target
-  outside them with the reason on the hint line. The emergency stop and **Move → Abort** stop a test like any move;
+- **Run is an explicit action:** a test moves the arm, so it starts only on the button, never when a field changes.
+  The amplitude field has keyboard tracking off. The amplitude's rules are the runner's.
+  A step is not 0 and at most 0.2 rad either way. An out-and-back test is not 0.
+  The joint limits are the arm's. The arm refuses a target outside them, with the reason on the hint line. The emergency stop and **Move → Abort** stop a test like any move;
   the run then fails and says why.
-- **State from the arm:** the status line reads **Running step on J3…** from the moment the step is accepted,
-  **Done: `<controller>` · `<test>` · `<joint>`**, or **Failed: `<reason>`** (a refusal, an aborted move or a trip,
-  with its source). The label names the arm controller that was active when the run started, so two runs are told
+- **State from the arm:** the status line reads **Running step on J3…** from the moment the step is accepted.
+  It then reads **Done: `<controller>` · `<test>` · `<joint>`** or **Failed: `<reason>`**.
+  A failure is a refusal, an aborted move or a trip, with its source. The label names the arm controller that was active when the run started, so two runs are told
   apart by what changed.
 - **Plot** (ui-cpp's chart, time axis in s): three panels, position (commanded and measured), tracking
-  error and commanded torque, each with the reference run's measured position, error and torque overlaid in the
-  theme's next series colours. The cursor read-out shows the values under the pointer.
-- **Metrics** (read-only table): rise time, overshoot, settling time and steady-state error for a step, RMS and
-  peak tracking error for both, for this run and the reference, with units and fixed precision; "—" where a metric
-  does not apply or was not reached.
+  error and commanded torque. Each panel overlays the reference run's measured position, error or torque.
+  The overlays use the theme's next series colours. The cursor read-out shows the values under the pointer.
+- **Metrics** (read-only table) for this run and the reference, with units and fixed precision:
+  - rise time, overshoot, settling time and steady-state error for a step;
+  - RMS and peak tracking error for both tests.
+
+  A metric that does not apply or was not reached shows "—".
 - A new run replaces the last one; the reference stays until it is cleared or replaced. Neither survives a target
   switch, since the arm they ran on is gone.
 
@@ -700,8 +717,9 @@ little about a desktop GPU. The status bar's right end always shows one line, up
 | render  | The mean time the 3-D view took to produce one of those frames on the GUI thread: the scene's synchronisation, its 3-D passes and, where the window has no GPU surface, the read-back of the picture |
 | GUI     | The mean and the largest time of one GUI frame: reading the arm host and updating every panel, scope and plot                                                                                        |
 
-- The line is `Neutral`; it turns `Warning` when the 3-D view drew frames at fewer than 30 a second, or when a GUI
-  frame took longer than a 60 fps frame (16.7 ms), the two limits of the budget (Constraints).
+- The line is `Neutral`. It turns `Warning` at either limit of the budget (Constraints).
+  One limit is a 3-D view that drew fewer than 30 frames a second.
+  The other is a GUI frame that took longer than a 60 fps frame (16.7 ms).
 - Debug builds also write the line to standard error once a second, so a run can be read back without
   filling the event log.
 - The control loop's overruns stay in the status strip (Part B): the arm runs on its own thread and is never
@@ -710,15 +728,15 @@ little about a desktop GPU. The status bar's right end always shows one line, up
 
 ### Part P — Commissioning limits on the real arm (phase 8d)
 
-The first runs of a real arm happen under commissioning limits ([simulator.md](simulator.md) Part E): speed and
-acceleration at 25 % of the profile's, collision limits and the tracking-error trip at half. They are on at every
+The first runs of a real arm happen under commissioning limits ([simulator.md](simulator.md) Part E).
+Speed and acceleration are at 25 % of the profile's. Collision limits and the tracking-error trip are at half. They are on at every
 connection to the real arm.
 
-- **Status strip:** on the real arm a label reads **Limits: commissioning (25 % speed, ½ trips)** at `Warning`, or
-  **Limits: profile** at `Fault` once they are off, so running a real arm at full limits is never quiet. The label
+- **Status strip:** on the real arm a label reads **Limits: commissioning (25 % speed, ½ trips)** at `Warning`.
+  Once the limits are off it reads **Limits: profile** at `Fault`. So running a real arm at full limits is never quiet. The label
   is absent on every other target.
-- **Arm → Commissioning Limits** is a checked item, enabled on the real arm while the arm is not enabling, enabled,
-  moving or disabling; otherwise its reason shows in the status bar when hovered (Part B).
+- **Arm → Commissioning Limits** is a checked item. It is enabled on the real arm while the arm is not enabling,
+  enabled, moving or disabling. Otherwise its reason shows in the status bar when hovered (Part B).
 - **Turning them off** asks first: "Run the real arm on `<adapter>` at the profile's full speed and trip limits? The
   arm is rebuilt and must be brought up again." with **Use Profile Limits** and **Cancel** (default). Turning them
   on again needs no confirmation. Either way the item shows "requested…" until the arm host answers, and a refusal
@@ -728,8 +746,9 @@ connection to the real arm.
 ### Part Q — Arm Controllers dock (phase 8b)
 
 An **Arm Controllers** dock, tabbed with the Motor Controller and Motor docks, shows the arm's controller registry
-([arm-controllers.md](arm-controllers.md) Part B) from the snapshot and enables, disables and selects them through
-the arm host, which decides; the dock only shows the answer.
+([arm-controllers.md](arm-controllers.md) Part B) from the snapshot.
+It enables, disables and selects the controllers through the arm host. The arm host decides, and the dock only shows
+the answer.
 
 ```text
 ┌ Arm Controllers ────────────────────────────────────────────────┐
@@ -770,14 +789,15 @@ the arm host, which decides; the dock only shows the answer.
 - **Disabling the active controller** while the arm does not drive its joints asks first: "Disable `<name>`? The arm
   then has no controller and cannot be enabled until another one is selected." with **Disable** and **Cancel**
   (default).
-- **Feedback:** each click shows "requested…" in the status strip until the arm host answers; a refusal, such as a
-  switch to a controller that cannot take over a running move without a step, goes to the status strip and the log
-  with its reason. The log records every change of the active controller (Part F).
+- **Feedback:** each click shows "requested…" in the status strip until the arm host answers.
+  A refusal goes to the status strip and the log with its reason.
+  An example is a switch to a controller that cannot take over a running move without a step. The log records every change of the active controller (Part F).
 
 ### Part R — Jog dock (phase 8c)
 
-A **Jog** dock, tabbed with the Arm dock, moves the arm while a button or key is held, in joint space or along the
-tool's axes in the base or the tool frame ([joint-motion.md](joint-motion.md) Part I). The arm host decides; the dock
+A **Jog** dock, tabbed with the Arm dock, moves the arm while a button or key is held.
+It jogs in joint space, or along the tool's axes in the base or the tool frame ([joint-motion.md](joint-motion.md)
+Part I). The arm host decides; the dock
 holds the dead-man.
 
 ```text
@@ -790,16 +810,18 @@ holds the dead-man.
 └────────────────────────────────────────────────────────────────┘
 ```
 
-- **Hold-to-move.** Pressing a **−** or **+** button starts a jog of that axis at the scaled speed, and the dock sends
-  it again every half of the arm's dead-man time (the profile's dead-man periods, 100 ms at 10 ms) while the
-  button stays down. Release sends a jog of zero speed on the same axis, so the arm comes to rest within its
-  acceleration limits. The window losing focus, the dock being hidden, or the arm leaving Enabled and Moving release
-  it the same way; a frozen window stops being refreshed, and the arm's own dead-man stops the jog.
-- **Speed** is a share from 1 to 100 % (10 % by default, remembered) of each joint's speed limit in joint space, and
-  of the tool's linear or angular speed limit along X, Y, Z or about Rx, Ry, Rz ([arm-profile.md](arm-profile.md)
-  tool limits). Each row shows the speed it would jog at, with its unit. A change applies at the next refresh.
-- **State:** the line under the rows reads **Jogging `<axis>` `<speed>`** while held, and the jog's refusal from the
-  arm host otherwise (the status strip and the log carry it too).
+- **Hold-to-move.** Pressing a **−** or **+** button starts a jog of that axis at the scaled speed.
+  While the button stays down, the dock sends the jog again every half of the arm's dead-man time.
+  That time is the profile's dead-man periods, 100 ms at 10 ms.
+  Release sends a jog of zero speed on the same axis, so the arm comes to rest within its acceleration limits.
+  The window losing focus, the dock being hidden, or the arm leaving Enabled and Moving release it the same way.
+  A frozen window stops being refreshed, and the arm's own dead-man stops the jog.
+- **Speed** is a share from 1 to 100 % (10 % by default, remembered).
+  In joint space it is a share of each joint's speed limit.
+  Along X, Y, Z or about Rx, Ry, Rz it is a share of the tool's linear or angular speed limit
+  ([arm-profile.md](arm-profile.md) tool limits). Each row shows the speed it would jog at, with its unit. A change applies at the next refresh.
+- **State:** the line under the rows reads **Jogging `<axis>` `<speed>`** while held.
+  Otherwise it shows the jog's refusal from the arm host. The status strip and the log carry it too.
 
 | Control | Enabled when                                                    | Disabled reason shown                                                                                | Does                            |
 |---------|-----------------------------------------------------------------|------------------------------------------------------------------------------------------------------|---------------------------------|
@@ -807,14 +829,14 @@ holds the dead-man.
 | Space   | No jog held                                                     | "Release the jog first"                                                                              | Joint, base or tool frame       |
 | Speed   | Always                                                          | —                                                                                                    | Scales the jog speed, 1–100 %   |
 
-- **Keys** (Jog dock focused only, Part D): **1**–**6** choose the axis, shown highlighted; holding **←** or **→** jogs
-  it negative or positive, and release stops it. Auto-repeat of a held key is ignored, so it neither restarts nor
+- **Keys** (Jog dock focused only, Part D): **1**–**6** choose the axis, shown highlighted.
+  Holding **←** or **→** jogs it negative or positive, and release stops it. Auto-repeat of a held key is ignored, so it neither restarts nor
   stops the jog.
 
 ### Part S — Teach Points dock (phase 8c)
 
 A **Teach Points** dock, tabbed with the Jog dock, lists the profile's teach points ([joint-motion.md](joint-motion.md)
-Part J), teaches the current pose under a name and moves to a chosen one through the arm host.
+Part J). It teaches the current pose under a name. It moves to a chosen point through the arm host.
 
 ```text
 ┌ Teach Points ──────────────────────────────────────────────────┐
@@ -828,8 +850,8 @@ Part J), teaches the current pose under a name and moves to a chosen one through
 ```
 
 - **Rows** are the profile's points in their order, positions with three decimals; choosing a row fills the name.
-- **Teach** saves where the joints are now under the name, 1 to 16 characters, replacing a point of the same name
-  (the hint says so before the click); at most 16 points. The arm host's profile holds them, so **Save Profile** keeps
+- **Teach** saves where the joints are now under the name, 1 to 16 characters. It holds at most 16 points.
+  It replaces a point of the same name, and the hint says so before the click. The arm host's profile holds them, so **Save Profile** keeps
   them.
 - **Go To** moves to the chosen point through the lifecycle, like **Move** (Part B), replacing a running move.
 
@@ -850,19 +872,25 @@ prefilled issue, through ui-cpp's update widgets, as the e-foc tools do.
 │                                  3-D arm view                                                                            │
 ```
 
-- **Banner** above the 3-D view, hidden while no update is offered: the offer, the download with its progress, the
-  verified download, the install and a failure with its reason. A portable or unsupported installation offers the
+- **Banner** above the 3-D view, hidden while no update is offered.
+  It shows the offer, the download with its progress, the verified download, the install and a failure with its
+  reason. A portable or unsupported installation offers the
   installer download instead of installing.
-- **Installing closes the Simulator**, so it waits while the arm drives its joints (enabling, enabled, moving or
-  disabling): the banner says "Disable the arm to install it" and Install and Restart is disabled until then. The
+- **Installing closes the Simulator**, so it waits while the arm drives its joints.
+  The arm drives its joints while enabling, enabled, moving or disabling.
+  The banner then says "Disable the arm to install it", and Install and Restart is disabled until then. The
   confirmation before downloading says the same.
-- **Help menu:** *Check for Updates…* (answers in a dialog: up to date, or why the check failed), *Check for Updates
-  Automatically* (checked by default; once at start and then daily; remembered), *Report Issue…* and *About*.
+- **Help menu:**
+  - *Check for Updates…* answers in a dialog: up to date, or why the check failed;
+  - *Check for Updates Automatically* is checked by default, checks once at start and then daily, and is remembered;
+  - *Report Issue…* and *About*.
 - **Skip This Version** stops automatic checks from offering that release again; a check from the menu still does.
-- **Log:** every check, offer, download, install and failure is a line in the event log and in a log file kept for
-  issue reports (simulator.log in the logs folder under the application data, rotated at 1 MB, three files kept).
-- **Report Issue…** opens the e-robot-arm new-issue page with the Simulator's version, the operating system, Qt and
-  the last lines of that log, and names the log file to attach; without a browser it says where to report instead.
+- **Log:** every check, offer, download, install and failure is a line in the event log.
+  It is also a line in a log file kept for issue reports.
+  The file is simulator.log in the logs folder under the application data, rotated at 1 MB, three files kept.
+- **Report Issue…** opens the e-robot-arm new-issue page.
+  The page has the Simulator's version, the operating system, Qt and the last lines of that log.
+  The Simulator names the log file to attach. Without a browser it says where to report instead.
 
 ## Interfaces
 

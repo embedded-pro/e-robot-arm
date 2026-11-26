@@ -2,9 +2,9 @@
 title: "Arm Dynamics"
 type: theory
 status: draft
-version: 0.1.0
+version: 0.1.1
 component: "arm_model"
-date: 2026-11-13
+date: 2026-11-26
 ---
 
 | Field     | Value        |
@@ -13,8 +13,8 @@ date: 2026-11-13
 | Type      | theory       |
 | Status    | draft        |
 | Component | arm_model    |
-| Version   | 0.1.0        |
-| Date      | 2026-11-13   |
+| Version   | 0.1.1        |
+| Date      | 2026-11-26   |
 
 > The rigid-body dynamics of the six-joint OPW arm: the link chain built from the OPW lengths, the gravity torque,
 > the inverse dynamics and the mass matrix, and how they move between model angles and joint space
@@ -26,8 +26,8 @@ date: 2026-11-13
 
 The torque each joint needs is $\boldsymbol{\tau} = M(q)\,\ddot q + C(q, \dot q)\,\dot q + G(q)$: the mass matrix, the
 Coriolis and centrifugal terms and the gravity torque. The arm model describes the arm as a chain of six rigid links
-from its OPW lengths and the links' mass properties, and leaves the algorithms to robotics-toolbox: the recursive
-Newton–Euler algorithm for the inverse dynamics and the gravity torque, the composite rigid body algorithm for the mass
+from its OPW lengths and the links' mass properties. It leaves the algorithms to robotics-toolbox. The recursive
+Newton–Euler algorithm gives the inverse dynamics and the gravity torque. The composite rigid body algorithm gives the mass
 matrix. Both are fixed-cost, heap-free and linear in the number of links.
 
 ---
@@ -61,8 +61,8 @@ parallel to the base frame (z up, x forward). Link $i$'s joint sits at a fixed o
 Composing the six rotations gives $R_z(\theta_1)R_y(\theta_2)R_y(\theta_3)R_z(\theta_4)R_y(\theta_5)R_z(\theta_6)$ and
 puts the flange where the OPW forward kinematics does, so the chain and the kinematics describe one arm.
 
-Each link has a mass $m$, a centre of mass $\mathbf{r}$ in its own frame, and an inertia tensor $I$ about the centre of
-mass, in its own frame:
+Each link has a mass $m$ and a centre of mass $\mathbf{r}$ in its own frame. It also has an inertia tensor $I$ about
+the centre of mass, in its own frame:
 
 $$
 I = \begin{pmatrix} I_{xx} & I_{xy} & I_{xz} \\ I_{xy} & I_{yy} & I_{yz} \\ I_{xz} & I_{yz} & I_{zz} \end{pmatrix}
@@ -73,7 +73,7 @@ with the products written as tensor elements, as URDF does ($I_{xy} = -\int xy\,
 ### Derivation
 
 **Payload.** A payload, mass $m_p$ at $\mathbf{r}_p$ relative to the flange, is merged into link 6 before the chain is
-built: with $\mathbf{p} = (0, 0, c_4) + \mathbf{r}_p$ in link 6's frame,
+built. Let $\mathbf{p} = (0, 0, c_4) + \mathbf{r}_p$ in link 6's frame. Then:
 
 $$
 m = m_6 + m_p, \qquad \mathbf{r} = \frac{m_6\,\mathbf{r}_6 + m_p\,\mathbf{p}}{m}, \qquad
@@ -84,8 +84,8 @@ where $S(\mathbf{d}) = (\mathbf{d}\cdot\mathbf{d})\,\mathbb{1} - \mathbf{d}\,\ma
 parallel-axis term. With no mass at all the link keeps its own centre.
 
 **Gravity.** Gravity is $\mathbf{g} = (0, 0, -9.81)$ m/s² in the world. The chain is expressed in the arm's base frame,
-so it sees $\mathbf{g}_b = B_R^{\mathsf T}\,\mathbf{g}$, with $B_R$ the base mount's rotation: an arm mounted on a
-wall or upside down gets the right gravity torque.
+so it sees $\mathbf{g}_b = B_R^{\mathsf T}\,\mathbf{g}$, with $B_R$ the base mount's rotation. Thus an arm mounted
+on a wall or upside down gets the right gravity torque.
 
 **Joint space.** The chain works in model angles $\theta = S q - o$ with $S = \operatorname{diag}(s_i)$, so
 $\dot\theta = S\dot q$ and $\ddot\theta = S\ddot q$. Power is the same in both, $\boldsymbol\tau_q^{\mathsf T}\dot q =
@@ -100,9 +100,9 @@ $$
 - **Gravity torque** $G(q)$: the torque each joint holds at rest, $\boldsymbol\tau(q, 0, 0)$.
 - **Inverse dynamics** $\boldsymbol\tau(q, \dot q, \ddot q)$: the joint torques of a motion, gravity included.
 - **Mass matrix** $M(q)$: symmetric and positive definite; the kinetic energy is $\tfrac12\dot q^{\mathsf T}M\dot q$.
-- **Checks that hold for any arm.** For a point mass $m$ at the tool centre point with no other mass,
-  $G = J_v^{\mathsf T}(0, 0, m\,9.81)$ and $M = m\,J_v^{\mathsf T}J_v$, with $J_v$ the linear rows of the Jacobian;
-  $\boldsymbol\tau(q, 0, \ddot q) - G = M\ddot q$; and the Coriolis power is half the rate of change of the
+- **Checks that hold for any arm.** Take a point mass $m$ at the tool centre point with no other mass. Then
+  $G = J_v^{\mathsf T}(0, 0, m\,9.81)$ and $M = m\,J_v^{\mathsf T}J_v$, with $J_v$ the linear rows of the Jacobian.
+  Also $\boldsymbol\tau(q, 0, \ddot q) - G = M\ddot q$. The Coriolis power is half the rate of change of the
   mass matrix, $\dot q^{\mathsf T}(\boldsymbol\tau(q, \dot q, 0) - G) = \tfrac12\dot q^{\mathsf T}\dot M\dot q$.
 
 ---
@@ -141,8 +141,8 @@ flowchart LR
 ## Worked Example
 
 The reference desktop arm's mass properties are those of [arm-model.md](../design/arm-model.md) Part F. Upright, every
-centre of mass of links 2 to 6 lies on the vertical line through the shoulder axis, so the shoulder and the elbow hold
-no torque. With the upper arm horizontal ($q_2 = \pi/2$, the rest at zero), the shoulder holds about
+centre of mass of links 2 to 6 lies on the vertical line through the shoulder axis. Thus the shoulder and the elbow
+hold no torque. With the upper arm horizontal ($q_2 = \pi/2$, the rest at zero), the shoulder holds about
 $9.81\,(1.0 \cdot 0.11 + 0.8 \cdot 0.35 + 0.3 \cdot 0.47 + 0.25 \cdot 0.52 + 0.1 \cdot 0.55) \approx 7.0$ N·m.
 
 ---
@@ -150,8 +150,8 @@ $9.81\,(1.0 \cdot 0.11 + 0.8 \cdot 0.35 + 0.3 \cdot 0.47 + 0.25 \cdot 0.52 + 0.1
 ## Limitations & Assumptions
 
 - Rigid links and joints: no gear elasticity, no backlash.
-- No friction and no rotor inertia: the motor's friction and the reflected rotor inertia (rotor inertia times the
-  square of the gear ratio) belong to each joint's drive, not to the arm model.
+- No friction and no rotor inertia. The motor's friction and the reflected rotor inertia belong to each joint's
+  drive, not to the arm model. The reflected rotor inertia is the rotor inertia times the square of the gear ratio.
 - The reference mass properties are invented, aluminium tubes and small motors, until the real arm is weighed.
 
 ---
