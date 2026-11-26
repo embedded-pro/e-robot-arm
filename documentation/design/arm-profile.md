@@ -2,9 +2,9 @@
 title: "Arm Profile Design"
 type: design
 status: draft
-version: 0.25.0
+version: 0.25.2
 component: "arm_profile"
-date: 2026-11-23
+date: 2026-11-26
 ---
 
 | Field     | Value              |
@@ -12,9 +12,9 @@ date: 2026-11-23
 | Title     | Arm Profile Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.25.0             |
+| Version   | 0.25.2             |
 | Component | arm_profile        |
-| Date      | 2026-11-23         |
+| Date      | 2026-11-26         |
 
 > The single description of an arm, as a JSON file: its control timing, and per joint the node, transmission,
 > limits and motor controller. Behaviour only; diagrams are Mermaid.
@@ -23,19 +23,10 @@ date: 2026-11-23
 
 ## Responsibilities
 
-**Is responsible for:**
-
-- Reading a profile from JSON text into the arm's configuration, and refusing a profile that is malformed, out of
-  range or incomplete with one message that names the offending item.
+- Reading a profile from JSON text into the arm's configuration.
+- Refusing a profile that is malformed, out of range or incomplete, with one message that names the offending item.
 - Writing an arm's configuration back as JSON text that reads back to the same configuration.
 - Staying heap-free, so the same code can read a profile on a microcontroller later.
-
-**Is NOT responsible for:**
-
-- Files: the host tools read and write them and hand the text over.
-- Applying the profile: the arm is built from its configuration, and the lifecycle applies the motor controllers
-  while bringing the arm up ([arm-lifecycle.md](arm-lifecycle.md)).
-- Arm controllers: a later item of the format, as phase 5 adds them.
 
 ---
 
@@ -43,7 +34,7 @@ date: 2026-11-23
 
 ### Part A — Content
 
-A profile holds what `ArmConfig` holds:
+A profile holds the arm's configuration:
 
 | Item                                          | JSON key                                         | Unit, range                                          | Default when absent        |
 |-----------------------------------------------|--------------------------------------------------|------------------------------------------------------|----------------------------|
@@ -84,9 +75,9 @@ A profile holds what `ArmConfig` holds:
 | Link meshes                                   | `meshes`                                         | see below                                            | none                       |
 | Workspace, self-collision                     | `safety`                                         | see below                                            | see below                  |
 
-The arm runs its joints in torque mode only ([arm-controllers.md](arm-controllers.md) Part A). `enableMode` is
-read for older profiles and must be `torque`; a profile that names another mode is refused, and a written profile
-leaves it out.
+The arm runs its joints in torque mode only ([arm-controllers.md](arm-controllers.md) Part A). The reader reads the
+enable mode for older profiles, and the mode must be `torque`. The reader refuses a profile that names another mode.
+A written profile leaves the enable mode out.
 
 The motion profile shapes every point-to-point move ([joint-motion.md](joint-motion.md) Part F): trapezoidal at each
 joint's speed and acceleration limits, or S-curve, also within its jerk limit. A profile that chooses `s-curve`
@@ -94,7 +85,7 @@ without a jerk limit on every joint is refused. The profile can be changed at re
 profile in effect is the one written.
 
 The tool limits bound the tool lines and tool jogs ([joint-motion.md](joint-motion.md) Parts H and I), in the base
-frame; the joint limits still hold for every joint on the way:
+frame. The joint limits still hold for every joint on the way:
 
 | Item                     | JSON key                                 | Unit, range           | Default when absent |
 |--------------------------|------------------------------------------|-----------------------|---------------------|
@@ -110,20 +101,26 @@ The teach points are named joint poses to go to ([joint-motion.md](joint-motion.
 `{ "name": "<1 to 16 characters>", "jointsRad": [six angles, rad, joint space] }`, the names unique. The tools teach
 them at run time; saving the profile writes them back.
 
-`jointImpedance` sets the `joint-impedance` arm controller ([arm-controllers.md](arm-controllers.md) Part D): each
-joint's stiffness, all six or none, and the damping ratio from which each joint's damping follows. A profile without
-the stiffnesses gives each joint (10 rad/s)² times its inertia at home with its rotor and the other joints free. `cartesianImpedance` sets the
-`cartesian-impedance` arm controller the same way: one stiffness along the three axes of the tool's position, one
-about the three axes of its orientation, and the damping ratio. `operationalSpace` sets the `operational-space` arm
-controller: its bandwidth and damping ratio in task units and the damping σ of its task-inertia inverse; it hands
-over to joint-space control below `toolLimits.manipulabilityMin`. `slotineLi` sets the `slotine-li` arm controller,
-which the arm offers only when `experimental` is `true`. `armController` names the controller the arm selects when it
-is built ([arm-controllers.md](arm-controllers.md) Part B); the arm host writes a run-time selection back, so a saved
-profile keeps it. `free` and `gravity-float` are read on any target, but only a simulation offers them: elsewhere the
-arm selects `gravity-pd` (Part E of the same document).
+The joint-impedance items set the `joint-impedance` arm controller ([arm-controllers.md](arm-controllers.md) Part D).
+They hold each joint's stiffness, all six or none, and the damping ratio from which each joint's damping follows.
+Without the stiffnesses, each joint gets (10 rad/s)² times its inertia at home, with its rotor and the other joints
+free. The Cartesian-impedance items set the `cartesian-impedance` arm controller the same way. They hold one
+stiffness along the three axes of the tool's position, one about the three axes of its orientation, and the damping
+ratio.
 
-The two `gravityPd` items set the gains of the `gravity-pd` arm controller, the two `computedTorque` items those of
-`computed-torque` and the two `gravityPid` items those of `gravity-pid`, for every joint at once ([arm-controllers.md](arm-controllers.md) Part A).
+The operational-space items set the `operational-space` arm controller. They hold its bandwidth and damping ratio in
+task units and the damping σ of its task-inertia inverse. The controller hands over to joint-space control below
+`toolLimits.manipulabilityMin`. The Slotine–Li items set the `slotine-li` arm controller. The arm offers it only when
+`experimental` is `true`.
+
+The active arm controller item names the controller that the arm selects at construction
+([arm-controllers.md](arm-controllers.md) Part B). The arm host writes a run-time selection back, so a saved profile
+keeps it. The item can name `free` or `gravity-float` on any target, but only a simulation offers them. Elsewhere the
+arm selects `gravity-pd` (the same document, Part E).
+
+The two gravity-PD items set the gains of the `gravity-pd` arm controller for every joint at once
+([arm-controllers.md](arm-controllers.md) Part A). The two computed-torque items do the same for `computed-torque`.
+The two gravity-PID items do the same for `gravity-pid`.
 
 The geometry is the arm model's ([arm-model.md](arm-model.md) Part A):
 
@@ -135,8 +132,8 @@ The geometry is the arm model's ([arm-model.md](arm-model.md) Part A):
 | Tool          | `tool.xM`, `.yM`, `.zM`, `.rollRad`, `.pitchRad`, `.yawRad` | m, rad               | identity            |
 | Base          | `base`, as `tool`                                           | m, rad               | identity            |
 
-The mass properties are the arm model's ([arm-model.md](arm-model.md) Part F): `links`, a list of six, one per link
-in joint order, and an optional `payload`, relative to the flange. Each of them:
+The mass properties are the arm model's ([arm-model.md](arm-model.md) Part F). `links` is a list of six, one per link
+in joint order. An optional `payload` is relative to the flange. Each of them:
 
 | Item           | JSON key                       | Unit, range                                                 | Default when absent |
 |----------------|--------------------------------|-------------------------------------------------------------|---------------------|
@@ -147,9 +144,9 @@ in joint order, and an optional `payload`, relative to the flange. Each of them:
 
 Without `payload` the arm carries none.
 
-The link meshes are what the simulator draws instead of its generated shapes ([tool-simulator.md](tool-simulator.md)
-Part E): `meshes` names a glTF file for any of `base`, `link1` … `link6`, as a path relative to the profile file, at
-most 96 characters, ending in `.gltf` or `.glb`. A link without a mesh keeps the generated shapes. The arm itself
+The simulator draws the link meshes instead of its generated shapes ([tool-simulator.md](tool-simulator.md) Part E).
+The key `meshes` names a glTF file for any of `base`, `link1` … `link6`. Each is a path relative to the profile file, at most
+96 characters, ending in `.gltf` or `.glb`. A link without a mesh keeps the generated shapes. The arm itself
 never reads them.
 
 Each joint:
@@ -172,16 +169,19 @@ Each joint:
 | Motor controller   | `motorController`                   | see below                                   | not configured              |
 | Motor              | `motor`                             | see below                                   | not configured              |
 
-The tracking window and time are the safety supervisor's ([safety.md](safety.md) Part F): a joint whose tracking
-error stays above its window for its time trips the arm. So is the collision limit: an external torque on the joint,
-as the collision observer estimates it ([collision.md](collision.md)), above the limit trips the arm. The observer's
-gain, the bandwidth of its estimate, is the arm's `collisionObserverGainPerS`. The speed trip stops the arm when
-the joint's measured speed exceeds it, and every torque the arm sends is clamped to the torque limit; a joint with
-neither a torque limit nor a motor is limited by its drive alone (safety.md Parts B and F). All have defaults, so
-every check is on in every profile, and every one of them ends in a protective stop: the joints keep holding.
+The tracking window and time are the safety supervisor's ([safety.md](safety.md) Part F). A joint whose tracking
+error stays above its window for its time trips the arm. The collision limit is also the safety supervisor's. An
+external torque on the joint above the limit trips the arm. The collision observer estimates that torque
+([collision.md](collision.md)). The observer's gain, the bandwidth of its estimate, is the arm's collision observer
+gain.
 
-The drive watchdog is the e-foc command timeout the joint configurator writes to every node, in control periods: a
-drive that hears no setpoint for that long stops and faults ([safety.md](safety.md) Part I).
+The speed trip stops the arm when the joint's measured speed exceeds it. The arm clamps every torque it sends to the
+torque limit. A joint with neither a torque limit nor a motor has only the limit of its drive (safety.md Parts B and
+F). All have defaults, so every check is on in every profile. Each check ends in a protective stop: the joints keep
+holding.
+
+The drive watchdog is the e-foc command timeout, in control periods. The joint configurator writes it to every node.
+A drive that hears no setpoint for that long stops and faults ([safety.md](safety.md) Part I).
 
 `safety` holds the workspace and self-collision check ([safety.md](safety.md) Part H), in the base frame:
 
@@ -193,10 +193,10 @@ drive that hears no setpoint for that long stops and faults ([safety.md](safety.
 | Self-collision margin | `selfCollisionMarginM`   | m, 0 or above, at most 0.5                 | 0.01                                                   |
 | Allowed link pairs    | `allowedLinkPairs`       | pairs of 1 to 7, not adjacent, at most 16  | none                                                   |
 
-An allowed pair is never checked against each other. Adjacent links and the pairs that touch with every joint at zero,
-the spherical wrist's, are allowed without being listed ([safety.md](safety.md) Part H); a profile lists any other pair
-whose capsules touch by construction. The workspace's default follows the geometry, so a profile that names no workspace keeps following its
-geometry when that changes.
+The check never tests the two links of an allowed pair against each other. Adjacent links are allowed without a
+listing ([safety.md](safety.md) Part H). So are the pairs that touch with every joint at zero, the spherical wrist's. A
+profile lists any other pair whose capsules touch by construction. The workspace's default follows the geometry. So a
+profile that names no workspace keeps following its geometry when that changes.
 
 A joint's motor controller names one algorithm per loop and any of its fourteen gains:
 
@@ -207,9 +207,9 @@ A joint's motor controller names one algorithm per loop and any of its fourteen 
 | Position algorithm | `position`     | `pid`, `cascadeP`, `lqr`, `lqi`, `twoDof`                                        |
 | Gains              | `gains.<name>` | the gain names of [joint-configurator.md](joint-configurator.md), contract units |
 
-The three algorithms are required once `motorController` is present; a gain left out takes the contract's
-default, and each gain must lie in the e-foc contract's range. A joint without `motorController` keeps whatever its
-node holds: the lifecycle does not configure it.
+The three algorithms are required once the motor controller is present. A gain left out takes the contract's
+default. Each gain must lie in the e-foc contract's range. A joint without a motor controller keeps whatever its node
+holds: the lifecycle does not configure it.
 
 A joint's motor holds the thirteen parameters of [joint-configurator.md](joint-configurator.md) Part D, in its
 display units:
@@ -224,45 +224,62 @@ display units:
 | Rotor inertia    | `inertiaGramCm2`                | Following-error window | `followingErrorWindowRad` |
 | Viscous friction | `viscousFrictionMicroNmSPerRad` | Following-error time   | `followingErrorTimeS`     |
 
-`preset` names a preset (`teknic-m2310p-ln-04k`, `anaheim-bly172s-24v-4000`) whose values fill every parameter the
-motor leaves out; without a preset the eleven others are required. The two following-error items are optional with or
-without a preset: left out, they keep e-foc's default, supervision off (a window of 0 and a time of 0.1 s). They came
-with format version 2; a version 1 file reads as before. The speed trip, the torque limit, the drive watchdog and
-`safety` came with version 3; the motion profile and the jerk limit with version 4; the tool limits with version 5; the teach points with version 6; `jointImpedance` with version 7; `cartesianImpedance` with version 8; `operationalSpace` with version 9; `slotineLi` and `experimental` with version 10; `armController` with version 11.
-An older file takes their defaults. Each value must lie in the e-foc contract's range, and
-pole pairs must be a whole number. A joint without `motor` keeps whatever its node holds.
+`preset` names a preset (`teknic-m2310p-ln-04k`, `anaheim-bly172s-24v-4000`). Its values fill every parameter that
+the motor leaves out. Without a preset, the eleven others are required. The two following-error items are optional
+with or without a preset. Left out, they keep e-foc's default, supervision off (a window of 0 and a time of 0.1 s).
+They came with format version 2; a version 1 file reads as before. Later format versions added these items:
+
+- Version 3: the speed trip, the torque limit, the drive watchdog and `safety`.
+- Version 4: the motion profile and the jerk limit.
+- Version 5: the tool limits.
+- Version 6: the teach points.
+- Version 7: the joint-impedance items.
+- Version 8: the Cartesian-impedance items.
+- Version 9: the operational-space items.
+- Version 10: the Slotine–Li items and `experimental`.
+- Version 11: the active arm controller.
+
+An older file takes their defaults. Each value must lie in the e-foc contract's range. Pole pairs must be a whole
+number. A joint without `motor` keeps whatever its node holds.
 
 ### Part B — Reading
 
-Reading is strict, so a typing mistake never passes silently: an unknown key, a value of the wrong type, a value
-out of range, a missing required item, a joint count other than six or a repeated node is refused. The message
-names the first problem by its path, for example `joints[2].transmission.ratio: must be above 0`. Numbers may be
-written as integers or with up to nine decimals; exponents are not accepted.
+Reading is strict, so a typing mistake never passes silently. The reader refuses each of these:
+
+- An unknown key.
+- A value of the wrong type.
+- A value out of range.
+- A missing required item.
+- A joint count other than six.
+- A repeated node.
+
+The message names the first problem by its path, for example `joints[2].transmission.ratio: must be above 0`. A
+number is an integer or has up to nine decimals. The reader does not accept exponents.
 
 ### Part C — Writing
 
-Writing produces every item, defaults included, in the order of Part A (a motor with its preset, if it has one, and
-all eleven values); the three items whose default follows another one, the speed trip, the torque limit and the
-workspace, are written only when the profile names them. Real numbers have up to nine decimals for real numbers
-and trailing zeros dropped. Read back, every item is the same; a gain comes back within the joint configurator's
-comparison tolerance ([joint-configurator.md](joint-configurator.md) Part C), since nine decimals hold fewer
+Writing produces every item, defaults included, in the order of Part A. A motor gets its preset, if it has one, and
+all eleven values. Three items have a default that follows another item: the speed trip, the torque limit and the
+workspace. Writing produces them only when the profile names them. Real numbers have up to nine decimals, with
+trailing zeros dropped. Read back, every item is the same. A gain comes back within the joint configurator's
+comparison tolerance ([joint-configurator.md](joint-configurator.md) Part C). The reason: nine decimals hold fewer
 significant digits than a float below 0.1.
 
 ### Part D — Profile files on the host
 
-The host tools (simulator, console, virtual arm) read and write profile files through one pair of functions in
-`tools/arm_host` (`ReadProfileFile`, `WriteProfileFile`), so the rules below hold for every tool:
+The host tools (simulator, console, virtual arm) read and write profile files through one shared file reader and
+writer. So the rules below hold for every tool:
 
-- **Reading is bounded.** A file is read up to 64 KiB and one byte more; a longer file is refused with
-  `<path> is larger than 64 KiB` without the rest of it ever being read, so a wrong path (a log, an image, a device)
-  cannot make a tool read without limit.
-- **Saving never loses the last good file.** The profile is written in full to a temporary file next to the
-  destination (`<file>.saving`, in the same directory, so the replacement stays on the same file system), closed, and
-  only then renamed over the destination. Until that rename, the destination is untouched: if writing or closing
-  the temporary file fails (no space, no permission, a directory in the way), or the rename fails, the old profile is
-  still there, byte for byte, the temporary file is removed, and the message names the step: `cannot write <path>`
-  or `cannot replace <path>: <reason>`. A crash between the steps leaves at most a stray `<file>.saving` beside an
-  intact profile.
+- **Reading is bounded.** The reader reads a file up to 64 KiB and one byte more. It refuses a longer file with
+  `<path> is larger than 64 KiB` and never reads the rest. So a wrong path (a log, an image, a device) cannot make a
+  tool read without limit.
+- **Saving never loses the last good file.** The writer writes the full profile to a temporary file next to the
+  destination, closes it, and only then renames it over the destination. The temporary file is `<file>.saving`, in
+  the same directory, so the replacement stays on the same file system. Until that rename, the destination stays
+  untouched. Writing or closing the temporary file can fail (no space, no permission, a directory in the way), or the
+  rename can fail. Then the old profile is still there, byte for byte, and the writer removes the temporary file. The
+  message names the step: `cannot write <path>` or `cannot replace <path>: <reason>`. A crash between the steps
+  leaves at most a stray `<file>.saving` beside an intact profile.
 
 ### Example
 
@@ -307,10 +324,12 @@ The example shows one joint; a profile lists six.
 
 ### Required
 
-| Interface   | Purpose                                    | Contract                       |
-|-------------|--------------------------------------------|--------------------------------|
-| EMIL JSON   | Tokenising, navigating and formatting JSON | Heap-free, over a bounded text |
-| e-foc range | Each gain's accepted range                 | The contract's parameter table |
+| Interface   | Purpose                                    | Contract                                                                                        |
+|-------------|--------------------------------------------|-------------------------------------------------------------------------------------------------|
+| EMIL JSON   | Tokenising, navigating and formatting JSON | Heap-free, over a bounded text                                                                  |
+| e-foc range | Each gain's accepted range                 | The contract's parameter table                                                                  |
+| Host tools  | Profile files                              | They read and write the files and hand over the text                                            |
+| Lifecycle   | Applying the profile                       | Applies the motor controllers while it brings the arm up ([arm-lifecycle.md](arm-lifecycle.md)) |
 
 ---
 
@@ -353,12 +372,14 @@ sequenceDiagram
 | Memory     | No heap; the text is read in place and the result is one configuration       |
 | Precision  | Nine decimals for real numbers, no exponents                                 |
 | Versioning | A reader refuses a version it does not know; a later version only adds items |
+| Scope      | The arm is built from its configuration; the profile does not apply itself   |
+
 
 ---
 
-## Open Questions
+## Decisions
 
-| # | Question                                | Options                                       | Status                                  |
+| # | Decision                                | Options                                       | Status                                  |
 |---|-----------------------------------------|-----------------------------------------------|-----------------------------------------|
 | 1 | File format                             | JSON, binary image                            | decided: JSON                           |
 | 2 | How a loaded profile reaches the joints | Lifecycle step, operator button               | decided: lifecycle step                 |

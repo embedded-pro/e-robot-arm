@@ -2,9 +2,9 @@
 title: "Arm Control Laws"
 type: theory
 status: draft
-version: 0.1.0
+version: 0.1.1
 component: "arm_controllers"
-date: 2026-11-20
+date: 2026-11-26
 ---
 
 | Field     | Value            |
@@ -12,9 +12,9 @@ date: 2026-11-20
 | Title     | Arm Control Laws |
 | Type      | theory           |
 | Status    | draft            |
-| Version   | 0.1.0            |
+| Version   | 0.1.1            |
 | Component | arm_controllers  |
-| Date      | 2026-11-20       |
+| Date      | 2026-11-26       |
 
 > The laws that turn a joint reference into joint torques on a six-joint arm whose joints take torque setpoints:
 > gravity-compensated PD and PID, computed torque, joint and Cartesian impedance, operational space and Slotine–Li
@@ -25,8 +25,8 @@ date: 2026-11-20
 ## Overview
 
 Every law here closes the arm's position loop on the host, one torque set per control period, around the reference
-$q^*, \dot q^*, \ddot q^*$ that joint motion produces. They differ in how much of the arm's dynamics they cancel and in
-which space they shape the error: the joints, the tool, or the parameters of the model itself. The choice of law and
+$q^*, \dot q^*, \ddot q^*$ that joint motion produces. They differ in how much of the arm's dynamics they cancel. They
+also differ in which space they shape the error: the joints, the tool, or the parameters of the model itself. The choice of law and
 its gains is the design of [arm-controllers.md](../design/arm-controllers.md); this note records the mathematics and
 the limits that design was measured against.
 
@@ -46,11 +46,11 @@ the limits that design was measured against.
 
 ### Model / Setup
 
-The arm is sampled every $T$ (10 ms on the reference arm) and its torque is held for the period; the readings it
-acts on are half a period old or more. A loop whose fastest mode has natural frequency $\omega$ and per-period
-damping $d$ (rad/s) stays well inside its stability margin while $\omega T \lesssim 0.3$ and $d\,T$ stays well below
-2. The reference arm's wrist is direct drive and light: joint 6 moves about $3\cdot10^{-5}$ kg·m² and joint 5 about
-$5\cdot10^{-4}$, while joint 2 moves about 0.3.
+The arm is sampled every $T$ (10 ms on the reference arm) and its torque is held for the period. The readings it
+acts on are half a period old or more. Take a loop whose fastest mode has natural frequency $\omega$ and per-period
+damping $d$ (rad/s). It stays well inside its stability margin while $\omega T \lesssim 0.3$ and $d\,T$ stays well
+below 2. The reference arm's wrist is direct drive and light. Joint 6 moves about $3\cdot10^{-5}$ kg·m² and joint 5
+about $5\cdot10^{-4}$, while joint 2 moves about 0.3.
 
 ### Derivation
 
@@ -71,8 +71,8 @@ reference, with the reference's inverse dynamics fed forward:
 
 $$\tau = M(q)\ddot q^* + C(q,\dot q^*)\dot q^* + G(q) + K(q^* - q) + D(\dot q^* - \dot q).$$
 
-The feed-forward makes the arm follow the reference on its own; $K$ and $D$ answer only a push or the model's error,
-so the arm is as stiff to a push as $K$ says. Cartesian impedance puts the spring on the tool,
+The feed-forward makes the arm follow the reference on its own. $K$ and $D$ answer only a push or the model's error.
+Thus the arm is as stiff to a push as $K$ says. Cartesian impedance puts the spring on the tool,
 $\tau_{\text{spring}} = J^\top K_x e$, with $K_x = \mathrm{diag}(k_t, k_t, k_t, k_r, k_r, k_r)$; its joint-space image is
 $K_q = J^\top K_x J$.
 
@@ -81,9 +81,10 @@ $K_q = J^\top K_x J$.
 $$D = 2\zeta\, W M W, \qquad W = \mathrm{diag}\left(\sqrt{\omega_i}\right), \quad \omega_i = \sqrt{K_i / M_{ii}}$$
 
 has the diagonal $2\zeta\sqrt{K_i M_{ii}}$, keeps the couplings of $M$, is positive definite with $M$, and reduces to
-$2\zeta\omega M$ when every $\omega_i$ is equal. Sized per joint without the couplings, the light wrist joints' fastest
-coupled mode is left under-damped; sized per task axis from the tool's effective mass $1/(J M^{-1} J^\top)_{jj}$, the
-heavy joints' mass reaches the light wrist joints through $J$, and their damping exceeds what a sampled loop holds.
+$2\zeta\omega M$ when every $\omega_i$ is equal. Damping sized per joint without the couplings
+leaves the light wrist joints' fastest coupled mode under-damped. Damping can also be sized per task axis from the
+tool's effective mass $1/(J M^{-1} J^\top)_{jj}$. Then the heavy joints' mass reaches the light wrist joints through
+$J$, and their damping exceeds what a sampled loop holds.
 
 **Operational space.** With the task inertia $\Lambda = (J M^{-1} J^\top + \sigma^2 I)^{-1}$,
 
@@ -138,17 +139,18 @@ flowchart LR
 | Stability  | Fastest mode $\omega T \lesssim 0.3$ with the measurement delay of about half a period                                                  |
 | Range      | Joint-space laws everywhere; task-space laws need $J$ well conditioned (see Limitations)                                                |
 
-The light wrist is the most sensitive part: a rotational stiffness $k_r$ lands on joint 6 alone, so
-$\omega_6 \approx \sqrt{k_r / I_6}$, and the eigenvalues of $J M^{-1} J^\top$ span about four decades, translational near 1
-and rotational near $10^4$, so a single $\sigma$ cannot regularise both.
+The light wrist is the most sensitive part. A rotational stiffness $k_r$ lands on joint 6 alone, so
+$\omega_6 \approx \sqrt{k_r / I_6}$. The eigenvalues of $J M^{-1} J^\top$ span about four decades, translational near
+1 and rotational near $10^4$. Thus a single $\sigma$ cannot regularise both.
 
 ---
 
 ## Worked Example
 
 On the reference arm, $I_6 \approx 2.7\cdot10^{-5}$ kg·m² at $T = 10$ ms. A rotational stiffness $k_r = 0.07$ N·m/rad
-gives $\omega_6 \approx \sqrt{0.07 / 2.7\cdot10^{-5}} \approx 51$ rad/s before the coupling with joint 4 lowers it; the
-simulated arm held it, while $k_r = 0.2$ ($\omega_6 \approx 86$ rad/s, $\omega_6 T \approx 0.9$) diverged near home.
+gives $\omega_6 \approx \sqrt{0.07 / 2.7\cdot10^{-5}} \approx 51$ rad/s before the coupling with joint 4 lowers it.
+The simulated arm held it. A stiffness $k_r = 0.2$ ($\omega_6 \approx 86$ rad/s, $\omega_6 T \approx 0.9$) diverged
+near home.
 
 ---
 
@@ -156,10 +158,10 @@ simulated arm held it, while $k_r = 0.2$ ($\omega_6 \approx 86$ rad/s, $\omega_6
 
 - **Assumes**: a rigid-body model whose mass properties are close to the arm's (Slotine–Li learns the gap); joints
   that apply the commanded torque within a period.
-- **Assumes**: a reference with bounded acceleration; a step reference drives the light wrist hard under the tool
+- **Assumes**: a reference with bounded acceleration. A step reference drives the light wrist hard under the tool
   laws, since a tool force accelerates the lightest joints first.
-- **Does not handle**: singular poses in the tool laws on their own: Cartesian impedance cannot push along a lost
-  direction, and operational space hands over to joint-space computed torque below a manipulability minimum.
+- **Does not handle**: singular poses in the tool laws on their own. Cartesian impedance cannot push along a lost
+  direction. Operational space hands over to joint-space computed torque below a manipulability minimum.
 - **Does not handle**: unmodelled friction in the adaptation, which can drift the estimated parameters.
 
 ## References

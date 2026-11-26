@@ -2,9 +2,9 @@
 title: "Arm Composition and Console Design"
 type: design
 status: draft
-version: 0.19.0
+version: 0.19.1
 component: "arm"
-date: 2026-11-23
+date: 2026-11-26
 ---
 
 | Field     | Value                              |
@@ -12,9 +12,9 @@ date: 2026-11-23
 | Title     | Arm Composition and Console Design |
 | Type      | design                             |
 | Status    | draft                              |
-| Version   | 0.19.0                             |
+| Version   | 0.19.1                             |
 | Component | arm                                |
-| Date      | 2026-11-23                         |
+| Date      | 2026-11-26                         |
 
 > How the arm's components are put together, and the host console that drives them over a CAN adapter. Behaviour
 > only; diagrams are Mermaid.
@@ -23,18 +23,10 @@ date: 2026-11-23
 
 ## Responsibilities
 
-**Is responsible for:**
-
-- Building the arm from one FOC motor category client and one configuration: the joint bus, the safety supervisor
-  in front of it, joint motion behind the supervisor, and the control loop that paces them.
-- On the host, opening a CAN adapter by name, running the event loop, and turning typed commands into calls on
-  the arm and its events into printed lines.
-
-**Is NOT responsible for:**
-
-- Any rule of the components themselves: limits, trips, planning and pacing stay in their own designs.
-- Configuring the e-foc nodes (node ids, gains, calibration): that is the CAN Commander's job.
-- A graphical interface: the Qt simulator comes later and reuses the composition.
+- Building the arm from one FOC motor category client and one configuration. The arm holds the joint bus, the
+  safety supervisor in front of it, joint motion behind the supervisor, and the control loop that paces them.
+- On the host, opening a CAN adapter by name and running the event loop.
+- On the host, turning typed commands into calls on the arm, and the arm's events into printed lines.
 
 ---
 
@@ -55,9 +47,9 @@ supervisor, joint motion and the control loop; the joint bus stays behind the su
 
 ### Part B — Console
 
-The console is a host program. It opens the CAN adapter named on its command line (`virtual:<bus>`, a SocketCAN
-interface or a serial slcan adapter) at the given bit rate, builds the FOC motor client and the arm, starts the
-control loop and reads one command per line from standard input:
+The console is a host program. It opens the CAN adapter named on its command line at the given bit rate. The
+adapter is a `virtual:<bus>`, a SocketCAN interface or a serial slcan adapter. The console builds the FOC motor
+client and the arm, and starts the control loop. It then reads one command per line from standard input:
 
 | Command                                     | Effect                                                                                                                                                                                                  |
 |---------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -97,21 +89,28 @@ control loop and reads one command per line from standard input:
 | `status`                                    | Print each joint's position, speed, state and fault, the arm's lifecycle state, the stop, the move and the overrun count                                                                                |
 | `quit`                                      | Stop the control loop and leave                                                                                                                                                                         |
 
-`bringup`, `enable`, `disable`, `rearm` and `move` go through the arm's lifecycle; `contracts`, `mode`, `start`,
-`stop`, `clear`, `align` and `estop` reach the joints directly, for debugging, and the lifecycle follows where they leave the
-arm. Every command prints whether it was accepted. Events print as they happen: each lifecycle state (`arm: ready`, or
-`arm: misconfigured (joint 5 reads back different)` naming the joint),
-the contract outcome, a joint that faulted or went silent, a move done or aborted. `status` prints the stop in effect
-with its category, as `safety: holding, protective stop (category 2): joint 2 collision 12.0 N·m` or `safety: tripped,
-emergency stop (category 0): hardware stop open`, and `torque limited: joints 2, 3` while the last torques sent to
-those joints were clamped ([safety.md](safety.md) Part B). An unknown command or a malformed one prints a usage line and
-sends nothing.
+The commands `bringup`, `enable`, `disable`, `rearm` and `move` go through the arm's lifecycle. The commands
+`contracts`, `mode`, `start`, `stop`, `clear`, `align` and `estop` reach the joints directly, for debugging. The
+lifecycle follows where they leave the arm. Every command prints whether it was accepted. Events print as they
+happen:
 
-The console runs on the arm host shared with the simulator ([simulator.md](simulator.md) Parts B and E): the arm
-lives on the host's thread, each typed command is posted to it, and the console waits up to 2 s for that command's
-answer, `ok` or `refused: <reason>` (see Command outcomes below). `--profile <file>` loads a profile at start; a profile the reader refuses
-prints the reader's message, which names the item, and the console does not start. Events print as they come, polled every 20 ms. `--bus simulated` runs six
-simulated joints in the process with no CAN at all.
+- each lifecycle state, as `arm: ready`, or `arm: misconfigured (joint 5 reads back different)` naming the joint;
+- the contract outcome;
+- a joint that faulted or went silent;
+- a move done or aborted.
+
+The `status` command prints the stop in effect with its category. Examples are
+`safety: holding, protective stop (category 2): joint 2 collision 12.0 N·m` and
+`safety: tripped, emergency stop (category 0): hardware stop open`. It also prints `torque limited: joints 2, 3`
+while the last torques sent to those joints were clamped ([safety.md](safety.md) Part B). An unknown command or a
+malformed one prints a usage line and sends nothing.
+
+The console runs on the arm host shared with the simulator ([simulator.md](simulator.md) Parts B and E). The arm
+lives on the host's thread, and the console posts each typed command to it. The console then waits up to 2 s for
+that command's answer, `ok` or `refused: <reason>` (see Command outcomes below). The option `--profile <file>` loads a
+profile at start. A profile that the reader refuses prints the reader's message, which names the item. The console
+then does not start. Events print as they come, polled every 20 ms. The option `--bus simulated` runs six simulated
+joints in the process with no CAN at all.
 
 **Command outcomes.** Every line ends in exactly one outcome, and the console keeps them apart:
 
@@ -122,26 +121,32 @@ simulated joints in the process with no CAN at all.
 | refused   | The arm answered the posted command with a refusal                                                     | `refused: <reason>`           |
 | no answer | The arm did not answer within 2 s                                                                      | `no answer in 2 s: <command>` |
 
-An answer that comes after its 2 s is dropped, and every answer is forgotten once read, so the console's memory does
-not grow with the session.
+The console drops an answer that comes after its 2 s, and forgets every answer once read. Thus the console's
+memory does not grow with the session.
 
 **Accepted is not finished.** `bringup` and `enable` are accepted as soon as they start; the arm then goes through
-its lifecycle states. A move that is accepted has only started. `wait` waits for what a script actually needs, from
-the arm's events rather than its snapshot, which is published once per control period and can lag them:
+its lifecycle states. A move that is accepted has only started. The `wait` command waits for what a script actually
+needs. It uses the arm's events, not its snapshot: the arm publishes the snapshot once per control period, and it
+can lag the events:
 
-- `wait <state>` succeeds once the arm is in that state, and fails at once when the arm trips, is misconfigured or
-  finds its contracts incompatible (unless that is the state asked for), or when its time runs out, printing
-  `wait: arm <state>, not <wanted>`.
-- `wait` alone waits for the move: a move is pending from the moment a `move`, `goto`, `movej`, `movel` or `jog` is
-  accepted until the arm reports `move done` or `move aborted`. It succeeds on `move done` and fails on
+- `wait <state>` succeeds once the arm is in that state. It fails at once, and prints
+  `wait: arm <state>, not <wanted>`, when one of these occurs:
+  - the arm trips, is misconfigured or finds its contracts incompatible (unless that is the state asked for);
+  - its time runs out.
+- `wait` alone waits for the move. A move is pending from the moment the arm accepts a `move`, `goto`, `movej`,
+  `movel` or `jog`. It stays pending until the arm reports `move done` or `move aborted`. It succeeds on `move done` and fails on
   `move aborted` or with `wait: move still running after <s> s`. With no move pending it ends at once, failing only
   when the last move that ended was aborted.
 
 A script that must not go on before the arm is in place puts `wait ready` after `bringup`, `wait enabled` after
 `enable` and `wait` after each move.
 
-**Batch mode.** With `--batch` the console reads its commands from standard input (a file or a pipe) and stops at the
-first line that fails, is refused or gets no answer, and at a `wait` that fails. It prints
+**Batch mode.** With `--batch` the console reads its commands from standard input (a file or a pipe). It stops at:
+
+- the first line that fails, is refused or gets no answer;
+- a `wait` that fails.
+
+ It prints
 `batch stopped at line <n>: <line>` and exits with status 1. Reaching the end of the input exits with status 0. Without
 `--batch`, the console goes on after a failure, so an operator at the keyboard can correct a typing mistake, and exits
 with status 0. A start-up failure (options, profile, virtual arm) exits with status 1 in both modes.
@@ -150,14 +155,14 @@ with status 0. A start-up failure (options, profile, virtual arm) exits with sta
 printf 'bringup\nwait ready\nenable\nwait enabled\nmove 0 0.5 0 0 0 0\nwait 10\nstatus\n' | e-robot-arm-console --bus simulated --batch
 ```
 
-For a `virtual:` bus the host runs can-lite's virtual CAN hub, or joins the one already running when another process
-(an e-foc virtual motor, for instance) hosts it. The hub and the CAN adapter are polled every millisecond on the
+For a `virtual:` bus the host runs can-lite's virtual CAN hub. When another process (an e-foc virtual motor, for
+instance) hosts the hub, the host joins it. The hub and the CAN adapter are polled every millisecond on the
 host's event loop.
 
-`--virtual-arm <profile>` runs the arm on six e-foc virtual motors ([virtual-arm.md](virtual-arm.md)): the console
-starts the virtual arm from that profile on the `virtual:` bus of `--bus` (`virtual:arm` by default), waits until all
-six motors are up, then loads the same profile and joins the bus. `--engine <path>` names `e-foc-virtual-motor` when it
-is not on the path. A virtual arm that does not come up prints why, naming the joint, and the console does not start;
+The option `--virtual-arm <profile>` runs the arm on six e-foc virtual motors ([virtual-arm.md](virtual-arm.md)).
+The console starts the virtual arm from that profile on the `virtual:` bus of `--bus` (`virtual:arm` by default). It
+waits until all six motors are up, then loads the same profile and joins the bus. The option `--engine <path>` names
+`e-foc-virtual-motor` when it is not on the path. A virtual arm that does not come up prints why, naming the joint, and the console does not start;
 quitting stops the motors. It takes no `--profile` and no bus but a `virtual:` one, and it needs a Linux host.
 
 ---
@@ -173,10 +178,12 @@ quitting stops the motors. It takes no `--profile` and no bus but a `virtual:` o
 
 ### Required
 
-| Interface                 | Purpose                  | Contract                                |
-|---------------------------|--------------------------|-----------------------------------------|
-| FOC motor category client | The six e-foc nodes      | Observed by the joint bus only          |
-| CAN bus adapter           | The bus, real or virtual | can-lite's platform adapter on the host |
+| Interface                 | Purpose                         | Contract                                |
+|---------------------------|---------------------------------|-----------------------------------------|
+| FOC motor category client | The six e-foc nodes             | Observed by the joint bus only          |
+| CAN bus adapter           | The bus, real or virtual        | can-lite's platform adapter on the host |
+| Component designs         | Limits, trips, planning, pacing | Each rule stays in its own design       |
+| CAN Commander             | Node ids, gains, calibration    | Configures the e-foc nodes              |
 
 ---
 
@@ -223,11 +230,12 @@ sequenceDiagram
 | Limits     | The console uses the same limits for every joint until the arm model provides them |
 | Threads    | Standard input is read on its own thread; everything else runs on the event loop   |
 | Memory     | The composition allocates nothing; the console, a host tool, may                   |
+| Interface  | Text only; the Qt simulator reuses the composition for a graphical interface       |
 
 ---
 
-## Open Questions
+## Decisions
 
-| # | Question                                     | Options                                 | Status |
+| # | Decision                                     | Options                                 | Status |
 |---|----------------------------------------------|-----------------------------------------|--------|
 | 1 | Where per-joint limits and node ids are kept | Command line, a configuration file, NVM | open   |

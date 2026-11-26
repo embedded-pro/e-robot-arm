@@ -2,9 +2,9 @@
 title: "Arm Kinematics"
 type: theory
 status: draft
-version: 0.1.0
+version: 0.1.1
 component: "arm_model"
-date: 2026-11-13
+date: 2026-11-26
 ---
 
 | Field     | Value          |
@@ -13,8 +13,8 @@ date: 2026-11-13
 | Type      | theory         |
 | Status    | draft          |
 | Component | arm_model      |
-| Version   | 0.1.0          |
-| Date      | 2026-11-13     |
+| Version   | 0.1.1          |
+| Date      | 2026-11-26     |
 
 > The forward and inverse kinematics, Jacobian and singularities of a six-joint arm with a spherical wrist, in the
 > OPW parameterisation the arm model uses ([arm-model.md](../design/arm-model.md)).
@@ -23,11 +23,11 @@ date: 2026-11-13
 
 ## Overview
 
-Most six-axis arms share one shape: a vertical base joint, two parallel shoulder and elbow joints, and a wrist whose
-three axes meet in one point. Seven lengths describe every arm of that shape, the **OPW parameters** ("ortho-parallel
+Most six-axis arms share one shape. It has a vertical base joint, two parallel shoulder and elbow joints, and a
+wrist whose three axes meet in one point. Seven lengths describe every arm of that shape, the **OPW parameters** ("ortho-parallel
 basis with a spherical wrist", Brandstötter, Angerer and Hofbaur, 2014). One set of parameters gives the forward
-kinematics and a closed-form inverse with all eight branches, so the two can never disagree, which a separate DH
-table and a numerical inverse cannot promise.
+kinematics and a closed-form inverse with all eight branches. Thus the two can never disagree. A separate DH table
+and a numerical inverse cannot promise this.
 
 ---
 
@@ -57,8 +57,8 @@ The base frame has z up and x forward. At zero the arm stands upright. The seven
 | c3        | Forearm: elbow axis to the wrist centre                |
 | c4        | Wrist centre to the flange                             |
 
-Each joint position $q_i$ (joint space, radians) maps to the model angle $\theta_i = s_i q_i - o_i$, with a sign
-$s_i = \pm 1$ and an offset $o_i$ per joint, so the arm's zero and direction need not match the model's.
+Each joint position $q_i$ (joint space, radians) maps to the model angle $\theta_i = s_i q_i - o_i$. Each joint has
+a sign $s_i = \pm 1$ and an offset $o_i$. Thus the arm's zero and direction need not match the model's.
 
 ### Derivation
 
@@ -80,9 +80,9 @@ $$
 The tool pose is $T = B \cdot F(q) \cdot T_t$: the base mount $B$, the flange pose $F$ and the tool transform $T_t$.
 
 **Inverse.** The wrist centre follows from the target: $\mathbf{c} = \mathbf{p}_f - c_4 R\hat{\mathbf{z}}$. Its
-horizontal angle gives $\theta_1$ (front and back shoulder); the triangle shoulder–elbow–wrist gives $\theta_2$ and
-$\theta_3$ (elbow up and down); the remaining rotation $(R_z(\theta_1)R_y(\theta_2+\theta_3))^{\mathsf T}R$ gives the
-wrist angles, two ways (wrist flip). That is up to eight solutions; a target out of reach has none.
+horizontal angle gives $\theta_1$ (front and back shoulder). The triangle shoulder–elbow–wrist gives $\theta_2$ and
+$\theta_3$ (elbow up and down). The remaining rotation $(R_z(\theta_1)R_y(\theta_2+\theta_3))^{\mathsf T}R$ gives
+the wrist angles, two ways (wrist flip). That is up to eight solutions; a target out of reach has none.
 
 **Jacobian.** The geometric Jacobian needs each joint's axis and a point on it, in the base frame:
 
@@ -100,8 +100,9 @@ $\partial\theta_i/\partial q_i = s_i$; all are rotated by the base mount.
 
 ### Key Results
 
-- **Branch choice.** Of the solutions, the arm keeps those whose six joints lie within the joint limits, trying each
-  joint also at $\pm 2\pi$, and returns the one closest to the current joints (least sum of squared differences). No
+- **Branch choice.** Of the solutions, the arm keeps those whose six joints lie within the joint limits. It tries
+  each joint also at $\pm 2\pi$. It returns the one closest to the current joints (least sum of squared
+  differences). No
   solution: the target is out of reach. Solutions, none within the limits: the target is outside the joint limits.
 - **Singularities.** The arm reports which of the three it is near:
   - wrist: $|\sin\theta_5| < 0.01$, joints 4 and 6 aligned;
@@ -139,9 +140,11 @@ flowchart LR
 
 ## Worked Example
 
-The reference desktop arm: c1 = 0.15, a1 = 0.02, b = 0, c2 = 0.25, a2 = 0, c3 = 0.25, c4 = 0.06, all signs +1 and
-offsets 0. At zero the wrist centre is at (0.02, 0, 0.65) and the flange at (0.02, 0, 0.71), pointing up; the elbow is
-stretched, so the arm reports an elbow singularity there, and a wrist singularity since θ5 = 0. With θ2 = π/2 the upper
+The reference desktop arm has c1 = 0.15, a1 = 0.02 and b = 0. Its other lengths are c2 = 0.25, a2 = 0, c3 = 0.25
+and c4 = 0.06. All signs are
++1 and all offsets 0. At zero the wrist centre is at (0.02, 0, 0.65) and the flange at (0.02, 0, 0.71), pointing up.
+The elbow is stretched, so the arm reports an elbow singularity there. It also reports a wrist singularity, since
+θ5 = 0. With θ2 = π/2 the upper
 arm lies forward and the flange is at (0.58, 0, 0.15).
 
 ---

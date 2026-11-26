@@ -2,9 +2,9 @@
 title: "System Architecture"
 type: architecture
 status: draft
-version: 0.13.1
+version: 0.13.2
 component: "system"
-date: 2026-11-21
+date: 2026-11-26
 ---
 
 | Field     | Value               |
@@ -12,9 +12,9 @@ date: 2026-11-21
 | Title     | System Architecture |
 | Type      | architecture        |
 | Status    | draft               |
-| Version   | 0.13.1              |
+| Version   | 0.13.2              |
 | Component | system              |
-| Date      | 2026-11-21          |
+| Date      | 2026-11-26          |
 
 > Target architecture of e-robot-arm. Today the joint bus
 > (`core/joint_bus/`, [design](../design/joint-bus.md)), the safety supervisor (`core/safety/`,
@@ -30,23 +30,23 @@ date: 2026-11-21
 ## Assumptions & Constraints
 
 - **Constraint**: the arm has six joints, each an e-foc motor node on one CAN bus; no gripper yet.
-- **Constraint**: each node closes its own current, speed and position loops; the arm controller sends setpoints
+- **Constraint**: each node closes its own current, speed and position loops. The arm controller sends setpoints
   and reads telemetry over the FOC motor category of can-lite (e-foc-protocol).
-- **Constraint**: no dynamic memory allocation in `core/`; application logic depends only on abstractions, so the
+- **Constraint**: no dynamic memory allocation in `core/`. Application logic depends only on abstractions. Thus the
   controller can move from the PC to a microcontroller without rewriting it.
-- **Assumption**: the controller runs on a PC for now; a desktop operating system adds jitter, so the arm loop
+- **Assumption**: the controller runs on a PC for now. A desktop operating system adds jitter. Thus the arm loop
   runs at a few hundred hertz and leaves the fast loops to the nodes.
-- **Assumption**: the bus runs at 1 Mbit/s. An e-foc node answers telemetry only when asked, so each period carries
-  six requests, twelve answers and six setpoints, and the node acknowledges every request and every setpoint: 36
-  frames, about 4.3 ms of bus time. The arm loop runs at 100 Hz (10 ms), about 43 % bus load
+- **Assumption**: the bus runs at 1 Mbit/s. An e-foc node answers telemetry only when asked. Thus each period carries
+  six requests, twelve answers and six setpoints. The node acknowledges every request and every setpoint. This
+  gives 36 frames, about 4.3 ms of bus time. The arm loop runs at 100 Hz (10 ms), about 43 % bus load
   ([control loop](../design/control-loop.md)).
 
 ---
 
 ## System Overview
 
-The same controller runs against three back ends, chosen by the CAN bus it opens: a simulated arm, six virtual
-e-foc motors on can-lite's virtual bus, or the real arm.
+The same controller runs against three back ends. The CAN bus it opens chooses the back end: a simulated arm, six
+virtual e-foc motors on can-lite's virtual bus, or the real arm.
 
 ```mermaid
 flowchart LR
@@ -102,8 +102,8 @@ flowchart TD
 
 ## Configurability
 
-What varies between arms, joints and experiments is data in the **arm profile**, chosen at run time by the console or
-the simulator, never by a compile-time switch:
+What varies between arms, joints and experiments is data in the **arm profile**. The console or the simulator
+chooses it at run time, never a compile-time switch:
 
 | Choice                          | Options                                                                                                                                                           | Where it acts                                               | When it may change                        |
 |---------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------|-------------------------------------------|
@@ -169,15 +169,15 @@ sequenceDiagram
 
 - **Timing**: the arm loop period is fixed and measured; a missed period is reported, never silently skipped.
 - **Faults**: a fault on any node stops the arm; the joint bus reports which node and why.
-- **Testing**: the core is unit-tested on the host; integration scenarios run the controller against six simulated
-  e-foc nodes (e-foc-protocol's motor server) on an in-process CAN bus, tagged with the arm requirements; runs
-  against e-foc's virtual motors come next.
+- **Testing**: the core is unit-tested on the host. Integration scenarios run the controller against six simulated
+  e-foc nodes (e-foc-protocol's motor server) on an in-process CAN bus. They are tagged with the arm requirements.
+  Runs against e-foc's virtual motors come next.
 
 ---
 
-## Open Questions & Decisions
+## Decisions
 
-| # | Question / Decision                          | Status  | Options Considered                                                     | Rationale                                                                                                                                                                               |
+| # | Decision                                     | Status  | Options Considered                                                     | Rationale                                                                                                                                                                               |
 |---|----------------------------------------------|---------|------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | 1 | Where the controller runs                    | decided | MCU board, Linux single-board computer, PC                             | PC first; the core stays portable for a later MCU target                                                                                                                                |
 | 2 | Dependencies as submodules or FetchContent   | decided | Submodules, FetchContent                                               | Final projects pin their dependencies as submodules under `infra/`                                                                                                                      |

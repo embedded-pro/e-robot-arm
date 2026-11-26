@@ -23,19 +23,19 @@ date: YYYY-MM-DD
 >
 > **Diagrams**: All visuals must be either a Mermaid fenced code block (` ```mermaid `) or ASCII art inline
 > in the document. External image references (`![alt](path)`) are **not allowed**.
+>
+> **Component, not code or hardware**: No class, type, function, file or folder names. No MCU, board,
+> vendor peripheral, register or clock frequency. Say "the target"; "on the reference board" for a
+> measured figure.
 
 ---
 
 ## Responsibilities
 
-> State precisely what this component is responsible for and what it is explicitly NOT responsible for.
-> A well-scoped responsibility statement prevents scope creep and clarifies ownership boundaries.
-> Use a short bulleted list for each category.
+> State precisely what this component is responsible for: one bullet per responsibility.
+> Do not add a "not responsible for" list: state boundaries in *Interfaces* (Required).
 
 **Is responsible for:**
-- …
-
-**Is NOT responsible for:**
 - …
 
 ---
@@ -150,11 +150,11 @@ graph LR
 
 ---
 
-## Open Questions
+## Decisions
 
-> Track unresolved design questions. For each, state the question, the options being considered,
-> and any leaning or blockers.
+> Record each design decision: the options considered, the status and the rationale.
+> A decision that is still open links its GitHub issue.
 
-| # | Question | Options | Status |
-|---|----------|---------|--------|
-| 1 | …        | …       | open   |
+| # | Decision | Options Considered | Status | Rationale |
+|---|----------|--------------------|--------|-----------|
+| 1 | …        | …                  | open   | #…        |
