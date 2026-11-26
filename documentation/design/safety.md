@@ -2,7 +2,7 @@
 title: "Safety Supervisor Design"
 type: design
 status: draft
-version: 0.10.1
+version: 0.11.1
 component: "safety"
 date: 2026-11-26
 ---
@@ -12,7 +12,7 @@ date: 2026-11-26
 | Title     | Safety Supervisor Design |
 | Type      | design                   |
 | Status    | draft                    |
-| Version   | 0.10.1                   |
+| Version   | 0.11.1                   |
 | Component | safety                   |
 | Date      | 2026-11-26               |
 
@@ -125,6 +125,11 @@ Every rule ends in a protective stop (Part G). The reference rule lets the refer
 through ([joint-motion.md](joint-motion.md) Part C). A step is at most 0.2 rad and declares no speed. The workspace and
 self-collision rules name the link, or the pair of links, instead of a joint.
 
+**A passive step.** A passive controller may be active ([arm-controllers.md](arm-controllers.md) Part E). The arm then
+tracks no reference, and a push is what the operator wants. So the supervisor checks only the measured pose:
+workspace, self-collision, position limits and speed. It skips the collision, reference and tracking-error rules. It
+starts the tracking counts again.
+
 A step without streaming starts every count again and checks nothing: a joint the arm does not drive is not held to
 a reference. A joint's reading is stale when it was not refreshed in the last control period. The supervisor
 skips a joint with a stale reading for that step:
@@ -166,6 +171,10 @@ A protective stop keeps the drives powered. On the step a rule fails:
   acceleration). The torque limits of Part B still apply;
 - while stopped, selecting a mode, starting and aligning are refused. Torque setpoints are sent, so the hold goes on.
   The lifecycle refuses moves and steps ([arm-lifecycle.md](arm-lifecycle.md)).
+
+A passive controller cannot hold a pose. So a rule that fails on a passive step ends at once in an emergency stop
+(Part D) that names the rule. A passive controller selected during a protective stop holds nothing either. The held
+pose stays the reference, the arm drifts out of its window, and the hold is lost (emergency stop).
 
 The hold is supervised on its own terms:
 

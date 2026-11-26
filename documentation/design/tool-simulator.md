@@ -2,7 +2,7 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.43.1
+version: 0.44.1
 component: "tool-simulator"
 date: 2026-11-26
 ---
@@ -12,7 +12,7 @@ date: 2026-11-26
 | Title     | Simulator Screen Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.43.1                  |
+| Version   | 0.44.1                  |
 | Component | tool-simulator          |
 | Date      | 2026-11-26              |
 
@@ -639,8 +639,8 @@ So no disturbance control ever sits on a screen that drives hardware.
 | Inject Fault | Over-current fault in the next telemetry | — "not on the virtual arm"                                  | Offered on the target                              |
 | Silence      | The joint stops answering                | The motor's plant port pauses; the node stops answering     | Offered, the joint not silent ("J N is silent")    |
 | Resume       | The joint answers again                  | The plant port resumes                                      | The joint silent ("J N is answering")              |
-| Apply Torque | — "not on simulated joints"              | Joint-side torque added to the coupling, held until cleared | Offered, the value finite and within ±200 N·m      |
-| Clear Torque | —                                        | Torque back to 0                                            | A torque applied on the joint ("No torque on J N") |
+| Apply Torque | Joint-side torque added to the dynamics  | Joint-side torque added to the coupling, held until cleared | Offered, the value finite and within ±200 N·m      |
+| Clear Torque | Torque back to 0                         | Torque back to 0                                            | A torque applied on the joint ("No torque on J N") |
 | Power Off    | —                                        | The motor's process ends; Restart (Part L) brings it back   | Offered, the motor up ("J N's motor is not up")    |
 
 - **Simulation only** sits in the title row in the `Warning` colour, as in the Virtual Motors dock.
@@ -792,6 +792,17 @@ the answer.
 - **Feedback:** each click shows "requested…" in the status strip until the arm host answers.
   A refusal goes to the status strip and the log with its reason.
   An example is a switch to a controller that cannot take over a running move without a step. The log records every change of the active controller (Part F).
+- **Passive controllers** ([arm-controllers.md](arm-controllers.md) Part E) are rows only on the simulated joints and
+  the virtual arm, because the arm offers them nowhere else. Their parameters read `walls 0.1 rad`. The row carries
+  **Simulation only** in the `Warning` colour, as the Virtual Motors dock does (Part L).
+- **Free mode is always visible.** While the arm is enabled under a passive controller, the status strip's lifecycle
+  field adds **· Free: nothing holds the arm** in the `Warning` colour. So the text carries the state without the
+  colour.
+- **Free mode disables motion.** Move, Jog, Teach Points' Go To and Tuning's Run are disabled with the arm host's
+  reason "Free mode: select a tracking controller". Selecting a tracking controller in this dock catches the arm
+  where it is.
+- **Pushing a free arm** is the Disturbances dock's Apply Torque (Part M), on the simulated joints and the virtual
+  arm.
 
 ### Part R — Jog dock (phase 8c)
 

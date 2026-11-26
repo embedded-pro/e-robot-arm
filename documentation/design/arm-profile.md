@@ -2,7 +2,7 @@
 title: "Arm Profile Design"
 type: design
 status: draft
-version: 0.25.1
+version: 0.25.2
 component: "arm_profile"
 date: 2026-11-26
 ---
@@ -12,7 +12,7 @@ date: 2026-11-26
 | Title     | Arm Profile Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.25.1             |
+| Version   | 0.25.2             |
 | Component | arm_profile        |
 | Date      | 2026-11-26         |
 
@@ -115,7 +115,8 @@ task units and the damping σ of its task-inertia inverse. The controller hands 
 
 The active arm controller item names the controller that the arm selects at construction
 ([arm-controllers.md](arm-controllers.md) Part B). The arm host writes a run-time selection back, so a saved profile
-keeps it.
+keeps it. The item can name `free` or `gravity-float` on any target, but only a simulation offers them. Elsewhere the
+arm selects `gravity-pd` (the same document, Part E).
 
 The two gravity-PD items set the gains of the `gravity-pd` arm controller for every joint at once
 ([arm-controllers.md](arm-controllers.md) Part A). The two computed-torque items do the same for `computed-torque`.

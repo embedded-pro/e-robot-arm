@@ -2,7 +2,7 @@
 title: "Arm Lifecycle Design"
 type: design
 status: draft
-version: 0.12.1
+version: 0.13.1
 component: "lifecycle"
 date: 2026-11-26
 ---
@@ -12,7 +12,7 @@ date: 2026-11-26
 | Title     | Arm Lifecycle Design |
 | Type      | design               |
 | Status    | draft                |
-| Version   | 0.12.1               |
+| Version   | 0.13.1               |
 | Component | lifecycle            |
 | Date      | 2026-11-26           |
 
@@ -76,7 +76,9 @@ tools' align command aligns every joint, and it moves each motor.
 | Step     | Enabled                                | Starts a reference step through joint motion ([joint-motion.md](joint-motion.md) Part C); Moving until it is done, like a move                                                  |
 | Re-arm   | Tripped, Holding                       | Re-arms the safety supervisor, which refuses while a joint is still in fault; from Holding the arm is Enabled again                                                             |
 
-A command in any other state is refused and changes nothing. Enable always selects torque mode: the arm closes
+A command in any other state is refused and changes nothing. While a passive arm controller is active, the arm also
+refuses Move, Path, Line, Jog and Step. The reason is "free mode: select a tracking controller"
+([arm-controllers.md](arm-controllers.md) Part E). Enable always selects torque mode: the arm closes
 position on the host through its arm controllers ([arm-controllers.md](arm-controllers.md) Part A).
 
 ### Part C — Following the arm
