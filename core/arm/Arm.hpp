@@ -9,6 +9,7 @@
 #include "core/arm_controllers/implementations/GravityPid.hpp"
 #include "core/arm_controllers/implementations/JointImpedance.hpp"
 #include "core/arm_controllers/implementations/OperationalSpace.hpp"
+#include "core/arm_controllers/implementations/PassiveController.hpp"
 #include "core/arm_controllers/implementations/SlotineLi.hpp"
 #include "core/arm_model/DrivenArm.hpp"
 #include "core/collision/CollisionObserver.hpp"
@@ -71,6 +72,8 @@ namespace arm
         CartesianImpedance cartesianImpedance;
         OperationalSpace operationalSpace;
         SlotineLi slotineLi;
+        PassiveController freeController;
+        PassiveController gravityFloat;
         bool experimental;
         CollisionObserver collision;
         infra::Duration period;

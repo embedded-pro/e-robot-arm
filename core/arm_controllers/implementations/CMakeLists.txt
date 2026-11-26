@@ -29,6 +29,8 @@ target_sources(e_robot_arm.arm_controllers.implementations PRIVATE
     JointImpedance.hpp
     OperationalSpace.cpp
     OperationalSpace.hpp
+    PassiveController.cpp
+    PassiveController.hpp
     SlotineLi.cpp
     SlotineLi.hpp
 )
