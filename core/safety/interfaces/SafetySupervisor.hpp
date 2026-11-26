@@ -65,6 +65,7 @@ namespace arm
         virtual bool Holding() const = 0;
         virtual bool Rearm() = 0;
         virtual void Supervise(const std::optional<JointReference>& reference, const std::optional<JointTorques>& externalTorques) = 0;
+        virtual void SupervisePassive() = 0;
         virtual const JointFlags& TorqueClamped() const = 0;
         virtual std::optional<WorkspaceViolation> LastWorkspaceViolation() const = 0;
         virtual bool HardwareStopOpen() const = 0;

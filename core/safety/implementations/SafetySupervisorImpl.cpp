@@ -317,6 +317,44 @@ namespace arm
                 return;
     }
 
+    void SafetySupervisorImpl::SupervisePassive()
+    {
+        stepsOutside.fill(0);
+        previousReference.reset();
+        if (tripped || holding)
+            return;
+
+        passive = true;
+        SuperviseMeasuredPose();
+        passive = false;
+    }
+
+    bool SafetySupervisorImpl::SuperviseMeasuredPose()
+    {
+        if (const auto measured = FreshMeasuredPose(); guard != nullptr && measured.has_value())
+            if (const auto violation = guard->Check(*measured); violation.has_value())
+            {
+                lastWorkspaceViolation = violation;
+                Protect(violation->link, CauseOf(violation->rule), violation->distance);
+                return false;
+            }
+
+        for (std::size_t joint = 0; joint != jointCount; ++joint)
+        {
+            const auto& reading = bus.Reading(joint);
+            if (Stale(reading, bus.Period()))
+                continue;
+            if (reading.position < limits[joint].lower || limits[joint].upper < reading.position)
+            {
+                Protect(joint, SupervisionTrip::positionLimit, reading.position.Value());
+                return false;
+            }
+            if (!SuperviseSpeed(joint))
+                return false;
+        }
+        return true;
+    }
+
     bool SafetySupervisorImpl::SuperviseReference(const JointReference& reference)
     {
         const auto previous = std::exchange(previousReference, reference.positions);
@@ -449,6 +487,16 @@ namespace arm
 
     void SafetySupervisorImpl::Protect(std::size_t joint, SupervisionTrip cause, float value)
     {
+        if (passive)
+        {
+            Trip();
+            NotifyObservers([joint, cause, value](auto& observer)
+                {
+                    observer.OnSupervisionTrip(joint, cause, value);
+                });
+            return;
+        }
+
         holding = true;
         stepsOutside.fill(0);
         previousReference.reset();

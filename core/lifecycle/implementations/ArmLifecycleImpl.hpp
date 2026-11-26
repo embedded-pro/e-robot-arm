@@ -179,7 +179,7 @@ namespace arm
         static constexpr Machine::Rules Rules();
 
         ArmLifecycleImpl(SafetySupervisor& safety, JointMotion& motion, JointConfigurator& configurator, const JointControllers& controllers,
-            const JointMotors& motors = {}, std::optional<float> watchdogSeconds = std::nullopt);
+            const JointMotors& motors = {}, std::optional<float> watchdogSeconds = std::nullopt, const MotionPermit* permit = nullptr);
 
         bool BringUp() override;
         bool Enable() override;
@@ -229,6 +229,7 @@ namespace arm
         };
 
         bool Accepted(const lifecycle::Event& event);
+        bool Permitted() const;
         lifecycle::Observed Observe() const;
         void QueryContracts();
         void SelectMode();
@@ -253,6 +254,7 @@ namespace arm
         JointControllers controllers;
         JointMotors motors;
         std::optional<float> watchdogSeconds;
+        const MotionPermit* permit;
         std::size_t nextStep{ 0 };
         std::optional<std::size_t> configuringStep;
         std::optional<Misconfiguration> misconfiguration;

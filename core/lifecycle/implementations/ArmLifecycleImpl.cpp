@@ -218,7 +218,7 @@ namespace arm
     }
 
     ArmLifecycleImpl::ArmLifecycleImpl(SafetySupervisor& safety, JointMotion& motion, JointConfigurator& configurator, const JointControllers& controllers, const JointMotors& motors,
-        std::optional<float> watchdogSeconds)
+        std::optional<float> watchdogSeconds, const MotionPermit* permit)
         : JointBusObserver(safety)
         , JointMotionObserver(motion)
         , JointConfiguratorObserver(configurator)
@@ -228,6 +228,7 @@ namespace arm
         , controllers(controllers)
         , motors(motors)
         , watchdogSeconds(watchdogSeconds)
+        , permit(permit)
         , fsm(*this, services::Validated<ArmLifecycleImpl>())
     {
         fsm.Start<Unpowered>();
@@ -255,6 +256,8 @@ namespace arm
 
     bool ArmLifecycleImpl::MoveTo(const JointPositions& target)
     {
+        if (!Permitted())
+            return false;
         if (fsm.Is<Moving>())
             return motion.MoveTo(target);
         return fsm.Is<Enabled>() && motion.MoveTo(target) && Accepted(MoveStarted{});
@@ -262,16 +265,22 @@ namespace arm
 
     bool ArmLifecycleImpl::StepTo(const JointPositions& target)
     {
+        if (!Permitted())
+            return false;
         return fsm.Is<Enabled>() && motion.StepTo(target) && Accepted(MoveStarted{});
     }
 
     bool ArmLifecycleImpl::MoveThrough(const JointWaypoints& waypoints)
     {
+        if (!Permitted())
+            return false;
         return fsm.Is<Enabled>() && motion.MoveThrough(waypoints) && Accepted(MoveStarted{});
     }
 
     bool ArmLifecycleImpl::Jog(const JointJog& jog)
     {
+        if (!Permitted())
+            return false;
         if (fsm.Is<Moving>())
             return motion.Jog(jog);
         return fsm.Is<Enabled>() && motion.Jog(jog) && Accepted(MoveStarted{});
@@ -279,6 +288,8 @@ namespace arm
 
     bool ArmLifecycleImpl::Jog(const ToolJog& jog)
     {
+        if (!Permitted())
+            return false;
         if (fsm.Is<Moving>())
             return motion.Jog(jog);
         return fsm.Is<Enabled>() && motion.Jog(jog) && Accepted(MoveStarted{});
@@ -286,7 +297,14 @@ namespace arm
 
     bool ArmLifecycleImpl::MoveLine(const ToolPose& target)
     {
+        if (!Permitted())
+            return false;
         return fsm.Is<Enabled>() && motion.MoveLine(target) && Accepted(MoveStarted{});
+    }
+
+    bool ArmLifecycleImpl::Permitted() const
+    {
+        return permit == nullptr || permit->MotionPermitted();
     }
 
     ArmState ArmLifecycleImpl::State() const
