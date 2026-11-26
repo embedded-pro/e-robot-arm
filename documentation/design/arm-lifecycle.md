@@ -2,9 +2,9 @@
 title: "Arm Lifecycle Design"
 type: design
 status: draft
-version: 0.12.0
+version: 0.13.0
 component: "lifecycle"
-date: 2026-11-20
+date: 2026-11-26
 ---
 
 | Field     | Value                |
@@ -12,9 +12,9 @@ date: 2026-11-20
 | Title     | Arm Lifecycle Design |
 | Type      | design               |
 | Status    | draft                |
-| Version   | 0.12.0               |
+| Version   | 0.13.0               |
 | Component | lifecycle            |
-| Date      | 2026-11-20           |
+| Date      | 2026-11-26           |
 
 > The arm's start-up sequence: from an arm that has not been checked to one that moves, and back after a fault.
 > Behaviour only; diagrams are Mermaid.
@@ -81,7 +81,9 @@ command aligns every joint, and it moves each motor.
 | Step     | Enabled                                | Starts a reference step through joint motion ([joint-motion.md](joint-motion.md) Part C); Moving until it is done, like a move                                                  |
 | Re-arm   | Tripped, Holding                       | Re-arms the safety supervisor, which refuses while a joint is still in fault; from Holding the arm is Enabled again                                                             |
 
-A command in any other state is refused and changes nothing. Enable always selects torque mode: the arm closes
+A command in any other state is refused and changes nothing. Move, Path, Line, Jog and Step are also refused while a
+passive arm controller is active, with "free mode: select a tracking controller"
+([arm-controllers.md](arm-controllers.md) Part E). Enable always selects torque mode: the arm closes
 position on the host through its arm controllers ([arm-controllers.md](arm-controllers.md) Part A).
 
 ### Part C — Following the arm

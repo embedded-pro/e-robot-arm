@@ -119,7 +119,8 @@ controller: its bandwidth and damping ratio in task units and the damping σ of 
 over to joint-space control below `toolLimits.manipulabilityMin`. `slotineLi` sets the `slotine-li` arm controller,
 which the arm offers only when `experimental` is `true`. `armController` names the controller the arm selects when it
 is built ([arm-controllers.md](arm-controllers.md) Part B); the arm host writes a run-time selection back, so a saved
-profile keeps it.
+profile keeps it. `free` and `gravity-float` are read on any target, but only a simulation offers them: elsewhere the
+arm selects `gravity-pd` (Part E of the same document).
 
 The two `gravityPd` items set the gains of the `gravity-pd` arm controller, the two `computedTorque` items those of
 `computed-torque` and the two `gravityPid` items those of `gravity-pid`, for every joint at once ([arm-controllers.md](arm-controllers.md) Part A).

@@ -2,9 +2,9 @@
 title: "Simulator Design"
 type: design
 status: draft
-version: 0.35.1
+version: 0.36.0
 component: "simulator"
-date: 2026-11-23
+date: 2026-11-26
 ---
 
 | Field     | Value            |
@@ -12,9 +12,9 @@ date: 2026-11-23
 | Title     | Simulator Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.35.1           |
+| Version   | 0.36.0           |
 | Component | simulator        |
-| Date      | 2026-11-23       |
+| Date      | 2026-11-26       |
 
 > The e-robot-arm Simulator's components, threads, targets and data flow (phase 8a,
 > [#28](https://github.com/embedded-pro/e-robot-arm/issues/28)). The screen itself — layout, controls, flows,
@@ -94,6 +94,11 @@ A target switch builds everything anew; nothing carries over:
    drains or 100 ms pass.
 3. The arm, its client and the adapter are destroyed; the new target, client and arm are built.
 4. The new arm starts stopped, untripped and with its contracts unchecked.
+
+The arm is built with its configuration's `simulation` flag on for the simulated joints and the virtual arm, and off
+for a virtual bus and the real arm. Only with it on does the arm offer the passive controllers `free` and
+`gravity-float` ([arm-controllers.md](arm-controllers.md) Part E). A virtual bus is off because the tools cannot tell
+what joined it.
 
 A target is opened for the node ids of the profile in effect, so simulated joints answer on the profile's nodes.
 A target is ready once its adapter has connected: an slcan or `virtual:` adapter finishes its handshake after it is
@@ -196,12 +201,12 @@ profile never saves commissioning limits; it carries whether they are on.
 
 **Disturbances** are commands as well, each answered `accepted` or `refused`. What a target offers:
 
-| Disturbance      | Simulated joints                   | Virtual arm ([virtual-arm.md](virtual-arm.md) Part D) | Virtual bus, real arm       |
-|------------------|------------------------------------|-------------------------------------------------------|-----------------------------|
-| Inject fault     | Over-current in the next telemetry | Refused: "not on the virtual arm"                     | Refused: "not a simulation" |
-| Silence, resume  | The joint stops or answers again   | The plant port pauses or resumes                      | Refused: "not a simulation" |
-| Collision torque | Refused: "not on simulated joints" | Joint-side torque held until set back to 0            | Refused: "not a simulation" |
-| Power off motor  | Refused: "not on simulated joints" | The motor's process ends; restart brings it back      | Refused: "not a simulation" |
+| Disturbance      | Simulated joints                           | Virtual arm ([virtual-arm.md](virtual-arm.md) Part D) | Virtual bus, real arm       |
+|------------------|--------------------------------------------|-------------------------------------------------------|-----------------------------|
+| Inject fault     | Over-current in the next telemetry         | Refused: "not on the virtual arm"                     | Refused: "not a simulation" |
+| Silence, resume  | The joint stops or answers again           | The plant port pauses or resumes                      | Refused: "not a simulation" |
+| Collision torque | Joint-side torque held until set back to 0 | Joint-side torque held until set back to 0            | Refused: "not a simulation" |
+| Power off motor  | Refused: "not on simulated joints"         | The motor's process ends; restart brings it back      | Refused: "not a simulation" |
 
 None depends on the arm's state. The snapshot carries what the target offers and what is applied: each joint
 silent or not and its collision torque.

@@ -2,9 +2,9 @@
 title: "Safety Supervisor Design"
 type: design
 status: draft
-version: 0.10.0
+version: 0.11.0
 component: "safety"
-date: 2026-11-19
+date: 2026-11-26
 ---
 
 | Field     | Value                    |
@@ -12,9 +12,9 @@ date: 2026-11-19
 | Title     | Safety Supervisor Design |
 | Type      | design                   |
 | Status    | draft                    |
-| Version   | 0.10.0                   |
+| Version   | 0.11.0                   |
 | Component | safety                   |
-| Date      | 2026-11-19               |
+| Date      | 2026-11-26               |
 
 > The guard between the arm controllers and the joint bus. Behaviour only; diagrams are Mermaid.
 
@@ -124,6 +124,11 @@ Every rule ends in a protective stop (Part G). The reference rule lets the refer
 through ([joint-motion.md](joint-motion.md) Part C): a step is at most 0.2 rad and declares no speed. The workspace and
 self-collision rules name the link, or the pair of links, instead of a joint.
 
+**A passive step.** While a passive controller is active ([arm-controllers.md](arm-controllers.md) Part E), the arm
+tracks no reference and a push is what the operator wants. The supervisor then checks only the measured pose:
+workspace, self-collision, position limits and speed. It skips the collision, reference and tracking-error rules,
+and starts the tracking counts again.
+
 A step without streaming starts every count again and checks nothing: a joint the arm does not drive is not held to
 a reference. A joint whose latest reading is stale, not refreshed in the last control period, is skipped for that
 step: its count neither grows nor starts again, a measured pose with a stale joint is not checked against the
@@ -160,6 +165,10 @@ A protective stop keeps the drives powered. On the step a rule fails:
   no acceleration), with the torque limits of Part B still applied;
 - while stopped, selecting a mode, starting and aligning are refused; torque setpoints are sent, so the hold goes on;
   the lifecycle refuses moves and steps ([arm-lifecycle.md](arm-lifecycle.md)).
+
+A passive controller cannot hold a pose. A rule that fails on a passive step therefore ends at once in an emergency
+stop (Part D) that names the rule. A passive controller selected during a protective stop holds nothing either: the
+held pose stays the reference, the arm drifts out of its window, and the hold is lost (emergency stop).
 
 The hold is supervised on its own terms:
 
