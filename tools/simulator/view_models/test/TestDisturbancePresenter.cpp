@@ -51,7 +51,7 @@ TEST_F(DisturbancePresenterTest, is_hidden_and_offers_nothing_outside_a_simulati
     EXPECT_TRUE(posted.empty());
 }
 
-TEST_F(DisturbancePresenterTest, offers_faults_and_silence_on_simulated_joints_but_no_torque)
+TEST_F(DisturbancePresenterTest, offers_faults_and_silence_on_simulated_joints_but_no_torque_without_dynamics)
 {
     presenter.Refresh(Simulated());
 
@@ -61,7 +61,7 @@ TEST_F(DisturbancePresenterTest, offers_faults_and_silence_on_simulated_joints_b
     EXPECT_FALSE(presenter.Enabled(DisturbanceAction::resume));
     EXPECT_FALSE(presenter.Enabled(DisturbanceAction::applyTorque));
     EXPECT_FALSE(presenter.Enabled(DisturbanceAction::powerOff));
-    EXPECT_THAT(presenter.Hint(), testing::HasSubstr("Apply Torque: not on simulated joints"));
+    EXPECT_THAT(presenter.Hint(), testing::HasSubstr("Apply Torque: the simulated joints have no dynamics"));
     EXPECT_THAT(presenter.Hint(), testing::HasSubstr("Resume: J1 is answering"));
 
     presenter.SelectJoint(2);
@@ -115,4 +115,15 @@ TEST_F(DisturbancePresenterTest, offers_no_power_off_for_a_motor_that_is_not_up_
     presenter.Refresh(snapshot);
     EXPECT_FALSE(presenter.Enabled(DisturbanceAction::silence));
     EXPECT_THAT(presenter.Hint(), testing::HasSubstr("Silence: not connected"));
+}
+
+TEST_F(DisturbancePresenterTest, offers_a_torque_on_simulated_joints_with_dynamics)
+{
+    auto snapshot = Simulated();
+    snapshot.disturbances->collision = true;
+    presenter.Refresh(snapshot);
+
+    EXPECT_TRUE(presenter.Enabled(DisturbanceAction::applyTorque));
+    EXPECT_TRUE(presenter.Enabled(DisturbanceAction::injectFault));
+    EXPECT_FALSE(presenter.Enabled(DisturbanceAction::powerOff));
 }

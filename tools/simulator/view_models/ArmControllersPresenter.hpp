@@ -30,6 +30,7 @@ namespace simulator
         ui::theme::StatusLevel level{ ui::theme::StatusLevel::Neutral };
         std::string parameters;
         bool enabled{ false };
+        bool simulationOnly{ false };
 
         friend bool operator==(const ArmControllerRow& lhs, const ArmControllerRow& rhs) = default;
     };

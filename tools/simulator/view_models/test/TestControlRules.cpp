@@ -211,3 +211,10 @@ TEST_F(ControlRulesTest, the_commissioning_limits_change_only_on_the_real_arm_wh
         ExpectDisabled(Control::commissioning, real, "Disable the arm first");
     }
 }
+
+TEST_F(ControlRulesTest, move_is_refused_in_free_mode)
+{
+    ExpectDisabled(Control::move, simulator::test::Free(), "Free mode: select a tracking controller");
+    ExpectEnabled(Control::disable, simulator::test::Free());
+    ExpectEnabled(Control::emergencyStop, simulator::test::Free());
+}

@@ -80,6 +80,8 @@ namespace simulator
                 case profileLoaded:
                     return { LogLevel::info, "Profile loaded: the arm was rebuilt" };
                 case armControllerChanged:
+                    if (!event.reason.empty())
+                        return { LogLevel::warning, "Arm controller: " + Text(event.armController) + " (" + event.reason + ")" };
                     return { event.armController == "none" ? LogLevel::warning : LogLevel::info, "Arm controller: " + Text(event.armController) };
             }
             return { LogLevel::info, "Unknown event" };

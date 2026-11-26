@@ -169,3 +169,11 @@ TEST_F(JogPresenterTest, keeps_the_share_between_one_and_a_hundred_percent_and_r
     presenter.Press(2, 1, start);
     EXPECT_EQ(1u, posted.size());
 }
+
+TEST_F(JogPresenterTest, refuses_to_jog_in_free_mode)
+{
+    presenter.Refresh(simulator::test::Free(), start);
+
+    EXPECT_FALSE(presenter.JogState().enabled);
+    EXPECT_EQ("Free mode: select a tracking controller", presenter.JogState().reason);
+}

@@ -538,6 +538,11 @@ namespace simulator
             status.connectionLevel = snapshot.targetReady ? ui::theme::StatusLevel::Ok : ui::theme::StatusLevel::Neutral;
         }
         std::tie(status.stage, status.stageLevel) = Stage(snapshot);
+        if (snapshot.targetReady && arm_host::FreeMode(snapshot) && (snapshot.state == arm::ArmState::enabling || snapshot.state == arm::ArmState::enabled))
+        {
+            status.stage += " · Free: nothing holds the arm";
+            status.stageLevel = ui::theme::StatusLevel::Warning;
+        }
         status.contracts = ContractsText(snapshot.contracts);
         UpdateStop();
         constexpr float busWarning{ 0.7f };

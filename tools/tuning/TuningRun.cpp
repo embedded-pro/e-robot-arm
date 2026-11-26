@@ -34,6 +34,8 @@ namespace tuning
             return snapshot.moving ? "the arm is moving" : "the arm is not enabled";
         if (snapshot.moving)
             return "the arm is moving";
+        if (arm_host::FreeMode(snapshot))
+            return "free mode: select a tracking controller";
         return std::nullopt;
     }
 

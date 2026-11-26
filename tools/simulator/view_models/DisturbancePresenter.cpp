@@ -128,7 +128,7 @@ namespace simulator
         if (action == DisturbanceAction::injectFault && !offered.injectFault)
             return "not on the virtual arm";
         if ((action == DisturbanceAction::applyTorque || action == DisturbanceAction::clearTorque) && !offered.collision)
-            return "not on simulated joints";
+            return "the simulated joints have no dynamics";
         if (action == DisturbanceAction::powerOff && !offered.powerOff)
             return "not on simulated joints";
         return {};
