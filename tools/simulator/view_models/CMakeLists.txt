@@ -33,6 +33,8 @@ target_sources(e_robot_arm.tool.simulator.view_models PRIVATE
     ControlRules.hpp
     EventLog.cpp
     EventLog.hpp
+    HandGuide.cpp
+    HandGuide.hpp
     FrameStatistics.cpp
     FrameStatistics.hpp
     JointRows.cpp
