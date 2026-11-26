@@ -2,9 +2,9 @@
 title: "Arm Controllers Design"
 type: design
 status: draft
-version: 0.20.0
+version: 0.21.0
 component: "arm-controllers"
-date: 2026-11-20
+date: 2026-11-26
 ---
 
 | Field     | Value                  |
@@ -12,9 +12,9 @@ date: 2026-11-20
 | Title     | Arm Controllers Design |
 | Type      | design                 |
 | Status    | draft                  |
-| Version   | 0.20.0                 |
+| Version   | 0.21.0                 |
 | Component | arm-controllers        |
-| Date      | 2026-11-20             |
+| Date      | 2026-11-26             |
 
 > Which controller turns the motion's reference into the joints' setpoints, and how one is enabled, disabled and
 > switched at run time without a setpoint step (phase 2, [#18](https://github.com/embedded-pro/e-robot-arm/issues/18)
@@ -122,10 +122,10 @@ is gone.
 
 ### Part B — Registry and selection
 
-The arm registers its controllers once, when it is built, up to a fixed capacity of eight. Ids are their
+The arm registers its controllers once, when it is built, up to a fixed capacity of ten. Ids are their
 registration order. A controller is registered disabled; the arm then enables every one it registered (`slotine-li`
-only with the profile's `experimental` flag, Part D) and selects the profile's `armController`, `gravity-pd` when the
-profile names none. The profile keeps the active controller and nothing else about the registry: a selection made
+only with the profile's `experimental` flag, Part D; `free` and `gravity-float` only on a simulation, Part E) and
+selects the profile's `armController`, `gravity-pd` when the profile names none. The profile keeps the active controller and nothing else about the registry: a selection made
 at run time is written back into the arm host's copy of the profile, so saving it keeps the choice, while enabling
 and disabling stay run-time choices that a reload undoes (open question 1).
 
@@ -265,6 +265,44 @@ under either.
 0.2 rad tracking window, and the supervisor holds the arm (safety.md Part F). A soft arm is for slow moves and for
 being guided; whether the window widens with the share is open question 4.
 
+### Part E — Passive controllers (simulation only)
+
+Two controllers let the arm move with its own dynamics, so an operator can watch it fall, swing and settle, or push it
+by hand (phase 8e, [roadmap](../roadmap.md)):
+
+| Name            | Law                    | Use                                                       |
+|-----------------|------------------------|-----------------------------------------------------------|
+| `free`          | `τ = τw`               | No controller: gravity, friction and pushes move the arm  |
+| `gravity-float` | `τ = G(q) + τw`        | The arm floats where it is left and yields to every push  |
+
+**Offered on a simulation only.** A zero torque drops a real arm. The arm registers and enables the two only when
+its configuration's `simulation` flag is on (ArmConfig, not the profile file). The arm host sets the flag for the
+simulated joints and the virtual arm, never for a virtual bus or the real arm ([simulator.md](simulator.md) Part C).
+Without the flag they do not exist: a select by name finds nothing, and a profile whose `armController` names one
+selects `gravity-pd`, as for `slotine-li` without `experimental` (Part B). The arm host logs that fallback.
+
+**Joint-limit walls.** τw keeps a passive arm off its position limits. Inside a band of 0.1 rad before a limit, a
+joint gets a spring and a damper that push it back: `τw = −ω²·Mᵢᵢ·d − 2·ω·Mᵢᵢ·q̇ᵢ`, with d the depth into the band,
+ω = 20 rad/s and Mᵢᵢ the diagonal of the mass matrix at the measured pose with the rotors. Outside the band τw is
+zero. A push or gravity stronger than the wall still reaches the limit; the safety supervisor then stops the arm
+([safety.md](safety.md) Parts F and G). The reference arm's joints are direct drive, so a free fall passes the speed
+rule within about 0.15 s and stops the arm the same way; a geared arm falls slower.
+
+**What a passive controller changes:**
+
+- **Reference.** It tracks no reference. Every period the reference it reports is the measured pose at rest, so the
+  trace shows commanded equal to measured and the ghost arm stays hidden. During a protective stop it keeps the held
+  pose instead.
+- **Moves.** A move, path, line, jog or step is refused with "free mode: select a tracking controller"
+  ([arm-lifecycle.md](arm-lifecycle.md) Part B). Verified by `free_dynamics.feature` (REQ-CTL-003, REQ-CTL-004).
+- **Selection.** Each declares no bumpless transfer, so selecting one while a move runs is refused (Part B). Selecting
+  a tracking controller while a passive one is active is accepted at any time: it is `Reset` from the measured joints
+  and holds where the arm is, which catches a falling arm. Its first torque set steps by G(q) from `free`.
+- **Supervision.** The supervisor checks only the measured pose, and a protective stop ends in an emergency stop,
+  since a passive controller holds nothing ([safety.md](safety.md) Parts F and G).
+
+`free` and `gravity-float` have no parameters in the profile; the wall's band and ω are fixed.
+
 ---
 
 ## Interfaces
@@ -314,10 +352,12 @@ being guided; whether the window widens with the share is open question 4.
 | `slotine-li`          | λ                       | 1/s             | above 0, at most 100   | 10 by default; Λ = λ·I                               |
 | `slotine-li`          | bandwidth               | rad/s           | above 0, at most 500   | 20 by default; Kd = ω·M₀                             |
 | `slotine-li`          | adaptation gain         | 1               | above 0, at most 10000 | 10 by default; Γₖₖ = γ·(θ⁰ₖ² + 10⁻⁶)                 |
+| Joint-limit wall      | band                    | rad             | 0.1                    | `free`, `gravity-float`; before each position limit  |
+| Joint-limit wall      | ω                       | rad/s           | 20                     | Spring ω²·Mᵢᵢ, damper 2·ω·Mᵢᵢ                        |
 | Impedance             | stiffness share         | 1               | 0.1–1                  | Scales both impedance controllers' stiffnesses       |
 | Reference             | speeds, accelerations   | rad/s, rad/s²   | finite                 | Zero while holding                                   |
-| Registry entry        | id                      | integer         | 0–7                    | Registration order                                   |
-| Registry entry        | name                    | text            | unique                 | The names of Parts A and D                           |
+| Registry entry        | id                      | integer         | 0–9                    | Registration order                                   |
+| Registry entry        | name                    | text            | unique                 | The names of Parts A, D and E                        |
 | Registry entry        | enabled                 | flag            |                        | Registered disabled                                  |
 
 ---
@@ -368,7 +408,7 @@ sequenceDiagram
 
 | Constraint | Value / Description                                                                      |
 |------------|------------------------------------------------------------------------------------------|
-| Capacity   | Eight controllers                                                                        |
+| Capacity   | Ten controllers                                                                          |
 | Bumpless   | From the measured joints: the setpoints move by at most the tracking error at the switch |
 | Traffic    | One setpoint set per control period while the arm is enabled                             |
 | Memory     | No heap; every controller's state is fixed-size                                          |
@@ -383,3 +423,4 @@ sequenceDiagram
 | 2 | Whether a switch to a non-bumpless controller may blend | Refuse while moving; ramp from the old set         | decided: refuse while moving  |
 | 3 | Gains of the joint-space laws away from home            | Inertia at home; mass matrix at the measured pose  | decided: at the measured pose |
 | 4 | Whether the tracking window follows the stiffness share | Fixed window; window over the share                | open (Part D)                 |
+| 5 | Passive controllers on the real arm                     | Never; `gravity-float` under commissioning limits  | decided: never (Part E)       |
