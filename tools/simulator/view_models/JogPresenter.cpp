@@ -149,6 +149,8 @@ namespace simulator
             return { false, "Moving: wait or abort" };
         if (snapshot.state != enabled && snapshot.state != moving)
             return { false, "Enable the arm first" };
+        if (arm_host::FreeMode(snapshot))
+            return { false, "Free mode: select a tracking controller" };
         return { true, {} };
     }
 

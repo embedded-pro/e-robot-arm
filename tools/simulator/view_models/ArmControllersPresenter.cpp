@@ -51,6 +51,8 @@ namespace simulator
                 return OperationalSpace(config.operationalSpace);
             if (name == "slotine-li")
                 return SlotineLi(config.slotineLi);
+            if (name == "free" || name == "gravity-float")
+                return "walls 0.1 rad";
             return "—";
         }
 
@@ -65,7 +67,7 @@ namespace simulator
         {
             const auto* state = StateText(controller);
             const auto level = controller.active ? ui::theme::StatusLevel::Ok : ui::theme::StatusLevel::Neutral;
-            return ArmControllerRow{ controller.name, state, level, Parameters(config, controller.name), controller.enabled };
+            return ArmControllerRow{ controller.name, state, level, Parameters(config, controller.name), controller.enabled, controller.passive };
         }
 
         ControlState Allowed()

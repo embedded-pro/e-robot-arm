@@ -71,6 +71,8 @@ namespace simulator
                 return Disabled("Holding: re-arm first");
             if (snapshot.state != enabled && snapshot.state != moving)
                 return Disabled("Enable the arm first");
+            if (arm_host::FreeMode(snapshot))
+                return Disabled("Free mode: select a tracking controller");
             if (!targetProblem.empty())
                 return Disabled(std::string{ targetProblem });
             return Enabled();

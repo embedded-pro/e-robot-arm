@@ -158,3 +158,18 @@ TEST_F(ArmControllersPresenterTest, a_row_that_disappears_with_a_new_profile_is_
     EXPECT_FALSE(presenter.Chosen().has_value());
     EXPECT_EQ("Choose a controller", presenter.State(ArmControllerAction::enable).reason);
 }
+
+TEST_F(ArmControllersPresenterTest, marks_the_passive_controllers_simulation_only_with_their_walls)
+{
+    auto snapshot = simulator::test::Compatible();
+    snapshot.armControllers = { { "gravity-pd", true, true }, { "free", true, false, true }, { "gravity-float", true, false, true } };
+    presenter.Refresh(snapshot);
+
+    const auto& rows = presenter.Rows();
+    ASSERT_EQ(3u, rows.size());
+    EXPECT_FALSE(rows[0].simulationOnly);
+    EXPECT_TRUE(rows[1].simulationOnly);
+    EXPECT_EQ("walls 0.1 rad", rows[1].parameters);
+    EXPECT_TRUE(rows[2].simulationOnly);
+    EXPECT_EQ("walls 0.1 rad", rows[2].parameters);
+}

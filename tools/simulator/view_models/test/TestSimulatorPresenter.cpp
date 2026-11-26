@@ -551,3 +551,14 @@ TEST_F(SimulatorPresenterTest, the_real_arm_shows_which_limits_it_runs_under_and
     presenter.Refresh(simulator::test::Compatible(), {});
     EXPECT_EQ("", presenter.Status().limits);
 }
+
+TEST_F(SimulatorPresenterTest, free_mode_shows_in_the_lifecycle_field_as_a_warning)
+{
+    presenter.Refresh(simulator::test::Free(), {});
+
+    EXPECT_EQ("Enabled · Free: nothing holds the arm", presenter.Status().stage);
+    EXPECT_EQ(ui::theme::StatusLevel::Warning, presenter.Status().stageLevel);
+
+    presenter.Refresh(simulator::test::Running(), {});
+    EXPECT_EQ("Enabled", presenter.Status().stage);
+}
