@@ -1,6 +1,7 @@
 #include "core/joint_configurator/test_doubles/JointConfiguratorMock.hpp"
 #include "core/lifecycle/implementations/ArmLifecycleImpl.hpp"
 #include "core/lifecycle/test_doubles/ArmLifecycleMock.hpp"
+#include "core/lifecycle/test_doubles/MotionPermitMock.hpp"
 #include "core/motion/test_doubles/JointMotionMock.hpp"
 #include "core/safety/test_doubles/SafetySupervisorMock.hpp"
 #include "gmock/gmock.h"
@@ -20,6 +21,10 @@ namespace
             , watchdog(watchdog)
         {
             EXPECT_CALL(observer, OnStateChanged(_)).Times(AnyNumber());
+            EXPECT_CALL(permit, MotionPermitted()).WillRepeatedly(Invoke([this]()
+                {
+                    return permitted;
+                }));
             EXPECT_CALL(safety, Reading(_)).WillRepeatedly(Invoke([this](std::size_t joint) -> const arm::JointReading&
                 {
                     return readings[joint];
@@ -113,7 +118,9 @@ namespace
         arm::JointControllers controllers;
         arm::JointMotors motors;
         std::optional<float> watchdog;
-        arm::ArmLifecycleImpl lifecycle{ safety, motion, configurator, controllers, motors, watchdog };
+        StrictMock<arm::MotionPermitMock> permit;
+        bool permitted{ true };
+        arm::ArmLifecycleImpl lifecycle{ safety, motion, configurator, controllers, motors, watchdog, &permit };
         StrictMock<arm::ArmLifecycleObserverMock> observer{ lifecycle };
         arm::JointPositions target{};
     };
@@ -821,4 +828,20 @@ TEST_F(ArmLifecycleWatchdogTest, a_drive_watchdog_that_reads_back_different_name
     WatchdogAnswers(0, 0.0f);
 
     EXPECT_EQ((arm::Misconfiguration{ 0, arm::MisconfigurationReason::differs, arm::ConfigurationPart::watchdog }), lifecycle.MisconfiguredJoint());
+}
+
+TEST_F(ArmLifecycleImplTest, refuses_every_motion_command_while_motion_is_not_permitted)
+{
+    BringToEnabled();
+    permitted = false;
+    arm::JointWaypoints::WithMaxSize<arm::maxWaypoints> waypoints;
+
+    EXPECT_FALSE(lifecycle.MoveTo(target));
+    EXPECT_FALSE(lifecycle.StepTo(target));
+    EXPECT_FALSE(lifecycle.MoveThrough(waypoints));
+    EXPECT_FALSE(lifecycle.MoveLine(arm::ToolPose{}));
+    EXPECT_FALSE(lifecycle.Jog(arm::JointJog{}));
+    EXPECT_FALSE(lifecycle.Jog(arm::ToolJog{}));
+
+    EXPECT_EQ(ArmState::enabled, lifecycle.State());
 }

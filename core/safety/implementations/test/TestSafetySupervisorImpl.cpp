@@ -686,3 +686,66 @@ TEST_F(SafetySupervisorImplTest, a_hardware_stop_open_from_the_start_refuses_mot
     EXPECT_FALSE(supervisor.SelectMode(can::FocMotorMode::torque));
     EXPECT_FALSE(supervisor.Tripped());
 }
+
+TEST_F(SafetySupervisorImplTest, a_passive_step_ignores_the_reference_and_an_external_torque)
+{
+    Measured(withinLimits);
+
+    supervisor.SupervisePassive();
+
+    EXPECT_FALSE(supervisor.Tripped());
+    EXPECT_FALSE(supervisor.Holding());
+}
+
+TEST_F(SafetySupervisorImplTest, a_measured_position_outside_its_limits_on_a_passive_step_emergency_stops_the_arm)
+{
+    auto beyond = withinLimits;
+    beyond[2] = foc::Radians{ 0.55f };
+    Measured(beyond);
+
+    EXPECT_CALL(bus, EmergencyStop()).WillOnce(Return(true));
+    EXPECT_CALL(observer, OnSupervisionTrip(2, arm::SupervisionTrip::positionLimit, 0.55f));
+    supervisor.SupervisePassive();
+
+    EXPECT_TRUE(supervisor.Tripped());
+    EXPECT_FALSE(supervisor.Holding());
+}
+
+TEST_F(SafetySupervisorImplTest, a_measured_speed_above_its_limit_on_a_passive_step_emergency_stops_the_arm)
+{
+    Measured(withinLimits);
+    readings[3].speed = foc::RadiansPerSecond{ -4.5f };
+
+    EXPECT_CALL(bus, EmergencyStop()).WillOnce(Return(true));
+    EXPECT_CALL(observer, OnSupervisionTrip(3, arm::SupervisionTrip::speedLimit, -4.5f));
+    supervisor.SupervisePassive();
+
+    EXPECT_TRUE(supervisor.Tripped());
+}
+
+TEST_F(SafetySupervisorImplTest, a_measured_pose_the_workspace_check_fails_on_a_passive_step_emergency_stops_the_arm)
+{
+    Measured(withinLimits);
+    const arm::WorkspaceViolation violation{ arm::WorkspaceRule::selfCollision, 0, 2, 0.001f };
+    EXPECT_CALL(guard, Check(withinLimits)).WillOnce(Return(violation));
+
+    EXPECT_CALL(bus, EmergencyStop()).WillOnce(Return(true));
+    EXPECT_CALL(observer, OnSupervisionTrip(0, arm::SupervisionTrip::selfCollision, 0.001f));
+    supervisor.SupervisePassive();
+
+    EXPECT_TRUE(supervisor.Tripped());
+    EXPECT_EQ(std::optional<arm::WorkspaceViolation>{ violation }, supervisor.LastWorkspaceViolation());
+}
+
+TEST_F(SafetySupervisorImplTest, a_passive_step_while_tripped_or_holding_checks_nothing)
+{
+    Hold();
+    auto beyond = withinLimits;
+    beyond[4] = foc::Radians{ 0.9f };
+    Measured(beyond);
+
+    supervisor.SupervisePassive();
+
+    EXPECT_TRUE(supervisor.Holding());
+    EXPECT_FALSE(supervisor.Tripped());
+}

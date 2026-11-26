@@ -48,6 +48,15 @@ namespace arm
         bool operator==(const Misconfiguration& other) const = default;
     };
 
+    class MotionPermit
+    {
+    public:
+        virtual bool MotionPermitted() const = 0;
+
+    protected:
+        ~MotionPermit() = default;
+    };
+
     class ArmLifecycle;
 
     class ArmLifecycleObserver
