@@ -204,7 +204,7 @@ namespace simulator
                 if (controller.name == arm::armControllerNames[kind])
                 {
                     const auto previous = std::ranges::find(choices, controller.name, &BenchmarkChoice::name);
-                    offered.push_back({ static_cast<arm::ArmControllerKind>(kind), controller.name, previous != choices.end() && previous->chosen });
+                    offered.emplace_back(static_cast<arm::ArmControllerKind>(kind), controller.name, previous != choices.end() && previous->chosen);
                 }
         }
         choices = std::move(offered);
