@@ -9,6 +9,7 @@ target_link_libraries(e_robot_arm.tool.tuning_test PUBLIC
 )
 
 target_sources(e_robot_arm.tool.tuning_test PRIVATE
+    TestBenchmark.cpp
     TestTuningMetrics.cpp
     TestTuningRun.cpp
 )
