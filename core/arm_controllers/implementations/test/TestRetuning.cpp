@@ -6,7 +6,9 @@
 #include "core/arm_controllers/implementations/OperationalSpace.hpp"
 #include "core/arm_controllers/implementations/SlotineLi.hpp"
 #include "gmock/gmock.h"
+#include <algorithm>
 #include <chrono>
+#include <cmath>
 
 namespace
 {
@@ -121,6 +123,11 @@ TEST_F(RetuningTest, slotine_li_takes_new_gains_and_keeps_what_it_learnt)
     retuned.Reset(measured, arm::AtRest(measured.positions));
     retuned.Step(measured, target);
     const auto learnt = retuned.Estimate();
+    const arm::SlotineLi nominal{ drivenArm, arm::SlotineLiTuning{}, 10ms };
+    float moved{ 0.0f };
+    for (std::size_t index = 0; index != arm::SlotineLi::Parameters::rows; ++index)
+        moved = std::max(moved, std::abs(learnt.at(index, 0) - nominal.Estimate().at(index, 0)));
+    ASSERT_GT(moved, 0.0f);
 
     retuned.SetTuning(sharp);
 
@@ -129,4 +136,34 @@ TEST_F(RetuningTest, slotine_li_takes_new_gains_and_keeps_what_it_learnt)
     arm::SlotineLi built{ drivenArm, sharp, 10ms };
     retuned.ResetEstimate();
     ExpectSameAsBuilt(retuned, built);
+}
+
+TEST_F(RetuningTest, gravity_pid_retuned_mid_hold_keeps_its_integral)
+{
+    auto held = arm::AtRest(measured.positions);
+    for (auto& position : held.positions)
+        position = foc::Radians{ position.Value() + 0.02f };
+    arm::GravityPid retuned{ drivenArm, slow, 10ms };
+    arm::GravityPid untouched{ drivenArm, slow, 10ms };
+    retuned.Reset(measured, held);
+    untouched.Reset(measured, held);
+    for (int step = 0; step != 50; ++step)
+    {
+        retuned.Step(measured, held);
+        untouched.Step(measured, held);
+    }
+
+    retuned.SetTuning(slow);
+    const auto expected = untouched.Step(measured, held);
+    const auto actual = retuned.Step(measured, held);
+    untouched.Reset(measured, held);
+    const auto restarted = untouched.Step(measured, held);
+
+    float lost{ 0.0f };
+    for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+    {
+        EXPECT_NEAR(expected.torques[joint].Value(), actual.torques[joint].Value(), 1.0e-4f) << "joint " << joint + 1;
+        lost = std::max(lost, std::abs(restarted.torques[joint].Value() - expected.torques[joint].Value()));
+    }
+    EXPECT_GT(lost, 0.1f);
 }
