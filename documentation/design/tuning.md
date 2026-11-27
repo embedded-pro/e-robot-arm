@@ -2,9 +2,9 @@
 title: "Tuning Runs Design"
 type: design
 status: draft
-version: 0.2.1
+version: 0.2.2
 component: "tuning"
-date: 2026-11-26
+date: 2026-11-27
 ---
 
 | Field     | Value              |
@@ -12,9 +12,9 @@ date: 2026-11-26
 | Title     | Tuning Runs Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.2.1              |
+| Version   | 0.2.2              |
 | Component | tuning             |
-| Date      | 2026-11-26         |
+| Date      | 2026-11-27         |
 
 > Runs a step or an out-and-back test on one joint through the arm host, records its response and computes the
 > metrics a control engineer tunes an arm controller by. Host tool; behaviour only; diagrams are Mermaid.
@@ -152,6 +152,6 @@ supervisor apply as they do to any move.
 
 ## Decisions
 
-| # | Decision                                    | Options                        | Status |
-|---|---------------------------------------------|--------------------------------|--------|
-| 1 | Whether a run also records the other joints | The tested joint only, all six | open   |
+| # | Decision                                    | Options                        | Status      |
+|---|---------------------------------------------|--------------------------------|-------------|
+| 1 | Whether a run also records the other joints | The tested joint only, all six | open (#196) |

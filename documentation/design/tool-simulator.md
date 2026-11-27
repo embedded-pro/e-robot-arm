@@ -2,9 +2,9 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.44.1
+version: 0.44.2
 component: "tool-simulator"
-date: 2026-11-26
+date: 2026-11-27
 ---
 
 | Field     | Value                   |
@@ -12,9 +12,9 @@ date: 2026-11-26
 | Title     | Simulator Screen Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.44.1                  |
+| Version   | 0.44.2                  |
 | Component | tool-simulator          |
-| Date      | 2026-11-26              |
+| Date      | 2026-11-27              |
 
 > What the e-robot-arm Simulator shows, what each control does and when, and how it looks (phase 8a,
 > [#28](https://github.com/embedded-pro/e-robot-arm/issues/28)). Components and threads are in
@@ -995,7 +995,7 @@ and the real geometry.
 
 | # | Decision                                                                                     | Options                                                 | Status                                                             |
 |---|----------------------------------------------------------------------------------------------|---------------------------------------------------------|--------------------------------------------------------------------|
-| 1 | Esc as the emergency-stop key                                                                | Esc, a function key, a dedicated USB button too         | open                                                               |
+| 1 | Esc as the emergency-stop key                                                                | Esc, a function key, a dedicated USB button too         | open (#195)                                                        |
 | 2 | Joint-limit defaults before the arm profile exists                                           | ±π for every joint, per-joint guesses                   | decided: ±π                                                        |
 | 3 | Default-role buttons (Check Contracts, Position Mode) draw flat in ui-cpp's Instrument theme | Give the default button role a raised surface in ui-cpp | resolved: ui-cpp#24 gives Default buttons a raised fill and border |
 | 4 | Naming every joint an emergency stop did not reach                                           | Per-joint delivery reports from the joint bus           | phase 1a (#17)                                                     |

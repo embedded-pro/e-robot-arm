@@ -2,9 +2,9 @@
 title: "Virtual Arm Design"
 type: design
 status: draft
-version: 0.21.1
+version: 0.21.2
 component: "virtual-arm"
-date: 2026-11-26
+date: 2026-11-27
 ---
 
 | Field     | Value              |
@@ -12,9 +12,9 @@ date: 2026-11-26
 | Title     | Virtual Arm Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.21.1             |
+| Version   | 0.21.2             |
 | Component | virtual-arm        |
-| Date      | 2026-11-26         |
+| Date      | 2026-11-27         |
 
 > The arm run against six real e-foc firmware instances instead of ideal simulated joints: e-foc's headless
 > virtual motor, one process per joint, on one virtual CAN bus, each loaded by what its link and the links beyond
@@ -395,9 +395,9 @@ stateDiagram-v2
 
 ## Decisions
 
-| # | Decision                         | Options                                                                     | Status |
-|---|----------------------------------|-----------------------------------------------------------------------------|--------|
-| 1 | Custom motors on a virtual joint | Decided: e-foc reads a text plant description                               | closed |
-| 2 | The links' inertia               | Decided: the virtual arm integrates the full dynamics and drives the shafts | closed |
-| 3 | A start-up through calibration   | The lifecycle drives calibration; start factory-fresh and calibrate by hand | open   |
-| 4 | Where the plant-port codec lives | In e-robot-arm (chosen for now); a library e-foc publishes                  | open   |
+| # | Decision                         | Options                                                                     | Status      |
+|---|----------------------------------|-----------------------------------------------------------------------------|-------------|
+| 1 | Custom motors on a virtual joint | Decided: e-foc reads a text plant description                               | closed      |
+| 2 | The links' inertia               | Decided: the virtual arm integrates the full dynamics and drives the shafts | closed      |
+| 3 | A start-up through calibration   | The lifecycle drives calibration; start factory-fresh and calibrate by hand | open (#197) |
+| 4 | Where the plant-port codec lives | In e-robot-arm (chosen for now); a library e-foc publishes                  | open (#198) |
