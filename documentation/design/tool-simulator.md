@@ -2,7 +2,7 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.48.0
+version: 0.48.1
 component: "tool-simulator"
 date: 2026-11-27
 ---
@@ -219,6 +219,8 @@ The Virtual Motors dock shows them go from Starting to Up (Part L). Bring Up app
 | F             | Frame the arm (3-D view focused)                                                                                                                   |
 | O             | Orthographic or perspective camera (3-D view focused)                                                                                              |
 | J             | Focus the camera on the selected joint (3-D view focused)                                                                                          |
+| Enter         | Move to the joint-drag target (3-D view focused, Part V)                                                                                           |
+| Delete        | Clear the joint-drag target (3-D view focused, Part V)                                                                                             |
 | Ctrl+S        | Save the event log                                                                                                                                 |
 | Ctrl+Shift+R  | Reset layout                                                                                                                                       |
 | 1–6           | Choose the jog axis (Jog dock focused, Part R)                                                                                                     |
@@ -986,7 +988,7 @@ On a simulation, Shift-drag makes the arm follow the pointer while the button is
 ```text
      pointer ●
             ╲
-   target ghost (accent, opacity 0.3)      J3 → 0.42 rad (from 0.10) · Enter: move · Esc: cancel
+   target ghost (accent, opacity 0.3)      J3 → 0.42 rad (from 0.10) · Enter: move · Del: clear
    ┌────────────────┐
    │ link 3 (J3)    │   drag on a link: target · Shift-drag: follow · Ctrl-drag: guide · elsewhere: orbit
 ```
@@ -998,8 +1000,9 @@ On a simulation, Shift-drag makes the arm follow the pointer while the button is
   The angle is clamped to the joint's limits.
 - **Target.** The ghost arm shows the target pose: the measured pose with the dragged joint at the new angle.
   The label reads `J3 → 0.42 rad (from 0.10)`. A target that reaches a limit adds `· at limit`.
-- **Move.** Enter moves the arm to the target, like **Move** in Part B. Esc or a click on empty space clears the
-  target. A new drag replaces it. Enter is enabled when Move is enabled; otherwise the label gives Move's reason.
+- **Move.** Enter moves the arm to the target, like **Move** in Part B. A new drag replaces the target.
+  Delete or a right click clears it. Esc stays the emergency stop (Part D).
+  Enter is enabled when Move is enabled; otherwise the label gives Move's reason.
   The arm stack still checks the move (joint limits, workspace) and a refusal is logged.
 - **Follow (Shift-drag).** On a simulation only. At most 20 times a second, the target goes to the arm as a move.
   Each move replaces the one before. Release, Shift released or the application losing focus abort the move and clear

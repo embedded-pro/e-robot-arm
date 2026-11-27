@@ -82,6 +82,9 @@ Item {
             if (event.key === Qt.Key_Control && guideArea.guiding) {
                 guideArea.guiding = false
                 ArmSceneState.GuideRelease()
+            } else if (event.key === Qt.Key_Shift && ArmSceneState.dragFollowing) {
+                guideArea.dragging = false
+                ArmSceneState.DragRelease()
             }
         }
 
@@ -91,6 +94,12 @@ Item {
                 event.accepted = true
             } else if (event.key === Qt.Key_J) {
                 ArmSceneState.RequestFocusSelected()
+                event.accepted = true
+            } else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && ArmSceneState.dragActive) {
+                ArmSceneState.DragConfirm()
+                event.accepted = true
+            } else if (event.key === Qt.Key_Delete && ArmSceneState.dragActive) {
+                ArmSceneState.DragClear()
                 event.accepted = true
             }
         }
@@ -256,6 +265,15 @@ Item {
             nodes: ArmSceneState.commandedNodes
             accentColor: ArmSceneState.accentColor
         }
+
+        ArmModel {
+            id: dragGhost
+            objectName: "dragGhost"
+            visible: ArmSceneState.dragActive
+            ghost: true
+            nodes: ArmSceneState.dragNodes
+            accentColor: ArmSceneState.accentColor
+        }
     }
 
     Rectangle {
@@ -304,6 +322,10 @@ Item {
         objectName: "guideArea"
 
         property bool guiding: false
+        property bool dragging: false
+        property bool moved: false
+        property int pressJoint: -1
+        property point pressAt: Qt.point(0, 0)
 
         function ray(x, y) {
             const near = studio.view.mapTo3DScene(Qt.vector3d(x, y, 0))
@@ -311,26 +333,49 @@ Item {
             return [near, far.minus(near)]
         }
 
+        function linkAt(x, y) {
+            const hit = studio.view.pick(x, y)
+            return hit.objectHit && hit.objectHit.joint !== undefined && hit.objectHit.joint >= 0 ? hit : null
+        }
+
         anchors.fill: parent
-        enabled: ArmSceneState.guideOffered
-        acceptedButtons: Qt.LeftButton
-        cursorShape: guideArea.guiding ? Qt.ClosedHandCursor : Qt.ArrowCursor
+        enabled: ArmSceneState.guideOffered || ArmSceneState.dragOffered
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
+        cursorShape: guideArea.guiding || guideArea.dragging ? Qt.ClosedHandCursor : Qt.ArrowCursor
 
         onPressed: (mouse) => {
             mouse.accepted = false
-            if (!(mouse.modifiers & Qt.ControlModifier))
+            if (mouse.button === Qt.RightButton) {
+                if (ArmSceneState.dragActive) {
+                    ArmSceneState.DragClear()
+                    mouse.accepted = true
+                }
                 return
-            const hit = studio.view.pick(mouse.x, mouse.y)
-            if (!hit.objectHit || hit.objectHit.joint === undefined || hit.objectHit.joint < 0)
+            }
+            const hit = guideArea.linkAt(mouse.x, mouse.y)
+            if (!hit)
+                return
+            const guide = (mouse.modifiers & Qt.ControlModifier) !== 0
+            if (guide ? !ArmSceneState.guideOffered : !ArmSceneState.dragOffered)
                 return
             const pointer = guideArea.ray(mouse.x, mouse.y)
             studio.forceActiveFocus()
-            guideArea.guiding = true
             mouse.accepted = true
-            ArmSceneState.GuideGrab(hit.objectHit.joint, hit.scenePosition, pointer[0], pointer[1])
+            if (guide) {
+                guideArea.guiding = true
+                ArmSceneState.GuideGrab(hit.objectHit.joint, hit.scenePosition, pointer[0], pointer[1])
+                return
+            }
+            guideArea.dragging = true
+            guideArea.moved = false
+            guideArea.pressJoint = hit.objectHit.joint
+            guideArea.pressAt = Qt.point(mouse.x, mouse.y)
+            ArmSceneState.DragGrab(hit.objectHit.joint, hit.scenePosition, pointer[0], pointer[1], (mouse.modifiers & Qt.ShiftModifier) !== 0)
         }
         onPositionChanged: (mouse) => {
-            if (!guideArea.guiding)
+            if (guideArea.dragging && !guideArea.moved)
+                guideArea.moved = Math.abs(mouse.x - guideArea.pressAt.x) + Math.abs(mouse.y - guideArea.pressAt.y) > 4
+            if (!guideArea.guiding && !(guideArea.dragging && guideArea.moved))
                 return
             const pointer = guideArea.ray(mouse.x, mouse.y)
             ArmSceneState.GuidePointer(pointer[0], pointer[1])
@@ -339,10 +384,59 @@ Item {
         onCanceled: guideArea.stop()
 
         function stop() {
-            if (!guideArea.guiding)
+            if (guideArea.guiding) {
+                guideArea.guiding = false
+                ArmSceneState.GuideRelease()
+            }
+            if (!guideArea.dragging)
                 return
-            guideArea.guiding = false
-            ArmSceneState.GuideRelease()
+            guideArea.dragging = false
+            if (guideArea.moved) {
+                ArmSceneState.DragRelease()
+                return
+            }
+            ArmSceneState.DragClear()
+            ArmSceneState.Pick(guideArea.pressJoint)
+        }
+    }
+
+    Rectangle {
+        id: dragLabel
+        objectName: "dragLabel"
+
+        readonly property vector3d screen: {
+            studio.pivot.position
+            studio.pivot.eulerRotation
+            studio.camera.position
+            studio.orthographic
+            studio.width
+            studio.height
+            if (!ArmSceneState.dragActive || !studio.view.camera)
+                return Qt.vector3d(0, 0, -1)
+            return studio.view.mapFrom3DScene(ArmSceneState.dragPoint)
+        }
+
+        visible: ArmSceneState.dragActive && ArmSceneState.dragLabel.length > 0 && dragLabel.screen.z > 0
+        enabled: false
+        x: Math.max(8, Math.min(root.width - width - 8, dragLabel.screen.x + 14))
+        y: Math.max(8, Math.min(root.height - height - 8, dragLabel.screen.y + 14))
+        width: dragText.implicitWidth + 16
+        height: dragText.implicitHeight + 8
+        radius: 3
+        color: Qt.rgba(ArmSceneState.panelColor.r, ArmSceneState.panelColor.g, ArmSceneState.panelColor.b, 0.88)
+        border.color: ArmSceneState.accentColor
+        border.width: 1
+
+        Accessible.role: Accessible.StaticText
+        Accessible.name: ArmSceneState.dragLabel
+
+        Text {
+            id: dragText
+            anchors.centerIn: parent
+            text: ArmSceneState.dragLabel
+            color: ArmSceneState.textColor
+            font.family: "monospace"
+            font.pixelSize: 12
         }
     }
 
@@ -414,6 +508,7 @@ Item {
             Entry { visible: ArmSceneState.showLimits; label: qsTr("Selected joint and its limits"); tone: ArmSceneState.selectionColor }
             Entry { visible: ArmSceneState.showFrames; label: qsTr("Tool and target frames (x, y, z)"); tone: "#e53935" }
             Entry { visible: ArmSceneState.guideOffered; label: qsTr("Hand guide: Ctrl + drag a link"); tone: ArmSceneState.accentColor }
+            Entry { visible: ArmSceneState.dragOffered; label: qsTr("Joint drag: drag a link, Enter to move · Shift: follow"); tone: ArmSceneState.accentColor }
             Text {
                 text: qsTr("Grid %1 cm%2").arg(studio.gridSpacing).arg(ArmSceneState.orthographic ? qsTr(" · orthographic") : "")
                 color: ArmSceneState.textColor

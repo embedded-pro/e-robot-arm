@@ -99,6 +99,8 @@ namespace simulator
         void ConnectJog();
         void ConnectTeach();
         void ConnectGuide();
+        void ConnectDrag();
+        void UpdatePointer(const arm_host::ArmSnapshot& snapshot);
         void RestoreSettings();
         QGroupBox* Group(const QString& title, QWidget* content);
         QDockWidget* Dock(const QString& title, const QString& name, QWidget* content, Qt::DockWidgetArea area);
@@ -166,6 +168,7 @@ namespace simulator
         BenchmarkPanel* benchmarkPanel;
         BenchmarkPresenter benchmark;
         HandGuide guide;
+        JointDrag drag;
         QLabel* frameReadout;
         QElapsedTimer clock;
         QMenu* faultMenu{ nullptr };

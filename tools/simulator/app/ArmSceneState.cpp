@@ -327,6 +327,74 @@ namespace simulator
         emit guideReleased();
     }
 
+    void ArmSceneState::DragGrab(int joint, QVector3D hit, QVector3D origin, QVector3D direction, bool follow)
+    {
+        GuidePointer(origin, direction);
+        emit dragGrabbed(joint, hit, follow);
+    }
+
+    void ArmSceneState::DragRelease()
+    {
+        emit dragReleased();
+    }
+
+    void ArmSceneState::DragClear()
+    {
+        emit dragCleared();
+    }
+
+    void ArmSceneState::DragConfirm()
+    {
+        emit dragConfirmed();
+    }
+
+    void ArmSceneState::SetDrag(bool offered, const JointDrag& drag, const ControlState& move)
+    {
+        const auto nodes = drag.TargetNodes();
+        const auto list = nodes.has_value() ? ToList(*nodes) : QVariantList{};
+        const auto point = drag.TargetPoint().has_value() ? Vector(*drag.TargetPoint()) : QVector3D{};
+        const auto label = ui::backend::qt::ToQt(drag.Label(move));
+        if (offered == dragOffered && nodes.has_value() == dragActive && drag.Following() == dragFollowing && list == dragNodes && label == dragLabel)
+            return;
+        dragOffered = offered;
+        dragActive = nodes.has_value();
+        dragFollowing = drag.Following();
+        dragNodes = list;
+        dragPoint = point;
+        dragLabel = label;
+        emit dragChanged();
+    }
+
+    bool ArmSceneState::DragOffered() const
+    {
+        return dragOffered;
+    }
+
+    bool ArmSceneState::DragActive() const
+    {
+        return dragActive;
+    }
+
+    bool ArmSceneState::DragFollowing() const
+    {
+        return dragFollowing;
+    }
+
+    QVariantList ArmSceneState::DragNodes() const
+    {
+        return dragNodes;
+    }
+
+    QVector3D ArmSceneState::DragPoint() const
+    {
+        return dragPoint;
+    }
+
+    QString ArmSceneState::DragLabel() const
+    {
+        return dragLabel;
+    }
+
     SceneRay ArmSceneState::GuideRay() const
     {
         return { { pointerOrigin.x(), pointerOrigin.y(), pointerOrigin.z() }, { pointerDirection.x(), pointerDirection.y(), pointerDirection.z() } };

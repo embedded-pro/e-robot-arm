@@ -2,6 +2,7 @@
 
 #include "tools/simulator/view_models/ArmSceneModel.hpp"
 #include "tools/simulator/view_models/HandGuide.hpp"
+#include "tools/simulator/view_models/JointDrag.hpp"
 #include "ui/backend/qt/quick3d/MeshCatalog.hpp"
 #include "ui/theme/Theme.hpp"
 #include <QColor>
@@ -70,6 +71,12 @@ namespace simulator
         Q_PROPERTY(QVariantList guideArrow READ GuideArrow NOTIFY guideChanged)
         Q_PROPERTY(QVector3D guidePoint READ GuidePoint NOTIFY guideChanged)
         Q_PROPERTY(QString guideLabel READ GuideLabel NOTIFY guideChanged)
+        Q_PROPERTY(bool dragOffered READ DragOffered NOTIFY dragChanged)
+        Q_PROPERTY(bool dragActive READ DragActive NOTIFY dragChanged)
+        Q_PROPERTY(bool dragFollowing READ DragFollowing NOTIFY dragChanged)
+        Q_PROPERTY(QVariantList dragNodes READ DragNodes NOTIFY dragChanged)
+        Q_PROPERTY(QVector3D dragPoint READ DragPoint NOTIFY dragChanged)
+        Q_PROPERTY(QString dragLabel READ DragLabel NOTIFY dragChanged)
 
     public:
         static ArmSceneState* create(QQmlEngine* engine, QJSEngine* scriptEngine);
@@ -145,6 +152,13 @@ namespace simulator
         QVector3D GuidePoint() const;
         QString GuideLabel() const;
         SceneRay GuideRay() const;
+        void SetDrag(bool offered, const JointDrag& drag, const ControlState& move);
+        bool DragOffered() const;
+        bool DragActive() const;
+        bool DragFollowing() const;
+        QVariantList DragNodes() const;
+        QVector3D DragPoint() const;
+        QString DragLabel() const;
 
         Q_INVOKABLE void Pick(int joint);
         Q_INVOKABLE void ReportMeshFailure(int node, const QString& reason);
@@ -152,6 +166,10 @@ namespace simulator
         Q_INVOKABLE void GuideGrab(int joint, QVector3D hit, QVector3D origin, QVector3D direction);
         Q_INVOKABLE void GuidePointer(QVector3D origin, QVector3D direction);
         Q_INVOKABLE void GuideRelease();
+        Q_INVOKABLE void DragGrab(int joint, QVector3D hit, QVector3D origin, QVector3D direction, bool follow);
+        Q_INVOKABLE void DragRelease();
+        Q_INVOKABLE void DragClear();
+        Q_INVOKABLE void DragConfirm();
 
     signals:
         void changed();
@@ -171,6 +189,11 @@ namespace simulator
         void guideChanged();
         void guideGrabbed(int joint, QVector3D hit);
         void guideReleased();
+        void dragChanged();
+        void dragGrabbed(int joint, QVector3D hit, bool follow);
+        void dragReleased();
+        void dragCleared();
+        void dragConfirmed();
 
     private:
         QVariantList measuredNodes;
@@ -218,6 +241,12 @@ namespace simulator
         QVariantList guideArrow;
         QVector3D guidePoint;
         QString guideLabel;
+        bool dragOffered{ false };
+        bool dragActive{ false };
+        bool dragFollowing{ false };
+        QVariantList dragNodes;
+        QVector3D dragPoint;
+        QString dragLabel;
         QVector3D pointerOrigin;
         QVector3D pointerDirection;
     };

@@ -40,6 +40,7 @@ namespace simulator
 
         StopFollowing();
         model.emplace(snapshot.config.geometry, snapshot.config.mass, snapshot.config.positionLimits);
+        geometry = snapshot.config.geometry;
         joint = static_cast<std::size_t>(pickedJoint);
         start = Measured(snapshot);
         local = model->LinkPoses(start)[*joint].Inverse().Apply(ToBase(hit));
@@ -132,8 +133,22 @@ namespace simulator
         if (followRefused)
             label += " · follow: simulation only";
         if (move.enabled)
-            return label + " · Enter: move · Esc: cancel";
+            return label + " · Enter: move · Del: clear";
         return label + " · Move: " + move.reason;
+    }
+
+    std::optional<SceneNodes> JointDrag::TargetNodes() const
+    {
+        if (!target.has_value())
+            return std::nullopt;
+        return SceneNodePoses(*model, geometry, *target);
+    }
+
+    std::optional<ScenePoint> JointDrag::TargetPoint() const
+    {
+        if (!target.has_value())
+            return std::nullopt;
+        return ToScenePoint(PointAt((*target)[*joint].Value()));
     }
 
     math::Vector3<float> JointDrag::PointAt(float angle) const

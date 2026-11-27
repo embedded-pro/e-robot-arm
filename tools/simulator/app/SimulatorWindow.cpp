@@ -155,6 +155,10 @@ namespace simulator
             {
                 this->host.Post(command);
             } }
+        , drag{ [this](const arm_host::ArmCommand& command)
+            {
+                this->host.Post(command);
+            } }
         , frameReadout{ new QLabel{ this } }
         , recentProfiles{ [](const std::string& path)
             {
@@ -422,8 +426,7 @@ namespace simulator
         ShowNewestLog(events.size() + traceGaps);
         updates.SetBlocked(DrivesJoints(snapshot));
         sceneState.Update(presenter.Scene());
-        guide.Drag(sceneState.GuideRay(), snapshot);
-        sceneState.SetGuide(HandGuide::Offered(snapshot), guide);
+        UpdatePointer(snapshot);
         simulationMenu->setEnabled(snapshot.targetReady && snapshot.disturbances.has_value());
         faultMenu->setEnabled(snapshot.disturbances.has_value() && snapshot.disturbances->injectFault);
         UpdateFrameStatistics(std::chrono::nanoseconds{ guiFrame.nsecsElapsed() });
@@ -953,6 +956,7 @@ namespace simulator
         ConnectJog();
         ConnectTeach();
         ConnectGuide();
+        ConnectDrag();
     }
 
     void SimulatorWindow::ConnectJog()
@@ -1010,6 +1014,40 @@ namespace simulator
             {
                 if (state != Qt::ApplicationActive)
                     guide.Release();
+            });
+    }
+
+    void SimulatorWindow::UpdatePointer(const arm_host::ArmSnapshot& snapshot)
+    {
+        guide.Drag(sceneState.GuideRay(), snapshot);
+        sceneState.SetGuide(HandGuide::Offered(snapshot), guide);
+        const auto move = presenter.State(Control::move);
+        drag.Drag(sceneState.GuideRay(), snapshot, move, JointDrag::Clock::now());
+        sceneState.SetDrag(snapshot.targetReady, drag, move);
+    }
+
+    void SimulatorWindow::ConnectDrag()
+    {
+        connect(&sceneState, &ArmSceneState::dragGrabbed, this, [this](int joint, QVector3D hit, bool follow)
+            {
+                drag.Grab(joint, { hit.x(), hit.y(), hit.z() }, host.Snapshot(), presenter.State(Control::move), follow);
+            });
+        connect(&sceneState, &ArmSceneState::dragReleased, this, [this]()
+            {
+                drag.Release();
+            });
+        connect(&sceneState, &ArmSceneState::dragCleared, this, [this]()
+            {
+                drag.Cancel();
+            });
+        connect(&sceneState, &ArmSceneState::dragConfirmed, this, [this]()
+            {
+                drag.Confirm(presenter.State(Control::move));
+            });
+        connect(qApp, &QGuiApplication::applicationStateChanged, this, [this](Qt::ApplicationState state)
+            {
+                if (state != Qt::ApplicationActive && drag.Following())
+                    drag.Release();
             });
     }
 

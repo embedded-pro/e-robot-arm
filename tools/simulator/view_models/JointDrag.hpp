@@ -3,6 +3,7 @@
 #include "core/arm_model/ArmModel.hpp"
 #include "tools/arm_host/ArmCommand.hpp"
 #include "tools/arm_host/ArmSnapshot.hpp"
+#include "tools/simulator/view_models/ArmSceneGeometry.hpp"
 #include "tools/simulator/view_models/ControlRules.hpp"
 #include "tools/simulator/view_models/ScenePicking.hpp"
 #include "ui/core/Callback.hpp"
@@ -35,6 +36,8 @@ namespace simulator
         bool Following() const;
         const std::optional<arm::JointPositions>& Target() const;
         std::string Label(const ControlState& move) const;
+        std::optional<SceneNodes> TargetNodes() const;
+        std::optional<ScenePoint> TargetPoint() const;
 
     private:
         math::Vector3<float> PointAt(float angle) const;
@@ -43,6 +46,7 @@ namespace simulator
 
         ui::Callback<void(const arm_host::ArmCommand& command)> post;
         std::optional<arm::ArmModel> model;
+        arm::ArmGeometry geometry{};
         std::optional<std::size_t> joint;
         bool dragging{ false };
         bool following{ false };
