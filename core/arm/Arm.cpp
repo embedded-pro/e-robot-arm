@@ -159,6 +159,50 @@ namespace arm
         return true;
     }
 
+    RetuneResult Arm::Retune(ArmControllerKind kind, const ArmControllerTuning& tuning)
+    {
+        const auto id = controllers.Find(ArmControllerName(kind));
+        if (!id.has_value() || !TuningFits(kind, tuning))
+            return RetuneResult::notTunable;
+        if (CheckTuning(tuning).has_value())
+            return RetuneResult::outOfRange;
+        if (motion.Moving())
+            return RetuneResult::moving;
+
+        Apply(kind, tuning);
+        return RetuneResult::applied;
+    }
+
+    void Arm::Apply(ArmControllerKind kind, const ArmControllerTuning& tuning)
+    {
+        switch (kind)
+        {
+            case ArmControllerKind::gravityPd:
+                gravityPd.SetTuning(std::get<BandwidthTuning>(tuning));
+                break;
+            case ArmControllerKind::computedTorque:
+                computedTorque.SetTuning(std::get<BandwidthTuning>(tuning));
+                break;
+            case ArmControllerKind::gravityPid:
+                gravityPid.SetTuning(std::get<BandwidthTuning>(tuning));
+                break;
+            case ArmControllerKind::jointImpedance:
+                jointImpedance.SetTuning(std::get<JointImpedanceTuning>(tuning));
+                break;
+            case ArmControllerKind::cartesianImpedance:
+                cartesianImpedance.SetTuning(std::get<CartesianImpedanceTuning>(tuning));
+                break;
+            case ArmControllerKind::operationalSpace:
+                operationalSpace.SetTuning(std::get<OperationalSpaceTuning>(tuning));
+                break;
+            case ArmControllerKind::slotineLi:
+                slotineLi.SetTuning(std::get<SlotineLiTuning>(tuning));
+                break;
+            default:
+                break;
+        }
+    }
+
     const std::optional<JointTorques>& Arm::EstimatedExternalTorques() const
     {
         return externalTorques;

@@ -22,6 +22,8 @@ target_sources(e_robot_arm.arm PRIVATE
     Arm.cpp
     Arm.hpp
     ArmConfig.hpp
+    ArmControllerTuning.cpp
+    ArmControllerTuning.hpp
     ArmControllerEngagement.cpp
     ArmControllerEngagement.hpp
 )

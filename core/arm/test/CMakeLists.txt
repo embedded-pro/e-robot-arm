@@ -12,4 +12,5 @@ target_link_libraries(e_robot_arm.arm_test PUBLIC
 
 target_sources(e_robot_arm.arm_test PRIVATE
     TestArm.cpp
+    TestArmControllerTuning.cpp
 )

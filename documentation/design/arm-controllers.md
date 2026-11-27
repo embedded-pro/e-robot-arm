@@ -2,7 +2,7 @@
 title: "Arm Controllers Design"
 type: design
 status: draft
-version: 0.22.1
+version: 0.22.2
 component: "arm-controllers"
 date: 2026-11-27
 ---
@@ -12,7 +12,7 @@ date: 2026-11-27
 | Title     | Arm Controllers Design |
 | Type      | design                 |
 | Status    | draft                  |
-| Version   | 0.22.1                 |
+| Version   | 0.22.2                 |
 | Component | arm-controllers        |
 | Date      | 2026-11-27             |
 
@@ -343,9 +343,9 @@ profile file.
   limits. A value outside its range is refused with the field and the range, and nothing changes.
 - **When.** Refused while a move runs ("moving: wait or abort"): a new gain mid-move would make the torques jump.
   Between moves it is accepted in any state.
-- **Bumpless.** If the controller is active and streaming, it resets from the measured joints and the held
-  reference, as at a switch (Part B). So it takes over the hold without a step.
-- **Kept state.** `slotine-li` keeps what it learnt; `gravity-pid` starts its integral again.
+- **Bumpless.** The controller keeps its state, so an active one goes on holding without a step.
+- **Kept state.** `gravity-pid`'s incremental PIDs continue from their last output; only the next increment uses
+  the new gains. `slotine-li` keeps what it learnt.
 - **Stiffness share.** The impedance controllers keep the run-time share (Part D) over a new stiffness.
 - **The profile.** The arm host writes an accepted tuning into its copy of the profile, so **Save Profile** keeps it,
   as it does for a selection.

@@ -454,3 +454,42 @@ TEST_F(SimulationArmTest, streams_in_free_mode_without_a_collision_estimate)
     EXPECT_EQ(std::nullopt, arm.EstimatedExternalTorques());
     EXPECT_FALSE(arm.Safety().Tripped());
 }
+
+TEST_F(ArmTest, retunes_a_registered_controller_between_moves_only_and_within_its_ranges)
+{
+    EnableArm();
+
+    EXPECT_EQ(arm::RetuneResult::applied, arm.Retune(arm::ArmControllerKind::gravityPd, arm::BandwidthTuning{ 20.0f, 0.8f }));
+    EXPECT_EQ(arm::RetuneResult::applied, arm.Retune(arm::ArmControllerKind::computedTorque, arm::BandwidthTuning{ 25.0f, 0.8f }));
+    EXPECT_EQ(arm::RetuneResult::outOfRange, arm.Retune(arm::ArmControllerKind::gravityPd, arm::BandwidthTuning{ 600.0f, 0.8f }));
+    EXPECT_EQ(arm::RetuneResult::notTunable, arm.Retune(arm::ArmControllerKind::gravityPd, arm::SlotineLiTuning{}));
+    EXPECT_EQ(arm::RetuneResult::notTunable, arm.Retune(arm::ArmControllerKind::slotineLi, arm::SlotineLiTuning{}));
+    EXPECT_EQ(arm::RetuneResult::notTunable, arm.Retune(arm::ArmControllerKind::free, arm::BandwidthTuning{}));
+
+    arm::JointPositions target{};
+    target[0] = foc::Radians{ 0.5f };
+    ASSERT_TRUE(arm.Lifecycle().MoveTo(target));
+    EXPECT_EQ(arm::RetuneResult::moving, arm.Retune(arm::ArmControllerKind::gravityPd, arm::BandwidthTuning{ 20.0f, 0.8f }));
+}
+
+TEST_F(ArmTest, a_retuned_active_controller_keeps_streaming_its_hold)
+{
+    EnableArm();
+    const auto streamed = SentOf(can::SetpointCommandId(can::FocSetpointKind::torqueNewtonMeter));
+
+    ASSERT_EQ(arm::RetuneResult::applied, arm.Retune(arm::ArmControllerKind::gravityPd, arm::BandwidthTuning{ 15.0f, 1.0f }));
+    ReportMotionFromEveryJoint();
+    ForwardTime(10ms);
+
+    EXPECT_EQ(streamed + arm::jointCount, SentOf(can::SetpointCommandId(can::FocSetpointKind::torqueNewtonMeter)));
+    EXPECT_EQ(arm::ArmState::enabled, arm.Lifecycle().State());
+}
+
+TEST_F(ExperimentalArmTest, retunes_every_tunable_controller_with_its_own_item)
+{
+    const arm::ArmConfig defaults{};
+    for (const auto kind : { arm::ArmControllerKind::gravityPd, arm::ArmControllerKind::computedTorque, arm::ArmControllerKind::gravityPid,
+             arm::ArmControllerKind::jointImpedance, arm::ArmControllerKind::cartesianImpedance, arm::ArmControllerKind::operationalSpace,
+             arm::ArmControllerKind::slotineLi })
+        EXPECT_EQ(arm::RetuneResult::applied, arm.Retune(kind, arm::TuningOf(defaults, kind))) << arm::ArmControllerName(kind);
+}
