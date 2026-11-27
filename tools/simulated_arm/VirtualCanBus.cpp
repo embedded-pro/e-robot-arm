@@ -48,18 +48,26 @@ namespace simulation
     void VirtualCanBus::Send(const Frame& frame)
     {
         frames.push_back(frame);
+        if (deliveryPending)
+            return;
+
+        deliveryPending = true;
         infra::EventDispatcher::Instance().Schedule([bus = std::weak_ptr<VirtualCanBus*>{ self }]()
             {
                 if (const auto alive = bus.lock())
-                    (*alive)->DeliverOldest();
+                    (*alive)->DeliverAll();
             });
+    }
+
+    void VirtualCanBus::DeliverAll()
+    {
+        while (!frames.empty())
+            DeliverOldest();
+        deliveryPending = false;
     }
 
     void VirtualCanBus::DeliverOldest()
     {
-        if (frames.empty())
-            return;
-
         const auto frame = frames.front();
         frames.pop_front();
 
