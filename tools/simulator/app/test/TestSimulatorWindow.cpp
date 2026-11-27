@@ -1094,7 +1094,7 @@ TEST_F(SimulatorWindowTest, a_joint_drag_sets_a_ghost_target_and_enter_moves_the
     const auto wrist = window.Presenter().Scene().MeasuredNodes()[3].position;
     const QVector3D hit{ wrist[0], wrist[1], wrist[2] };
     state->DragGrab(2, hit, hit + QVector3D{ 0.0f, 0.0f, 300.0f }, { 0.0f, 0.0f, -1.0f }, false);
-    const auto pointer = hit + QVector3D{ 0.0f, 8.0f, 0.0f };
+    const auto pointer = hit + QVector3D{ 0.0f, 3.0f, 0.0f };
     state->GuidePointer(pointer + QVector3D{ 0.0f, 0.0f, 300.0f }, { 0.0f, 0.0f, -1.0f });
     ASSERT_TRUE(Eventually([state]()
         {
@@ -1117,10 +1117,11 @@ TEST_F(SimulatorWindowTest, a_joint_drag_sets_a_ghost_target_and_enter_moves_the
     ASSERT_TRUE(Eventually([this, wrist]()
         {
             const auto moved = window.Presenter().Scene().MeasuredNodes()[3].position;
-            return std::abs(moved[1] - wrist[1]) > 2.0f;
+            return std::abs(moved[1] - wrist[1]) > 1.0f;
         },
         15000))
         << LogText(window.Presenter());
+    EXPECT_FALSE(Logged(window.Presenter(), "Move refused")) << LogText(window.Presenter());
 }
 
 TEST_F(SimulatorWindowTest, frame_statistics_report_the_gui_and_render_cost_while_the_arm_moves_and_a_tuning_run_records)
