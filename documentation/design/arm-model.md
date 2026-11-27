@@ -2,9 +2,9 @@
 title: "Arm Model Design"
 type: design
 status: draft
-version: 0.4.1
+version: 0.4.2
 component: "arm_model"
-date: 2026-11-26
+date: 2026-11-27
 ---
 
 | Field     | Value            |
@@ -12,9 +12,9 @@ date: 2026-11-26
 | Title     | Arm Model Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.4.1            |
+| Version   | 0.4.2            |
 | Component | arm_model        |
-| Date      | 2026-11-26       |
+| Date      | 2026-11-27       |
 
 > The arm's geometry and mass, and what follows from them: the tool pose of a set of joint positions, the joint
 > positions of a tool pose, the Jacobian and the singularities, the gravity torque, the joint torques of a motion and
@@ -234,9 +234,9 @@ sequenceDiagram
 
 ## Decisions
 
-| # | Decision                    | Options                                     | Status                         |
-|---|-----------------------------|---------------------------------------------|--------------------------------|
-| 1 | Geometry description        | OPW, DH, both                               | decided: OPW                   |
-| 2 | The real arm's dimensions   | Measured, from the CAD                      | open: the reference arm stands |
-| 3 | Arms outside the OPW family | DH or product of exponentials, numerical IK | open: when such an arm appears |
-| 4 | The real arm's masses       | Weighed, from the CAD                       | open: the reference arm stands |
+| # | Decision                    | Options                                     | Status                                |
+|---|-----------------------------|---------------------------------------------|---------------------------------------|
+| 1 | Geometry description        | OPW, DH, both                               | decided: OPW                          |
+| 2 | The real arm's dimensions   | Measured, from the CAD                      | open: the reference arm stands (#187) |
+| 3 | Arms outside the OPW family | DH or product of exponentials, numerical IK | open: when such an arm appears (#188) |
+| 4 | The real arm's masses       | Weighed, from the CAD                       | open: the reference arm stands (#189) |

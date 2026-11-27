@@ -2,9 +2,9 @@
 title: "Arm Composition and Console Design"
 type: design
 status: draft
-version: 0.19.1
+version: 0.19.2
 component: "arm"
-date: 2026-11-26
+date: 2026-11-27
 ---
 
 | Field     | Value                              |
@@ -12,9 +12,9 @@ date: 2026-11-26
 | Title     | Arm Composition and Console Design |
 | Type      | design                             |
 | Status    | draft                              |
-| Version   | 0.19.1                             |
+| Version   | 0.19.2                             |
 | Component | arm                                |
-| Date      | 2026-11-26                         |
+| Date      | 2026-11-27                         |
 
 > How the arm's components are put together, and the host console that drives them over a CAN adapter. Behaviour
 > only; diagrams are Mermaid.
@@ -236,6 +236,6 @@ sequenceDiagram
 
 ## Decisions
 
-| # | Decision                                     | Options                                 | Status |
-|---|----------------------------------------------|-----------------------------------------|--------|
-| 1 | Where per-joint limits and node ids are kept | Command line, a configuration file, NVM | open   |
+| # | Decision                                     | Options                                 | Status      |
+|---|----------------------------------------------|-----------------------------------------|-------------|
+| 1 | Where per-joint limits and node ids are kept | Command line, a configuration file, NVM | open (#185) |

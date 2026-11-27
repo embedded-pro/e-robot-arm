@@ -2,7 +2,7 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.46.0
+version: 0.46.1
 component: "tool-simulator"
 date: 2026-11-27
 ---
@@ -12,7 +12,7 @@ date: 2026-11-27
 | Title     | Simulator Screen Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.46.0                  |
+| Version   | 0.46.1                  |
 | Component | tool-simulator          |
 | Date      | 2026-11-27              |
 
@@ -941,7 +941,7 @@ prefilled issue, through ui-cpp's update widgets, as the e-foc tools do.
 
 On a simulation, the operator pulls the arm with the mouse: a virtual spring from a grabbed point on a link to the
 pointer. The arm host turns the spring force into joint torques on the plant. The arm controller answers the push as
-it would answer a hand: `free` and `gravity-float` follow it, an impedance controller yields, and a stiff controller
+it would answer a hand. `free` and `gravity-float` follow it, and an impedance controller yields. A stiff controller
 holds or trips the collision rule ([safety.md](safety.md) Part F).
 
 ```text
@@ -952,23 +952,26 @@ holds or trips the collision rule ([safety.md](safety.md) Part F).
    │ link 3 (J3)    │   Ctrl + drag on a link: guide · drag elsewhere: orbit
 ```
 
-- **Start.** Ctrl and left button pressed on a link part. The pick gives the link and the hit point; the point is
-  kept in the link's frame, so it moves with the link. A press on the base, the floor or empty space orbits the
-  camera as before, with or without Ctrl. The legend names the gesture while guiding is offered.
-- **Spring.** Each frame, the pointer's ray meets the plane through the grabbed point that faces the camera; that
-  meeting point is the target. The force is F = k·(target − point), k = 400 N/m, at most 100 N. The joint torques are
-  τ = Jₚᵀ·F, with Jₚ the grabbed point's Jacobian at the measured pose (finite differences of forward kinematics),
-  each clamped to ±200 N·m like a disturbance (Part M). Only the joints up to the grabbed link get torque.
-- **Sending.** One `GuideArm` command per frame, at most 60 Hz, carries the six torques. It is not logged when
+- **Start.** Ctrl and left button pressed on a link part. The pick gives the link and the hit point.
+  The point is kept in the link's frame, so it moves with the link.
+- **Orbit.** A press on the base, the floor or empty space orbits the camera as before, with or without Ctrl.
+  The legend names the gesture while guiding is offered.
+- **Spring.** Each frame, the pointer's ray meets the plane through the grabbed point that faces the camera. That
+  meeting point is the target. The force is `F = k·(target − point)`, with `k = 400 N/m`, at most 100 N.
+- **Torques.** The joint torques are `τ = Jₚᵀ·F`. `Jₚ` is the grabbed point's Jacobian at the measured pose, from
+  finite differences of forward kinematics. Each torque is clamped to ±200 N·m like a disturbance (Part M).
+  Only the joints up to the grabbed link get torque.
+- **Sending.** One guide command per frame, at most 60 Hz, carries the six torques. It is not logged when
   accepted; a refusal is logged once and stops the drag.
 - **Dead-man.** Release, Ctrl released or the application losing focus send zero torques. The window refreshes the
-  spring every frame while guiding, and the arm host drops guide torques that are not refreshed within 200 ms, so a
+  spring every frame while guiding. The arm host drops guide torques that are not refreshed within 200 ms. So a
   frozen window cannot leave a push on.
 - **Feedback.** While guiding: the grabbed point as a small sphere, the force arrow, and the label
-  `J3 · guided · 42 N` at the point. The cursor is a closed hand. A disturbance torque from Part M adds to the guide
-  torque; the Disturbances dock's **Active** line shows its own torques only.
-- **Where.** Offered on the simulated joints and the virtual arm, with any controller and any arm state; the plant
-  only moves joints that are driven. The real arm and a virtual bus refuse with "not a simulation", and the scene does
+  `J3 · guided · 42 N` at the point. The cursor is a closed hand.
+- **Disturbances.** A disturbance torque from Part M adds to the guide torque. The Disturbances dock's **Active**
+  line shows its own torques only.
+- **Where.** Offered on the simulated joints and the virtual arm, with any controller and any arm state. The plant
+  only moves joints that are driven. The real arm and a virtual bus refuse with "not a simulation". The scene does
   not start a drag there.
 
 | Control   | Enabled when                                     | Otherwise                                           |
@@ -1067,7 +1070,7 @@ and the real geometry.
 
 | # | Decision                                                                                     | Options                                                 | Status                                                             |
 |---|----------------------------------------------------------------------------------------------|---------------------------------------------------------|--------------------------------------------------------------------|
-| 1 | Esc as the emergency-stop key                                                                | Esc, a function key, a dedicated USB button too         | open                                                               |
+| 1 | Esc as the emergency-stop key                                                                | Esc, a function key, a dedicated USB button too         | open (#195)                                                        |
 | 2 | Joint-limit defaults before the arm profile exists                                           | ±π for every joint, per-joint guesses                   | decided: ±π                                                        |
 | 3 | Default-role buttons (Check Contracts, Position Mode) draw flat in ui-cpp's Instrument theme | Give the default button role a raised surface in ui-cpp | resolved: ui-cpp#24 gives Default buttons a raised fill and border |
 | 4 | Naming every joint an emergency stop did not reach                                           | Per-joint delivery reports from the joint bus           | phase 1a (#17)                                                     |

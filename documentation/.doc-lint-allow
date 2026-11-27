@@ -1,5 +1,6 @@
 allowedLinkPairs
 armController
+armControllerPresets
 cascadeP
 collisionObserverGainPerS
 collisionTorqueNm

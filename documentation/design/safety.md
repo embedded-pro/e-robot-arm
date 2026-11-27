@@ -2,9 +2,9 @@
 title: "Safety Supervisor Design"
 type: design
 status: draft
-version: 0.11.1
+version: 0.11.2
 component: "safety"
-date: 2026-11-26
+date: 2026-11-27
 ---
 
 | Field     | Value                    |
@@ -12,9 +12,9 @@ date: 2026-11-26
 | Title     | Safety Supervisor Design |
 | Type      | design                   |
 | Status    | draft                    |
-| Version   | 0.11.1                   |
+| Version   | 0.11.2                   |
 | Component | safety                   |
-| Date      | 2026-11-26               |
+| Date      | 2026-11-27               |
 
 > The guard between the arm controllers and the joint bus. Behaviour only; diagrams are Mermaid.
 
@@ -403,8 +403,8 @@ sequenceDiagram
 
 ## Decisions
 
-| # | Decision                                            | Options                                                                                  | Status                                            |
-|---|-----------------------------------------------------|------------------------------------------------------------------------------------------|---------------------------------------------------|
-| 1 | How the hardware stop cuts power and how it is read | Relay or safe-torque-off; platform input or an e-foc node input over CAN                 | open: decided with the bring-up hardware (Part J) |
-| 2 | Keeping a torque-controlled joint within its limits | Decided: a measured position outside the limits stops the arm (Part F)                   | closed                                            |
-| 3 | Which stop each rule takes                          | Decided: faults, silence, hardware stop and a lost hold emergency-stop; the rest protect | closed                                            |
+| # | Decision                                            | Options                                                                                  | Status                                                   |
+|---|-----------------------------------------------------|------------------------------------------------------------------------------------------|----------------------------------------------------------|
+| 1 | How the hardware stop cuts power and how it is read | Relay or safe-torque-off; platform input or an e-foc node input over CAN                 | open: decided with the bring-up hardware (Part J) (#193) |
+| 2 | Keeping a torque-controlled joint within its limits | Decided: a measured position outside the limits stops the arm (Part F)                   | closed                                                   |
+| 3 | Which stop each rule takes                          | Decided: faults, silence, hardware stop and a lost hold emergency-stop; the rest protect | closed                                                   |

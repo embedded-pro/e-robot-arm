@@ -2,9 +2,9 @@
 title: "Joint Motion Design"
 type: design
 status: draft
-version: 0.13.1
+version: 0.13.2
 component: "motion"
-date: 2026-11-26
+date: 2026-11-27
 ---
 
 | Field     | Value               |
@@ -12,9 +12,9 @@ date: 2026-11-26
 | Title     | Joint Motion Design |
 | Type      | design              |
 | Status    | draft               |
-| Version   | 0.13.1              |
+| Version   | 0.13.2              |
 | Component | motion              |
-| Date      | 2026-11-26          |
+| Date      | 2026-11-27          |
 
 > Moving the six joints: point-to-point in joint space, through joint waypoints, along a straight tool line, and by
 > jogging, plus named teach points to move to. Behaviour only; diagrams are Mermaid.
@@ -327,8 +327,8 @@ sequenceDiagram
 
 ## Decisions
 
-| # | Decision                                        | Options                                            | Status                                            |
-|---|-------------------------------------------------|----------------------------------------------------|---------------------------------------------------|
-| 1 | Whether to limit jerk                           | Trapezoidal, S-curve per joint (numerical-toolbox) | decided: either, chosen in the profile (Part F)   |
-| 2 | Whether a new target may replace a running move | Refuse, re-plan from the current state             | decided: re-plan from the latest sample (Part F)  |
-| 3 | Torque limits in the waypoint timing            | Joint speed and acceleration only; with dynamics   | open: dynamics once the profile has torque limits |
+| # | Decision                                        | Options                                            | Status                                                   |
+|---|-------------------------------------------------|----------------------------------------------------|----------------------------------------------------------|
+| 1 | Whether to limit jerk                           | Trapezoidal, S-curve per joint (numerical-toolbox) | decided: either, chosen in the profile (Part F)          |
+| 2 | Whether a new target may replace a running move | Refuse, re-plan from the current state             | decided: re-plan from the latest sample (Part F)         |
+| 3 | Torque limits in the waypoint timing            | Joint speed and acceleration only; with dynamics   | open: dynamics once the profile has torque limits (#192) |
