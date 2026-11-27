@@ -3,6 +3,7 @@
 #include "core/arm_model/ArmModel.hpp"
 #include "tools/arm_host/ArmCommand.hpp"
 #include "tools/arm_host/ArmSnapshot.hpp"
+#include "tools/simulator/view_models/ScenePicking.hpp"
 #include "ui/core/Callback.hpp"
 #include <array>
 #include <optional>
@@ -10,14 +11,6 @@
 
 namespace simulator
 {
-    using ScenePoint = std::array<float, 3>;
-
-    struct SceneRay
-    {
-        ScenePoint origin{};
-        ScenePoint direction{};
-    };
-
     struct GuideArrow
     {
         ScenePoint from{};
