@@ -2,9 +2,9 @@
 title: "Arm Controllers Design"
 type: design
 status: draft
-version: 0.21.1
+version: 0.21.2
 component: "arm-controllers"
-date: 2026-11-26
+date: 2026-11-27
 ---
 
 | Field     | Value                  |
@@ -12,9 +12,9 @@ date: 2026-11-26
 | Title     | Arm Controllers Design |
 | Type      | design                 |
 | Status    | draft                  |
-| Version   | 0.21.1                 |
+| Version   | 0.21.2                 |
 | Component | arm-controllers        |
-| Date      | 2026-11-26             |
+| Date      | 2026-11-27             |
 
 > Which controller turns the motion's reference into the joints' setpoints, and how one is enabled, disabled and
 > switched at run time without a setpoint step (phase 2, [#18](https://github.com/embedded-pro/e-robot-arm/issues/18)
@@ -456,5 +456,5 @@ sequenceDiagram
 | 1 | Whether the profile stores the enabled and active ones  | Profile section; console and simulator choice only | decided: the active one only  |
 | 2 | Whether a switch to a non-bumpless controller may blend | Refuse while moving; ramp from the old set         | decided: refuse while moving  |
 | 3 | Gains of the joint-space laws away from home            | Inertia at home; mass matrix at the measured pose  | decided: at the measured pose |
-| 4 | Whether the tracking window follows the stiffness share | Fixed window; window over the share                | open (Part D)                 |
+| 4 | Whether the tracking window follows the stiffness share | Fixed window; window over the share                | open (Part D) (#186)          |
 | 5 | Passive controllers on the real arm                     | Never; `gravity-float` under commissioning limits  | decided: never (Part E)       |

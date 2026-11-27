@@ -2,9 +2,9 @@
 title: "Simulator Design"
 type: design
 status: draft
-version: 0.36.1
+version: 0.36.2
 component: "simulator"
-date: 2026-11-26
+date: 2026-11-27
 ---
 
 | Field     | Value            |
@@ -12,9 +12,9 @@ date: 2026-11-26
 | Title     | Simulator Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.36.1           |
+| Version   | 0.36.2           |
 | Component | simulator        |
-| Date      | 2026-11-26       |
+| Date      | 2026-11-27       |
 
 > The e-robot-arm Simulator's components, threads, targets and data flow (phase 8a,
 > [#28](https://github.com/embedded-pro/e-robot-arm/issues/28)). The screen itself — layout, controls, flows,
@@ -472,4 +472,4 @@ The simulator models no motor physics in-process. Motor dynamics come with e-foc
 | # | Decision                                               | Options                                              | Status            |
 |---|--------------------------------------------------------|------------------------------------------------------|-------------------|
 | 1 | Whether the simulated joints should model speed limits | Lag only (8a), virtual motors for dynamics (phase 7) | decided: lag only |
-| 2 | A status-coloured read-only joint table in ui-cpp      | A ui-cpp model read-out table with a status per cell | open              |
+| 2 | A status-coloured read-only joint table in ui-cpp      | A ui-cpp model read-out table with a status per cell | open (#194)       |
