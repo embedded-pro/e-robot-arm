@@ -343,9 +343,9 @@ profile file.
 - **Ranges.** The ranges are the profile's (Data Model): one table of limits in `core/arm/` that the profile reader
   and `Retune` both use. A value outside its range is refused with the field and the range, and nothing changes.
 - **When.** Refused while a move runs ("moving: wait or abort"): a new gain mid-move would make the torques jump.
-  Between moves it is accepted in any state. If the controller is active and streaming, it is `Reset` from the
-  measured joints and the held reference, as at a switch (Part B), so it takes over the hold without a step.
-  `slotine-li` keeps what it learnt; `gravity-pid` starts its integral again.
+  Between moves it is accepted in any state. The controller keeps its state, so an active one goes on holding
+  without a step: `gravity-pid`'s incremental PIDs continue from their last output and only the next increment
+  uses the new gains; `slotine-li` keeps what it learnt.
 - **Stiffness share.** The impedance controllers keep the run-time share (Part D) over a new stiffness.
 - **The profile.** The arm host writes an accepted tuning into its copy of the profile, so **Save Profile** keeps it,
   as it does for a selection.

@@ -170,8 +170,6 @@ namespace arm
             return RetuneResult::moving;
 
         Apply(kind, tuning);
-        if (controllers.Active() == id)
-            controllers.ResetActive();
         return RetuneResult::applied;
     }
 
