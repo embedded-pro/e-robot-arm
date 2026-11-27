@@ -2,7 +2,7 @@
 title: "Arm Controllers Design"
 type: design
 status: draft
-version: 0.22.0
+version: 0.22.2
 component: "arm-controllers"
 date: 2026-11-27
 ---
@@ -12,7 +12,7 @@ date: 2026-11-27
 | Title     | Arm Controllers Design |
 | Type      | design                 |
 | Status    | draft                  |
-| Version   | 0.22.0                 |
+| Version   | 0.22.2                 |
 | Component | arm-controllers        |
 | Date      | 2026-11-27             |
 
@@ -337,22 +337,23 @@ The `free` and `gravity-float` controllers have no parameters in the profile. Th
 The tools change a controller's tuning while the arm runs, so an operator can compare gains without editing the
 profile file.
 
-- **One request.** `Retune(kind, tuning)` takes one controller and the whole of its tuning (the profile's item for
-  it: `gravityPd`, `computedTorque`, `gravityPid`, `jointImpedance`, `cartesianImpedance`, `operationalSpace`,
-  `slotineLi`). The passive controllers have nothing to tune.
-- **Ranges.** The ranges are the profile's (Data Model): one table of limits in `core/arm/` that the profile reader
-  and `Retune` both use. A value outside its range is refused with the field and the range, and nothing changes.
+- **One request.** A retune request takes one controller and the whole of its tuning. The tuning has the format
+  of that controller's item in the profile. The passive controllers have nothing to tune.
+- **Ranges.** The ranges are the profile's (Data Model). The profile reader and the retune request use one table of
+  limits. A value outside its range is refused with the field and the range, and nothing changes.
 - **When.** Refused while a move runs ("moving: wait or abort"): a new gain mid-move would make the torques jump.
-  Between moves it is accepted in any state. The controller keeps its state, so an active one goes on holding
-  without a step: `gravity-pid`'s incremental PIDs continue from their last output and only the next increment
-  uses the new gains; `slotine-li` keeps what it learnt.
+  Between moves it is accepted in any state.
+- **Bumpless.** The controller keeps its state, so an active one goes on holding without a step.
+- **Kept state.** `gravity-pid`'s incremental PIDs continue from their last output; only the next increment uses
+  the new gains. `slotine-li` keeps what it learnt.
 - **Stiffness share.** The impedance controllers keep the run-time share (Part D) over a new stiffness.
 - **The profile.** The arm host writes an accepted tuning into its copy of the profile, so **Save Profile** keeps it,
   as it does for a selection.
 
-**Presets.** The profile keeps up to 16 named tunings, `armControllerPresets`: each a name of 1 to 16 characters, a
-controller and its tuning in the format of that controller's item. Loading a preset is a `Retune` with its tuning;
-saving one stores the controller's current tuning under a name ([arm-profile.md](arm-profile.md)).
+**Presets.** The profile keeps up to 16 named tunings in its controller presets section
+([arm-profile.md](arm-profile.md)). Each preset has a name of 1 to 16 characters, a controller and its tuning.
+The tuning has the format of that controller's item. Loading a preset is a retune request with its tuning. Saving
+one stores the controller's current tuning under a name.
 
 ---
 
@@ -478,6 +479,6 @@ sequenceDiagram
 | 1 | Whether the profile stores the enabled and active ones  | Profile section; console and simulator choice only | decided: the active one only  |
 | 2 | Whether a switch to a non-bumpless controller may blend | Refuse while moving; ramp from the old set         | decided: refuse while moving  |
 | 3 | Gains of the joint-space laws away from home            | Inertia at home; mass matrix at the measured pose  | decided: at the measured pose |
-| 4 | Whether the tracking window follows the stiffness share | Fixed window; window over the share                | open (Part D)                 |
+| 4 | Whether the tracking window follows the stiffness share | Fixed window; window over the share                | open (Part D) (#186)          |
 | 5 | Passive controllers on the real arm                     | Never; `gravity-float` under commissioning limits  | decided: never (Part E)       |
 | 6 | Changing gains at run time                              | Profile file only; tools retune between moves      | decided: retune (Part F)      |

@@ -2,9 +2,9 @@
 title: "Control Loop Design"
 type: design
 status: draft
-version: 0.2.1
+version: 0.2.2
 component: "control_loop"
-date: 2026-11-26
+date: 2026-11-27
 ---
 
 | Field     | Value               |
@@ -12,9 +12,9 @@ date: 2026-11-26
 | Title     | Control Loop Design |
 | Type      | design              |
 | Status    | draft               |
-| Version   | 0.2.1               |
+| Version   | 0.2.2               |
 | Component | control_loop        |
-| Date      | 2026-11-26          |
+| Date      | 2026-11-27          |
 
 > The arm's fixed-period cycle: when telemetry is requested and when setpoints go out. Behaviour only; diagrams
 > are Mermaid.
@@ -144,4 +144,4 @@ sequenceDiagram
 | # | Decision                                                    | Options                                                                                 | Status                                                           |
 |---|-------------------------------------------------------------|-----------------------------------------------------------------------------------------|------------------------------------------------------------------|
 | 1 | Whether to measure and report period overruns               | Report a late phase, count overruns                                                     | closed: counted (Part C), shown by the console and the simulator |
-| 2 | Whether setpoints and telemetry requests need acknowledging | Keep the acknowledgements, an unacknowledged form in a new e-foc-protocol minor version | open                                                             |
+| 2 | Whether setpoints and telemetry requests need acknowledging | Keep the acknowledgements, an unacknowledged form in a new e-foc-protocol minor version | open (#191)                                                      |

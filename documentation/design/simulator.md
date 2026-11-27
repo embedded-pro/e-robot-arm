@@ -2,9 +2,9 @@
 title: "Simulator Design"
 type: design
 status: draft
-version: 0.37.0
+version: 0.37.1
 component: "simulator"
-date: 2026-11-26
+date: 2026-11-27
 ---
 
 | Field     | Value            |
@@ -12,9 +12,9 @@ date: 2026-11-26
 | Title     | Simulator Design |
 | Type      | design           |
 | Status    | draft            |
-| Version   | 0.37.0           |
+| Version   | 0.37.1           |
 | Component | simulator        |
-| Date      | 2026-11-26       |
+| Date      | 2026-11-27       |
 
 > The e-robot-arm Simulator's components, threads, targets and data flow (phase 8a,
 > [#28](https://github.com/embedded-pro/e-robot-arm/issues/28)). The screen itself — layout, controls, flows,
@@ -226,10 +226,10 @@ copy. So saving the profile never saves commissioning limits. The snapshot carri
 | Collision torque | Joint-side torque held until set back to 0 | Joint-side torque held until set back to 0            | Refused: "not a simulation" |
 | Power off motor  | Refused: "not on simulated joints"         | The motor's process ends; restart brings it back      | Refused: "not a simulation" |
 
-**Guiding** ([tool-simulator.md](tool-simulator.md) Part U) is a command of its own, `GuideArm`, with six joint
-torques. It is offered where the collision torque is, and refused elsewhere with "not a simulation". The arm host
-adds the guide torques to the collision torques on each joint, sends the sum to the target, and sets the guide
-torques back to zero when no `GuideArm` has arrived for 200 ms. An accepted `GuideArm` emits no event.
+**Guiding** ([tool-simulator.md](tool-simulator.md) Part U) is a command of its own, the guide command, with six
+joint torques. It is offered where the collision torque is, and refused elsewhere with "not a simulation". The arm
+host adds the guide torques to the collision torques on each joint and sends the sum to the target. It sets the
+guide torques back to zero when no guide command has arrived for 200 ms. An accepted guide command emits no event.
 
 None depends on the arm's state. The snapshot carries what the target offers and what is applied: each joint
 silent or not and its collision torque.
@@ -477,4 +477,4 @@ The simulator models no motor physics in-process. Motor dynamics come with e-foc
 | # | Decision                                               | Options                                              | Status            |
 |---|--------------------------------------------------------|------------------------------------------------------|-------------------|
 | 1 | Whether the simulated joints should model speed limits | Lag only (8a), virtual motors for dynamics (phase 7) | decided: lag only |
-| 2 | A status-coloured read-only joint table in ui-cpp      | A ui-cpp model read-out table with a status per cell | open              |
+| 2 | A status-coloured read-only joint table in ui-cpp      | A ui-cpp model read-out table with a status per cell | open (#194)       |

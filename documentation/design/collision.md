@@ -2,9 +2,9 @@
 title: "Collision Observer Design"
 type: design
 status: draft
-version: 0.5.1
+version: 0.5.2
 component: "collision"
-date: 2026-11-26
+date: 2026-11-27
 ---
 
 | Field     | Value                     |
@@ -12,9 +12,9 @@ date: 2026-11-26
 | Title     | Collision Observer Design |
 | Type      | design                    |
 | Status    | draft                     |
-| Version   | 0.5.1                     |
+| Version   | 0.5.2                     |
 | Component | collision                 |
-| Date      | 2026-11-26                |
+| Date      | 2026-11-27                |
 
 > Estimates the external torque on each joint from the arm's dynamics, the measured joints and the torques the arm
 > commanded, so the safety supervisor can stop the arm on a collision. Behaviour only; diagrams are Mermaid.
@@ -132,7 +132,7 @@ in its snapshot and trace.
 
 ## Decisions
 
-| # | Decision                                                                       | Options                                                                                                | Status |
-|---|--------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------|--------|
-| 1 | Whether the observer models the drives' friction, so the limits can come down  | No friction model, Coulomb and viscous per joint                                                       | open   |
-| 2 | Whether the observer clamps the commanded torque to what the drive can deliver | Decided: the torque as clamped to the joint's torque limit, from the motor when the profile names none | closed |
+| # | Decision                                                                       | Options                                                                                                | Status      |
+|---|--------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------|-------------|
+| 1 | Whether the observer models the drives' friction, so the limits can come down  | No friction model, Coulomb and viscous per joint                                                       | open (#190) |
+| 2 | Whether the observer clamps the commanded torque to what the drive can deliver | Decided: the torque as clamped to the joint's torque limit, from the motor when the profile names none | closed      |
