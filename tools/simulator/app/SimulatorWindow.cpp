@@ -144,6 +144,10 @@ namespace simulator
             } }
         , tuningPanel{ new TuningPanel{ this } }
         , tuning{ tuningPanel->Form(), host }
+        , guide{ [this](const arm_host::ArmCommand& command)
+            {
+                this->host.Post(command);
+            } }
         , frameReadout{ new QLabel{ this } }
         , recentProfiles{ [](const std::string& path)
             {
@@ -400,6 +404,8 @@ namespace simulator
         ShowNewestLog(events.size() + traceGaps);
         updates.SetBlocked(DrivesJoints(snapshot));
         sceneState.Update(presenter.Scene());
+        guide.Drag(sceneState.GuideRay(), snapshot);
+        sceneState.SetGuide(HandGuide::Offered(snapshot), guide);
         simulationMenu->setEnabled(snapshot.targetReady && snapshot.disturbances.has_value());
         faultMenu->setEnabled(snapshot.disturbances.has_value() && snapshot.disturbances->injectFault);
         UpdateFrameStatistics(std::chrono::nanoseconds{ guiFrame.nsecsElapsed() });
@@ -904,6 +910,7 @@ namespace simulator
             });
         ConnectJog();
         ConnectTeach();
+        ConnectGuide();
     }
 
     void SimulatorWindow::ConnectJog()
@@ -945,6 +952,23 @@ namespace simulator
                     jog.Release();
             });
         jog.SetShare(Settings().value("jog/share", defaultJogShare).toInt());
+    }
+
+    void SimulatorWindow::ConnectGuide()
+    {
+        connect(&sceneState, &ArmSceneState::guideGrabbed, this, [this](int joint, QVector3D hit)
+            {
+                guide.Grab(joint, { hit.x(), hit.y(), hit.z() }, host.Snapshot());
+            });
+        connect(&sceneState, &ArmSceneState::guideReleased, this, [this]()
+            {
+                guide.Release();
+            });
+        connect(qApp, &QGuiApplication::applicationStateChanged, this, [this](Qt::ApplicationState state)
+            {
+                if (state != Qt::ApplicationActive)
+                    guide.Release();
+            });
     }
 
     void SimulatorWindow::ConnectTeach()

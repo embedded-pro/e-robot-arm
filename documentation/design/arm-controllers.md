@@ -2,7 +2,7 @@
 title: "Arm Controllers Design"
 type: design
 status: draft
-version: 0.21.2
+version: 0.22.1
 component: "arm-controllers"
 date: 2026-11-27
 ---
@@ -12,7 +12,7 @@ date: 2026-11-27
 | Title     | Arm Controllers Design |
 | Type      | design                 |
 | Status    | draft                  |
-| Version   | 0.21.2                 |
+| Version   | 0.22.1                 |
 | Component | arm-controllers        |
 | Date      | 2026-11-27             |
 
@@ -332,6 +332,29 @@ What a passive controller changes:
 
 The `free` and `gravity-float` controllers have no parameters in the profile. The wall's band and ω are fixed.
 
+### Part F — Run-time tuning (phase 8e B)
+
+The tools change a controller's tuning while the arm runs, so an operator can compare gains without editing the
+profile file.
+
+- **One request.** A retune request takes one controller and the whole of its tuning. The tuning has the format
+  of that controller's item in the profile. The passive controllers have nothing to tune.
+- **Ranges.** The ranges are the profile's (Data Model). The profile reader and the retune request use one table of
+  limits. A value outside its range is refused with the field and the range, and nothing changes.
+- **When.** Refused while a move runs ("moving: wait or abort"): a new gain mid-move would make the torques jump.
+  Between moves it is accepted in any state.
+- **Bumpless.** If the controller is active and streaming, it resets from the measured joints and the held
+  reference, as at a switch (Part B). So it takes over the hold without a step.
+- **Kept state.** `slotine-li` keeps what it learnt; `gravity-pid` starts its integral again.
+- **Stiffness share.** The impedance controllers keep the run-time share (Part D) over a new stiffness.
+- **The profile.** The arm host writes an accepted tuning into its copy of the profile, so **Save Profile** keeps it,
+  as it does for a selection.
+
+**Presets.** The profile keeps up to 16 named tunings in its controller presets section
+([arm-profile.md](arm-profile.md)). Each preset has a name of 1 to 16 characters, a controller and its tuning.
+The tuning has the format of that controller's item. Loading a preset is a retune request with its tuning. Saving
+one stores the controller's current tuning under a name.
+
 ---
 
 ## Interfaces
@@ -458,3 +481,4 @@ sequenceDiagram
 | 3 | Gains of the joint-space laws away from home            | Inertia at home; mass matrix at the measured pose  | decided: at the measured pose |
 | 4 | Whether the tracking window follows the stiffness share | Fixed window; window over the share                | open (Part D) (#186)          |
 | 5 | Passive controllers on the real arm                     | Never; `gravity-float` under commissioning limits  | decided: never (Part E)       |
+| 6 | Changing gains at run time                              | Profile file only; tools retune between moves      | decided: retune (Part F)      |

@@ -2,7 +2,7 @@
 title: "Tuning Runs Design"
 type: design
 status: draft
-version: 0.2.2
+version: 0.3.1
 component: "tuning"
 date: 2026-11-27
 ---
@@ -12,7 +12,7 @@ date: 2026-11-27
 | Title     | Tuning Runs Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.2.2              |
+| Version   | 0.3.1              |
 | Component | tuning             |
 | Date      | 2026-11-27         |
 
@@ -100,6 +100,30 @@ An out-and-back test reports the two tracking errors only.
 The run writes comma-separated values with one row per sample, so a run can be compared outside the simulator.
 The header row is `time_s`, `commanded_rad`, `measured_rad`, `tracking_error_rad`, `torque_nm`, `dropped_before`.
 The last column is 0 except on a sample that follows a gap, where it is the number of samples lost.
+
+### Part E — Benchmark (phase 8e B)
+
+A benchmark runs the same path once per chosen controller, so the controllers are compared on equal terms.
+
+1. **Path.** The profile's teach points in their order, then back to where the benchmark started.
+   With fewer than two points, four fixed poses within the joint limits and back. Each leg is a move through joint
+   motion.
+2. **Per controller, in the order chosen:** select it; hold 1 s so every run starts at rest; run the path. Record
+   until 1 s after the last move is done.
+3. **Failure.** A refusal, a trip or a protective stop fails that controller's run with the reason. It ends the
+   benchmark: the arm must be re-armed before the next one.
+4. **At the end** the controller that was active before is selected again.
+
+| Metric      | Definition                                                                |
+|-------------|---------------------------------------------------------------------------|
+| RMS error   | Of the tracking-error norm over all six joints, over the whole run, rad   |
+| Peak error  | The largest single-joint tracking error, rad                              |
+| Peak torque | The largest single-joint commanded torque, N·m                            |
+| Energy      | `∑ ∫ τ·q̇ dt` over joints where positive (work done by the drives), J     |
+| Settle time | From the end of the last move until every joint stays within 0.005 rad, s |
+
+At most eight controllers per benchmark. The CSV has one row per controller with these metrics and the gains it ran
+with, then the samples of each run.
 
 ---
 

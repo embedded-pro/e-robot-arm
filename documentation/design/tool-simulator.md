@@ -2,7 +2,7 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.44.2
+version: 0.46.1
 component: "tool-simulator"
 date: 2026-11-27
 ---
@@ -12,7 +12,7 @@ date: 2026-11-27
 | Title     | Simulator Screen Design |
 | Type      | design                  |
 | Status    | draft                   |
-| Version   | 0.44.2                  |
+| Version   | 0.46.1                  |
 | Component | tool-simulator          |
 | Date      | 2026-11-27              |
 
@@ -654,6 +654,26 @@ So no disturbance control ever sits on a screen that drives hardware.
 
 ### Part N — Tuning dock (phase 8d)
 
+**Benchmark** (phase 8e B) is a third test in the Tuning dock: the same path with several controllers, one after
+the other ([tuning.md](tuning.md) Part E). The controls column then shows a controller checklist instead of the
+joint and amplitude; **Run** starts it, and **Abort** stops it between or during runs.
+
+```text
+┌ Tuning ─ Benchmark ─────────────────────────────────────────────────────────────────────────────┐
+│ ☑ gravity-pd  ☑ computed-torque  ☑ gravity-pid  ☐ joint-impedance …   [Run] [Abort]             │
+│ Running 2 of 3: computed-torque…                                                                │
+│ Controller        RMS err   Peak err   Peak τ    Energy   Settle    Result                       │
+│ gravity-pd        0.012 rad 0.034 rad  18.2 N·m  41.0 J   0.42 s    Done                         │
+│ computed-torque   0.003 rad 0.009 rad▲ 21.7 N·m  44.3 J   0.18 s▲   Done                         │
+│ gravity-pid       —         —          —         —        —         Failed: tracking error J2    │
+└─────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+- The best value in each column carries ▲, so the ranking does not rely on colour.
+- The plot shows each controller's tracking-error norm over time in the theme's series colours, with a legend.
+- Run is enabled like a step test, and not in free mode. Each run is labelled with its controller and the gains
+  it ran with. **Export CSV…** writes the table and the samples.
+
 A **Tuning** dock, tabbed with the Scope, runs a step or out-and-back test on one joint through the tuning runner
 ([tuning.md](tuning.md)). It plots the test and shows its metrics.
 It keeps one earlier run beside it for comparison: two arm controllers, or two motors, on the same test.
@@ -761,13 +781,16 @@ the answer.
 │ operational-space      Enabled  ω 30.0 rad/s, ζ 0.70, σ 0.01    │
 │ [Select] [Enable] [Disable]                                     │
 │ Disable is unavailable: disable the arm first                   │
-│ Parameters come from the profile (File → Open Profile…)         │
+│ ┌ gravity-pd ───────────────────────────────────────────────┐   │
+│ │ Bandwidth     [ 30.0 ] rad/s     Damping ratio [ 0.70 ]      │   │
+│ │ Preset [ soft ▾ ] [Load] [Save as…]          Edited · [Apply]│   │
+│ └───────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 - **Rows** are the registry in its order: the name, **Active** (`Ok`), **Enabled** (`Neutral`) or **Disabled**
-  (`Neutral`), and the tuning the profile gives that controller ([arm-controllers.md](arm-controllers.md)). The
-  parameters are read-only: they change with the profile.
+  (`Neutral`), and the tuning in effect for that controller ([arm-controllers.md](arm-controllers.md)). The form
+  under the rows edits it (Tuning form, below).
 
   | Controller                               | Parameters                                                                      |
   |------------------------------------------|---------------------------------------------------------------------------------|
@@ -786,6 +809,17 @@ the answer.
 | Enable  | The row is disabled                                                    | "Already enabled"                           | Enables it                             |
 | Disable | The row is enabled, and not the active one while the arm drives joints | "Already disabled", "Disable the arm first" | Disables it; the active one asks first |
 
+- **Tuning form** (phase 8e B; [arm-controllers.md](arm-controllers.md) Part F). It shows the chosen row's tuning
+  as fields with units and the profile's ranges; `free` and `gravity-float` show "Nothing to tune".
+  - Fields have keyboard tracking off and validate as typed. A value outside its range shows the range on the field,
+    and **Apply** stays disabled.
+  - The state reads **Applied** while the fields match the snapshot, **Edited** once one differs, and
+    **requested…** until the arm host answers. A refusal shows its reason; the fields keep the edit.
+  - **Apply** is disabled while a move runs ("Moving: wait or abort"). **Revert** puts the applied values back.
+  - **Preset** lists the profile's presets for this controller. **Load** fills the fields and applies them.
+    **Save as…** asks for a name (1 to 16 characters) and stores the applied tuning; a name in use is replaced
+    after a confirmation. **Save Profile** writes presets and tunings to the file.
+  - joint-impedance edits its six stiffnesses as one row, or "from inertia" for the default.
 - **Disabling the active controller** while the arm does not drive its joints asks first: "Disable `<name>`? The arm
   then has no controller and cannot be enabled until another one is selected." with **Disable** and **Cancel**
   (default).
@@ -903,6 +937,47 @@ prefilled issue, through ui-cpp's update widgets, as the e-foc tools do.
   The page has the Simulator's version, the operating system, Qt and the last lines of that log.
   The Simulator names the log file to attach. Without a browser it says where to report instead.
 
+### Part U — Hand guiding (phase 8e C3)
+
+On a simulation, the operator pulls the arm with the mouse: a virtual spring from a grabbed point on a link to the
+pointer. The arm host turns the spring force into joint torques on the plant. The arm controller answers the push as
+it would answer a hand. `free` and `gravity-float` follow it, and an impedance controller yields. A stiff controller
+holds or trips the collision rule ([safety.md](safety.md) Part F).
+
+```text
+            pointer ●
+                    ╲  force arrow, accent colour, length ∝ force
+     grabbed point ◉
+   ┌────────────────┐
+   │ link 3 (J3)    │   Ctrl + drag on a link: guide · drag elsewhere: orbit
+```
+
+- **Start.** Ctrl and left button pressed on a link part. The pick gives the link and the hit point.
+  The point is kept in the link's frame, so it moves with the link.
+- **Orbit.** A press on the base, the floor or empty space orbits the camera as before, with or without Ctrl.
+  The legend names the gesture while guiding is offered.
+- **Spring.** Each frame, the pointer's ray meets the plane through the grabbed point that faces the camera. That
+  meeting point is the target. The force is `F = k·(target − point)`, with `k = 400 N/m`, at most 100 N.
+- **Torques.** The joint torques are `τ = Jₚᵀ·F`. `Jₚ` is the grabbed point's Jacobian at the measured pose, from
+  finite differences of forward kinematics. Each torque is clamped to ±200 N·m like a disturbance (Part M).
+  Only the joints up to the grabbed link get torque.
+- **Sending.** One guide command per frame, at most 60 Hz, carries the six torques. It is not logged when
+  accepted; a refusal is logged once and stops the drag.
+- **Dead-man.** Release, Ctrl released or the application losing focus send zero torques. The window refreshes the
+  spring every frame while guiding. The arm host drops guide torques that are not refreshed within 200 ms. So a
+  frozen window cannot leave a push on.
+- **Feedback.** While guiding: the grabbed point as a small sphere, the force arrow, and the label
+  `J3 · guided · 42 N` at the point. The cursor is a closed hand.
+- **Disturbances.** A disturbance torque from Part M adds to the guide torque. The Disturbances dock's **Active**
+  line shows its own torques only.
+- **Where.** Offered on the simulated joints and the virtual arm, with any controller and any arm state. The plant
+  only moves joints that are driven. The real arm and a virtual bus refuse with "not a simulation". The scene does
+  not start a drag there.
+
+| Control   | Enabled when                                     | Otherwise                                           |
+|-----------|--------------------------------------------------|-----------------------------------------------------|
+| Ctrl-drag | Connected to the simulated joints or virtual arm | The drag orbits; tooltip "Guiding: simulation only" |
+
 ## Interfaces
 
 ### Provided
@@ -1001,4 +1076,4 @@ and the real geometry.
 | 4 | Naming every joint an emergency stop did not reach                                           | Per-joint delivery reports from the joint bus           | phase 1a (#17)                                                     |
 | 5 | Bus load and period overruns in the status strip                                             | Control-loop overrun count, bus-load estimate           | decided: both shown (Part A)                                       |
 | 6 | Marking a differing gain on its field rather than in the hint                                | A per-field status in ui-cpp forms                      | resolved: ui-cpp#30 per-field form status (Parts H and J)          |
-| 7 | Editing a profile in the simulator                                                           | A profile editor form, a file edited outside            | decided: edited as a file, shown read-only                         |
+| 7 | Editing a profile in the simulator                                                           | A profile editor form, a file edited outside            | decided: file; tunings, presets in Part Q                          |

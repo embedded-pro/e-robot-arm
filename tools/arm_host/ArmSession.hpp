@@ -92,6 +92,9 @@ namespace arm_host
         bool InjectFaultInto(const InjectFault& inject);
         bool SetSilent(std::size_t joint, bool silent);
         bool Collide(const CollideJoint& collide);
+        bool Guide(const GuideArm& guide);
+        std::optional<std::string_view> PushRefusal() const;
+        void PushJoint(std::size_t joint);
         bool PowerOff(std::size_t joint);
         bool RestartVirtualMotor(std::size_t joint);
         void PublishDisturbances(ArmSnapshot& snapshot) const;
@@ -132,6 +135,9 @@ namespace arm_host
         infra::TimerRepeating holdTimer;
         infra::TimePoint holdUntil{};
         std::optional<AnyJog> heldJog;
+        arm::JointTorques collisionTorques{};
+        arm::JointTorques guideTorques{};
+        infra::TimerSingleShot guideTimer;
         std::optional<Pending> issuing;
         std::optional<Pending> held;
         bool tripReported{ false };
