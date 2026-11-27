@@ -54,7 +54,7 @@ namespace simulator
         Q_OBJECT
 
     public:
-        explicit ConfigurationPanel(QWidget* parent);
+        explicit ConfigurationPanel(QWidget* parent, const char* stateName = "Motor controller state");
 
         void SetState(const std::string& text, ui::theme::StatusLevel level);
         void ApplyTheme();
@@ -74,6 +74,7 @@ namespace simulator
 
         void Update(const ArmControllersPresenter& presenter);
         void ApplyTheme();
+        ConfigurationPanel& Tuning();
 
     signals:
         void chosen(int row);
@@ -83,6 +84,7 @@ namespace simulator
         QTableWidget* table;
         std::array<QPushButton*, armControllerActionCount> buttons{};
         QLabel* hint;
+        ConfigurationPanel* tuning;
         std::vector<ArmControllerRow> shown;
     };
 

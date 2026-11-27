@@ -17,6 +17,8 @@ target_link_libraries(e_robot_arm.tool.simulator.view_models PUBLIC
 target_sources(e_robot_arm.tool.simulator.view_models PRIVATE
     AdapterChoices.cpp
     AdapterChoices.hpp
+    ArmControllerTuningPresenter.cpp
+    ArmControllerTuningPresenter.hpp
     ArmControllersPresenter.cpp
     ArmControllersPresenter.hpp
     ArmSceneGeometry.cpp

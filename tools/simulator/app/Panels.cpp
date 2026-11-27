@@ -187,12 +187,12 @@ namespace simulator
         ui::backend::qt::StyleStatusLabel(*status, level);
     }
 
-    ConfigurationPanel::ConfigurationPanel(QWidget* parent)
+    ConfigurationPanel::ConfigurationPanel(QWidget* parent, const char* stateName)
         : FormPanel{ parent }
         , state{ new QLabel{ this } }
     {
         state->setWordWrap(true);
-        state->setAccessibleName("Motor controller state");
+        state->setAccessibleName(stateName);
         ui::backend::qt::StyleStatusLabel(*state, level);
         static_cast<QVBoxLayout*>(layout())->insertWidget(0, state);
     }
@@ -334,6 +334,7 @@ namespace simulator
         : QWidget{ parent }
         , table{ new QTableWidget{ 0, 4, this } }
         , hint{ new QLabel{ this } }
+        , tuning{ new ConfigurationPanel{ this, "Arm controller tuning state" } }
     {
         table->setObjectName("armControllersTable");
         table->setAccessibleName("Arm controllers");
@@ -366,15 +367,20 @@ namespace simulator
 
         hint->setAccessibleName("Why an action is unavailable");
         hint->setWordWrap(true);
-        auto* source = new QLabel{ "Parameters come from the profile (File → Open Profile…)", this };
-        source->setWordWrap(true);
+        tuning->setObjectName("armControllerTuning");
+        tuning->setAccessibleName("Arm controller tuning");
 
         auto* layout = new QVBoxLayout{ this };
         layout->addWidget(table);
         layout->addLayout(actions);
         layout->addWidget(hint);
-        layout->addWidget(source);
+        layout->addWidget(tuning);
         layout->addStretch();
+    }
+
+    ConfigurationPanel& ArmControllersPanel::Tuning()
+    {
+        return *tuning;
     }
 
     void ArmControllersPanel::Update(const ArmControllersPresenter& presenter)
@@ -419,6 +425,7 @@ namespace simulator
     void ArmControllersPanel::ApplyTheme()
     {
         ui::backend::qt::StyleStatusLabel(*hint, ui::theme::StatusLevel::Neutral);
+        tuning->ApplyTheme();
         shown.clear();
     }
 
