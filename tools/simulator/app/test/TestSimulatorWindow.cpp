@@ -12,6 +12,7 @@
 #endif
 #include <QAction>
 #include <QApplication>
+#include <QCheckBox>
 #include <QComboBox>
 #include <QDockWidget>
 #include <QElapsedTimer>
@@ -1008,6 +1009,67 @@ TEST_F(SimulatorWindowTest, the_tuning_dock_runs_a_step_and_shows_its_metrics_an
     {
         QApplication::processEvents();
         window.grab().save(QString{ path }.replace(".png", "-tuning.png"));
+    }
+}
+
+TEST_F(SimulatorWindowTest, the_benchmark_dock_runs_a_chosen_controller_and_shows_its_results_and_plot)
+{
+    BringUpAndMove(arm::JointPositions{});
+    ASSERT_TRUE(Eventually([this]()
+        {
+            return window.Presenter().State(simulator::Control::move).enabled;
+        }));
+
+    auto* dock = window.findChild<QDockWidget*>("benchmarkDock");
+    ASSERT_NE(nullptr, dock);
+    dock->raise();
+    auto* run = Button(*dock, "Run");
+    auto* abort = Button(*dock, "Abort");
+    auto* exportCsv = Button(*dock, "Export CSV…");
+    ASSERT_NE(nullptr, run);
+    ASSERT_NE(nullptr, abort);
+    ASSERT_NE(nullptr, exportCsv);
+    ASSERT_TRUE(Eventually([dock]()
+        {
+            return !dock->findChildren<QCheckBox*>().empty();
+        }));
+    EXPECT_FALSE(run->isEnabled());
+    EXPECT_EQ("Choose at least one controller", run->toolTip());
+    EXPECT_FALSE(abort->isEnabled());
+
+    auto* first = dock->findChildren<QCheckBox*>().front();
+    first->click();
+    ASSERT_TRUE(Eventually([run]()
+        {
+            return run->isEnabled();
+        }))
+        << run->toolTip().toStdString();
+
+    run->click();
+    EXPECT_TRUE(abort->isEnabled());
+    EXPECT_FALSE(first->isEnabled());
+    ASSERT_TRUE(Eventually([this]()
+        {
+            return window.Benchmark().Status().starts_with("Done");
+        },
+        30000))
+        << window.Benchmark().Status() << "\n"
+        << LogText(window.Presenter());
+    EXPECT_EQ(ui::theme::StatusLevel::Ok, window.Benchmark().StatusLevel());
+    EXPECT_TRUE(exportCsv->isEnabled());
+    EXPECT_FALSE(abort->isEnabled());
+
+    auto* results = dock->findChild<QTableWidget*>();
+    ASSERT_NE(nullptr, results);
+    ASSERT_EQ(1, results->rowCount());
+    EXPECT_EQ(first->text(), results->item(0, 0)->text());
+    EXPECT_TRUE(results->item(0, 1)->text().endsWith(" rad")) << results->item(0, 1)->text().toStdString();
+    EXPECT_EQ("Done", results->item(0, 6)->text());
+
+    if (const auto* path = std::getenv("SIMULATOR_FRAME_CAPTURE"))
+    {
+        QApplication::processEvents();
+        window.grab().save(QString{ path }.replace(".png", "-benchmark.png"));
     }
 }
 

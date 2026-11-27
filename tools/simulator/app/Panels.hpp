@@ -3,6 +3,7 @@
 #include "tools/arm_host/ArmSnapshot.hpp"
 #include "tools/simulator/view_models/ArmControllerTuningPresenter.hpp"
 #include "tools/simulator/view_models/ArmControllersPresenter.hpp"
+#include "tools/simulator/view_models/BenchmarkPresenter.hpp"
 #include "tools/simulator/view_models/EventLog.hpp"
 #include "tools/simulator/view_models/JogPresenter.hpp"
 #include "tools/simulator/view_models/ProfileView.hpp"
@@ -20,7 +21,9 @@
 #include <array>
 #include <span>
 
+class QCheckBox;
 class QComboBox;
+class QHBoxLayout;
 class QKeyEvent;
 class QVBoxLayout;
 class QLineEdit;
@@ -199,6 +202,44 @@ namespace simulator
         QPushButton* exportCsv;
         ui::backend::qt::QtPaintedWidget* plot;
         QTableWidget* metrics;
+        uint32_t chartRevision{ 0 };
+        ui::theme::StatusLevel level{ ui::theme::StatusLevel::Neutral };
+    };
+
+    class BenchmarkPanel
+        : public QWidget
+    {
+        Q_OBJECT
+
+    public:
+        explicit BenchmarkPanel(QWidget* parent);
+
+        QPushButton* RunButton() const;
+        QPushButton* AbortButton() const;
+        QPushButton* ExportButton() const;
+        void Update(const BenchmarkPresenter& presenter);
+        void ApplyTheme();
+
+    signals:
+        void choiceToggled(int choice, bool chosen);
+
+    private:
+        QWidget* BuildControls();
+        void BuildResults();
+        void UpdateChoices(const BenchmarkPresenter& presenter);
+        void UpdateRows(const BenchmarkPresenter& presenter);
+
+        ui::charts::LinearAxis axis{ "Time", 6, 2, "t = ", "s" };
+        ui::charts::ChartCore chart{ axis, {} };
+        QHBoxLayout* checklist;
+        std::vector<QCheckBox*> boxes;
+        QPushButton* run;
+        QPushButton* abort;
+        QPushButton* exportCsv;
+        QLabel* hint;
+        QLabel* status;
+        QTableWidget* results;
+        ui::backend::qt::QtPaintedWidget* plot;
         uint32_t chartRevision{ 0 };
         ui::theme::StatusLevel level{ ui::theme::StatusLevel::Neutral };
     };

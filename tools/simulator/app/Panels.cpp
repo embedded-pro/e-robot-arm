@@ -1,6 +1,7 @@
 #include "tools/simulator/app/Panels.hpp"
 #include "ui/backend/qt/QtConversions.hpp"
 #include "ui/backend/qt/QtTheme.hpp"
+#include <QCheckBox>
 #include <QComboBox>
 #include <QEvent>
 #include <QFile>
@@ -183,6 +184,185 @@ namespace simulator
     }
 
     void TuningPanel::ApplyTheme()
+    {
+        ui::backend::qt::StyleStatusLabel(*status, level);
+    }
+
+    BenchmarkPanel::BenchmarkPanel(QWidget* parent)
+        : QWidget{ parent }
+        , checklist{ new QHBoxLayout }
+        , run{ new QPushButton{ "Run", this } }
+        , abort{ new QPushButton{ "Abort", this } }
+        , exportCsv{ new QPushButton{ "Export CSV…", this } }
+        , hint{ new QLabel{ this } }
+        , status{ new QLabel{ this } }
+        , results{ new QTableWidget{ 0, static_cast<int>(benchmarkColumnCount) + 2, this } }
+        , plot{ new ui::backend::qt::QtPaintedWidget{ chart, this } }
+    {
+        run->setAccessibleName("Run the benchmark");
+        abort->setAccessibleName("Abort the benchmark");
+        exportCsv->setAccessibleName("Export the benchmark as CSV");
+        hint->setAccessibleName("Benchmark hint");
+        hint->setWordWrap(true);
+        status->setAccessibleName("Benchmark state");
+        status->setWordWrap(true);
+        plot->SetBackgroundRole(ui::theme::ColorRole::ScopeBackground);
+        plot->setAccessibleName("Benchmark tracking-error plot");
+        plot->setMinimumSize(320, 200);
+        BuildResults();
+
+        auto* split = new QSplitter{ Qt::Horizontal, this };
+        split->addWidget(BuildControls());
+        split->addWidget(plot);
+        split->setStretchFactor(0, 0);
+        split->setStretchFactor(1, 1);
+        split->setSizes({ 640, 760 });
+
+        auto* panelLayout = new QHBoxLayout{ this };
+        panelLayout->setContentsMargins(0, 0, 0, 0);
+        panelLayout->addWidget(split);
+        ApplyTheme();
+    }
+
+    QWidget* BenchmarkPanel::BuildControls()
+    {
+        auto* column = new QWidget{ this };
+        auto* buttons = new QHBoxLayout;
+        buttons->addLayout(checklist, 1);
+        buttons->addWidget(run);
+        buttons->addWidget(abort);
+        auto* layout = new QVBoxLayout{ column };
+        layout->setContentsMargins(8, 8, 8, 8);
+        layout->addLayout(buttons);
+        layout->addWidget(hint);
+        layout->addWidget(status);
+        layout->addWidget(results, 1);
+        layout->addWidget(exportCsv, 0, Qt::AlignLeft);
+        column->setMinimumWidth(420);
+        return column;
+    }
+
+    void BenchmarkPanel::BuildResults()
+    {
+        QStringList headers{ "Controller" };
+        for (const auto column : BenchmarkPresenter::columns)
+            headers << QString::fromUtf8(column.data(), static_cast<int>(column.size()));
+        headers << "Result";
+        results->setHorizontalHeaderLabels(headers);
+        results->verticalHeader()->setVisible(false);
+        results->setEditTriggers(QAbstractItemView::NoEditTriggers);
+        results->setSelectionMode(QAbstractItemView::NoSelection);
+        results->setAccessibleName("Benchmark results");
+        results->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+        results->horizontalHeader()->setStretchLastSection(true);
+    }
+
+    QPushButton* BenchmarkPanel::RunButton() const
+    {
+        return run;
+    }
+
+    QPushButton* BenchmarkPanel::AbortButton() const
+    {
+        return abort;
+    }
+
+    QPushButton* BenchmarkPanel::ExportButton() const
+    {
+        return exportCsv;
+    }
+
+    void BenchmarkPanel::Update(const BenchmarkPresenter& presenter)
+    {
+        UpdateChoices(presenter);
+        const auto runState = presenter.RunState();
+        const auto abortState = presenter.AbortState();
+        run->setEnabled(runState.enabled);
+        run->setToolTip(QString::fromStdString(runState.reason));
+        abort->setEnabled(abortState.enabled);
+        abort->setToolTip(QString::fromStdString(abortState.reason));
+        if (const auto text = runState.enabled ? QString{} : "Run: " + QString::fromStdString(runState.reason); hint->text() != text)
+            hint->setText(text);
+        if (const auto text = QString::fromStdString(presenter.Status()); status->text() != text)
+            status->setText(text);
+        if (presenter.StatusLevel() != level)
+        {
+            level = presenter.StatusLevel();
+            ui::backend::qt::StyleStatusLabel(*status, level);
+        }
+        exportCsv->setEnabled(presenter.CanExport());
+        UpdateRows(presenter);
+
+        if (presenter.ChartRevision() == chartRevision)
+            return;
+        chartRevision = presenter.ChartRevision();
+        chart.SetAxisValues(presenter.Chart().time);
+        chart.SetPanels(presenter.Chart().panels);
+        plot->update();
+    }
+
+    void BenchmarkPanel::UpdateChoices(const BenchmarkPresenter& presenter)
+    {
+        const auto& choices = presenter.Choices();
+        const bool same = boxes.size() == choices.size() && std::ranges::equal(boxes, choices, {}, [](const QCheckBox* box)
+                                                                {
+                                                                    return box->text().toStdString();
+                                                                },
+                                                                &BenchmarkChoice::name);
+        if (!same)
+        {
+            for (auto* box : boxes)
+                delete box;
+            boxes.clear();
+            for (std::size_t index = 0; index != choices.size(); ++index)
+            {
+                auto* box = new QCheckBox{ QString::fromStdString(choices[index].name), this };
+                box->setAccessibleName("Benchmark " + box->text());
+                connect(box, &QCheckBox::toggled, this, [this, index](bool chosen)
+                    {
+                        emit choiceToggled(static_cast<int>(index), chosen);
+                    });
+                checklist->addWidget(box);
+                boxes.push_back(box);
+            }
+        }
+        const bool locked = presenter.AbortState().enabled;
+        for (std::size_t index = 0; index != boxes.size(); ++index)
+        {
+            const QSignalBlocker blocker{ boxes[index] };
+            boxes[index]->setChecked(choices[index].chosen);
+            boxes[index]->setEnabled(!locked);
+        }
+    }
+
+    void BenchmarkPanel::UpdateRows(const BenchmarkPresenter& presenter)
+    {
+        const auto& rows = presenter.Rows();
+        if (results->rowCount() != static_cast<int>(rows.size()))
+            results->setRowCount(static_cast<int>(rows.size()));
+        for (std::size_t row = 0; row != rows.size(); ++row)
+        {
+            QStringList values{ QString::fromStdString(rows[row].controller) };
+            for (const auto& value : rows[row].values)
+                values << QString::fromStdString(value);
+            values << QString::fromStdString(rows[row].result);
+            for (int column = 0; column != values.size(); ++column)
+            {
+                auto* cell = results->item(static_cast<int>(row), column);
+                if (cell == nullptr)
+                {
+                    cell = new QTableWidgetItem;
+                    if (column != 0 && column != values.size() - 1)
+                        cell->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+                    results->setItem(static_cast<int>(row), column, cell);
+                }
+                if (cell->text() != values[column])
+                    cell->setText(values[column]);
+            }
+        }
+    }
+
+    void BenchmarkPanel::ApplyTheme()
     {
         ui::backend::qt::StyleStatusLabel(*status, level);
     }
