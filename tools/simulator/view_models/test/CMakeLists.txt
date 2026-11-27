@@ -23,6 +23,7 @@ target_sources(e_robot_arm.tool.simulator.view_models_test PRIVATE
     TestFrameStatistics.cpp
     TestHandGuide.cpp
     TestJogPresenter.cpp
+    TestJointDrag.cpp
     TestJointRows.cpp
     TestMotorControllerPresenter.cpp
     TestMotorPresenter.cpp

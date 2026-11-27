@@ -993,17 +993,17 @@ On a simulation, Shift-drag makes the arm follow the pointer while the button is
 
 - **Start.** Left button pressed on a link part, without Ctrl. The pick gives the joint that turns the link and the
   hit point. The point is kept in the link's frame. A press without a move still selects the joint.
-- **Angle.** Each frame, the pointer's ray meets the plane through the grabbed point that faces the camera. The
-  joint angle is the one that brings the grabbed point closest to that meeting point. Eight Gauss–Newton steps on
-  the forward kinematics find it. Only the dragged joint changes. The angle is clamped to the joint's limits.
+- **Angle.** Each frame, the joint angle is the one that brings the grabbed point closest to the pointer's ray.
+  Eight Gauss–Newton steps on the forward kinematics find it, from the last target. Only the dragged joint changes.
+  The angle is clamped to the joint's limits.
 - **Target.** The ghost arm shows the target pose: the measured pose with the dragged joint at the new angle.
   The label reads `J3 → 0.42 rad (from 0.10)`. A target that reaches a limit adds `· at limit`.
 - **Move.** Enter moves the arm to the target, like **Move** in Part B. Esc or a click on empty space clears the
   target. A new drag replaces it. Enter is enabled when Move is enabled; otherwise the label gives Move's reason.
   The arm stack still checks the move (joint limits, workspace) and a refusal is logged.
 - **Follow (Shift-drag).** On a simulation only. At most 20 times a second, the target goes to the arm as a move.
-  Each move replaces the one before. Release, Shift released or the application losing focus abort the move. So the
-  arm stops when the hand stops holding. Elsewhere Shift-drag sets a target like a plain drag, with the label
+  Each move replaces the one before. Release, Shift released or the application losing focus abort the move and clear
+  the target. So the arm stops when the hand stops holding. Elsewhere Shift-drag sets a target like a plain drag, with the label
   `· follow: simulation only`.
 - **Orbit.** A press on the base, the floor or empty space orbits the camera, as before.
 
