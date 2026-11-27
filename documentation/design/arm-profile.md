@@ -2,9 +2,9 @@
 title: "Arm Profile Design"
 type: design
 status: draft
-version: 0.25.2
+version: 0.26.0
 component: "arm_profile"
-date: 2026-11-26
+date: 2026-11-27
 ---
 
 | Field     | Value              |
@@ -12,9 +12,9 @@ date: 2026-11-26
 | Title     | Arm Profile Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.25.2             |
+| Version   | 0.26.0             |
 | Component | arm_profile        |
-| Date      | 2026-11-26         |
+| Date      | 2026-11-27         |
 
 > The single description of an arm, as a JSON file: its control timing, and per joint the node, transmission,
 > limits and motor controller. Behaviour only; diagrams are Mermaid.
@@ -65,6 +65,7 @@ A profile holds the arm's configuration:
 | `slotine-li` adaptation gain                  | `slotineLi.adaptationGain`                       | above 0, at most 10000                               | 10                         |
 | Experimental controllers                      | `experimental`                                   | `true`, `false`                                      | `false`                    |
 | Active arm controller                         | `armController`                                  | a registered name; `slotine-li` needs `experimental` | `gravity-pd`               |
+| Arm controller presets                        | `armControllerPresets`                           | up to 16; see below                                  | none                       |
 | Collision observer gain                       | `collisionObserverGainPerS`                      | 1/s, above 0, at most 1000                           | 25                         |
 | Motion profile                                | `motionProfile`                                  | `trapezoid`, `s-curve`                               | `trapezoid`                |
 | Tool limits                                   | `toolLimits`                                     | see below                                            | see below                  |
@@ -78,6 +79,12 @@ A profile holds the arm's configuration:
 The arm runs its joints in torque mode only ([arm-controllers.md](arm-controllers.md) Part A). The reader reads the
 enable mode for older profiles, and the mode must be `torque`. The reader refuses a profile that names another mode.
 A written profile leaves the enable mode out.
+
+`armControllerPresets` (version 12) keeps named tunings: up to 16 entries, each `{ "name": …, "controller": …,
+"tuning": { … } }`. The name is 1 to 16 characters and unique per controller. The controller is a tunable one, not
+`free` or `gravity-float`, and the tuning has that controller's item format and ranges
+([arm-controllers.md](arm-controllers.md) Part F). The arm host writes run-time tunings and presets back, so a saved
+profile keeps them.
 
 The motion profile shapes every point-to-point move ([joint-motion.md](joint-motion.md) Part F): trapezoidal at each
 joint's speed and acceleration limits, or S-curve, also within its jerk limit. A profile that chooses `s-curve`

@@ -2,9 +2,9 @@
 title: "Arm Controllers Design"
 type: design
 status: draft
-version: 0.21.1
+version: 0.22.0
 component: "arm-controllers"
-date: 2026-11-26
+date: 2026-11-27
 ---
 
 | Field     | Value                  |
@@ -12,9 +12,9 @@ date: 2026-11-26
 | Title     | Arm Controllers Design |
 | Type      | design                 |
 | Status    | draft                  |
-| Version   | 0.21.1                 |
+| Version   | 0.22.0                 |
 | Component | arm-controllers        |
-| Date      | 2026-11-26             |
+| Date      | 2026-11-27             |
 
 > Which controller turns the motion's reference into the joints' setpoints, and how one is enabled, disabled and
 > switched at run time without a setpoint step (phase 2, [#18](https://github.com/embedded-pro/e-robot-arm/issues/18)
@@ -332,6 +332,28 @@ What a passive controller changes:
 
 The `free` and `gravity-float` controllers have no parameters in the profile. The wall's band and ω are fixed.
 
+### Part F — Run-time tuning (phase 8e B)
+
+The tools change a controller's tuning while the arm runs, so an operator can compare gains without editing the
+profile file.
+
+- **One request.** `Retune(kind, tuning)` takes one controller and the whole of its tuning (the profile's item for
+  it: `gravityPd`, `computedTorque`, `gravityPid`, `jointImpedance`, `cartesianImpedance`, `operationalSpace`,
+  `slotineLi`). The passive controllers have nothing to tune.
+- **Ranges.** The ranges are the profile's (Data Model): one table of limits in `core/arm/` that the profile reader
+  and `Retune` both use. A value outside its range is refused with the field and the range, and nothing changes.
+- **When.** Refused while a move runs ("moving: wait or abort"): a new gain mid-move would make the torques jump.
+  Between moves it is accepted in any state. If the controller is active and streaming, it is `Reset` from the
+  measured joints and the held reference, as at a switch (Part B), so it takes over the hold without a step.
+  `slotine-li` keeps what it learnt; `gravity-pid` starts its integral again.
+- **Stiffness share.** The impedance controllers keep the run-time share (Part D) over a new stiffness.
+- **The profile.** The arm host writes an accepted tuning into its copy of the profile, so **Save Profile** keeps it,
+  as it does for a selection.
+
+**Presets.** The profile keeps up to 16 named tunings, `armControllerPresets`: each a name of 1 to 16 characters, a
+controller and its tuning in the format of that controller's item. Loading a preset is a `Retune` with its tuning;
+saving one stores the controller's current tuning under a name ([arm-profile.md](arm-profile.md)).
+
 ---
 
 ## Interfaces
@@ -458,3 +480,4 @@ sequenceDiagram
 | 3 | Gains of the joint-space laws away from home            | Inertia at home; mass matrix at the measured pose  | decided: at the measured pose |
 | 4 | Whether the tracking window follows the stiffness share | Fixed window; window over the share                | open (Part D)                 |
 | 5 | Passive controllers on the real arm                     | Never; `gravity-float` under commissioning limits  | decided: never (Part E)       |
+| 6 | Changing gains at run time                              | Profile file only; tools retune between moves      | decided: retune (Part F)      |
