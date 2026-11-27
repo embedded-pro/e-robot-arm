@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cmath>
 #include <format>
+#include <limits>
 #include <numbers>
 
 namespace simulator
@@ -10,6 +11,9 @@ namespace simulator
     {
         constexpr float parallel{ 1.0e-6f };
         constexpr float metresToCentimetres{ 100.0f };
+        constexpr float ringShare{ 0.8f };
+        constexpr float grabShare{ 0.08f };
+        constexpr float headShare{ 0.15f };
 
         float Dot(const math::Vector3<float>& a, const math::Vector3<float>& b)
         {
@@ -92,6 +96,79 @@ namespace simulator
             const auto reference = Column(start.rotation, (static_cast<std::size_t>(handle) + 1) % 3);
             return std::atan2(Dot(offset, math::CrossProduct(axis, reference)), Dot(offset, reference));
         }
+    }
+
+    std::array<GizmoLine, gizmoHandleCount> GizmoLines(const arm::ArmModel::Pose& at, float size)
+    {
+        std::array<GizmoLine, gizmoHandleCount> lines{};
+        for (std::size_t index = 0; index != gizmoHandleCount; ++index)
+        {
+            const auto handle = static_cast<GizmoHandle>(index);
+            const auto axis = AxisOf(handle, at);
+            const auto across = Column(at.rotation, (index + 1) % 3);
+            auto& line = lines[index];
+            if (!Turning(handle))
+            {
+                const auto tip = at.translation + axis * size;
+                const auto back = tip - axis * (size * headShare);
+                for (const auto& point : { at.translation, tip, back + across * (size * headShare * 0.5f), tip, back - across * (size * headShare * 0.5f) })
+                    line.push_back(ToScenePoint(point));
+                continue;
+            }
+            const auto side = math::CrossProduct(axis, across);
+            for (std::size_t step = 0; step <= gizmoRingPoints; ++step)
+            {
+                const auto angle = 2.0f * std::numbers::pi_v<float> * static_cast<float>(step) / static_cast<float>(gizmoRingPoints);
+                line.push_back(ToScenePoint(at.translation + (across * std::cos(angle) + side * std::sin(angle)) * (size * ringShare)));
+            }
+        }
+        return lines;
+    }
+
+    namespace
+    {
+        // The point of the handle's line or ring that the ray passes, if the ray passes it.
+        std::optional<math::Vector3<float>> HandlePoint(GizmoHandle handle, const arm::ArmModel::Pose& at, float size, const BaseRay& ray)
+        {
+            const auto axis = AxisOf(handle, at);
+            if (!Turning(handle))
+            {
+                const auto along = AlongLine(at.translation, axis, ray);
+                if (along.has_value() && *along >= 0.0f && *along <= size)
+                    return at.translation + axis * *along;
+                return std::nullopt;
+            }
+            const auto hit = OnPlane(at.translation, axis, ray);
+            if (!hit.has_value())
+                return std::nullopt;
+            const auto offset = *hit - at.translation;
+            if (std::abs(std::sqrt(Dot(offset, offset)) - size * ringShare) < size * grabShare)
+                return hit;
+            return std::nullopt;
+        }
+    }
+
+    std::optional<GizmoHandle> GizmoHandleAt(const SceneRay& sceneRay, const arm::ArmModel::Pose& at, float size)
+    {
+        const auto ray = ToBaseRay(sceneRay);
+        const auto tolerance = size * grabShare;
+        std::optional<GizmoHandle> nearest;
+        float nearestDepth{ std::numeric_limits<float>::max() };
+        for (std::size_t index = 0; index != gizmoHandleCount; ++index)
+        {
+            const auto handle = static_cast<GizmoHandle>(index);
+            const auto point = HandlePoint(handle, at, size, ray);
+            if (!point.has_value())
+                continue;
+            const auto depth = Dot(*point - ray.origin, ray.direction);
+            const auto miss = (*point - ray.origin) - ray.direction * depth;
+            if (depth > 0.0f && std::sqrt(Dot(miss, miss)) < tolerance && depth < nearestDepth)
+            {
+                nearest = handle;
+                nearestDepth = depth;
+            }
+        }
+        return nearest;
     }
 
     ToolGizmo::ToolGizmo(const ui::Callback<void(const arm_host::ArmCommand& command)>& post)
@@ -211,6 +288,13 @@ namespace simulator
         else if (const auto close = model->Near(solution); close.Any())
             label += " · near " + NearNames(close);
         return label + pointer.Suffix(move);
+    }
+
+    std::optional<arm::ArmModel::Pose> ToolGizmo::WantedPose() const
+    {
+        if (!pointer.Target().has_value() && !pointer.Dragging())
+            return std::nullopt;
+        return wanted;
     }
 
     ui::theme::StatusLevel ToolGizmo::Level() const

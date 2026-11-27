@@ -85,6 +85,9 @@ Item {
             } else if (event.key === Qt.Key_Shift && ArmSceneState.dragFollowing) {
                 guideArea.dragging = false
                 ArmSceneState.DragRelease()
+            } else if (event.key === Qt.Key_Shift && ArmSceneState.gizmoFollowing) {
+                guideArea.turning = false
+                ArmSceneState.GizmoRelease()
             }
         }
 
@@ -95,10 +98,13 @@ Item {
             } else if (event.key === Qt.Key_J) {
                 ArmSceneState.RequestFocusSelected()
                 event.accepted = true
-            } else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && ArmSceneState.dragActive) {
+            } else if (event.key === Qt.Key_G) {
+                ArmSceneState.gizmoShown = !ArmSceneState.gizmoShown
+                event.accepted = true
+            } else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && (ArmSceneState.dragActive || ArmSceneState.gizmoActive)) {
                 ArmSceneState.DragConfirm()
                 event.accepted = true
-            } else if (event.key === Qt.Key_Delete && ArmSceneState.dragActive) {
+            } else if (event.key === Qt.Key_Delete && (ArmSceneState.dragActive || ArmSceneState.gizmoActive)) {
                 ArmSceneState.DragClear()
                 event.accepted = true
             }
@@ -274,6 +280,40 @@ Item {
             nodes: ArmSceneState.dragNodes
             accentColor: ArmSceneState.accentColor
         }
+
+        ArmModel {
+            id: gizmoGhost
+            objectName: "gizmoGhost"
+            visible: ArmSceneState.gizmoActive
+            ghost: true
+            nodes: ArmSceneState.gizmoNodes
+            accentColor: ArmSceneState.accentColor
+        }
+
+        Repeater3D {
+            objectName: "toolGizmo"
+            model: ArmSceneState.gizmoShown && ArmSceneState.gizmoOffered ? ArmSceneState.gizmoLines : []
+
+            Model {
+                id: handle
+                required property var modelData
+                required property int index
+                readonly property bool active: ArmSceneState.gizmoHandle === handle.index
+                readonly property var tones: ["#e53935", "#43a047", "#1e88e5"]
+
+                castsShadows: false
+                receivesShadows: false
+                pickable: false
+                opacity: ArmSceneState.gizmoHandle < 0 || handle.active ? 1.0 : 0.4
+                geometry: PolylineGeometry {
+                    points: handle.modelData
+                }
+                materials: DefaultMaterial {
+                    lighting: DefaultMaterial.NoLighting
+                    diffuseColor: handle.active && ArmSceneState.gizmoFault ? ArmSceneState.faultColor : handle.tones[handle.index % 3]
+                }
+            }
+        }
     }
 
     Rectangle {
@@ -322,6 +362,7 @@ Item {
         objectName: "guideArea"
 
         property bool guiding: false
+        property bool turning: false
         property bool dragging: false
         property bool moved: false
         property int pressJoint: -1
@@ -339,17 +380,21 @@ Item {
         }
 
         anchors.fill: parent
-        enabled: ArmSceneState.guideOffered || ArmSceneState.dragOffered
+        enabled: ArmSceneState.guideOffered || ArmSceneState.dragOffered || ArmSceneState.gizmoShown
         acceptedButtons: Qt.LeftButton | Qt.RightButton
-        cursorShape: guideArea.guiding || guideArea.dragging ? Qt.ClosedHandCursor : Qt.ArrowCursor
+        cursorShape: guideArea.guiding || guideArea.dragging || guideArea.turning ? Qt.ClosedHandCursor : Qt.ArrowCursor
 
         onPressed: (mouse) => {
             mouse.accepted = false
             if (mouse.button === Qt.RightButton) {
-                if (ArmSceneState.dragActive) {
+                if (ArmSceneState.dragActive || ArmSceneState.gizmoActive) {
                     ArmSceneState.DragClear()
                     mouse.accepted = true
                 }
+                return
+            }
+            if (!(mouse.modifiers & Qt.ControlModifier) && guideArea.grabGizmo(mouse)) {
+                mouse.accepted = true
                 return
             }
             const hit = guideArea.linkAt(mouse.x, mouse.y)
@@ -372,10 +417,21 @@ Item {
             guideArea.pressAt = Qt.point(mouse.x, mouse.y)
             ArmSceneState.DragGrab(hit.objectHit.joint, hit.scenePosition, pointer[0], pointer[1], (mouse.modifiers & Qt.ShiftModifier) !== 0)
         }
+        function grabGizmo(mouse) {
+            const pointer = guideArea.ray(mouse.x, mouse.y)
+            const grabbed = ArmSceneState.GizmoHandleAt(pointer[0], pointer[1])
+            if (grabbed < 0)
+                return false
+            studio.forceActiveFocus()
+            guideArea.turning = true
+            ArmSceneState.GizmoGrab(grabbed, pointer[0], pointer[1], (mouse.modifiers & Qt.ShiftModifier) !== 0)
+            return true
+        }
+
         onPositionChanged: (mouse) => {
             if (guideArea.dragging && !guideArea.moved)
                 guideArea.moved = Math.abs(mouse.x - guideArea.pressAt.x) + Math.abs(mouse.y - guideArea.pressAt.y) > 4
-            if (!guideArea.guiding && !(guideArea.dragging && guideArea.moved))
+            if (!guideArea.guiding && !guideArea.turning && !(guideArea.dragging && guideArea.moved))
                 return
             const pointer = guideArea.ray(mouse.x, mouse.y)
             ArmSceneState.GuidePointer(pointer[0], pointer[1])
@@ -387,6 +443,10 @@ Item {
             if (guideArea.guiding) {
                 guideArea.guiding = false
                 ArmSceneState.GuideRelease()
+            }
+            if (guideArea.turning) {
+                guideArea.turning = false
+                ArmSceneState.GizmoRelease()
             }
             if (!guideArea.dragging)
                 return
@@ -434,6 +494,46 @@ Item {
             id: dragText
             anchors.centerIn: parent
             text: ArmSceneState.dragLabel
+            color: ArmSceneState.textColor
+            font.family: "monospace"
+            font.pixelSize: 12
+        }
+    }
+
+    Rectangle {
+        id: gizmoLabel
+        objectName: "gizmoLabel"
+
+        readonly property vector3d screen: {
+            studio.pivot.position
+            studio.pivot.eulerRotation
+            studio.camera.position
+            studio.orthographic
+            studio.width
+            studio.height
+            if (!ArmSceneState.gizmoActive || !studio.view.camera)
+                return Qt.vector3d(0, 0, -1)
+            return studio.view.mapFrom3DScene(ArmSceneState.gizmoPoint)
+        }
+
+        visible: ArmSceneState.gizmoActive && ArmSceneState.gizmoLabel.length > 0 && gizmoLabel.screen.z > 0
+        enabled: false
+        x: Math.max(8, Math.min(root.width - width - 8, gizmoLabel.screen.x + 14))
+        y: Math.max(8, Math.min(root.height - height - 8, gizmoLabel.screen.y + 14))
+        width: gizmoText.implicitWidth + 16
+        height: gizmoText.implicitHeight + 8
+        radius: 3
+        color: Qt.rgba(ArmSceneState.panelColor.r, ArmSceneState.panelColor.g, ArmSceneState.panelColor.b, 0.88)
+        border.color: ArmSceneState.gizmoLabelColor
+        border.width: 1
+
+        Accessible.role: Accessible.StaticText
+        Accessible.name: ArmSceneState.gizmoLabel
+
+        Text {
+            id: gizmoText
+            anchors.centerIn: parent
+            text: ArmSceneState.gizmoLabel
             color: ArmSceneState.textColor
             font.family: "monospace"
             font.pixelSize: 12
@@ -509,6 +609,7 @@ Item {
             Entry { visible: ArmSceneState.showFrames; label: qsTr("Tool and target frames (x, y, z)"); tone: "#e53935" }
             Entry { visible: ArmSceneState.guideOffered; label: qsTr("Hand guide: Ctrl + drag a link"); tone: ArmSceneState.accentColor }
             Entry { visible: ArmSceneState.dragOffered; label: qsTr("Joint drag: drag a link, Enter to move · Shift: follow"); tone: ArmSceneState.accentColor }
+            Entry { visible: ArmSceneState.gizmoShown && ArmSceneState.gizmoOffered; label: qsTr("Tool gizmo: drag an arrow or a ring, Enter to move"); tone: ArmSceneState.accentColor }
             Text {
                 text: qsTr("Grid %1 cm%2").arg(studio.gridSpacing).arg(ArmSceneState.orthographic ? qsTr(" · orthographic") : "")
                 color: ArmSceneState.textColor

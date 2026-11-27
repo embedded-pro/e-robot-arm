@@ -237,3 +237,54 @@ TEST_F(ToolGizmoTest, a_grab_that_misses_keeps_the_earlier_target)
     EXPECT_EQ(label, gizmo.Label(move));
     EXPECT_EQ(GizmoHandle::moveX, gizmo.Handle());
 }
+
+TEST(GizmoHandlesTest, arrows_run_from_the_tool_along_the_base_axes_and_rings_circle_it)
+{
+    arm::ArmModel::Pose at{};
+    at.translation = Vector{ 0.3f, 0.0f, 0.4f };
+    const auto lines = simulator::GizmoLines(at, 0.1f);
+
+    const auto tip = simulator::ToScenePoint(Vector{ 0.3f, 0.1f, 0.4f });
+    ASSERT_EQ(5u, lines[static_cast<std::size_t>(GizmoHandle::moveY)].size());
+    EXPECT_EQ(simulator::ToScenePoint(at.translation), lines[static_cast<std::size_t>(GizmoHandle::moveY)][0]);
+    for (std::size_t axis = 0; axis != 3; ++axis)
+        EXPECT_NEAR(tip[axis], lines[static_cast<std::size_t>(GizmoHandle::moveY)][1][axis], 1.0e-4f);
+
+    const auto& ring = lines[static_cast<std::size_t>(GizmoHandle::turnZ)];
+    ASSERT_EQ(simulator::gizmoRingPoints + 1, ring.size());
+    const auto centre = simulator::ToScenePoint(at.translation);
+    for (const auto& point : ring)
+    {
+        EXPECT_NEAR(8.0f, std::hypot(point[0] - centre[0], point[2] - centre[2]), 1.0e-3f);
+        EXPECT_NEAR(centre[1], point[1], 1.0e-3f);
+    }
+}
+
+TEST(GizmoHandlesTest, a_ray_picks_the_arrow_or_ring_it_passes_and_nothing_else)
+{
+    arm::ArmModel::Pose at{};
+    at.translation = Vector{ 0.3f, 0.0f, 0.4f };
+    const auto down = [](const Vector& point)
+    {
+        return simulator::SceneRay{ simulator::ToScenePoint(point + Vector{ 0.0f, 0.0f, 1.0f }), simulator::ToScenePoint(Vector{ 0.0f, 0.0f, -1.0f }) };
+    };
+
+    EXPECT_EQ(GizmoHandle::moveX, simulator::GizmoHandleAt(down(at.translation + Vector{ 0.05f, 0.0f, 0.0f }), at, 0.1f));
+    const auto onRing = 0.08f * std::numbers::sqrt2_v<float> / 2.0f;
+    EXPECT_EQ(GizmoHandle::turnZ, simulator::GizmoHandleAt(down(at.translation + Vector{ onRing, onRing, 0.0f }), at, 0.1f));
+    EXPECT_FALSE(simulator::GizmoHandleAt(down(at.translation + Vector{ 0.05f, 0.05f, 0.0f }), at, 0.1f).has_value());
+    EXPECT_FALSE(simulator::GizmoHandleAt(down(at.translation + Vector{ 0.15f, 0.0f, 0.0f }), at, 0.1f).has_value());
+}
+
+TEST_F(ToolGizmoTest, the_gizmo_follows_the_target_pose_while_one_is_set)
+{
+    EXPECT_FALSE(gizmo.WantedPose().has_value());
+    ASSERT_TRUE(GrabMoveX());
+    MoveXBy(-0.05f);
+    gizmo.Release();
+
+    ASSERT_TRUE(gizmo.WantedPose().has_value());
+    EXPECT_NEAR(Tool().translation[0] - 0.05f, gizmo.WantedPose()->translation[0], 1.0e-4f);
+    gizmo.Cancel();
+    EXPECT_FALSE(gizmo.WantedPose().has_value());
+}

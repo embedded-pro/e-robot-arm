@@ -100,6 +100,8 @@ namespace simulator
         void ConnectTeach();
         void ConnectGuide();
         void ConnectDrag();
+        void ConnectGizmo();
+        void BuildGizmoAction(QMenu& view);
         void UpdatePointer(const arm_host::ArmSnapshot& snapshot);
         void RestoreSettings();
         QGroupBox* Group(const QString& title, QWidget* content);
@@ -169,6 +171,7 @@ namespace simulator
         BenchmarkPresenter benchmark;
         HandGuide guide;
         JointDrag drag;
+        ToolGizmo gizmo;
         QLabel* frameReadout;
         QElapsedTimer clock;
         QMenu* faultMenu{ nullptr };

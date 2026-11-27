@@ -83,7 +83,8 @@ namespace simulator
 
         measuredNodes = SceneNodePoses(model, geometry, measuredJoints);
         commandedNodes = SceneNodePoses(model, geometry, snapshot.commanded.value_or(measuredJoints));
-        toolNode = ToScene(model.ToolPose(measuredJoints));
+        toolPose = model.ToolPose(measuredJoints);
+        toolNode = ToScene(toolPose);
 
         const bool rebuilt = !builtFor || !SameGeometry(*builtFor, geometry);
         if (rebuilt)
@@ -319,6 +320,11 @@ namespace simulator
     const ScenePose& ArmSceneModel::ToolNode() const
     {
         return toolNode;
+    }
+
+    const arm::ArmModel::Pose& ArmSceneModel::ToolPose() const
+    {
+        return toolPose;
     }
 
     const ArmSceneModel::Trail& ArmSceneModel::ToolTrail() const

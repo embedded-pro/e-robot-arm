@@ -60,6 +60,7 @@ namespace simulator
         float Extent() const;
         const std::string& SingularityWarning() const;
         const ScenePose& ToolNode() const;
+        const arm::ArmModel::Pose& ToolPose() const;
         const Trail& ToolTrail() const;
         uint32_t TrailRevision() const;
         const BoxList& Boxes() const;
@@ -94,6 +95,7 @@ namespace simulator
         float extent{ 0.0f };
         std::string singularityWarning;
         ScenePose toolNode{};
+        arm::ArmModel::Pose toolPose{};
         Trail trail;
         uint32_t trailRevision{ 0 };
         BoxList boxes;

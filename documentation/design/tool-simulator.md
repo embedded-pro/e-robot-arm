@@ -1036,7 +1036,7 @@ makes the arm follow.
 - **Show.** **View → Tool Gizmo** (key G, 3-D view focused) shows the gizmo at the tool centre point. It is off by
   default and remembered. While it is on, its handles take a press before the links do.
 - **Handles.** Three arrows along the base frame's x, y and z axes move the tool. Three rings about the tool
-  frame's axes turn it. They use the tool triad's colours (Part E). A handle under the pointer is drawn thicker.
+  frame's axes turn it. They use the tool triad's colours (Part E). While one handle is held, the others fade.
 - **Move along an axis.** The target point is the point on the arrow's line closest to the pointer's ray.
   The tool's orientation stays the same.
 - **Turn about an axis.** The pointer's ray meets the ring's plane. The angle of that point about the tool centre

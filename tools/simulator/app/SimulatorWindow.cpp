@@ -159,6 +159,10 @@ namespace simulator
             {
                 this->host.Post(command);
             } }
+        , gizmo{ [this](const arm_host::ArmCommand& command)
+            {
+                this->host.Post(command);
+            } }
         , frameReadout{ new QLabel{ this } }
         , recentProfiles{ [](const std::string& path)
             {
@@ -831,6 +835,7 @@ namespace simulator
 
         BuildOverlaysMenu(*view->addMenu("&Overlays"));
         BuildRenderQualityMenu(*view->addMenu("Render &Quality"));
+        BuildGizmoAction(*view);
 
         auto* theme = view->addMenu("&Theme");
         theme->addAction("&Instrument", this, [this]()
@@ -957,6 +962,7 @@ namespace simulator
         ConnectTeach();
         ConnectGuide();
         ConnectDrag();
+        ConnectGizmo();
     }
 
     void SimulatorWindow::ConnectJog()
@@ -1024,12 +1030,17 @@ namespace simulator
         const auto move = presenter.State(Control::move);
         drag.Drag(sceneState.GuideRay(), snapshot, move, JointDrag::Clock::now());
         sceneState.SetDrag(snapshot.targetReady, drag, move);
+        gizmo.Drag(sceneState.GuideRay(), snapshot, move, ToolGizmo::Clock::now());
+        const auto& scene = presenter.Scene();
+        const auto size = scene.Extent() * ArmSceneModel::toolFrameShare / 100.0f;
+        sceneState.SetGizmo(snapshot.targetReady, gizmo.WantedPose().value_or(scene.ToolPose()), size, gizmo, move);
     }
 
     void SimulatorWindow::ConnectDrag()
     {
         connect(&sceneState, &ArmSceneState::dragGrabbed, this, [this](int joint, QVector3D hit, bool follow)
             {
+                gizmo.Cancel();
                 drag.Grab(joint, { hit.x(), hit.y(), hit.z() }, host.Snapshot(), presenter.State(Control::move), follow);
             });
         connect(&sceneState, &ArmSceneState::dragReleased, this, [this]()
@@ -1039,15 +1050,52 @@ namespace simulator
         connect(&sceneState, &ArmSceneState::dragCleared, this, [this]()
             {
                 drag.Cancel();
+                gizmo.Cancel();
             });
         connect(&sceneState, &ArmSceneState::dragConfirmed, this, [this]()
             {
-                drag.Confirm(presenter.State(Control::move));
+                const auto move = presenter.State(Control::move);
+                if (!drag.Confirm(move))
+                    gizmo.Confirm(move);
             });
         connect(qApp, &QGuiApplication::applicationStateChanged, this, [this](Qt::ApplicationState state)
             {
                 if (state != Qt::ApplicationActive && drag.Following())
                     drag.Release();
+            });
+    }
+
+    void SimulatorWindow::ConnectGizmo()
+    {
+        connect(&sceneState, &ArmSceneState::gizmoGrabbed, this, [this](int handle, bool follow)
+            {
+                drag.Cancel();
+                gizmo.Grab(static_cast<GizmoHandle>(handle), sceneState.GuideRay(), host.Snapshot(), presenter.State(Control::move), follow);
+            });
+        connect(&sceneState, &ArmSceneState::gizmoReleased, this, [this]()
+            {
+                gizmo.Release();
+            });
+        connect(qApp, &QGuiApplication::applicationStateChanged, this, [this](Qt::ApplicationState state)
+            {
+                if (state != Qt::ApplicationActive && gizmo.Following())
+                    gizmo.Release();
+            });
+    }
+
+    void SimulatorWindow::BuildGizmoAction(QMenu& view)
+    {
+        sceneState.SetGizmoShown(Settings().value("view/toolGizmo", false).toBool());
+        auto* action = view.addAction("Tool &Gizmo\tG");
+        action->setCheckable(true);
+        action->setChecked(sceneState.GizmoShown());
+        connect(action, &QAction::toggled, &sceneState, &ArmSceneState::SetGizmoShown);
+        connect(&sceneState, &ArmSceneState::gizmoShownChanged, action, [this, action]()
+            {
+                action->setChecked(sceneState.GizmoShown());
+                Settings().setValue("view/toolGizmo", sceneState.GizmoShown());
+                if (!sceneState.GizmoShown())
+                    gizmo.Cancel();
             });
     }
 

@@ -9,9 +9,11 @@
 #include "tools/simulator/view_models/ScenePicking.hpp"
 #include "ui/core/Callback.hpp"
 #include "ui/theme/Theme.hpp"
+#include <array>
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace simulator
 {
@@ -24,6 +26,15 @@ namespace simulator
         turnY,
         turnZ
     };
+
+    inline constexpr std::size_t gizmoHandleCount{ 6 };
+    inline constexpr std::size_t gizmoRingPoints{ 48 };
+    using GizmoLine = std::vector<ScenePoint>;
+
+    // Each handle as a scene polyline: an arrow of length size, or a ring of 0.8 size about the tool axis.
+    std::array<GizmoLine, gizmoHandleCount> GizmoLines(const arm::ArmModel::Pose& at, float size);
+    // The handle the ray passes within 8 % of size of, nearest the ray's origin.
+    std::optional<GizmoHandle> GizmoHandleAt(const SceneRay& ray, const arm::ArmModel::Pose& at, float size);
 
     class ToolGizmo
     {
@@ -47,6 +58,7 @@ namespace simulator
         std::optional<ScenePoint> TargetPoint() const;
         std::string Label(const ControlState& move) const;
         ui::theme::StatusLevel Level() const;
+        std::optional<arm::ArmModel::Pose> WantedPose() const;
 
     private:
         arm::ArmModel::Pose Wanted(float reading) const;

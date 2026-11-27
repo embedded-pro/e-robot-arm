@@ -3,6 +3,7 @@
 #include "tools/simulator/view_models/ArmSceneModel.hpp"
 #include "tools/simulator/view_models/HandGuide.hpp"
 #include "tools/simulator/view_models/JointDrag.hpp"
+#include "tools/simulator/view_models/ToolGizmo.hpp"
 #include "ui/backend/qt/quick3d/MeshCatalog.hpp"
 #include "ui/theme/Theme.hpp"
 #include <QColor>
@@ -77,6 +78,17 @@ namespace simulator
         Q_PROPERTY(QVariantList dragNodes READ DragNodes NOTIFY dragChanged)
         Q_PROPERTY(QVector3D dragPoint READ DragPoint NOTIFY dragChanged)
         Q_PROPERTY(QString dragLabel READ DragLabel NOTIFY dragChanged)
+        Q_PROPERTY(bool gizmoShown READ GizmoShown WRITE SetGizmoShown NOTIFY gizmoShownChanged)
+        Q_PROPERTY(bool gizmoOffered READ GizmoOffered NOTIFY gizmoChanged)
+        Q_PROPERTY(QVariantList gizmoLines READ GizmoLines NOTIFY gizmoChanged)
+        Q_PROPERTY(int gizmoHandle READ GizmoHandleIndex NOTIFY gizmoChanged)
+        Q_PROPERTY(bool gizmoFault READ GizmoFault NOTIFY gizmoChanged)
+        Q_PROPERTY(bool gizmoActive READ GizmoActive NOTIFY gizmoChanged)
+        Q_PROPERTY(bool gizmoFollowing READ GizmoFollowing NOTIFY gizmoChanged)
+        Q_PROPERTY(QVariantList gizmoNodes READ GizmoNodes NOTIFY gizmoChanged)
+        Q_PROPERTY(QVector3D gizmoPoint READ GizmoPoint NOTIFY gizmoChanged)
+        Q_PROPERTY(QString gizmoLabel READ GizmoLabel NOTIFY gizmoChanged)
+        Q_PROPERTY(QColor gizmoLabelColor READ GizmoLabelColor NOTIFY gizmoChanged)
 
     public:
         static ArmSceneState* create(QQmlEngine* engine, QJSEngine* scriptEngine);
@@ -159,6 +171,19 @@ namespace simulator
         QVariantList DragNodes() const;
         QVector3D DragPoint() const;
         QString DragLabel() const;
+        void SetGizmo(bool offered, const arm::ArmModel::Pose& at, float size, const ToolGizmo& gizmo, const ControlState& move);
+        bool GizmoShown() const;
+        void SetGizmoShown(bool on);
+        bool GizmoOffered() const;
+        QVariantList GizmoLines() const;
+        int GizmoHandleIndex() const;
+        bool GizmoFault() const;
+        bool GizmoActive() const;
+        bool GizmoFollowing() const;
+        QVariantList GizmoNodes() const;
+        QVector3D GizmoPoint() const;
+        QString GizmoLabel() const;
+        QColor GizmoLabelColor() const;
 
         Q_INVOKABLE void Pick(int joint);
         Q_INVOKABLE void ReportMeshFailure(int node, const QString& reason);
@@ -170,6 +195,9 @@ namespace simulator
         Q_INVOKABLE void DragRelease();
         Q_INVOKABLE void DragClear();
         Q_INVOKABLE void DragConfirm();
+        Q_INVOKABLE int GizmoHandleAt(QVector3D origin, QVector3D direction) const;
+        Q_INVOKABLE void GizmoGrab(int handle, QVector3D origin, QVector3D direction, bool follow);
+        Q_INVOKABLE void GizmoRelease();
 
     signals:
         void changed();
@@ -194,6 +222,10 @@ namespace simulator
         void dragReleased();
         void dragCleared();
         void dragConfirmed();
+        void gizmoShownChanged();
+        void gizmoChanged();
+        void gizmoGrabbed(int handle, bool follow);
+        void gizmoReleased();
 
     private:
         QVariantList measuredNodes;
@@ -247,6 +279,19 @@ namespace simulator
         QVariantList dragNodes;
         QVector3D dragPoint;
         QString dragLabel;
+        bool gizmoShown{ false };
+        bool gizmoOffered{ false };
+        arm::ArmModel::Pose gizmoAt{};
+        float gizmoSize{ 0.0f };
+        QVariantList gizmoLines;
+        int gizmoHandle{ -1 };
+        bool gizmoFault{ false };
+        bool gizmoActive{ false };
+        bool gizmoFollowing{ false };
+        QVariantList gizmoNodes;
+        QVector3D gizmoPoint;
+        QString gizmoLabel;
+        QColor gizmoLabelColor;
         QVector3D pointerOrigin;
         QVector3D pointerDirection;
     };
