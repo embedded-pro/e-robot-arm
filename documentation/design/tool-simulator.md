@@ -2,7 +2,7 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.48.1
+version: 0.49.0
 component: "tool-simulator"
 date: 2026-11-27
 ---
@@ -219,8 +219,9 @@ The Virtual Motors dock shows them go from Starting to Up (Part L). Bring Up app
 | F             | Frame the arm (3-D view focused)                                                                                                                   |
 | O             | Orthographic or perspective camera (3-D view focused)                                                                                              |
 | J             | Focus the camera on the selected joint (3-D view focused)                                                                                          |
-| Enter         | Move to the joint-drag target (3-D view focused, Part V)                                                                                           |
-| Delete        | Clear the joint-drag target (3-D view focused, Part V)                                                                                             |
+| Enter         | Move to the joint-drag or gizmo target (3-D view focused, Parts V and W)                                                                           |
+| Delete        | Clear the joint-drag or gizmo target (3-D view focused, Parts V and W)                                                                             |
+| G             | Show or hide the tool gizmo (3-D view focused, Part W)                                                                                             |
 | Ctrl+S        | Save the event log                                                                                                                                 |
 | Ctrl+Shift+R  | Reset layout                                                                                                                                       |
 | 1–6           | Choose the jog axis (Jog dock focused, Part R)                                                                                                     |
@@ -1016,6 +1017,51 @@ On a simulation, Shift-drag makes the arm follow the pointer while the button is
 | Drag       | Connected, a profile loaded                              | The drag orbits                          |
 | Enter      | A target and Move enabled (Part B)                       | The label gives Move's reason            |
 | Shift-drag | Move enabled, on the simulated joints or the virtual arm | A target only; "follow: simulation only" |
+
+### Part W — Tool gizmo (phase 8e C2)
+
+The operator moves the tool by dragging handles on it in the 3-D view. Inverse kinematics turns the tool target into
+joint angles. Like a joint drag (Part V), a drag only sets a target; a move needs Enter. On a simulation, Shift-drag
+makes the arm follow.
+
+```text
+                 z ▲ (blue)
+                   │   ╭─ ring about the tool's z axis
+                   │  (  )
+          tool ●───┼──────▶ x (red)
+                  ╱
+             y ◣ (green)        Tool → x 0.412  y 0.105  z 0.630 m · Δ 3.2 cm 0° · Enter: move · Del: clear
+```
+
+- **Show.** **View → Tool Gizmo** (key G, 3-D view focused) shows the gizmo at the tool centre point. It is off by
+  default and remembered. While it is on, its handles take a press before the links do.
+- **Handles.** Three arrows along the base frame's x, y and z axes move the tool. Three rings about the tool
+  frame's axes turn it. They use the tool triad's colours (Part E). A handle under the pointer is drawn thicker.
+- **Move along an axis.** The target point is the point on the arrow's line closest to the pointer's ray.
+  The tool's orientation stays the same.
+- **Turn about an axis.** The pointer's ray meets the ring's plane. The angle of that point about the tool centre
+  point, from where the drag began, turns the tool about that axis. Its position stays the same.
+- **Joint angles.** The arm model's inverse kinematics finds the joint angles for the target pose. It keeps the
+  solution nearest the measured pose, within the joint limits. Each frame starts from the last solution.
+- **Target.** While the target is reachable, the ghost arm shows the solution. The label gives the target position
+  in the base frame and how far it is from the measured tool, in distance and angle. A target near a singularity
+  adds `· near <singularity>` in the `Warning` colour (Part K).
+- **Out of reach.** A target with no solution, or one outside the joint limits, keeps the last reachable solution
+  as the ghost. The handle turns the `Fault` colour. The label adds `· out of reach` or `· outside the joint
+  limits`. Enter then moves to the last reachable solution.
+- **Move.** Enter moves the arm to the solution, like **Move** in Part B. Delete or a right click clears the target.
+  The arm stack still checks the move (joint limits, workspace) and a refusal is logged.
+- **Follow (Shift-drag).** On a simulation only, with the same rules as Part V: at most 20 moves a second, each
+  replacing the one before. Release, Shift released or the application losing focus abort the move and clear the
+  target. A target out of reach sends nothing.
+- **One target.** A gizmo drag replaces a joint-drag target, and a joint drag replaces a gizmo target.
+
+| Control           | Enabled when                                             | Otherwise                                |
+|-------------------|----------------------------------------------------------|------------------------------------------|
+| View → Tool Gizmo | Always                                                   | —                                        |
+| Handle drag       | Connected, the gizmo shown                               | The press goes to the links or the orbit |
+| Enter             | A target and Move enabled (Part B)                       | The label gives Move's reason            |
+| Shift + handle    | Move enabled, on the simulated joints or the virtual arm | A target only; "follow: simulation only" |
 
 ## Interfaces
 
