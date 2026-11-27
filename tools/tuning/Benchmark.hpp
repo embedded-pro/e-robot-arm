@@ -4,6 +4,7 @@
 #include "tools/arm_host/ArmCommands.hpp"
 #include "tools/arm_host/ArmEvent.hpp"
 #include "tools/arm_host/ArmSnapshot.hpp"
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <ostream>
@@ -91,12 +92,13 @@ namespace tuning
         void Begin(std::size_t run);
         void NextLeg();
         void Finish();
-        void Fail(std::string reason);
+        void Fail(std::string reason, bool stopMove = false);
         void Restore();
         void Record(const arm_host::TraceSample& sample, float time);
+        float Accumulate(const arm_host::TraceSample& sample, BenchmarkMetrics& metrics);
         std::optional<arm::ArmControllerId> IdOf(arm::ArmControllerKind kind) const;
 
-        arm_host::ArmCommands& arm;
+        arm_host::ArmCommands& commands;
         std::vector<arm::ArmControllerKind> controllers;
         arm_host::ArmSnapshot snapshot;
         std::vector<arm::JointPositions> path;

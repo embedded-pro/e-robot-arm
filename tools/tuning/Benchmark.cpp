@@ -2,7 +2,10 @@
 #include "core/arm/ArmControllerTuning.hpp"
 #include "tools/arm_host/ArmCommand.hpp"
 #include <algorithm>
+#include <array>
+#include <chrono>
 #include <cmath>
+#include <string_view>
 
 namespace tuning
 {
@@ -58,8 +61,10 @@ namespace tuning
             return "at most eight controllers";
         if (!snapshot.targetReady)
             return "not connected";
-        if (snapshot.state != arm::ArmState::enabled || snapshot.moving)
-            return snapshot.moving ? "the arm is moving" : "the arm is not enabled";
+        if (snapshot.moving)
+            return "the arm is moving";
+        if (snapshot.state != arm::ArmState::enabled)
+            return "the arm is not enabled";
         for (const auto kind : controllers)
         {
             const std::string_view name{ arm::ArmControllerName(kind) };
@@ -75,15 +80,73 @@ namespace tuning
         return std::nullopt;
     }
 
+    namespace
+    {
+        std::string Quoted(const std::string& text)
+        {
+            std::string quoted{ "\"" };
+            for (const auto character : text)
+            {
+                if (character == '"')
+                    quoted += '"';
+                quoted += character == '\n' ? ' ' : character;
+            }
+            return quoted + '"';
+        }
+
+        class Gains
+        {
+        public:
+            explicit Gains(std::ostream& output)
+                : output(output)
+            {}
+
+            void operator()(const arm::BandwidthTuning& tuning) const
+            {
+                output << "bandwidth " << tuning.bandwidth << " rad/s; damping ratio " << tuning.dampingRatio;
+            }
+
+            void operator()(const arm::JointImpedanceTuning& tuning) const
+            {
+                output << "stiffness ";
+                if (!tuning.stiffness.has_value())
+                    output << "from inertia";
+                for (std::size_t joint = 0; tuning.stiffness.has_value() && joint != arm::jointCount; ++joint)
+                    output << (joint == 0 ? "" : " ") << (*tuning.stiffness)[joint];
+                output << " N·m/rad; damping ratio " << tuning.dampingRatio;
+            }
+
+            void operator()(const arm::CartesianImpedanceTuning& tuning) const
+            {
+                output << "stiffness " << tuning.translationalStiffness << " N/m " << tuning.rotationalStiffness << " N·m/rad; damping ratio " << tuning.dampingRatio;
+            }
+
+            void operator()(const arm::OperationalSpaceTuning& tuning) const
+            {
+                output << "bandwidth " << tuning.bandwidth << " rad/s; damping ratio " << tuning.dampingRatio << "; singularity damping " << tuning.singularityDamping;
+            }
+
+            void operator()(const arm::SlotineLiTuning& tuning) const
+            {
+                output << "lambda " << tuning.lambda << " 1/s; bandwidth " << tuning.bandwidth << " rad/s; adaptation gain " << tuning.adaptationGain;
+            }
+
+        private:
+            std::ostream& output;
+        };
+    }
+
     void WriteBenchmarkCsv(const std::vector<BenchmarkResult>& results, std::ostream& output)
     {
         constexpr std::array<const char*, 4> states{ "pending", "running", "done", "failed" };
-        output << "controller,result,rms_error_rad,peak_error_rad,peak_torque_nm,energy_j,settle_time_s\n";
+        output << "controller,gains,result,rms_error_rad,peak_error_rad,peak_torque_nm,energy_j,settle_time_s\n";
         for (const auto& result : results)
         {
             const auto& metrics = result.metrics;
-            output << arm::ArmControllerName(result.controller) << ',' << (result.failure.empty() ? states[static_cast<std::size_t>(result.state)] : result.failure) << ','
-                   << metrics.rmsError << ',' << metrics.peakError << ',' << metrics.peakTorque << ',' << metrics.energy << ',';
+            output << arm::ArmControllerName(result.controller) << ",\"";
+            std::visit(Gains{ output }, result.tuning);
+            output << "\"," << Quoted(result.failure.empty() ? states[static_cast<std::size_t>(result.state)] : result.failure) << ',' << metrics.rmsError << ','
+                   << metrics.peakError << ',' << metrics.peakTorque << ',' << metrics.energy << ',';
             if (metrics.settleTime.has_value())
                 output << *metrics.settleTime;
             output << '\n';
@@ -95,16 +158,21 @@ namespace tuning
     }
 
     Benchmark::Benchmark(arm_host::ArmCommands& arm, std::vector<arm::ArmControllerKind> controllers)
-        : arm(arm)
+        : commands(arm)
         , controllers(std::move(controllers))
     {}
 
     std::optional<std::string> Benchmark::Start()
     {
-        snapshot = arm.Snapshot();
+        if (state == BenchmarkState::running)
+            return "a benchmark is running";
+        snapshot = commands.Snapshot();
         if (auto refusal = BenchmarkRefusal(controllers, snapshot))
             return refusal;
 
+        failure.clear();
+        original.reset();
+        pending = 0;
         for (std::size_t id = 0; id != snapshot.armControllers.size(); ++id)
             if (snapshot.armControllers[id].active)
                 original = static_cast<arm::ArmControllerId>(id);
@@ -126,7 +194,7 @@ namespace tuning
     {
         if (state != BenchmarkState::running)
             return;
-        arm.Post(arm_host::AbortMove{});
+        commands.Post(arm_host::AbortMove{});
         results[current].state = BenchmarkRunState::failed;
         results[current].failure = "aborted";
         state = BenchmarkState::aborted;
@@ -144,7 +212,7 @@ namespace tuning
         lastOutside = 0.0f;
         results[current].state = BenchmarkRunState::running;
         step = Step::selecting;
-        pending = arm.Post(arm_host::SelectArmController{ *IdOf(controllers[current]) });
+        pending = commands.Post(arm_host::SelectArmController{ *IdOf(controllers[current]) });
     }
 
     void Benchmark::OnEvent(const arm_host::ArmEvent& event)
@@ -166,6 +234,7 @@ namespace tuning
             Fail("tripped: " + event.reason);
         else if (event.kind == arm_host::ArmEventKind::protectiveStop)
             Fail("protective stop: " + event.reason);
+        // The arm host runs one move at a time and reports its end without a command id.
         else if (event.kind == arm_host::ArmEventKind::moveDone && step == Step::moving)
             NextLeg();
     }
@@ -174,7 +243,7 @@ namespace tuning
     {
         if (++leg < path.size())
         {
-            pending = arm.Post(arm_host::MoveTo{ path[leg] });
+            pending = commands.Post(arm_host::MoveTo{ path[leg] });
             return;
         }
         step = Step::recording;
@@ -195,7 +264,7 @@ namespace tuning
                 return;
             since = sample.time;
             step = Step::moving;
-            pending = arm.Post(arm_host::MoveTo{ path[0] });
+            pending = commands.Post(arm_host::MoveTo{ path[0] });
             return;
         }
 
@@ -209,31 +278,37 @@ namespace tuning
         auto& result = results[current];
         if (result.samples.size() == maxBenchmarkSamples)
         {
-            Fail("the run exceeded 6000 samples");
+            Fail("the run exceeded " + std::to_string(maxBenchmarkSamples) + " samples", true);
             return;
         }
 
-        float norm{ 0.0f };
+        const auto norm = Accumulate(sample, result.metrics);
         bool outside{ false };
         for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
-        {
-            const auto error = std::abs(sample.commanded[joint].Value() - sample.measured[joint].Value());
-            norm += error * error;
-            outside = outside || error > benchmarkSettleBand;
-            result.metrics.peakError = std::max(result.metrics.peakError, error);
-            if (sample.torques.has_value())
-            {
-                const auto torque = (*sample.torques)[joint].Value();
-                result.metrics.peakTorque = std::max(result.metrics.peakTorque, std::abs(torque));
-                if (previousMeasured.has_value())
-                    result.metrics.energy += std::max(0.0f, torque * (sample.measured[joint].Value() - (*previousMeasured)[joint].Value()));
-            }
-        }
+            outside = outside || std::abs(sample.commanded[joint].Value() - sample.measured[joint].Value()) > benchmarkSettleBand;
         previousMeasured = sample.measured;
         squaredSum += norm;
         if (outside)
             lastOutside = time;
         result.samples.push_back({ time, std::sqrt(norm) });
+    }
+
+    float Benchmark::Accumulate(const arm_host::TraceSample& sample, BenchmarkMetrics& metrics)
+    {
+        float norm{ 0.0f };
+        for (std::size_t joint = 0; joint != arm::jointCount; ++joint)
+        {
+            const auto error = std::abs(sample.commanded[joint].Value() - sample.measured[joint].Value());
+            norm += error * error;
+            metrics.peakError = std::max(metrics.peakError, error);
+            if (!sample.torques.has_value())
+                continue;
+            const auto torque = (*sample.torques)[joint].Value();
+            metrics.peakTorque = std::max(metrics.peakTorque, std::abs(torque));
+            if (previousMeasured.has_value())
+                metrics.energy += std::max(0.0f, torque * (sample.measured[joint].Value() - (*previousMeasured)[joint].Value()));
+        }
+        return norm;
     }
 
     void Benchmark::Finish()
@@ -254,8 +329,10 @@ namespace tuning
         }
     }
 
-    void Benchmark::Fail(std::string reason)
+    void Benchmark::Fail(std::string reason, bool stopMove)
     {
+        if (stopMove)
+            commands.Post(arm_host::AbortMove{});
         results[current].state = BenchmarkRunState::failed;
         results[current].failure = reason;
         failure = std::move(reason);
@@ -267,7 +344,7 @@ namespace tuning
     {
         pending = 0;
         if (original.has_value())
-            arm.Post(arm_host::SelectArmController{ *original });
+            commands.Post(arm_host::SelectArmController{ *original });
     }
 
     std::optional<arm::ArmControllerId> Benchmark::IdOf(arm::ArmControllerKind kind) const
