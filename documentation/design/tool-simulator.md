@@ -2,7 +2,7 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.46.1
+version: 0.47.0
 component: "tool-simulator"
 date: 2026-11-27
 ---
@@ -652,14 +652,14 @@ So no disturbance control ever sits on a screen that drives hardware.
 - **Simulation → Inject Fault** and **Silence Joint** stay as keyboard paths; they are enabled on the targets that
   offer them.
 
-### Part N — Tuning dock (phase 8d)
+### Part N — Tuning and Benchmark docks (phases 8d, 8e)
 
-**Benchmark** (phase 8e B) is a third test in the Tuning dock: the same path with several controllers, one after
-the other ([tuning.md](tuning.md) Part E). The controls column then shows a controller checklist instead of the
-joint and amplitude; **Run** starts it, and **Abort** stops it between or during runs.
+A **Benchmark** dock (phase 8e B) sits in a tab beside the Tuning dock.
+It runs the same path with several controllers, one after the other ([tuning.md](tuning.md) Part E). It has a controller checklist, the status line, the results table
+and the plot. **Run** starts it, and **Abort** stops it between or during runs. The checklist is locked while it runs.
 
 ```text
-┌ Tuning ─ Benchmark ─────────────────────────────────────────────────────────────────────────────┐
+┌ Benchmark ──────────────────────────────────────────────────────────────────────────────────────┐
 │ ☑ gravity-pd  ☑ computed-torque  ☑ gravity-pid  ☐ joint-impedance …   [Run] [Abort]             │
 │ Running 2 of 3: computed-torque…                                                                │
 │ Controller        RMS err   Peak err   Peak τ    Energy   Settle    Result                       │

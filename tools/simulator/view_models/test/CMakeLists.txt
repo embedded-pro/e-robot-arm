@@ -15,6 +15,7 @@ target_sources(e_robot_arm.tool.simulator.view_models_test PRIVATE
     TestArmControllerTuningPresenter.cpp
     TestArmControllersPresenter.cpp
     TestArmSceneModel.cpp
+    TestBenchmarkPresenter.cpp
     TestControlRules.cpp
     TestDesktopArm.cpp
     TestDisturbancePresenter.cpp

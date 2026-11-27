@@ -25,6 +25,8 @@ target_sources(e_robot_arm.tool.simulator.view_models PRIVATE
     ArmSceneGeometry.hpp
     ArmSceneModel.cpp
     ArmSceneModel.hpp
+    BenchmarkPresenter.cpp
+    BenchmarkPresenter.hpp
     ConfigurationFlow.cpp
     ConfigurationFlow.hpp
     ControlRules.cpp
