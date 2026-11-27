@@ -39,6 +39,19 @@ namespace simulator
                 { "outline", outline } };
         }
 
+        QVariantList ToLines(const std::array<GizmoLine, gizmoHandleCount>& lines)
+        {
+            QVariantList list;
+            for (const auto& line : lines)
+            {
+                QVariantList points;
+                for (const auto& point : line)
+                    points.append(Vector(point));
+                list.append(QVariant{ points });
+            }
+            return list;
+        }
+
         QVariantList ToList(const SceneNodes& nodes)
         {
             QVariantList list;
@@ -393,6 +406,114 @@ namespace simulator
     QString ArmSceneState::DragLabel() const
     {
         return dragLabel;
+    }
+
+    void ArmSceneState::SetGizmo(bool offered, const arm::ArmModel::Pose& at, float size, const ToolGizmo& gizmo, const ControlState& move)
+    {
+        const auto lines = ToLines(simulator::GizmoLines(at, size));
+        const auto nodes = gizmo.TargetNodes();
+        const auto handle = gizmo.Handle().has_value() ? static_cast<int>(*gizmo.Handle()) : -1;
+        const auto label = ui::backend::qt::ToQt(gizmo.Label(move));
+        gizmoAt = at;
+        gizmoSize = size;
+        if (offered == gizmoOffered && lines == gizmoLines && handle == gizmoHandle && gizmo.Reachable() != gizmoFault && label == gizmoLabel &&
+            gizmo.Following() == gizmoFollowing)
+            return;
+        gizmoOffered = offered;
+        gizmoLines = lines;
+        gizmoHandle = handle;
+        gizmoFault = !gizmo.Reachable();
+        gizmoActive = nodes.has_value();
+        gizmoFollowing = gizmo.Following();
+        gizmoNodes = nodes.has_value() ? ToList(*nodes) : QVariantList{};
+        gizmoPoint = gizmo.TargetPoint().has_value() ? Vector(*gizmo.TargetPoint()) : QVector3D{};
+        gizmoLabel = label;
+        const auto level = gizmo.Level();
+        gizmoLabelColor = level == ui::theme::StatusLevel::Fault ? fault : level == ui::theme::StatusLevel::Warning ? warning
+                                                                                                                    : accent;
+        emit gizmoChanged();
+    }
+
+    bool ArmSceneState::GizmoShown() const
+    {
+        return gizmoShown;
+    }
+
+    void ArmSceneState::SetGizmoShown(bool on)
+    {
+        if (gizmoShown == on)
+            return;
+        gizmoShown = on;
+        emit gizmoShownChanged();
+    }
+
+    bool ArmSceneState::GizmoOffered() const
+    {
+        return gizmoOffered;
+    }
+
+    QVariantList ArmSceneState::GizmoLines() const
+    {
+        return gizmoLines;
+    }
+
+    int ArmSceneState::GizmoHandleIndex() const
+    {
+        return gizmoHandle;
+    }
+
+    bool ArmSceneState::GizmoFault() const
+    {
+        return gizmoFault;
+    }
+
+    bool ArmSceneState::GizmoActive() const
+    {
+        return gizmoActive;
+    }
+
+    bool ArmSceneState::GizmoFollowing() const
+    {
+        return gizmoFollowing;
+    }
+
+    QVariantList ArmSceneState::GizmoNodes() const
+    {
+        return gizmoNodes;
+    }
+
+    QVector3D ArmSceneState::GizmoPoint() const
+    {
+        return gizmoPoint;
+    }
+
+    QString ArmSceneState::GizmoLabel() const
+    {
+        return gizmoLabel;
+    }
+
+    QColor ArmSceneState::GizmoLabelColor() const
+    {
+        return gizmoLabelColor;
+    }
+
+    int ArmSceneState::GizmoHandleAt(QVector3D origin, QVector3D direction) const
+    {
+        if (!gizmoShown || !gizmoOffered)
+            return -1;
+        const auto handle = simulator::GizmoHandleAt({ { origin.x(), origin.y(), origin.z() }, { direction.x(), direction.y(), direction.z() } }, gizmoAt, gizmoSize);
+        return handle.has_value() ? static_cast<int>(*handle) : -1;
+    }
+
+    void ArmSceneState::GizmoGrab(int handle, QVector3D origin, QVector3D direction, bool follow)
+    {
+        GuidePointer(origin, direction);
+        emit gizmoGrabbed(handle, follow);
+    }
+
+    void ArmSceneState::GizmoRelease()
+    {
+        emit gizmoReleased();
     }
 
     SceneRay ArmSceneState::GuideRay() const

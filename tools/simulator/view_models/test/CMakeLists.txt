@@ -32,6 +32,7 @@ target_sources(e_robot_arm.tool.simulator.view_models_test PRIVATE
     TestRenderQuality.cpp
     TestSimulatorPresenter.cpp
     TestTeachPresenter.cpp
+    TestToolGizmo.cpp
     TestToolReadout.cpp
     TestTuningPresenter.cpp
     TestVirtualMotorRows.cpp

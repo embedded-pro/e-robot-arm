@@ -53,6 +53,8 @@ target_sources(e_robot_arm.tool.simulator.view_models PRIVATE
     MotorPresenter.hpp
     ProfileView.cpp
     ProfileView.hpp
+    PointerTarget.cpp
+    PointerTarget.hpp
     RecentProfiles.cpp
     RecentProfiles.hpp
     RenderQuality.cpp
@@ -63,6 +65,8 @@ target_sources(e_robot_arm.tool.simulator.view_models PRIVATE
     SimulatorPresenter.hpp
     TeachPresenter.cpp
     TeachPresenter.hpp
+    ToolGizmo.cpp
+    ToolGizmo.hpp
     ToolReadout.cpp
     TuningPresenter.cpp
     TuningPresenter.hpp

@@ -45,6 +45,7 @@
 #include <functional>
 #include <mutex>
 #include <string>
+#include <utility>
 #include <vector>
 
 Q_IMPORT_QML_PLUGIN(SimulatorPlugin)
@@ -1122,6 +1123,71 @@ TEST_F(SimulatorWindowTest, a_joint_drag_sets_a_ghost_target_and_enter_moves_the
         15000))
         << LogText(window.Presenter());
     EXPECT_FALSE(Logged(window.Presenter(), "Move refused")) << LogText(window.Presenter());
+}
+
+TEST_F(SimulatorWindowTest, the_tool_gizmo_sets_a_tool_target_and_enter_moves_the_arm_there)
+{
+    BringUpAndMove(arm::JointPositions{ foc::Radians{ 0.3f }, foc::Radians{ 0.4f }, foc::Radians{ 0.5f }, foc::Radians{ 0.0f }, foc::Radians{ 0.5f },
+        foc::Radians{ 0.0f } });
+    ASSERT_TRUE(Eventually([this]()
+        {
+            return Logged(window.Presenter(), "Move done") && window.Presenter().State(simulator::Control::move).enabled;
+        },
+        15000))
+        << LogText(window.Presenter());
+    auto* state = simulator::ArmSceneState::Current();
+    ASSERT_NE(nullptr, state);
+    QAction* toggle = nullptr;
+    for (auto* action : window.findChildren<QAction*>())
+        if (action->text() == "Tool &Gizmo\tG")
+            toggle = action;
+    ASSERT_NE(nullptr, toggle);
+    toggle->setChecked(true);
+    EXPECT_TRUE(state->GizmoShown());
+    ASSERT_TRUE(Eventually([state]()
+        {
+            return state->GizmoOffered() && state->GizmoLines().size() == static_cast<qsizetype>(simulator::gizmoHandleCount);
+        }));
+
+    const auto& scene = window.Presenter().Scene();
+    const auto size = scene.Extent() * simulator::ArmSceneModel::toolFrameShare / 100.0f;
+    const auto start = scene.ToolPose().translation;
+    const auto down = [](const math::Vector3<float>& point)
+    {
+        const auto from = simulator::ToScenePoint(point + math::Vector3<float>{ 0.0f, 0.0f, 1.0f });
+        const auto direction = simulator::ToScenePoint(math::Vector3<float>{ 0.0f, 0.0f, -1.0f });
+        return std::pair{ QVector3D{ from[0], from[1], from[2] }, QVector3D{ direction[0], direction[1], direction[2] } };
+    };
+    const auto [grabFrom, grabDirection] = down(start + math::Vector3<float>{ size * 0.5f, 0.0f, 0.0f });
+    ASSERT_EQ(static_cast<int>(simulator::GizmoHandle::moveX), state->GizmoHandleAt(grabFrom, grabDirection));
+    state->GizmoGrab(static_cast<int>(simulator::GizmoHandle::moveX), grabFrom, grabDirection, false);
+    const auto [dragFrom, dragDirection] = down(start + math::Vector3<float>{ size * 0.5f - 0.02f, 0.0f, 0.0f });
+    state->GuidePointer(dragFrom, dragDirection);
+    ASSERT_TRUE(Eventually([state]()
+        {
+            return state->GizmoActive();
+        }));
+    state->GizmoRelease();
+    QApplication::processEvents();
+    EXPECT_TRUE(state->GizmoLabel().startsWith("Tool → ")) << state->GizmoLabel().toStdString();
+    EXPECT_TRUE(state->GizmoLabel().contains("Δ 2.0 cm")) << state->GizmoLabel().toStdString();
+    auto* ghost = window.ArmView().rootObject()->findChild<QObject*>("gizmoGhost");
+    ASSERT_NE(nullptr, ghost);
+    EXPECT_TRUE(ghost->property("visible").toBool());
+
+    state->DragConfirm();
+    ASSERT_TRUE(Eventually([state]()
+        {
+            return !state->GizmoActive();
+        }));
+    ASSERT_TRUE(Eventually([this, start]()
+        {
+            return std::abs(window.Presenter().Scene().ToolPose().translation[0] - (start[0] - 0.02f)) < 0.003f;
+        },
+        15000))
+        << LogText(window.Presenter());
+    EXPECT_FALSE(Logged(window.Presenter(), "Move refused")) << LogText(window.Presenter());
+    toggle->setChecked(false);
 }
 
 TEST_F(SimulatorWindowTest, frame_statistics_report_the_gui_and_render_cost_while_the_arm_moves_and_a_tuning_run_records)
