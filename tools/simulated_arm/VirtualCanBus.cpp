@@ -59,7 +59,6 @@ namespace simulation
             });
     }
 
-    // One action carries a whole exchange, so a host that runs late never sees it half done.
     void VirtualCanBus::DeliverAll()
     {
         while (!frames.empty())

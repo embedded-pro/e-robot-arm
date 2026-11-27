@@ -121,10 +121,10 @@ Each joint's motor process state is in the snapshot (Part F), and one joint can 
 A simulated joint is an e-foc node on the in-process bus: a FOC motor category server. It comes from the
 integration tests' support code. It accepts every command the arm sends, answers telemetry, and:
 
-- **Answers within one step of the arm thread.** The in-process bus delivers each waiting frame in one step of the
-  event loop, with the answers and the frames queued behind it. A real bus sends frames while the host does other
-  work. So when the arm thread runs late, the arm never finds an earlier exchange still under way.
-  A late host still delays the control loop, and the safety rules see that delay.
+- **Answers within one step of the arm thread.** The in-process bus delivers all waiting frames, and the answers
+  they cause, in one event-loop step. A real bus sends frames while the host does other work. So when the arm
+  thread runs late, the arm never finds an earlier exchange still under way. A late host still delays the control
+  loop, and the safety rules see that delay.
 - **In position mode, follows its setpoint through a first-order lag** with time constant τ. The position advances
   when telemetry is requested, from the time since the last update: `θ ← θ* + (θ − θ*)·e^(−Δt/τ)`.
   Its speed reads `(θ* − θ)/τ`. τ = 0 follows exactly, which is what the scenarios use. The simulator uses τ = 50 ms.
@@ -469,6 +469,7 @@ flowchart LR
 | Lifecycle  | No arm lifecycle until phase 1; the controls follow the joints' states and the safety supervisor |
 | Physics    | In-process joints follow their setpoint through a lag; motor dynamics need the virtual target    |
 | Geometry   | Phase 8a draws a generic six-joint arm; phase 3 supplies the arm model                           |
+| In-process | Frames that answer each other without end would hold the event loop in one step                  |
 
 The simulator models no motor physics in-process. Motor dynamics come with e-foc virtual motors (phase 7,
 [#23](https://github.com/embedded-pro/e-robot-arm/issues/23)) on the `virtual:` target. Phase 3
