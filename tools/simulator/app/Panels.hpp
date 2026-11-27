@@ -1,6 +1,7 @@
 #pragma once
 
 #include "tools/arm_host/ArmSnapshot.hpp"
+#include "tools/simulator/view_models/ArmControllerTuningPresenter.hpp"
 #include "tools/simulator/view_models/ArmControllersPresenter.hpp"
 #include "tools/simulator/view_models/EventLog.hpp"
 #include "tools/simulator/view_models/JogPresenter.hpp"
@@ -73,11 +74,14 @@ namespace simulator
         explicit ArmControllersPanel(QWidget* parent);
 
         void Update(const ArmControllersPresenter& presenter);
+        void UpdatePresets(const ArmControllerTuningPresenter& presenter);
         void ApplyTheme();
         ConfigurationPanel& Tuning();
 
     signals:
         void chosen(int row);
+        void presetLoaded(int preset);
+        void presetSaveRequested();
         void actionTriggered(int action);
 
     private:
@@ -85,6 +89,11 @@ namespace simulator
         std::array<QPushButton*, armControllerActionCount> buttons{};
         QLabel* hint;
         ConfigurationPanel* tuning;
+        QComboBox* presets;
+        QPushButton* loadPreset;
+        QPushButton* savePreset;
+        QLabel* presetNote;
+        std::vector<std::string> shownPresets;
         std::vector<ArmControllerRow> shown;
     };
 

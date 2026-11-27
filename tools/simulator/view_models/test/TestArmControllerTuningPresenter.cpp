@@ -2,6 +2,7 @@
 #include "tools/simulator/view_models/test/SnapshotBuilder.hpp"
 #include "ui/backend/recording/RecordingFormView.hpp"
 #include "gmock/gmock.h"
+#include <string>
 #include <vector>
 
 namespace
@@ -157,4 +158,92 @@ TEST_F(ArmControllerTuningPresenterTest, each_controller_shows_and_sends_its_own
     EXPECT_TRUE(std::holds_alternative<arm::SlotineLiTuning>(presenter.FormTuning()));
     presenter.Choose(arm::ArmControllerKind::free);
     EXPECT_EQ(arm::ArmControllerKind::slotineLi, presenter.Kind());
+}
+
+namespace
+{
+    void AddPreset(arm_host::ArmSnapshot& snapshot, const char* name, arm::ArmControllerKind kind, const arm::ArmControllerTuning& tuning)
+    {
+        auto& preset = snapshot.config.presets[snapshot.config.presetCount++];
+        preset.name = name;
+        preset.controller = kind;
+        preset.tuning = tuning;
+    }
+}
+
+TEST_F(ArmControllerTuningPresenterTest, lists_the_chosen_controllers_presets_and_loads_one_by_applying_it)
+{
+    AddPreset(snapshot, "soft", arm::ArmControllerKind::gravityPd, arm::BandwidthTuning{ 10.0f, 1.0f });
+    AddPreset(snapshot, "other", arm::ArmControllerKind::gravityPid, arm::BandwidthTuning{ 15.0f, 0.7f });
+    AddPreset(snapshot, "stiff", arm::ArmControllerKind::gravityPd, arm::BandwidthTuning{ 60.0f, 0.7f });
+    presenter.Refresh(snapshot, {});
+
+    EXPECT_EQ((std::vector<std::string>{ "soft", "stiff" }), presenter.Presets());
+    EXPECT_EQ("Choose a preset", presenter.LoadRefusal(2));
+    EXPECT_EQ("", presenter.LoadRefusal(1));
+
+    presenter.LoadPreset(1);
+    EXPECT_EQ("Loaded “stiff”", presenter.PresetNote());
+    ASSERT_EQ(1u, posted.size());
+    EXPECT_FLOAT_EQ(60.0f, std::get<arm::BandwidthTuning>(Posted().tuning).bandwidth);
+    EXPECT_EQ(ControllerTuningState::requested, presenter.State());
+    EXPECT_EQ("Requested…", presenter.LoadRefusal(0));
+
+    presenter.Choose(arm::ArmControllerKind::gravityPid);
+    EXPECT_EQ((std::vector<std::string>{ "other" }), presenter.Presets());
+}
+
+TEST_F(ArmControllerTuningPresenterTest, loading_a_preset_is_refused_with_the_reason_while_moving)
+{
+    AddPreset(snapshot, "soft", arm::ArmControllerKind::gravityPd, arm::BandwidthTuning{ 10.0f, 1.0f });
+    snapshot.moving = true;
+    presenter.Refresh(snapshot, {});
+
+    EXPECT_EQ("Moving: wait or abort", presenter.LoadRefusal(0));
+    presenter.LoadPreset(0);
+    EXPECT_TRUE(posted.empty());
+    EXPECT_EQ("Load: Moving: wait or abort", presenter.PresetNote());
+}
+
+TEST_F(ArmControllerTuningPresenterTest, saves_the_applied_tuning_under_a_name_and_says_when_it_replaces_one)
+{
+    AddPreset(snapshot, "soft", arm::ArmControllerKind::gravityPd, arm::BandwidthTuning{ 10.0f, 1.0f });
+    presenter.Refresh(snapshot, {});
+
+    EXPECT_TRUE(presenter.Replaces("soft"));
+    EXPECT_FALSE(presenter.Replaces("new"));
+    EXPECT_EQ("Name it (1–16 characters)", presenter.SaveRefusal(""));
+    EXPECT_EQ("Name it (1–16 characters)", presenter.SaveRefusal("seventeen chars!!"));
+
+    presenter.SavePreset("new");
+    ASSERT_EQ(1u, posted.size());
+    const auto& save = std::get<arm_host::SaveArmControllerPreset>(posted.back());
+    EXPECT_EQ(arm::ArmControllerKind::gravityPd, save.kind);
+    EXPECT_EQ("new", save.name);
+
+    EXPECT_EQ("Saved “new” with the applied tuning", presenter.PresetNote());
+    presenter.SavePreset("soft");
+    EXPECT_EQ("Replaced “soft” with the applied tuning", presenter.PresetNote());
+
+    presenter.SavePreset("");
+    EXPECT_EQ(2u, posted.size());
+    EXPECT_EQ("Save: Name it (1–16 characters)", presenter.PresetNote());
+}
+
+TEST_F(ArmControllerTuningPresenterTest, a_seventeenth_preset_is_refused_unless_it_replaces_one)
+{
+    for (char name = 'a'; name != 'a' + static_cast<char>(arm::maxArmControllerPresets); ++name)
+    {
+        const char text[2]{ name, '\0' };
+        AddPreset(snapshot, text, arm::ArmControllerKind::gravityPd, arm::BandwidthTuning{});
+    }
+    presenter.Refresh(snapshot, {});
+
+    EXPECT_EQ("16 presets already: replace one", presenter.SaveRefusal("q"));
+    EXPECT_EQ("", presenter.SaveRefusal("a"));
+    auto disconnected = snapshot;
+    disconnected.targetReady = false;
+    presenter.Refresh(disconnected, {});
+    EXPECT_EQ("Not connected", presenter.SaveRefusal("a"));
+    EXPECT_EQ("Not connected", presenter.LoadRefusal(0));
 }

@@ -11,6 +11,7 @@
 #include <array>
 #include <span>
 #include <string>
+#include <vector>
 
 namespace simulator
 {
@@ -67,6 +68,14 @@ namespace simulator
         ui::theme::StatusLevel StateLevel() const;
         const std::string& Hint() const;
 
+        std::vector<std::string> Presets() const;
+        std::string LoadRefusal(std::size_t preset) const;
+        void LoadPreset(std::size_t preset);
+        std::string SaveRefusal(const std::string& name) const;
+        bool Replaces(const std::string& name) const;
+        void SavePreset(const std::string& name);
+        const std::string& PresetNote() const;
+
     private:
         struct Form
         {
@@ -90,6 +99,7 @@ namespace simulator
         void LoadItem(const arm::SlotineLiTuning& tuning);
         void SetState(ControllerTuningState newState, const std::string& reason = {});
         bool Offered() const;
+        const arm::ArmControllerPreset* Preset(std::size_t index) const;
         std::string ApplyRefusal() const;
         void UpdateActions();
 
@@ -102,6 +112,7 @@ namespace simulator
         std::string stateText{ "Applied" };
         ui::theme::StatusLevel stateLevel{ ui::theme::StatusLevel::Ok };
         std::string hint;
+        std::string presetNote;
         bool loading{ false };
     };
 }

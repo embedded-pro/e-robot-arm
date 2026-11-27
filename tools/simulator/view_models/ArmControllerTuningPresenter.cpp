@@ -156,6 +156,7 @@ namespace simulator
     {
         if (!arm::Tunable(kind) || kind == Kind())
             return;
+        presetNote.clear();
         form.model.SetSelection(ControllerTuningField::controller, static_cast<std::size_t>(kind));
         view.Refresh(ControllerTuningField::controller);
     }
@@ -212,6 +213,91 @@ namespace simulator
     const std::string& ArmControllerTuningPresenter::Hint() const
     {
         return hint;
+    }
+
+    std::vector<std::string> ArmControllerTuningPresenter::Presets() const
+    {
+        std::vector<std::string> names;
+        for (std::size_t index = 0; index != snapshot.config.presetCount; ++index)
+            if (snapshot.config.presets[index].controller == Kind())
+                names.emplace_back(snapshot.config.presets[index].name.begin(), snapshot.config.presets[index].name.end());
+        return names;
+    }
+
+    std::string ArmControllerTuningPresenter::LoadRefusal(std::size_t preset) const
+    {
+        if (Preset(preset) == nullptr)
+            return "Choose a preset";
+        if (!snapshot.targetReady)
+            return "Not connected";
+        if (!Offered())
+            return "The arm does not offer this controller";
+        if (snapshot.moving)
+            return "Moving: wait or abort";
+        if (state == ControllerTuningState::requested)
+            return "Requested…";
+        return {};
+    }
+
+    void ArmControllerTuningPresenter::LoadPreset(std::size_t preset)
+    {
+        if (const auto refusal = LoadRefusal(preset); !refusal.empty())
+        {
+            presetNote = "Load: " + refusal;
+            return;
+        }
+        presetNote = "Loaded “" + std::string{ Preset(preset)->name.begin(), Preset(preset)->name.end() } + "”";
+        Load(Preset(preset)->tuning);
+        post(arm_host::TuneArmController{ Kind(), FormTuning() });
+        SetState(ControllerTuningState::requested);
+        UpdateActions();
+    }
+
+    std::string ArmControllerTuningPresenter::SaveRefusal(const std::string& name) const
+    {
+        if (!snapshot.targetReady)
+            return "Not connected";
+        if (name.empty() || name.size() > arm::presetNameSize)
+            return "Name it (1–16 characters)";
+        if (!Replaces(name) && snapshot.config.presetCount == arm::maxArmControllerPresets)
+            return "16 presets already: replace one";
+        return {};
+    }
+
+    bool ArmControllerTuningPresenter::Replaces(const std::string& name) const
+    {
+        const auto names = Presets();
+        return std::ranges::find(names, name) != names.end();
+    }
+
+    void ArmControllerTuningPresenter::SavePreset(const std::string& name)
+    {
+        if (const auto refusal = SaveRefusal(name); !refusal.empty())
+        {
+            presetNote = "Save: " + refusal;
+            return;
+        }
+        presetNote = (Replaces(name) ? "Replaced “" : "Saved “") + name + "” with the applied tuning";
+        post(arm_host::SaveArmControllerPreset{ Kind(), name });
+    }
+
+    const std::string& ArmControllerTuningPresenter::PresetNote() const
+    {
+        return presetNote;
+    }
+
+    const arm::ArmControllerPreset* ArmControllerTuningPresenter::Preset(std::size_t index) const
+    {
+        std::size_t seen{ 0 };
+        for (std::size_t slot = 0; slot != snapshot.config.presetCount; ++slot)
+        {
+            if (snapshot.config.presets[slot].controller != Kind())
+                continue;
+            if (seen == index)
+                return &snapshot.config.presets[slot];
+            ++seen;
+        }
+        return nullptr;
     }
 
     void ArmControllerTuningPresenter::OnFieldChanged(ui::model::FieldId field)
