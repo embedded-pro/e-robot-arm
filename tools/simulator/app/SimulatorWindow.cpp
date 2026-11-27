@@ -18,6 +18,7 @@
 #include <QGroupBox>
 #include <QInputDialog>
 #include <QLabel>
+#include <QLineEdit>
 #include <QMenu>
 #include <QMenuBar>
 #include <QMessageBox>
@@ -390,6 +391,7 @@ namespace simulator
         armControllerTuning.Refresh(snapshot, events);
         armControllersPanel->Tuning().SetState(armControllerTuning.StateText(), armControllerTuning.StateLevel());
         armControllersPanel->Tuning().SetHint(armControllerTuning.Hint());
+        armControllersPanel->UpdatePresets(armControllerTuning);
         jog.Refresh(snapshot, std::chrono::steady_clock::now());
         jogPanel->Update(jog);
         teach.Refresh(snapshot);
@@ -914,6 +916,23 @@ namespace simulator
                         if (armControllers.Rows()[static_cast<std::size_t>(row)].name == arm::armControllerNames[kind])
                             armControllerTuning.Choose(static_cast<arm::ArmControllerKind>(kind));
                 armControllersPanel->Update(armControllers);
+            });
+        connect(armControllersPanel, &ArmControllersPanel::presetLoaded, this, [this](int preset)
+            {
+                if (preset >= 0)
+                    armControllerTuning.LoadPreset(static_cast<std::size_t>(preset));
+            });
+        connect(armControllersPanel, &ArmControllersPanel::presetSaveRequested, this, [this]()
+            {
+                bool accepted{ false };
+                const auto name = QInputDialog::getText(this, "Save Preset", "Name (1–16 characters):", QLineEdit::Normal, {}, &accepted).trimmed().toStdString();
+                if (!accepted)
+                    return;
+                if (armControllerTuning.Replaces(name) &&
+                    QMessageBox::question(this, "Replace Preset", QString{ "Replace the preset “%1” with the applied tuning?" }.arg(QString::fromStdString(name)),
+                        QMessageBox::Yes | QMessageBox::Cancel, QMessageBox::Cancel) != QMessageBox::Yes)
+                    return;
+                armControllerTuning.SavePreset(name);
             });
         connect(armControllersPanel, &ArmControllersPanel::actionTriggered, this, [this](int action)
             {

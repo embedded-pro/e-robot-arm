@@ -335,6 +335,10 @@ namespace simulator
         , table{ new QTableWidget{ 0, 4, this } }
         , hint{ new QLabel{ this } }
         , tuning{ new ConfigurationPanel{ this, "Arm controller tuning state" } }
+        , presets{ new QComboBox{ this } }
+        , loadPreset{ new QPushButton{ "Load", this } }
+        , savePreset{ new QPushButton{ "Save as…", this } }
+        , presetNote{ new QLabel{ this } }
     {
         table->setObjectName("armControllersTable");
         table->setAccessibleName("Arm controllers");
@@ -370,12 +374,52 @@ namespace simulator
         tuning->setObjectName("armControllerTuning");
         tuning->setAccessibleName("Arm controller tuning");
 
+        presets->setObjectName("armControllerPresets");
+        presets->setAccessibleName("Presets of the chosen controller");
+        loadPreset->setAccessibleName("Load the chosen preset and apply it");
+        savePreset->setAccessibleName("Save the applied tuning as a preset");
+        presetNote->setAccessibleName("Preset result");
+        presetNote->setWordWrap(true);
+        connect(loadPreset, &QPushButton::clicked, this, [this]()
+            {
+                emit presetLoaded(presets->currentIndex());
+            });
+        connect(savePreset, &QPushButton::clicked, this, &ArmControllersPanel::presetSaveRequested);
+        auto* presetRow = new QHBoxLayout;
+        presetRow->addWidget(new QLabel{ "Preset", this });
+        presetRow->addWidget(presets, 1);
+        presetRow->addWidget(loadPreset);
+        presetRow->addWidget(savePreset);
+
         auto* layout = new QVBoxLayout{ this };
         layout->addWidget(table);
         layout->addLayout(actions);
         layout->addWidget(hint);
         layout->addWidget(tuning);
+        layout->addLayout(presetRow);
+        layout->addWidget(presetNote);
         layout->addStretch();
+    }
+
+    void ArmControllersPanel::UpdatePresets(const ArmControllerTuningPresenter& presenter)
+    {
+        auto names = presenter.Presets();
+        if (names != shownPresets)
+        {
+            shownPresets = std::move(names);
+            const QSignalBlocker blocker{ presets };
+            const auto current = presets->currentText();
+            presets->clear();
+            for (const auto& name : shownPresets)
+                presets->addItem(ui::backend::qt::ToQt(name));
+            presets->setCurrentIndex(std::max(0, presets->findText(current)));
+        }
+        const auto index = presets->currentIndex();
+        const auto refusal = presenter.LoadRefusal(index < 0 ? shownPresets.size() : static_cast<std::size_t>(index));
+        loadPreset->setEnabled(refusal.empty());
+        loadPreset->setToolTip(ui::backend::qt::ToQt(refusal));
+        presetNote->setText(ui::backend::qt::ToQt(presenter.PresetNote()));
+        presetNote->setVisible(!presenter.PresetNote().empty());
     }
 
     ConfigurationPanel& ArmControllersPanel::Tuning()
