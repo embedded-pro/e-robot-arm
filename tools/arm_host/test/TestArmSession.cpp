@@ -1085,3 +1085,34 @@ TEST_F(RealArmSessionTest, refuses_a_guide_off_a_simulation)
 
     EXPECT_EQ("not a simulation", sink.Last()->reason);
 }
+
+TEST_F(ArmSessionTest, tunes_a_controller_and_keeps_the_tuning_in_its_profile)
+{
+    Execute(1, arm_host::TuneArmController{ arm::ArmControllerKind::gravityPid, arm::BandwidthTuning{ 12.0f, 0.9f } });
+
+    EXPECT_EQ(ArmEventKind::accepted, sink.Last()->kind);
+    EXPECT_EQ("tune arm controller", sink.Last()->commandName);
+    EXPECT_FLOAT_EQ(12.0f, sink.snapshot.config.gravityPid.bandwidth);
+    EXPECT_FLOAT_EQ(0.9f, sink.snapshot.config.gravityPid.dampingRatio);
+}
+
+TEST_F(ArmSessionTest, refuses_a_tuning_out_of_range_for_a_passive_or_absent_controller_and_while_moving)
+{
+    Execute(1, arm_host::TuneArmController{ arm::ArmControllerKind::gravityPd, arm::BandwidthTuning{ 600.0f, 0.7f } });
+    EXPECT_EQ("bandwidth must be above 0 and at most 500", sink.Last()->reason);
+    Execute(2, arm_host::TuneArmController{ arm::ArmControllerKind::cartesianImpedance, arm::CartesianImpedanceTuning{ -1.0f, 0.07f, 0.7f } });
+    EXPECT_EQ("translational stiffness must be above 0", sink.Last()->reason);
+    Execute(3, arm_host::TuneArmController{ arm::ArmControllerKind::free, arm::BandwidthTuning{} });
+    EXPECT_EQ("the controller has nothing to tune", sink.Last()->reason);
+    Execute(4, arm_host::TuneArmController{ arm::ArmControllerKind::slotineLi, arm::SlotineLiTuning{} });
+    EXPECT_EQ("the arm offers no such controller", sink.Last()->reason);
+    EXPECT_FLOAT_EQ(30.0f, sink.snapshot.config.gravityPd.bandwidth);
+
+    Execute(5, arm_host::BringUp{});
+    Execute(6, arm_host::Enable{});
+    arm::JointPositions target{};
+    target[0] = foc::Radians{ 0.5f };
+    Execute(7, arm_host::MoveTo{ target });
+    Execute(8, arm_host::TuneArmController{ arm::ArmControllerKind::gravityPd, arm::BandwidthTuning{ 20.0f, 0.7f } });
+    EXPECT_EQ("moving: wait or abort", sink.Last()->reason);
+}
