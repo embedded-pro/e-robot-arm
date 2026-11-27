@@ -1007,11 +1007,11 @@ On a simulation, Shift-drag makes the arm follow the pointer while the button is
   `· follow: simulation only`.
 - **Orbit.** A press on the base, the floor or empty space orbits the camera, as before.
 
-| Control    | Enabled when                                             | Otherwise                                     |
-|------------|----------------------------------------------------------|-----------------------------------------------|
-| Drag       | Connected, a profile loaded                              | The drag orbits                               |
-| Enter      | A target and Move enabled (Part B)                       | The label gives Move's reason                 |
-| Shift-drag | Move enabled, on the simulated joints or the virtual arm | A target only; "follow: simulation only"      |
+| Control    | Enabled when                                             | Otherwise                                |
+|------------|----------------------------------------------------------|------------------------------------------|
+| Drag       | Connected, a profile loaded                              | The drag orbits                          |
+| Enter      | A target and Move enabled (Part B)                       | The label gives Move's reason            |
+| Shift-drag | Move enabled, on the simulated joints or the virtual arm | A target only; "follow: simulation only" |
 
 ## Interfaces
 
