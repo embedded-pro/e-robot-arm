@@ -17,6 +17,7 @@ namespace arm
 
         GravityPid(const DrivenArm& drivenArm, const BandwidthTuning& tuning, infra::Duration period);
 
+        void SetTuning(const BandwidthTuning& tuning);
         bool BumplessTransfer() const override;
         void Reset(const MeasuredJoints& measured, const JointReference& held) override;
         JointSetpoints Step(const MeasuredJoints& measured, const JointReference& reference) override;
@@ -28,6 +29,7 @@ namespace arm
 
         const DrivenArm& drivenArm;
         const ArmModel& model;
+        infra::Duration period;
         float derivativeGain;
         std::array<Pid, jointCount> pids;
     };

@@ -29,6 +29,13 @@ namespace arm
         Size();
     }
 
+    void JointImpedance::SetTuning(const JointImpedanceTuning& tuning)
+    {
+        profileStiffness = ImpedanceStiffness(drivenArm.JointMassMatrix(JointPositions{}), tuning);
+        dampingRatio = tuning.dampingRatio;
+        Size();
+    }
+
     bool JointImpedance::SetStiffnessShare(float newShare)
     {
         if (!(newShare >= minimumStiffnessShare && newShare <= 1.0f))

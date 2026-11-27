@@ -15,11 +15,17 @@ namespace arm
         : model(drivenArm.Model())
         , provider(model)
         , dynamics(drivenArm.LinkDynamics())
-        , law(dynamics, provider, Gain(tuning.bandwidth * tuning.bandwidth), Gain(2.0f * tuning.dampingRatio * tuning.bandwidth), tuning.singularityDamping)
-        , stiffness(tuning.bandwidth * tuning.bandwidth)
-        , damping(2.0f * tuning.dampingRatio * tuning.bandwidth)
         , manipulabilityMin(manipulabilityMin)
-    {}
+    {
+        SetTuning(tuning);
+    }
+
+    void OperationalSpace::SetTuning(const OperationalSpaceTuning& tuning)
+    {
+        stiffness = tuning.bandwidth * tuning.bandwidth;
+        damping = 2.0f * tuning.dampingRatio * tuning.bandwidth;
+        law.emplace(dynamics, provider, Gain(stiffness), Gain(damping), tuning.singularityDamping);
+    }
 
     float OperationalSpace::JointSpaceShare(const JointPositions& positions) const
     {
@@ -50,7 +56,7 @@ namespace arm
             const auto targetJacobian = provider.Jacobian(target);
             const math::Vector<float, 6> twist{ targetJacobian * targetSpeeds };
             const math::Vector<float, 6> acceleration{ targetJacobian * model.ModelAccelerations(reference.accelerations) + provider.BiasAcceleration(target, targetSpeeds) };
-            torques = law.ComputeTorque(angles, speeds, provider.ToolPose(target), twist, acceleration, ArmModel::JointVector{}) * (1.0f - share);
+            torques = law->ComputeTorque(angles, speeds, provider.ToolPose(target), twist, acceleration, ArmModel::JointVector{}) * (1.0f - share);
         }
         if (share > 0.0f)
             torques = torques + JointSpaceTorques(angles, speeds, reference) * share;

@@ -14,6 +14,12 @@ namespace arm
         Size();
     }
 
+    void CartesianImpedance::SetTuning(const CartesianImpedanceTuning& newTuning)
+    {
+        tuning = newTuning;
+        Size();
+    }
+
     bool CartesianImpedance::SetStiffnessShare(float newShare)
     {
         if (!(newShare >= minimumStiffnessShare && newShare <= 1.0f))

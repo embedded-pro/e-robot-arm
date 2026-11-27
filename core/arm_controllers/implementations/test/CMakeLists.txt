@@ -19,5 +19,6 @@ target_sources(e_robot_arm.arm_controllers_test PRIVATE
     TestJointImpedance.cpp
     TestOperationalSpace.cpp
     TestPassiveController.cpp
+    TestRetuning.cpp
     TestSlotineLi.cpp
 )

@@ -29,6 +29,7 @@ namespace arm
     public:
         GravityCompensatedPd(const DrivenArm& drivenArm, const BandwidthTuning& tuning);
 
+        void SetTuning(const BandwidthTuning& tuning);
         bool BumplessTransfer() const override;
         void Reset(const MeasuredJoints& measured, const JointReference& held) override;
         JointSetpoints Step(const MeasuredJoints& measured, const JointReference& reference) override;
