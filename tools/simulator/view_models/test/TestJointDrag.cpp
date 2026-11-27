@@ -3,6 +3,7 @@
 #include "gmock/gmock.h"
 #include <array>
 #include <chrono>
+#include <cmath>
 #include <cstddef>
 #include <variant>
 #include <vector>
@@ -243,4 +244,15 @@ TEST_F(JointDragTest, the_ghost_shows_the_target_pose_and_the_label_sits_on_the_
     ASSERT_TRUE(drag.TargetPoint().has_value());
     for (std::size_t axis = 0; axis != 3; ++axis)
         EXPECT_NEAR(point[axis], (*drag.TargetPoint())[axis], 0.05f);
+}
+
+TEST_F(JointDragTest, a_point_a_millimetre_from_the_joint_axis_leaves_the_joint_where_it_is)
+{
+    auto elbow = simulator::ToScenePoint(model.LinkPoses(Turned(2, 0.0f))[2].Apply(math::Vector3<float>{ 0.0f, 0.0f, 0.0f }));
+    elbow[1] += 0.1f;
+    ASSERT_TRUE(drag.Grab(2, elbow, snapshot, move, false));
+    drag.Drag({ { elbow[0], elbow[1] + 3.0f, elbow[2] + 300.0f }, { 0.0f, 0.0f, -1.0f } }, snapshot, move, {});
+
+    ASSERT_TRUE(drag.Target().has_value());
+    EXPECT_FLOAT_EQ(pose[2], (*drag.Target())[2].Value());
 }

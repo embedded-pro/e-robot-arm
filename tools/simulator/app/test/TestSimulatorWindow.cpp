@@ -1091,7 +1091,7 @@ TEST_F(SimulatorWindowTest, a_joint_drag_sets_a_ghost_target_and_enter_moves_the
             return state->DragOffered();
         }));
 
-    const auto wrist = window.Presenter().Scene().MeasuredNodes()[3].position;
+    const auto wrist = window.Presenter().Scene().MeasuredNodes()[4].position;
     const QVector3D hit{ wrist[0], wrist[1], wrist[2] };
     state->DragGrab(2, hit, hit + QVector3D{ 0.0f, 0.0f, 300.0f }, { 0.0f, 0.0f, -1.0f }, false);
     const auto pointer = hit + QVector3D{ 0.0f, 3.0f, 0.0f };
@@ -1116,7 +1116,7 @@ TEST_F(SimulatorWindowTest, a_joint_drag_sets_a_ghost_target_and_enter_moves_the
         }));
     ASSERT_TRUE(Eventually([this, wrist]()
         {
-            const auto moved = window.Presenter().Scene().MeasuredNodes()[3].position;
+            const auto moved = window.Presenter().Scene().MeasuredNodes()[4].position;
             return std::abs(moved[1] - wrist[1]) > 1.0f;
         },
         15000))

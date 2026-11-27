@@ -8,7 +8,9 @@ namespace simulator
     namespace
     {
         constexpr float angleStep{ 1.0e-3f };
-        constexpr float smallestArc{ 1.0e-10f };
+        // A point within 1 cm of the joint axis barely moves with the joint; its step would be noise.
+        constexpr float smallestArc{ 1.0e-4f };
+        constexpr float largestStep{ 0.5f };
 
         float Dot(const math::Vector3<float>& a, const math::Vector3<float>& b)
         {
@@ -179,7 +181,7 @@ namespace simulator
             const auto arc = Dot(tangent, tangent);
             if (arc < smallestArc)
                 break;
-            const auto next = angle - Dot(tangent, miss) / arc;
+            const auto next = angle + std::clamp(-Dot(tangent, miss) / arc, -largestStep, largestStep);
             angle = std::clamp(next, lower.Value(), upper.Value());
             atLimit = angle != next;
         }

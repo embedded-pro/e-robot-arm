@@ -997,7 +997,8 @@ On a simulation, Shift-drag makes the arm follow the pointer while the button is
   hit point. The point is kept in the link's frame. A press without a move still selects the joint.
 - **Angle.** Each frame, the joint angle is the one that brings the grabbed point closest to the pointer's ray.
   Eight Gauss–Newton steps on the forward kinematics find it, from the last target. Only the dragged joint changes.
-  The angle is clamped to the joint's limits.
+  Each step is at most 0.5 rad. The angle is clamped to the joint's limits. A point within 1 cm of the joint's
+  axis barely moves with the joint, so a grab there leaves the joint as it is.
 - **Target.** The ghost arm shows the target pose: the measured pose with the dragged joint at the new angle.
   The label reads `J3 → 0.42 rad (from 0.10)`. A target that reaches a limit adds `· at limit`.
 - **Move.** Enter moves the arm to the target, like **Move** in Part B. A new drag replaces the target.
