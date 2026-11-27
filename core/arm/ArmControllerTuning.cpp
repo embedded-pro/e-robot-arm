@@ -1,4 +1,5 @@
 #include "core/arm/ArmControllerTuning.hpp"
+#include <algorithm>
 #include <cmath>
 
 namespace arm
@@ -145,5 +146,31 @@ namespace arm
             default:
                 break;
         }
+    }
+
+    PresetResult SavePreset(ArmConfig& config, ArmControllerKind kind, infra::BoundedConstString name)
+    {
+        if (!Tunable(kind))
+            return PresetResult::notTunable;
+        if (name.empty() || name.size() > presetNameSize)
+            return PresetResult::badName;
+
+        const auto begin = config.presets.begin();
+        const auto end = begin + config.presetCount;
+        auto found = std::find_if(begin, end, [kind, name](const ArmControllerPreset& preset)
+            {
+                return preset.controller == kind && preset.name == name;
+            });
+        const auto replaced = found != end;
+        if (!replaced)
+        {
+            if (config.presetCount == maxArmControllerPresets)
+                return PresetResult::full;
+            ++config.presetCount;
+        }
+        found->name = name;
+        found->controller = kind;
+        found->tuning = TuningOf(config, kind);
+        return replaced ? PresetResult::replaced : PresetResult::saved;
     }
 }

@@ -85,3 +85,34 @@ TEST(ArmControllerTuningTest, every_tunable_controller_round_trips_its_tuning_th
     EXPECT_TRUE(arm::TuningFits(ArmControllerKind::cartesianImpedance, arm::TuningOf(config, ArmControllerKind::cartesianImpedance)));
     EXPECT_TRUE(arm::TuningFits(ArmControllerKind::operationalSpace, arm::TuningOf(config, ArmControllerKind::operationalSpace)));
 }
+
+TEST(ArmControllerTuningTest, saves_a_controllers_current_tuning_as_a_preset_and_replaces_one_of_the_same_name)
+{
+    arm::ArmConfig config{};
+    config.gravityPd = { 12.0f, 0.9f };
+
+    EXPECT_EQ(arm::PresetResult::saved, arm::SavePreset(config, ArmControllerKind::gravityPd, "soft"));
+    EXPECT_EQ(arm::PresetResult::saved, arm::SavePreset(config, ArmControllerKind::gravityPid, "soft"));
+    ASSERT_EQ(2u, config.presetCount);
+    EXPECT_FLOAT_EQ(12.0f, std::get<arm::BandwidthTuning>(config.presets[0].tuning).bandwidth);
+
+    config.gravityPd = { 20.0f, 0.7f };
+    EXPECT_EQ(arm::PresetResult::replaced, arm::SavePreset(config, ArmControllerKind::gravityPd, "soft"));
+    EXPECT_EQ(2u, config.presetCount);
+    EXPECT_FLOAT_EQ(20.0f, std::get<arm::BandwidthTuning>(config.presets[0].tuning).bandwidth);
+
+    EXPECT_EQ(arm::PresetResult::notTunable, arm::SavePreset(config, ArmControllerKind::free, "soft"));
+    EXPECT_EQ(arm::PresetResult::badName, arm::SavePreset(config, ArmControllerKind::gravityPd, ""));
+    EXPECT_EQ(arm::PresetResult::badName, arm::SavePreset(config, ArmControllerKind::gravityPd, "seventeen chars!!"));
+}
+
+TEST(ArmControllerTuningTest, refuses_a_seventeenth_preset)
+{
+    arm::ArmConfig config{};
+    const std::array<const char*, arm::maxArmControllerPresets> names{ "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p" };
+    for (const auto* name : names)
+        EXPECT_EQ(arm::PresetResult::saved, arm::SavePreset(config, ArmControllerKind::gravityPd, name));
+
+    EXPECT_EQ(arm::PresetResult::full, arm::SavePreset(config, ArmControllerKind::gravityPd, "q"));
+    EXPECT_EQ(arm::PresetResult::replaced, arm::SavePreset(config, ArmControllerKind::gravityPd, "p"));
+}

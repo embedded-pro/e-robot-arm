@@ -20,6 +20,7 @@
 #include <chrono>
 #include <cstdint>
 #include <optional>
+#include <variant>
 
 namespace arm
 {
@@ -43,6 +44,18 @@ namespace arm
     {
         return armControllerNames[static_cast<std::size_t>(kind)];
     }
+
+    using ArmControllerTuning = std::variant<BandwidthTuning, JointImpedanceTuning, CartesianImpedanceTuning, OperationalSpaceTuning, SlotineLiTuning>;
+
+    inline constexpr std::size_t maxArmControllerPresets{ 16 };
+    inline constexpr std::size_t presetNameSize{ 16 };
+
+    struct ArmControllerPreset
+    {
+        infra::BoundedString::WithStorage<presetNameSize> name;
+        ArmControllerKind controller{ ArmControllerKind::gravityPd };
+        ArmControllerTuning tuning{ BandwidthTuning{} };
+    };
 
     inline constexpr std::size_t maxTeachPoints{ 16 };
     inline constexpr std::size_t teachPointNameSize{ 16 };
@@ -88,6 +101,8 @@ namespace arm
         ToolLimits toolLimits{};
         std::array<TeachPoint, maxTeachPoints> teachPoints{};
         uint8_t teachPointCount{ 0 };
+        std::array<ArmControllerPreset, maxArmControllerPresets> presets{};
+        uint8_t presetCount{ 0 };
     };
 
     inline constexpr float defaultSpeedTripShare{ 4.0f };

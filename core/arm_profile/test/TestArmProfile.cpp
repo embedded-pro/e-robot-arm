@@ -368,7 +368,7 @@ TEST_F(ArmProfileTest, a_profile_without_a_workspace_leaves_it_to_the_geometry_a
     EXPECT_EQ(1u, Count(written, R"("linkRadiiM": [ 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04 ])"));
 }
 
-TEST_F(ArmProfileTest, reads_a_version_1_profile_and_writes_version_11)
+TEST_F(ArmProfileTest, reads_a_version_1_profile_and_writes_version_12)
 {
     const auto version1 = Read(Profile(Joint(1)));
     ASSERT_TRUE(version1.has_value()) << Problem();
@@ -376,11 +376,11 @@ TEST_F(ArmProfileTest, reads_a_version_1_profile_and_writes_version_11)
     infra::StringOutputStream::WithStorage<16384> stream;
     arm::WriteArmProfile(*version1, stream);
     const std::string written{ stream.Storage().begin(), stream.Storage().end() };
-    EXPECT_NE(std::string::npos, written.find(R"("version": 11,)"));
+    EXPECT_NE(std::string::npos, written.find(R"("version": 12,)"));
 
-    auto version12{ Profile(Joint(1)) };
-    version12.replace(version12.find(R"("version": 1)"), 12, R"("version": 12)");
-    EXPECT_FALSE(Read(version12).has_value());
+    auto version13{ Profile(Joint(1)) };
+    version13.replace(version13.find(R"("version": 1)"), 12, R"("version": 13)");
+    EXPECT_FALSE(Read(version13).has_value());
     EXPECT_EQ("version: is not a version this reader knows", Problem());
 }
 
@@ -613,7 +613,12 @@ TEST_F(ArmProfileTest, refuses_a_profile_and_names_the_first_problem)
         { Profile(Joint(1), R"( "meshes": { "link1": "arm.stl" },)"), "meshes.link1: must name a .gltf or .glb file" },
         { Profile(Joint(1), R"( "meshes": { "base": "" },)"), "meshes.base: must be a path of 1 to 96 characters" },
         { Profile(Joint(1), R"( "meshes": { "base": 3 },)"), "meshes.base: must be a path of 1 to 96 characters" },
-        { R"({ "format": "e-robot-arm profile", "version": 12 })", "version: is not a version this reader knows" },
+        { R"({ "format": "e-robot-arm profile", "version": 13 })", "version: is not a version this reader knows" },
+        { Profile(Joint(1), R"( "armControllerPresets": [ { "name": "soft", "controller": "gravity-pd" } ],)"), "armControllerPresets[0]: needs a name, a controller and a tuning" },
+        { Profile(Joint(1), R"( "armControllerPresets": [ { "name": "soft", "controller": "free", "tuning": {} } ],)"), "armControllerPresets[0].controller: has nothing to tune" },
+        { Profile(Joint(1), R"( "armControllerPresets": [ { "name": "soft", "controller": "gravity-pd", "tuning": { "bandwidthRadPerS": 600 } } ],)"), "armControllerPresets[0].tuning.bandwidthRadPerS: must be above 0 and at most 500" },
+        { Profile(Joint(1), R"( "armControllerPresets": [ { "name": "", "controller": "gravity-pd", "tuning": {} } ],)"), "armControllerPresets[0].name: must be text of 1 to 16 characters" },
+        { Profile(Joint(1), R"( "armControllerPresets": [ { "name": "a", "controller": "gravity-pd", "tuning": {} }, { "name": "a", "controller": "gravity-pd", "tuning": {} } ],)"), "armControllerPresets: names must be unique per controller" },
         { Profile(Joint(1), R"( "armController": "lqr",)"), "armController: is not an arm controller" },
         { Profile(Joint(1), R"( "armController": "slotine-li",)"), "armController: slotine-li needs experimental" },
         { Profile(Joint(1), R"( "slotineLi": { "lambdaPerS": 0 },)"), "slotineLi.lambdaPerS: must be above 0 and at most 100" },
@@ -663,4 +668,43 @@ TEST_F(ArmProfileTest, refuses_a_profile_and_names_the_first_problem)
     reversed.replace(reversed.find("-1.5"), 4, "3.00");
     EXPECT_FALSE(Read(reversed).has_value());
     EXPECT_EQ("joints[0].positionLimitsRad.lower: must be below upper", Problem());
+}
+
+TEST_F(ArmProfileTest, reads_arm_controller_presets_in_their_controllers_format_and_writes_them_back)
+{
+    const auto profile = Read(Profile(Joint(1), R"( "armControllerPresets": [ { "tuning": { "bandwidthRadPerS": 12, "dampingRatio": 0.9 }, "controller": "gravity-pid", "name": "soft" }, )"
+                                                R"({ "name": "stiff", "controller": "cartesian-impedance", "tuning": { "translationalStiffnessNPerM": 80, "rotationalStiffnessNmPerRad": 0.1, "dampingRatio": 0.7 } }, )"
+                                                R"({ "name": "soft", "controller": "joint-impedance", "tuning": { "stiffnessNmPerRad": [ 1, 2, 3, 4, 5, 6 ], "dampingRatio": 0.6 } } ],)"));
+    ASSERT_TRUE(profile.has_value()) << Problem();
+    ASSERT_EQ(3u, profile->config.presetCount);
+    EXPECT_EQ(arm::ArmControllerKind::gravityPid, profile->config.presets[0].controller);
+    EXPECT_EQ("soft", (std::string{ profile->config.presets[0].name.begin(), profile->config.presets[0].name.end() }));
+    EXPECT_NEAR(12.0f, std::get<arm::BandwidthTuning>(profile->config.presets[0].tuning).bandwidth, 1.0e-6f);
+    EXPECT_NEAR(80.0f, std::get<arm::CartesianImpedanceTuning>(profile->config.presets[1].tuning).translationalStiffness, 1.0e-6f);
+
+    infra::StringOutputStream::WithStorage<16384> stream;
+    arm::WriteArmProfile(*profile, stream);
+    const auto back = Read(std::string{ stream.Storage().begin(), stream.Storage().end() });
+    ASSERT_TRUE(back.has_value()) << Problem();
+    ASSERT_EQ(3u, back->config.presetCount);
+    EXPECT_EQ(arm::ArmControllerKind::cartesianImpedance, back->config.presets[1].controller);
+    EXPECT_NEAR(0.1f, std::get<arm::CartesianImpedanceTuning>(back->config.presets[1].tuning).rotationalStiffness, 1.0e-6f);
+    const auto& stiffness = std::get<arm::JointImpedanceTuning>(back->config.presets[2].tuning).stiffness;
+    ASSERT_TRUE(stiffness.has_value());
+    EXPECT_NEAR(6.0f, (*stiffness)[5], 1.0e-6f);
+    EXPECT_NEAR(0.9f, std::get<arm::BandwidthTuning>(back->config.presets[0].tuning).dampingRatio, 1.0e-6f);
+}
+
+TEST_F(ArmProfileTest, reads_operational_space_and_adaptive_presets_and_writes_an_empty_list_without_any)
+{
+    const auto profile = Read(Profile(Joint(1), R"( "experimental": true, "armControllerPresets": [ { "name": "task", "controller": "operational-space", "tuning": { "singularityDamping": 0.05 } }, )"
+                                                R"({ "name": "learn", "controller": "slotine-li", "tuning": { "adaptationGain": 50 } } ],)"));
+    ASSERT_TRUE(profile.has_value()) << Problem();
+    EXPECT_NEAR(0.05f, std::get<arm::OperationalSpaceTuning>(profile->config.presets[0].tuning).singularityDamping, 1.0e-6f);
+    EXPECT_NEAR(50.0f, std::get<arm::SlotineLiTuning>(profile->config.presets[1].tuning).adaptationGain, 1.0e-6f);
+
+    infra::StringOutputStream::WithStorage<16384> stream;
+    arm::WriteArmProfile(*Read(Profile(Joint(1))), stream);
+    const std::string written{ stream.Storage().begin(), stream.Storage().end() };
+    EXPECT_NE(std::string::npos, written.find(R"("armControllerPresets": [ ])"));
 }

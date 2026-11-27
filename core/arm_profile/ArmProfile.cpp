@@ -268,6 +268,8 @@ namespace arm
                     return ReadToolLimits(path, value, profile.config.toolLimits);
                 if (key == "teachPoints")
                     return ReadTeachPoints(path, value, profile.config);
+                if (key == "armControllerPresets")
+                    return ReadPresets(path, value, profile.config);
                 if (key == "joints")
                     return Mark(seen.joints, ReadJoints(path, value, profile.config));
                 if (key == "geometry")
@@ -323,6 +325,93 @@ namespace arm
                     for (std::size_t earlier = 0; earlier != point; ++earlier)
                         if (config.teachPoints[point].name == config.teachPoints[earlier].name)
                             return Fail(path, "names must be unique");
+                return true;
+            }
+
+            bool ReadPresets(const Path& path, const Value& value, ArmConfig& config)
+            {
+                std::size_t count{ 0 };
+                if (!ReadList(path, value, 0, maxArmControllerPresets, "must be a list of at most sixteen presets", count,
+                        [this, &config](const Path& item, const Value& element, std::size_t index)
+                        {
+                            return ReadPreset(item, element, config.presets[index]);
+                        }))
+                    return false;
+
+                config.presetCount = static_cast<uint8_t>(count);
+                for (std::size_t preset = 1; preset < count; ++preset)
+                    for (std::size_t earlier = 0; earlier != preset; ++earlier)
+                        if (config.presets[preset].controller == config.presets[earlier].controller && config.presets[preset].name == config.presets[earlier].name)
+                            return Fail(path, "names must be unique per controller");
+                return true;
+            }
+
+            bool ReadPreset(const Path& path, const Value& value, ArmControllerPreset& preset)
+            {
+                bool named{ false };
+                bool chosen{ false };
+                std::optional<std::pair<Path, Value>> tuning;
+                const auto read = ReadMembers(path, value, [this, &preset, &named, &chosen, &tuning](const Path& item, infra::JsonString key, const Value& member)
+                    {
+                        if (key == "name")
+                            return Mark(named, ReadPointName(item, member, preset.name));
+                        if (key == "controller")
+                            return Mark(chosen, ReadArmController(item, member, preset.controller));
+                        if (key == "tuning")
+                        {
+                            tuning.emplace(item, member);
+                            return true;
+                        }
+                        return Unknown(item);
+                    });
+                if (!read)
+                    return false;
+                if (!named || !chosen || !tuning.has_value())
+                    return Fail(path, "needs a name, a controller and a tuning");
+                if (!Tunable(preset.controller))
+                    return Fail(Child(path, "controller"), "has nothing to tune");
+                return ReadPresetTuning(tuning->first, tuning->second, preset);
+            }
+
+            bool ReadPresetTuning(const Path& path, const Value& value, ArmControllerPreset& preset)
+            {
+                switch (preset.controller)
+                {
+                    case ArmControllerKind::jointImpedance:
+                        return ReadInto<JointImpedanceTuning>(preset, [this, &path, &value](auto& tuning)
+                            {
+                                return ReadImpedance(path, value, tuning);
+                            });
+                    case ArmControllerKind::cartesianImpedance:
+                        return ReadInto<CartesianImpedanceTuning>(preset, [this, &path, &value](auto& tuning)
+                            {
+                                return ReadCartesianImpedance(path, value, tuning);
+                            });
+                    case ArmControllerKind::operationalSpace:
+                        return ReadInto<OperationalSpaceTuning>(preset, [this, &path, &value](auto& tuning)
+                            {
+                                return ReadOperationalSpace(path, value, tuning);
+                            });
+                    case ArmControllerKind::slotineLi:
+                        return ReadInto<SlotineLiTuning>(preset, [this, &path, &value](auto& tuning)
+                            {
+                                return ReadSlotineLi(path, value, tuning);
+                            });
+                    default:
+                        return ReadInto<BandwidthTuning>(preset, [this, &path, &value](auto& tuning)
+                            {
+                                return ReadTuning(path, value, tuning);
+                            });
+                }
+            }
+
+            template<class Tuning, class Read>
+            static bool ReadInto(ArmControllerPreset& preset, Read read)
+            {
+                Tuning tuning{};
+                if (!read(tuning))
+                    return false;
+                preset.tuning = tuning;
                 return true;
             }
 
@@ -1265,27 +1354,12 @@ namespace arm
                 Tuning(config.gravityPid);
                 stream << ",\n  \"jointImpedance\": ";
                 Impedance(config.jointImpedance);
-                stream << ",\n  \"cartesianImpedance\": { \"translationalStiffnessNPerM\": ";
-                Number(config.cartesianImpedance.translationalStiffness);
-                stream << ", \"rotationalStiffnessNmPerRad\": ";
-                Number(config.cartesianImpedance.rotationalStiffness);
-                stream << ", \"dampingRatio\": ";
-                Number(config.cartesianImpedance.dampingRatio);
-                stream << " }";
-                stream << ",\n  \"operationalSpace\": { \"bandwidthRadPerS\": ";
-                Number(config.operationalSpace.bandwidth);
-                stream << ", \"dampingRatio\": ";
-                Number(config.operationalSpace.dampingRatio);
-                stream << ", \"singularityDamping\": ";
-                Number(config.operationalSpace.singularityDamping);
-                stream << " }";
-                stream << ",\n  \"slotineLi\": { \"lambdaPerS\": ";
-                Number(config.slotineLi.lambda);
-                stream << ", \"bandwidthRadPerS\": ";
-                Number(config.slotineLi.bandwidth);
-                stream << ", \"adaptationGain\": ";
-                Number(config.slotineLi.adaptationGain);
-                stream << " }";
+                stream << ",\n  \"cartesianImpedance\": ";
+                Tuning(config.cartesianImpedance);
+                stream << ",\n  \"operationalSpace\": ";
+                Tuning(config.operationalSpace);
+                stream << ",\n  \"slotineLi\": ";
+                Tuning(config.slotineLi);
                 stream << ",\n  \"experimental\": " << (config.experimental ? "true" : "false");
                 stream << ",\n  \"armController\": \"" << ArmControllerName(config.activeController) << "\"";
                 stream << ",\n  \"collisionObserverGainPerS\": ";
@@ -1303,6 +1377,7 @@ namespace arm
                 Number(config.toolLimits.manipulabilityMin);
                 stream << " }";
                 TeachPoints(config);
+                Presets(config);
                 stream << ",\n  \"joints\": [";
 
                 for (std::size_t joint = 0; joint != jointCount; ++joint)
@@ -1411,6 +1486,63 @@ namespace arm
                     stream << " ] }";
                 }
                 stream << (config.teachPointCount == 0 ? " ]" : "\n  ]");
+            }
+
+            void Presets(const ArmConfig& config)
+            {
+                stream << ",\n  \"armControllerPresets\": [";
+                for (std::size_t index = 0; index != config.presetCount; ++index)
+                {
+                    const auto& preset = config.presets[index];
+                    stream << (index == 0 ? "\n" : ",\n") << R"(    { "name": )";
+                    Text(preset.name);
+                    stream << R"(, "controller": ")" << ArmControllerName(preset.controller) << R"(", "tuning": )";
+                    std::visit([this](const auto& tuning)
+                        {
+                            Tuning(tuning);
+                        },
+                        preset.tuning);
+                    stream << " }";
+                }
+                stream << (config.presetCount == 0 ? " ]" : "\n  ]");
+            }
+
+            void Tuning(const JointImpedanceTuning& tuning)
+            {
+                Impedance(tuning);
+            }
+
+            void Tuning(const CartesianImpedanceTuning& tuning)
+            {
+                stream << "{ \"translationalStiffnessNPerM\": ";
+                Number(tuning.translationalStiffness);
+                stream << ", \"rotationalStiffnessNmPerRad\": ";
+                Number(tuning.rotationalStiffness);
+                stream << ", \"dampingRatio\": ";
+                Number(tuning.dampingRatio);
+                stream << " }";
+            }
+
+            void Tuning(const OperationalSpaceTuning& tuning)
+            {
+                stream << "{ \"bandwidthRadPerS\": ";
+                Number(tuning.bandwidth);
+                stream << ", \"dampingRatio\": ";
+                Number(tuning.dampingRatio);
+                stream << ", \"singularityDamping\": ";
+                Number(tuning.singularityDamping);
+                stream << " }";
+            }
+
+            void Tuning(const SlotineLiTuning& tuning)
+            {
+                stream << "{ \"lambdaPerS\": ";
+                Number(tuning.lambda);
+                stream << ", \"bandwidthRadPerS\": ";
+                Number(tuning.bandwidth);
+                stream << ", \"adaptationGain\": ";
+                Number(tuning.adaptationGain);
+                stream << " }";
             }
 
             void Tuning(const BandwidthTuning& tuning)

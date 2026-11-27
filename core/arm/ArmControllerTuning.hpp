@@ -7,8 +7,6 @@
 
 namespace arm
 {
-    using ArmControllerTuning = std::variant<BandwidthTuning, JointImpedanceTuning, CartesianImpedanceTuning, OperationalSpaceTuning, SlotineLiTuning>;
-
     namespace tuningLimit
     {
         inline constexpr float bandwidth{ 500.0f };
@@ -46,9 +44,19 @@ namespace arm
         moving
     };
 
+    enum class PresetResult : uint8_t
+    {
+        saved,
+        replaced,
+        notTunable,
+        badName,
+        full
+    };
+
     bool Tunable(ArmControllerKind kind);
     bool TuningFits(ArmControllerKind kind, const ArmControllerTuning& tuning);
     std::optional<TuningViolation> CheckTuning(const ArmControllerTuning& tuning);
     ArmControllerTuning TuningOf(const ArmConfig& config, ArmControllerKind kind);
     void StoreTuning(ArmConfig& config, ArmControllerKind kind, const ArmControllerTuning& tuning);
+    PresetResult SavePreset(ArmConfig& config, ArmControllerKind kind, infra::BoundedConstString name);
 }

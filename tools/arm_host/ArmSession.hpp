@@ -94,6 +94,7 @@ namespace arm_host
         bool Collide(const CollideJoint& collide);
         bool Guide(const GuideArm& guide);
         bool Tune(const TuneArmController& tune);
+        bool SavePreset(const SaveArmControllerPreset& save);
         std::optional<std::string_view> PushRefusal() const;
         void PushJoint(std::size_t joint);
         bool PowerOff(std::size_t joint);
