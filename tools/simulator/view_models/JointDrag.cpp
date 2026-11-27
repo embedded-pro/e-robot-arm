@@ -27,12 +27,12 @@ namespace simulator
     }
 
     JointDrag::JointDrag(const ui::Callback<void(const arm_host::ArmCommand& command)>& post)
-        : post(post)
+        : pointer(post)
     {}
 
     bool JointDrag::FollowOffered(const arm_host::ArmSnapshot& snapshot, const ControlState& move)
     {
-        return move.enabled && snapshot.disturbances.has_value();
+        return PointerTarget::FollowOffered(snapshot, move);
     }
 
     bool JointDrag::Grab(int pickedJoint, const ScenePoint& hit, const arm_host::ArmSnapshot& snapshot, const ControlState& move, bool follow)
@@ -40,7 +40,7 @@ namespace simulator
         if (pickedJoint < 0 || pickedJoint >= static_cast<int>(arm::jointCount) || !snapshot.targetReady)
             return false;
 
-        StopFollowing();
+        pointer.Begin(follow, snapshot, move);
         model.emplace(snapshot.config.geometry, snapshot.config.mass, snapshot.config.positionLimits);
         geometry = snapshot.config.geometry;
         joint = static_cast<std::size_t>(pickedJoint);
@@ -48,109 +48,75 @@ namespace simulator
         local = model->LinkPoses(start)[*joint].Inverse().Apply(ToBase(hit));
         lower = snapshot.config.positionLimits[*joint].lower;
         upper = snapshot.config.positionLimits[*joint].upper;
-        following = follow && FollowOffered(snapshot, move);
-        followRefused = follow && !following;
         atLimit = false;
-        dragging = true;
-        target.reset();
-        lastFollow.reset();
         return true;
     }
 
     void JointDrag::Drag(const SceneRay& ray, const arm_host::ArmSnapshot& snapshot, const ControlState& move, Clock::time_point now)
     {
-        if (!dragging)
+        if (!pointer.Dragging() || !pointer.KeepFollowing(snapshot, move))
             return;
-        if (following && !FollowOffered(snapshot, move))
-        {
-            Release();
-            return;
-        }
 
+        const auto& target = pointer.Target();
         const auto from = target.has_value() ? (*target)[*joint].Value() : start[*joint].Value();
-        const auto angle = Solve(ray, from);
-        target = start;
-        (*target)[*joint] = foc::Radians{ angle };
-
-        if (following && (!lastFollow.has_value() || now - *lastFollow >= followPeriod))
-        {
-            lastFollow = now;
-            post(arm_host::MoveTo{ *target });
-        }
+        auto joints = start;
+        joints[*joint] = foc::Radians{ Solve(ray, from) };
+        pointer.Set(joints, now);
     }
 
     void JointDrag::Release()
     {
-        if (!dragging)
-            return;
-        dragging = false;
-        if (following)
-        {
-            StopFollowing();
-            target.reset();
-        }
+        pointer.Release();
     }
 
     void JointDrag::Cancel()
     {
-        Release();
-        target.reset();
-        joint.reset();
+        pointer.Cancel();
     }
 
     bool JointDrag::Confirm(const ControlState& move)
     {
-        if (dragging || !target.has_value() || !move.enabled)
-            return false;
-        post(arm_host::MoveTo{ *target });
-        target.reset();
-        joint.reset();
-        return true;
+        return pointer.Confirm(move);
     }
 
     bool JointDrag::Dragging() const
     {
-        return dragging;
+        return pointer.Dragging();
     }
 
     bool JointDrag::Following() const
     {
-        return following;
+        return pointer.Following();
     }
 
     const std::optional<arm::JointPositions>& JointDrag::Target() const
     {
-        return target;
+        return pointer.Target();
     }
 
     std::string JointDrag::Label(const ControlState& move) const
     {
+        const auto& target = pointer.Target();
         if (!target.has_value())
             return {};
         auto label = std::format("J{} → {:.2f} rad (from {:.2f})", *joint + 1, (*target)[*joint].Value(), start[*joint].Value());
         if (atLimit)
             label += " · at limit";
-        if (following)
-            return label + " · following";
-        if (followRefused)
-            label += " · follow: simulation only";
-        if (move.enabled)
-            return label + " · Enter: move · Del: clear";
-        return label + " · Move: " + move.reason;
+        return label + pointer.Suffix(move);
     }
 
     std::optional<SceneNodes> JointDrag::TargetNodes() const
     {
-        if (!target.has_value())
+        if (!pointer.Target().has_value())
             return std::nullopt;
-        return SceneNodePoses(*model, geometry, *target);
+        return SceneNodePoses(*model, geometry, *pointer.Target());
     }
 
     std::optional<ScenePoint> JointDrag::TargetPoint() const
     {
-        if (!target.has_value())
+        if (!pointer.Target().has_value())
             return std::nullopt;
-        return ToScenePoint(PointAt((*target)[*joint].Value()));
+        return ToScenePoint(PointAt((*pointer.Target())[*joint].Value()));
     }
 
     math::Vector3<float> JointDrag::PointAt(float angle) const
@@ -162,11 +128,7 @@ namespace simulator
 
     float JointDrag::Solve(const SceneRay& ray, float angle)
     {
-        const auto origin = ToBase(ray.origin);
-        auto direction = ToBase(ray.direction);
-        const auto length = std::sqrt(Dot(direction, direction));
-        if (length > 0.0f)
-            direction = direction * (1.0f / length);
+        const auto [origin, direction] = ToBaseRay(ray);
         const auto offRay = [&direction](const math::Vector3<float>& vector)
         {
             return vector - direction * Dot(vector, direction);
@@ -186,12 +148,5 @@ namespace simulator
             atLimit = angle != next;
         }
         return angle;
-    }
-
-    void JointDrag::StopFollowing()
-    {
-        if (following)
-            post(arm_host::AbortMove{});
-        following = false;
     }
 }

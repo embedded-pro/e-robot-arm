@@ -1,4 +1,5 @@
 #include "tools/simulator/view_models/ScenePicking.hpp"
+#include <cmath>
 
 namespace simulator
 {
@@ -28,5 +29,14 @@ namespace simulator
         const ScenePoint offset{ point[0] - ray.origin[0], point[1] - ray.origin[1], point[2] - ray.origin[2] };
         const auto along = length > 0.0f ? Dot(offset, ray.direction) / length : 0.0f;
         return { ray.origin[0] + along * ray.direction[0], ray.origin[1] + along * ray.direction[1], ray.origin[2] + along * ray.direction[2] };
+    }
+
+    BaseRay ToBaseRay(const SceneRay& ray)
+    {
+        auto direction = ToBase(ray.direction);
+        const auto length = std::sqrt(direction[0] * direction[0] + direction[1] * direction[1] + direction[2] * direction[2]);
+        if (length > 0.0f)
+            direction = direction * (1.0f / length);
+        return { ToBase(ray.origin), direction };
     }
 }
