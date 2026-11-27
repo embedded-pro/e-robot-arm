@@ -10,6 +10,7 @@
 #include "tools/simulator/app/Panels.hpp"
 #include "tools/simulator/app/StatusStripBar.hpp"
 #include "tools/simulator/app/TimedQuickWidget.hpp"
+#include "tools/simulator/view_models/ArmControllerTuningPresenter.hpp"
 #include "tools/simulator/view_models/DisturbancePresenter.hpp"
 #include "tools/simulator/view_models/FrameStatistics.hpp"
 #include "tools/simulator/view_models/HandGuide.hpp"
@@ -146,6 +147,7 @@ namespace simulator
         MotorPresenter motor;
         ArmControllersPanel* armControllersPanel;
         ArmControllersPresenter armControllers;
+        ArmControllerTuningPresenter armControllerTuning;
         JogPanel* jogPanel;
         JogPresenter jog;
         TeachPanel* teachPanel;

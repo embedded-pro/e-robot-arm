@@ -125,6 +125,10 @@ namespace simulator
             {
                 presenter.Request(command);
             } }
+        , armControllerTuning{ armControllersPanel->Tuning().Form(), [this](const arm_host::ArmCommand& command)
+            {
+                presenter.Request(command);
+            } }
         , jogPanel{ new JogPanel{ this } }
         , jog{ [this](const arm_host::ArmCommand& command)
             {
@@ -383,6 +387,9 @@ namespace simulator
         motorPanel->SetHint(motor.Hint());
         armControllers.Refresh(snapshot);
         armControllersPanel->Update(armControllers);
+        armControllerTuning.Refresh(snapshot, events);
+        armControllersPanel->Tuning().SetState(armControllerTuning.StateText(), armControllerTuning.StateLevel());
+        armControllersPanel->Tuning().SetHint(armControllerTuning.Hint());
         jog.Refresh(snapshot, std::chrono::steady_clock::now());
         jogPanel->Update(jog);
         teach.Refresh(snapshot);
@@ -902,6 +909,10 @@ namespace simulator
         connect(armControllersPanel, &ArmControllersPanel::chosen, this, [this](int row)
             {
                 armControllers.Choose(row < 0 ? std::nullopt : std::optional<std::size_t>{ static_cast<std::size_t>(row) });
+                if (row >= 0 && static_cast<std::size_t>(row) < armControllers.Rows().size())
+                    for (std::size_t kind = 0; kind != arm::armControllerNames.size(); ++kind)
+                        if (armControllers.Rows()[static_cast<std::size_t>(row)].name == arm::armControllerNames[kind])
+                            armControllerTuning.Choose(static_cast<arm::ArmControllerKind>(kind));
                 armControllersPanel->Update(armControllers);
             });
         connect(armControllersPanel, &ArmControllersPanel::actionTriggered, this, [this](int action)
