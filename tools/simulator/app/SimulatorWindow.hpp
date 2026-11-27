@@ -60,6 +60,7 @@ namespace simulator
         MotorControllerPresenter& MotorController();
         MotorPresenter& Motor();
         TuningPresenter& Tuning();
+        BenchmarkPresenter& Benchmark();
         ui::backend::qt::update::UpdateAssistant& Updates();
         void StartUpdateChecks();
         const FrameStatistics& Frames() const;
@@ -119,6 +120,8 @@ namespace simulator
         void UpdateVirtualMotors(const arm_host::ArmSnapshot& snapshot);
         void UpdateDisturbances(const arm_host::ArmSnapshot& snapshot);
         void ExportTuningRun();
+        void ExportBenchmark();
+        void ConnectBenchmark();
         void ChooseVirtualArm();
         void SearchAdapters(AdapterDialog& dialog);
         void ConfirmRealArm(const QString& adapter);
@@ -160,6 +163,8 @@ namespace simulator
         std::optional<bool> disturbancesShown;
         TuningPanel* tuningPanel;
         TuningPresenter tuning;
+        BenchmarkPanel* benchmarkPanel;
+        BenchmarkPresenter benchmark;
         HandGuide guide;
         QLabel* frameReadout;
         QElapsedTimer clock;

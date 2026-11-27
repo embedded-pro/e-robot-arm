@@ -149,6 +149,8 @@ namespace simulator
             } }
         , tuningPanel{ new TuningPanel{ this } }
         , tuning{ tuningPanel->Form(), host }
+        , benchmarkPanel{ new BenchmarkPanel{ this } }
+        , benchmark{ host }
         , guide{ [this](const arm_host::ArmCommand& command)
             {
                 this->host.Post(command);
@@ -345,6 +347,11 @@ namespace simulator
         return tuning;
     }
 
+    BenchmarkPresenter& SimulatorWindow::Benchmark()
+    {
+        return benchmark;
+    }
+
     void SimulatorWindow::Frame()
     {
         QElapsedTimer guiFrame;
@@ -401,6 +408,8 @@ namespace simulator
         UpdateDisturbances(snapshot);
         tuning.Refresh(snapshot, events, trace);
         tuningPanel->Update(tuning);
+        benchmark.Refresh(snapshot, events, trace);
+        benchmarkPanel->Update(benchmark);
 
         scope->Add(trace);
         if (std::ranges::any_of(events, [](const arm_host::ArmEvent& event)
@@ -526,7 +535,9 @@ namespace simulator
         tabifyDockWidget(virtualMotorsDock, disturbancesDock);
         armDock->raise();
         auto* scopeDock = Dock("Scope", "scopeDock", scope, Qt::BottomDockWidgetArea);
-        tabifyDockWidget(scopeDock, Dock("Tuning", "tuningDock", tuningPanel, Qt::BottomDockWidgetArea));
+        auto* tuningDock = Dock("Tuning", "tuningDock", tuningPanel, Qt::BottomDockWidgetArea);
+        tabifyDockWidget(scopeDock, tuningDock);
+        tabifyDockWidget(tuningDock, Dock("Benchmark", "benchmarkDock", benchmarkPanel, Qt::BottomDockWidgetArea));
         scopeDock->raise();
         Dock("Event Log", "logDock", logPanel, Qt::BottomDockWidgetArea);
     }
@@ -884,6 +895,7 @@ namespace simulator
             });
         connect(&sceneState, &ArmSceneState::meshFailed, this, &SimulatorWindow::NoteMesh);
         connect(tuningPanel->ExportButton(), &QPushButton::clicked, this, &SimulatorWindow::ExportTuningRun);
+        ConnectBenchmark();
         connect(&sceneState, &ArmSceneState::jointPicked, this, [this](int joint)
             {
                 if (presenter.SelectJoint(joint))
@@ -1165,6 +1177,37 @@ namespace simulator
             shell.ShowAlert("Export Tuning Run", "The run could not be written to " + path.toStdString() + ".");
     }
 
+    void SimulatorWindow::ConnectBenchmark()
+    {
+        connect(benchmarkPanel, &BenchmarkPanel::choiceToggled, this, [this](int choice, bool chosen)
+            {
+                benchmark.Choose(static_cast<std::size_t>(choice), chosen);
+                benchmarkPanel->Update(benchmark);
+            });
+        connect(benchmarkPanel->RunButton(), &QPushButton::clicked, this, [this]()
+            {
+                benchmark.Run();
+                benchmarkPanel->Update(benchmark);
+            });
+        connect(benchmarkPanel->AbortButton(), &QPushButton::clicked, this, [this]()
+            {
+                benchmark.Abort();
+                benchmarkPanel->Update(benchmark);
+            });
+        connect(benchmarkPanel->ExportButton(), &QPushButton::clicked, this, &SimulatorWindow::ExportBenchmark);
+    }
+
+    void SimulatorWindow::ExportBenchmark()
+    {
+        const auto path = QFileDialog::getSaveFileName(this, "Export Benchmark", "benchmark.csv", "CSV files (*.csv)");
+        if (path.isEmpty())
+            return;
+        std::ofstream file{ path.toStdString() };
+        benchmark.WriteCsv(file);
+        if (!file)
+            shell.ShowAlert("Export Benchmark", "The benchmark could not be written to " + path.toStdString() + ".");
+    }
+
     void SimulatorWindow::OpenProfile()
     {
         const auto path = QFileDialog::getOpenFileName(this, "Open Profile", profilePath, "Arm profiles (*.json)");
@@ -1297,6 +1340,7 @@ namespace simulator
         virtualMotorsPanel->ApplyTheme();
         disturbancesPanel->ApplyTheme();
         tuningPanel->ApplyTheme();
+        benchmarkPanel->ApplyTheme();
         ui::backend::qt::StyleStatusLabel(*banner, ui::theme::StatusLevel::Warning);
         Settings().setValue("lightTheme", light);
     }
