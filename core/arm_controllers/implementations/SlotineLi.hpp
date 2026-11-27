@@ -5,6 +5,7 @@
 #include "infra/timer/Timer.hpp"
 #include "robotics/controllers/manipulator/SlotineLiAdaptiveControl.hpp"
 #include "robotics/dynamics/ChainInertialRegressor.hpp"
+#include <optional>
 
 namespace arm
 {
@@ -29,6 +30,7 @@ namespace arm
         const Parameters& Estimate() const;
         void ResetEstimate();
 
+        void SetTuning(const SlotineLiTuning& tuning);
         bool BumplessTransfer() const override;
         void Reset(const MeasuredJoints& measured, const JointReference& held) override;
         JointSetpoints Step(const MeasuredJoints& measured, const JointReference& reference) override;
@@ -36,10 +38,13 @@ namespace arm
     private:
         using Law = controllers::SlotineLiAdaptiveControl<float, jointCount, Regressor::ParametersPerLink * jointCount>;
 
+        void Emplace(const SlotineLiTuning& tuning, const Parameters& estimate);
+
         const DrivenArm& drivenArm;
         const ArmModel& model;
         float lambda;
         Regressor regressor;
-        Law law;
+        float periodSeconds;
+        std::optional<Law> law;
     };
 }

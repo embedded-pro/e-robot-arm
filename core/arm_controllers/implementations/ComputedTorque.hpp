@@ -4,6 +4,7 @@
 #include "core/arm_controllers/interfaces/ArmController.hpp"
 #include "core/arm_model/DrivenArm.hpp"
 #include "robotics/controllers/manipulator/ComputedTorqueControl.hpp"
+#include <optional>
 
 namespace arm
 {
@@ -13,6 +14,7 @@ namespace arm
     public:
         ComputedTorque(const DrivenArm& drivenArm, const BandwidthTuning& tuning);
 
+        void SetTuning(const BandwidthTuning& tuning);
         bool BumplessTransfer() const override;
         void Reset(const MeasuredJoints& measured, const JointReference& held) override;
         JointSetpoints Step(const MeasuredJoints& measured, const JointReference& reference) override;
@@ -20,7 +22,8 @@ namespace arm
     private:
         using Law = controllers::ComputedTorqueControl<float, jointCount>;
 
+        const DrivenArm& drivenArm;
         const ArmModel& model;
-        Law law;
+        std::optional<Law> law;
     };
 }

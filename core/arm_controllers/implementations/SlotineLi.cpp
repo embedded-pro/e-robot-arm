@@ -26,18 +26,32 @@ namespace arm
         , model(drivenArm.Model())
         , lambda(tuning.lambda)
         , regressor(model.Links(), model.Gravity())
-        , law(regressor, ArmModel::MassMatrix::Identity() * tuning.lambda, SlidingGain(drivenArm, tuning.bandwidth), Adaptation(tuning.adaptationGain, Regressor::Parameters(model.Links())),
-              Regressor::Parameters(model.Links()), std::chrono::duration<float>{ period }.count())
-    {}
+        , periodSeconds(std::chrono::duration<float>{ period }.count())
+    {
+        Emplace(tuning, Regressor::Parameters(model.Links()));
+    }
+
+    void SlotineLi::SetTuning(const SlotineLiTuning& tuning)
+    {
+        const auto learnt = law->ParameterEstimate();
+        Emplace(tuning, learnt);
+    }
+
+    void SlotineLi::Emplace(const SlotineLiTuning& tuning, const Parameters& estimate)
+    {
+        lambda = tuning.lambda;
+        law.emplace(regressor, ArmModel::MassMatrix::Identity() * tuning.lambda, SlidingGain(drivenArm, tuning.bandwidth),
+            Adaptation(tuning.adaptationGain, Regressor::Parameters(model.Links())), estimate, periodSeconds);
+    }
 
     const SlotineLi::Parameters& SlotineLi::Estimate() const
     {
-        return law.ParameterEstimate();
+        return law->ParameterEstimate();
     }
 
     void SlotineLi::ResetEstimate()
     {
-        law.Reset(Regressor::Parameters(model.Links()));
+        law->Reset(Regressor::Parameters(model.Links()));
     }
 
     bool SlotineLi::BumplessTransfer() const
@@ -54,7 +68,7 @@ namespace arm
         const auto targetSpeeds = model.ModelSpeeds(reference.speeds);
         const auto targetAccelerations = model.ModelAccelerations(reference.accelerations);
 
-        auto torques = law.ComputeTorque(model.ModelVector(measured.positions), speeds, model.ModelVector(reference.positions), targetSpeeds, targetAccelerations);
+        auto torques = law->ComputeTorque(model.ModelVector(measured.positions), speeds, model.ModelVector(reference.positions), targetSpeeds, targetAccelerations);
         torques += math::Diagonal(ToVector(drivenArm.Rotors())) * JointVector{ targetAccelerations - (speeds - targetSpeeds) * lambda };
         return JointSetpoints{ reference.positions, model.ToJointTorques(torques) };
     }

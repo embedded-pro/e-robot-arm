@@ -31,9 +31,17 @@ namespace arm
     GravityPid::GravityPid(const DrivenArm& drivenArm, const BandwidthTuning& tuning, infra::Duration period)
         : drivenArm(drivenArm)
         , model(drivenArm.Model())
+        , period(period)
         , derivativeGain(PairGain(tuning) * tuning.bandwidth)
         , pids(MakePids(ProportionalIntegral(tuning, period), std::make_index_sequence<jointCount>{}))
     {}
+
+    void GravityPid::SetTuning(const BandwidthTuning& tuning)
+    {
+        derivativeGain = PairGain(tuning) * tuning.bandwidth;
+        for (auto& pid : pids)
+            pid.SetTunings(ProportionalIntegral(tuning, period));
+    }
 
     bool GravityPid::BumplessTransfer() const
     {

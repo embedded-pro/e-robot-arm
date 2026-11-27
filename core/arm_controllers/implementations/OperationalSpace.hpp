@@ -4,6 +4,7 @@
 #include "core/arm_model/ArmTaskJacobian.hpp"
 #include "core/arm_model/DrivenArm.hpp"
 #include "robotics/controllers/manipulator/OperationalSpaceControl.hpp"
+#include <optional>
 
 namespace arm
 {
@@ -26,6 +27,7 @@ namespace arm
 
         float JointSpaceShare(const JointPositions& positions) const;
 
+        void SetTuning(const OperationalSpaceTuning& tuning);
         bool BumplessTransfer() const override;
         void Reset(const MeasuredJoints& measured, const JointReference& held) override;
         JointSetpoints Step(const MeasuredJoints& measured, const JointReference& reference) override;
@@ -38,9 +40,9 @@ namespace arm
         const ArmModel& model;
         ArmTaskJacobian provider;
         const DrivenArm::Dynamics& dynamics;
-        Law law;
-        float stiffness;
-        float damping;
+        std::optional<Law> law;
+        float stiffness{ 0.0f };
+        float damping{ 0.0f };
         float manipulabilityMin;
     };
 }

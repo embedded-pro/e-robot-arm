@@ -14,6 +14,11 @@ namespace arm
         , tuning(tuning)
     {}
 
+    void GravityCompensatedPd::SetTuning(const BandwidthTuning& newTuning)
+    {
+        tuning = newTuning;
+    }
+
     bool GravityCompensatedPd::BumplessTransfer() const
     {
         return true;

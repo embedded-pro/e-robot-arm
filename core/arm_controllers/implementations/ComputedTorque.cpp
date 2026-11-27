@@ -13,9 +13,16 @@ namespace arm
     }
 
     ComputedTorque::ComputedTorque(const DrivenArm& drivenArm, const BandwidthTuning& tuning)
-        : model(drivenArm.Model())
-        , law(drivenArm.LinkDynamics(), Scaled(tuning.bandwidth * tuning.bandwidth), Scaled(2.0f * tuning.dampingRatio * tuning.bandwidth))
-    {}
+        : drivenArm(drivenArm)
+        , model(drivenArm.Model())
+    {
+        SetTuning(tuning);
+    }
+
+    void ComputedTorque::SetTuning(const BandwidthTuning& tuning)
+    {
+        law.emplace(drivenArm.LinkDynamics(), Scaled(tuning.bandwidth * tuning.bandwidth), Scaled(2.0f * tuning.dampingRatio * tuning.bandwidth));
+    }
 
     bool ComputedTorque::BumplessTransfer() const
     {
@@ -27,7 +34,7 @@ namespace arm
 
     JointSetpoints ComputedTorque::Step(const MeasuredJoints& measured, const JointReference& reference)
     {
-        const auto torques = law.ComputeTorque(model.ModelVector(measured.positions), model.ModelSpeeds(measured.speeds), model.ModelVector(reference.positions),
+        const auto torques = law->ComputeTorque(model.ModelVector(measured.positions), model.ModelSpeeds(measured.speeds), model.ModelVector(reference.positions),
             model.ModelSpeeds(reference.speeds), model.ModelAccelerations(reference.accelerations));
         return JointSetpoints{ reference.positions, model.ToJointTorques(torques) };
     }

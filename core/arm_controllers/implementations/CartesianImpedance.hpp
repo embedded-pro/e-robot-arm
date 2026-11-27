@@ -26,6 +26,7 @@ namespace arm
         float StiffnessShare() const;
         ArmModel::MassMatrix Damping(const ArmModel::JointVector& angles) const;
 
+        void SetTuning(const CartesianImpedanceTuning& tuning);
         bool BumplessTransfer() const override;
         void Reset(const MeasuredJoints& measured, const JointReference& held) override;
         JointSetpoints Step(const MeasuredJoints& measured, const JointReference& reference) override;
