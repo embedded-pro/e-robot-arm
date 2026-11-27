@@ -10,6 +10,8 @@ target_link_libraries(e_robot_arm.tool.tuning PUBLIC
 )
 
 target_sources(e_robot_arm.tool.tuning PRIVATE
+    Benchmark.cpp
+    Benchmark.hpp
     TuningMetrics.cpp
     TuningMetrics.hpp
     TuningRun.cpp

@@ -2,7 +2,7 @@
 title: "Tuning Runs Design"
 type: design
 status: draft
-version: 0.3.1
+version: 0.3.2
 component: "tuning"
 date: 2026-11-27
 ---
@@ -12,7 +12,7 @@ date: 2026-11-27
 | Title     | Tuning Runs Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.3.1              |
+| Version   | 0.3.2              |
 | Component | tuning             |
 | Date      | 2026-11-27         |
 
@@ -114,6 +114,9 @@ A benchmark runs the same path once per chosen controller, so the controllers ar
    benchmark: the arm must be re-armed before the next one.
 4. **At the end** the controller that was active before is selected again.
 
+**Abort** stops the running move, fails the run with "aborted" and selects the controller that was active before. A
+run that passes 6000 samples stops its move the same way and fails.
+
 | Metric      | Definition                                                                |
 |-------------|---------------------------------------------------------------------------|
 | RMS error   | Of the tracking-error norm over all six joints, over the whole run, rad   |
@@ -165,6 +168,8 @@ supervisor apply as they do to any move.
 ## Constraints & Limitations
 
 - A run holds at most 2000 samples, 20 s at a 10 ms period; a longer run stops recording and fails.
+- A benchmark run holds at most 6000 samples, 60 s at a 10 ms period, and a benchmark at most eight controllers.
+- A benchmark has no time-out: a lost move-done report leaves it running until the operator aborts it.
 - The metrics are those of the joint position the drives report. Thus they include the gear and the encoder. On a
   real arm the encoder sits on the motor side.
 - The run does not choose gains. It measures the arm controller that is active; the operator tunes it through the
