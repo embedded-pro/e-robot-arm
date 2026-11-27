@@ -121,6 +121,12 @@ namespace arm
         holding = false;
     }
 
+    void ArmControllersImpl::ResetActive()
+    {
+        if (streaming && active.has_value())
+            entries[*active].controller->Reset(Measured(), heldReference);
+    }
+
     bool ArmControllersImpl::StreamingPassive() const
     {
         return streaming && !holding && ActivePassive();

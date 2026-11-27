@@ -1,4 +1,5 @@
 #include "core/arm_profile/ArmProfile.hpp"
+#include "core/arm/ArmControllerTuning.hpp"
 #include "e-foc-protocol/contract/FocMotorWireContract.hpp"
 #include "infra/stream/StreamManipulators.hpp"
 #include "infra/syntax/Json.hpp"
@@ -390,9 +391,9 @@ namespace arm
                 return ReadMembers(path, value, [this, &tuning](const Path& item, infra::JsonString key, const Value& member)
                     {
                         if (key == "bandwidthRadPerS")
-                            return ReadBounded(item, member, 500.0f, "must be above 0 and at most 500", tuning.bandwidth);
+                            return ReadBounded(item, member, tuningLimit::bandwidth, "must be above 0 and at most 500", tuning.bandwidth);
                         if (key == "dampingRatio")
-                            return ReadBounded(item, member, 5.0f, "must be above 0 and at most 5", tuning.dampingRatio);
+                            return ReadBounded(item, member, tuningLimit::dampingRatio, "must be above 0 and at most 5", tuning.dampingRatio);
                         return Unknown(item);
                     });
             }
@@ -413,7 +414,7 @@ namespace arm
                             return true;
                         }
                         if (key == "dampingRatio")
-                            return ReadBounded(item, member, 5.0f, "must be above 0 and at most 5", tuning.dampingRatio);
+                            return ReadBounded(item, member, tuningLimit::dampingRatio, "must be above 0 and at most 5", tuning.dampingRatio);
                         return Unknown(item);
                     });
             }
@@ -427,7 +428,7 @@ namespace arm
                         if (key == "rotationalStiffnessNmPerRad")
                             return ReadPositive(item, member, tuning.rotationalStiffness);
                         if (key == "dampingRatio")
-                            return ReadBounded(item, member, 5.0f, "must be above 0 and at most 5", tuning.dampingRatio);
+                            return ReadBounded(item, member, tuningLimit::dampingRatio, "must be above 0 and at most 5", tuning.dampingRatio);
                         return Unknown(item);
                     });
             }
@@ -437,11 +438,11 @@ namespace arm
                 return ReadMembers(path, value, [this, &tuning](const Path& item, infra::JsonString key, const Value& member)
                     {
                         if (key == "bandwidthRadPerS")
-                            return ReadBounded(item, member, 500.0f, "must be above 0 and at most 500", tuning.bandwidth);
+                            return ReadBounded(item, member, tuningLimit::bandwidth, "must be above 0 and at most 500", tuning.bandwidth);
                         if (key == "dampingRatio")
-                            return ReadBounded(item, member, 5.0f, "must be above 0 and at most 5", tuning.dampingRatio);
+                            return ReadBounded(item, member, tuningLimit::dampingRatio, "must be above 0 and at most 5", tuning.dampingRatio);
                         if (key == "singularityDamping")
-                            return ReadBounded(item, member, 1.0f, "must be above 0 and at most 1", tuning.singularityDamping);
+                            return ReadBounded(item, member, tuningLimit::singularityDamping, "must be above 0 and at most 1", tuning.singularityDamping);
                         return Unknown(item);
                     });
             }
@@ -451,11 +452,11 @@ namespace arm
                 return ReadMembers(path, value, [this, &tuning](const Path& item, infra::JsonString key, const Value& member)
                     {
                         if (key == "lambdaPerS")
-                            return ReadBounded(item, member, 100.0f, "must be above 0 and at most 100", tuning.lambda);
+                            return ReadBounded(item, member, tuningLimit::lambda, "must be above 0 and at most 100", tuning.lambda);
                         if (key == "bandwidthRadPerS")
-                            return ReadBounded(item, member, 500.0f, "must be above 0 and at most 500", tuning.bandwidth);
+                            return ReadBounded(item, member, tuningLimit::bandwidth, "must be above 0 and at most 500", tuning.bandwidth);
                         if (key == "adaptationGain")
-                            return ReadBounded(item, member, 10000.0f, "must be above 0 and at most 10000", tuning.adaptationGain);
+                            return ReadBounded(item, member, tuningLimit::adaptationGain, "must be above 0 and at most 10000", tuning.adaptationGain);
                         return Unknown(item);
                     });
             }

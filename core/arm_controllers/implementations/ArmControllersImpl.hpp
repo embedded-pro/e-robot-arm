@@ -40,6 +40,7 @@ namespace arm
         void Hold();
         void Disengage();
         void Resume();
+        void ResetActive();
         bool Streaming() const;
         bool StreamingPassive() const;
         bool Step(const std::optional<JointReference>& reference);

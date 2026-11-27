@@ -2,6 +2,7 @@
 
 #include "core/arm/ArmConfig.hpp"
 #include "core/arm/ArmControllerEngagement.hpp"
+#include "core/arm/ArmControllerTuning.hpp"
 #include "core/arm_controllers/implementations/ArmControllersImpl.hpp"
 #include "core/arm_controllers/implementations/CartesianImpedance.hpp"
 #include "core/arm_controllers/implementations/ComputedTorque.hpp"
@@ -49,12 +50,14 @@ namespace arm
         bool SetImpedanceShare(float share);
         float ImpedanceShare() const;
         bool ResetAdaptation();
+        RetuneResult Retune(ArmControllerKind kind, const ArmControllerTuning& tuning);
         const std::optional<JointTorques>& EstimatedExternalTorques() const;
         const WorkspaceCheck& Workspace() const;
         ControlLoop& Loop();
 
     private:
         void Step();
+        void Apply(ArmControllerKind kind, const ArmControllerTuning& tuning);
         std::optional<JointTorques> ExternalTorques(const std::optional<JointSetpoints>& applied, bool streaming);
 
         JointBusImpl jointBus;
