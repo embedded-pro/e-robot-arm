@@ -1,6 +1,6 @@
 {
   "format": "e-robot-arm profile",
-  "version": 11,
+  "version": 12,
   "name": "sample meshed arm",
   "controlPeriodMs": 10,
   "missedRequestsBeforeSilent": 3,
@@ -19,6 +19,7 @@
   "motionProfile": "trapezoid",
   "toolLimits": { "speedMPerS": 0.25, "accelerationMPerS2": 1, "jerkMPerS3": 10, "angularSpeedRadPerS": 1, "angularAccelerationRadPerS2": 4, "angularJerkRadPerS3": 40, "manipulabilityMin": 0.001 },
   "teachPoints": [ ],
+  "armControllerPresets": [ ],
   "joints": [
     {
       "node": 1,
