@@ -5,6 +5,7 @@
 #include <array>
 #include <chrono>
 #include <cmath>
+#include <format>
 #include <string_view>
 
 namespace tuning
@@ -278,7 +279,7 @@ namespace tuning
         auto& result = results[current];
         if (result.samples.size() == maxBenchmarkSamples)
         {
-            Fail("the run exceeded " + std::to_string(maxBenchmarkSamples) + " samples", true);
+            Fail(std::format("the run exceeded {} samples", maxBenchmarkSamples), true);
             return;
         }
 
