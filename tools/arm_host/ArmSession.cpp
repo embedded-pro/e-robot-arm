@@ -1,5 +1,6 @@
 #include "tools/arm_host/ArmSession.hpp"
 #include "tools/arm_host/Commissioning.hpp"
+#include <array>
 #include <cmath>
 #include <format>
 
@@ -36,6 +37,16 @@ namespace arm_host
         constexpr float maximumCollisionTorque{ 200.0f };
         constexpr infra::Duration guideDeadMan{ std::chrono::milliseconds{ 200 } };
 
+        std::string TuningRangeText(const arm::TuningViolation& violation)
+        {
+            static constexpr std::array<std::string_view, 8> fields{ "bandwidth", "damping ratio", "stiffness", "translational stiffness", "rotational stiffness",
+                "singularity damping", "λ", "adaptation gain" };
+            const auto field = fields[static_cast<std::size_t>(violation.field)];
+            if (violation.maximum.has_value())
+                return std::format("{} must be above 0 and at most {:g}", field, *violation.maximum);
+            return std::format("{} must be above 0", field);
+        }
+
         bool PassiveKind(arm::ArmControllerKind kind)
         {
             return kind == arm::ArmControllerKind::free || kind == arm::ArmControllerKind::gravityFloat;
@@ -59,6 +70,7 @@ namespace arm_host
         {
             return std::holds_alternative<InjectFault>(command) || std::holds_alternative<SilenceJoint>(command) ||
                    std::holds_alternative<ResumeJoint>(command) || std::holds_alternative<CollideJoint>(command) || std::holds_alternative<GuideArm>(command) ||
+                   std::holds_alternative<TuneArmController>(command) ||
                    std::holds_alternative<PowerOffMotor>(command) || std::holds_alternative<RestartMotor>(command);
         }
 
@@ -475,6 +487,11 @@ namespace arm_host
             return true;
         }
 
+        bool operator()(const TuneArmController& tune) const
+        {
+            return session.Tune(tune);
+        }
+
         bool operator()(const ResetAdaptation&) const
         {
             return session.arm.ResetAdaptation();
@@ -532,6 +549,22 @@ namespace arm_host
         else
             simulation->Joint(joint).Resume();
         return true;
+    }
+
+    bool ArmSession::Tune(const TuneArmController& tune)
+    {
+        switch (arm.Retune(tune.kind, tune.tuning))
+        {
+            case arm::RetuneResult::applied:
+                arm::StoreTuning(profile.config, tune.kind, tune.tuning);
+                return true;
+            case arm::RetuneResult::moving:
+                return Refuse("moving: wait or abort");
+            case arm::RetuneResult::outOfRange:
+                return Refuse(TuningRangeText(*arm::CheckTuning(tune.tuning)));
+            default:
+                return Refuse(arm::Tunable(tune.kind) ? "the arm offers no such controller" : "the controller has nothing to tune");
+        }
     }
 
     std::optional<std::string_view> ArmSession::PushRefusal() const
