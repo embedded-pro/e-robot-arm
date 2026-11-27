@@ -3,6 +3,7 @@
 #include "gmock/gmock.h"
 #include <array>
 #include <chrono>
+#include <cmath>
 #include <cstddef>
 #include <variant>
 #include <vector>
@@ -122,7 +123,7 @@ TEST_F(JointDragTest, the_target_stops_at_the_joint_limit_and_says_so)
     DragBaseBy(0.6f);
 
     EXPECT_FLOAT_EQ(0.4f, (*drag.Target())[0].Value());
-    EXPECT_EQ("J1 → 0.40 rad (from 0.20) · at limit · Enter: move · Esc: cancel", drag.Label(move));
+    EXPECT_EQ("J1 → 0.40 rad (from 0.20) · at limit · Enter: move · Del: clear", drag.Label(move));
 }
 
 TEST_F(JointDragTest, enter_moves_to_the_target_once_the_drag_ends_and_move_is_enabled)
@@ -134,7 +135,7 @@ TEST_F(JointDragTest, enter_moves_to_the_target_once_the_drag_ends_and_move_is_e
 
     drag.Release();
     EXPECT_FALSE(drag.Dragging());
-    EXPECT_EQ("J1 → 0.50 rad (from 0.20) · Enter: move · Esc: cancel", drag.Label(move));
+    EXPECT_EQ("J1 → 0.50 rad (from 0.20) · Enter: move · Del: clear", drag.Label(move));
     const simulator::ControlState refused{ false, "the arm is moving" };
     EXPECT_EQ("J1 → 0.50 rad (from 0.20) · Move: the arm is moving", drag.Label(refused));
     EXPECT_FALSE(drag.Confirm(refused));
@@ -189,7 +190,7 @@ TEST_F(JointDragTest, follow_is_a_target_only_off_a_simulation)
     drag.Release();
 
     EXPECT_TRUE(posted.empty());
-    EXPECT_EQ("J1 → 0.50 rad (from 0.20) · follow: simulation only · Enter: move · Esc: cancel", drag.Label(move));
+    EXPECT_EQ("J1 → 0.50 rad (from 0.20) · follow: simulation only · Enter: move · Del: clear", drag.Label(move));
 }
 
 TEST_F(JointDragTest, follow_stops_when_move_is_no_longer_allowed)
@@ -225,4 +226,33 @@ TEST_F(JointDragTest, cancel_while_following_aborts_the_move_and_clears_the_targ
     ASSERT_EQ(2u, posted.size());
     EXPECT_TRUE(Posted<arm_host::AbortMove>(1));
     EXPECT_FALSE(drag.Target().has_value());
+}
+
+TEST_F(JointDragTest, the_ghost_shows_the_target_pose_and_the_label_sits_on_the_grabbed_point)
+{
+    EXPECT_FALSE(drag.TargetNodes().has_value());
+    EXPECT_FALSE(drag.TargetPoint().has_value());
+    ASSERT_TRUE(GrabBase());
+    DragBaseBy(0.3f);
+
+    const auto expected = simulator::SceneNodePoses(model, snapshot.config.geometry, Turned(0, 0.3f));
+    ASSERT_TRUE(drag.TargetNodes().has_value());
+    for (std::size_t node = 0; node != simulator::sceneNodeCount; ++node)
+        for (std::size_t axis = 0; axis != 3; ++axis)
+            EXPECT_NEAR(expected[node].position[axis], (*drag.TargetNodes())[node].position[axis], 0.05f) << "node " << node;
+    const auto point = PointOn(0, Turned(0, 0.3f));
+    ASSERT_TRUE(drag.TargetPoint().has_value());
+    for (std::size_t axis = 0; axis != 3; ++axis)
+        EXPECT_NEAR(point[axis], (*drag.TargetPoint())[axis], 0.05f);
+}
+
+TEST_F(JointDragTest, a_point_a_millimetre_from_the_joint_axis_leaves_the_joint_where_it_is)
+{
+    auto elbow = simulator::ToScenePoint(model.LinkPoses(Turned(2, 0.0f))[2].Apply(math::Vector3<float>{ 0.0f, 0.0f, 0.0f }));
+    elbow[1] += 0.1f;
+    ASSERT_TRUE(drag.Grab(2, elbow, snapshot, move, false));
+    drag.Drag({ { elbow[0], elbow[1] + 3.0f, elbow[2] + 300.0f }, { 0.0f, 0.0f, -1.0f } }, snapshot, move, {});
+
+    ASSERT_TRUE(drag.Target().has_value());
+    EXPECT_FLOAT_EQ(pose[2], (*drag.Target())[2].Value());
 }

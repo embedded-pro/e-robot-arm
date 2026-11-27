@@ -37,6 +37,7 @@
 #include <QVector3D>
 #include <QtQml/QQmlExtensionPlugin>
 #include <algorithm>
+#include <cmath>
 #include <condition_variable>
 #include <cstdio>
 #include <cstdlib>
@@ -1071,6 +1072,56 @@ TEST_F(SimulatorWindowTest, the_benchmark_dock_runs_a_chosen_controller_and_show
         QApplication::processEvents();
         window.grab().save(QString{ path }.replace(".png", "-benchmark.png"));
     }
+}
+
+TEST_F(SimulatorWindowTest, a_joint_drag_sets_a_ghost_target_and_enter_moves_the_arm_there)
+{
+    BringUpAndMove(arm::JointPositions{ foc::Radians{ 0.3f }, foc::Radians{ 0.4f }, foc::Radians{ 0.5f }, foc::Radians{ 0.0f }, foc::Radians{ 0.5f },
+        foc::Radians{ 0.0f } });
+    ASSERT_TRUE(Eventually([this]()
+        {
+            return Logged(window.Presenter(), "Move done") && window.Presenter().State(simulator::Control::move).enabled;
+        },
+        15000))
+        << LogText(window.Presenter());
+    auto* state = simulator::ArmSceneState::Current();
+    ASSERT_NE(nullptr, state);
+    ASSERT_TRUE(Eventually([state]()
+        {
+            return state->DragOffered();
+        }));
+
+    const auto wrist = window.Presenter().Scene().MeasuredNodes()[4].position;
+    const QVector3D hit{ wrist[0], wrist[1], wrist[2] };
+    state->DragGrab(2, hit, hit + QVector3D{ 0.0f, 0.0f, 300.0f }, { 0.0f, 0.0f, -1.0f }, false);
+    const auto pointer = hit + QVector3D{ 0.0f, 3.0f, 0.0f };
+    state->GuidePointer(pointer + QVector3D{ 0.0f, 0.0f, 300.0f }, { 0.0f, 0.0f, -1.0f });
+    ASSERT_TRUE(Eventually([state]()
+        {
+            return state->DragActive();
+        }));
+    state->DragRelease();
+    QApplication::processEvents();
+    EXPECT_TRUE(state->DragLabel().startsWith("J3 → ")) << state->DragLabel().toStdString();
+    EXPECT_TRUE(state->DragLabel().endsWith("Enter: move · Del: clear")) << state->DragLabel().toStdString();
+    EXPECT_EQ(simulator::sceneNodeCount, static_cast<std::size_t>(state->DragNodes().size()));
+    auto* ghost = window.ArmView().rootObject()->findChild<QObject*>("dragGhost");
+    ASSERT_NE(nullptr, ghost);
+    EXPECT_TRUE(ghost->property("visible").toBool());
+
+    state->DragConfirm();
+    ASSERT_TRUE(Eventually([state]()
+        {
+            return !state->DragActive();
+        }));
+    ASSERT_TRUE(Eventually([this, wrist]()
+        {
+            const auto moved = window.Presenter().Scene().MeasuredNodes()[4].position;
+            return std::abs(moved[1] - wrist[1]) > 1.0f;
+        },
+        15000))
+        << LogText(window.Presenter());
+    EXPECT_FALSE(Logged(window.Presenter(), "Move refused")) << LogText(window.Presenter());
 }
 
 TEST_F(SimulatorWindowTest, frame_statistics_report_the_gui_and_render_cost_while_the_arm_moves_and_a_tuning_run_records)

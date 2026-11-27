@@ -8,7 +8,9 @@ namespace simulator
     namespace
     {
         constexpr float angleStep{ 1.0e-3f };
-        constexpr float smallestArc{ 1.0e-10f };
+        // A point within 1 cm of the joint axis barely moves with the joint; its step would be noise.
+        constexpr float smallestArc{ 1.0e-4f };
+        constexpr float largestStep{ 0.5f };
 
         float Dot(const math::Vector3<float>& a, const math::Vector3<float>& b)
         {
@@ -40,6 +42,7 @@ namespace simulator
 
         StopFollowing();
         model.emplace(snapshot.config.geometry, snapshot.config.mass, snapshot.config.positionLimits);
+        geometry = snapshot.config.geometry;
         joint = static_cast<std::size_t>(pickedJoint);
         start = Measured(snapshot);
         local = model->LinkPoses(start)[*joint].Inverse().Apply(ToBase(hit));
@@ -132,8 +135,22 @@ namespace simulator
         if (followRefused)
             label += " · follow: simulation only";
         if (move.enabled)
-            return label + " · Enter: move · Esc: cancel";
+            return label + " · Enter: move · Del: clear";
         return label + " · Move: " + move.reason;
+    }
+
+    std::optional<SceneNodes> JointDrag::TargetNodes() const
+    {
+        if (!target.has_value())
+            return std::nullopt;
+        return SceneNodePoses(*model, geometry, *target);
+    }
+
+    std::optional<ScenePoint> JointDrag::TargetPoint() const
+    {
+        if (!target.has_value())
+            return std::nullopt;
+        return ToScenePoint(PointAt((*target)[*joint].Value()));
     }
 
     math::Vector3<float> JointDrag::PointAt(float angle) const
@@ -164,7 +181,7 @@ namespace simulator
             const auto arc = Dot(tangent, tangent);
             if (arc < smallestArc)
                 break;
-            const auto next = angle - Dot(tangent, miss) / arc;
+            const auto next = angle + std::clamp(-Dot(tangent, miss) / arc, -largestStep, largestStep);
             angle = std::clamp(next, lower.Value(), upper.Value());
             atLimit = angle != next;
         }
