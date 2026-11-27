@@ -378,27 +378,27 @@ namespace arm
                 switch (preset.controller)
                 {
                     case ArmControllerKind::jointImpedance:
-                        return ReadInto<JointImpedanceTuning>(preset, [&](auto& tuning)
+                        return ReadInto<JointImpedanceTuning>(preset, [this, &path, &value](auto& tuning)
                             {
                                 return ReadImpedance(path, value, tuning);
                             });
                     case ArmControllerKind::cartesianImpedance:
-                        return ReadInto<CartesianImpedanceTuning>(preset, [&](auto& tuning)
+                        return ReadInto<CartesianImpedanceTuning>(preset, [this, &path, &value](auto& tuning)
                             {
                                 return ReadCartesianImpedance(path, value, tuning);
                             });
                     case ArmControllerKind::operationalSpace:
-                        return ReadInto<OperationalSpaceTuning>(preset, [&](auto& tuning)
+                        return ReadInto<OperationalSpaceTuning>(preset, [this, &path, &value](auto& tuning)
                             {
                                 return ReadOperationalSpace(path, value, tuning);
                             });
                     case ArmControllerKind::slotineLi:
-                        return ReadInto<SlotineLiTuning>(preset, [&](auto& tuning)
+                        return ReadInto<SlotineLiTuning>(preset, [this, &path, &value](auto& tuning)
                             {
                                 return ReadSlotineLi(path, value, tuning);
                             });
                     default:
-                        return ReadInto<BandwidthTuning>(preset, [&](auto& tuning)
+                        return ReadInto<BandwidthTuning>(preset, [this, &path, &value](auto& tuning)
                             {
                                 return ReadTuning(path, value, tuning);
                             });
@@ -1494,9 +1494,9 @@ namespace arm
                 for (std::size_t index = 0; index != config.presetCount; ++index)
                 {
                     const auto& preset = config.presets[index];
-                    stream << (index == 0 ? "\n    { \"name\": " : ",\n    { \"name\": ");
+                    stream << (index == 0 ? "\n" : ",\n") << R"(    { "name": )";
                     Text(preset.name);
-                    stream << ", \"controller\": \"" << ArmControllerName(preset.controller) << "\", \"tuning\": ";
+                    stream << R"(, "controller": ")" << ArmControllerName(preset.controller) << R"(", "tuning": )";
                     std::visit([this](const auto& tuning)
                         {
                             Tuning(tuning);

@@ -14,4 +14,5 @@ target_sources(e_robot_arm.tool.simulated_arm_test PRIVATE
     TestArmPlant.cpp
     TestFirstOrderLag.cpp
     TestSimulatedJoint.cpp
+    TestVirtualCanBus.cpp
 )
