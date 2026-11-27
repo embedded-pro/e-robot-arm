@@ -6,9 +6,9 @@
 
 namespace
 {
-    using simulator::TuningAction;
-    using simulator::TuningField;
-    using simulator::TuningState;
+    using simulator::ControllerTuningAction;
+    using simulator::ControllerTuningField;
+    using simulator::ControllerTuningState;
     using ui::backend::recording::FormCommandKind;
 
     class ArmControllerTuningPresenterTest
@@ -50,69 +50,69 @@ namespace
 
 TEST_F(ArmControllerTuningPresenterTest, shows_the_tuning_in_effect_and_offers_nothing_to_apply)
 {
-    EXPECT_EQ(TuningState::applied, presenter.State());
+    EXPECT_EQ(ControllerTuningState::applied, presenter.State());
     EXPECT_EQ("Applied", presenter.StateText());
     EXPECT_EQ(ui::theme::StatusLevel::Ok, presenter.StateLevel());
-    EXPECT_FALSE(ActionEnabled(TuningAction::apply));
-    EXPECT_FALSE(ActionEnabled(TuningAction::revert));
+    EXPECT_FALSE(ActionEnabled(ControllerTuningAction::apply));
+    EXPECT_FALSE(ActionEnabled(ControllerTuningAction::revert));
     EXPECT_EQ((arm::BandwidthTuning{ 30.0f, 0.7f }.bandwidth), std::get<arm::BandwidthTuning>(presenter.FormTuning()).bandwidth);
-    EXPECT_TRUE(view.IsControlVisible(TuningField::bandwidth));
-    EXPECT_FALSE(view.IsControlVisible(TuningField::lambda));
+    EXPECT_TRUE(view.IsControlVisible(ControllerTuningField::bandwidth));
+    EXPECT_FALSE(view.IsControlVisible(ControllerTuningField::lambda));
 }
 
 TEST_F(ArmControllerTuningPresenterTest, an_edit_is_applied_only_on_apply_and_confirmed_by_the_snapshot)
 {
-    view.TypeNumber(TuningField::bandwidth, 20.0);
-    EXPECT_EQ(TuningState::edited, presenter.State());
+    view.TypeNumber(ControllerTuningField::bandwidth, 20.0);
+    EXPECT_EQ(ControllerTuningState::edited, presenter.State());
     EXPECT_EQ("Edited", presenter.StateText());
     EXPECT_TRUE(posted.empty());
-    EXPECT_TRUE(ActionEnabled(TuningAction::apply));
+    EXPECT_TRUE(ActionEnabled(ControllerTuningAction::apply));
 
-    view.PressAction(TuningAction::apply);
+    view.PressAction(ControllerTuningAction::apply);
     ASSERT_EQ(1u, posted.size());
     EXPECT_EQ(arm::ArmControllerKind::gravityPd, Posted().kind);
     EXPECT_FLOAT_EQ(20.0f, std::get<arm::BandwidthTuning>(Posted().tuning).bandwidth);
     EXPECT_EQ("Requested…", presenter.StateText());
-    EXPECT_FALSE(ActionEnabled(TuningAction::apply));
+    EXPECT_FALSE(ActionEnabled(ControllerTuningAction::apply));
 
     presenter.Refresh(snapshot, {});
-    EXPECT_EQ(TuningState::requested, presenter.State());
+    EXPECT_EQ(ControllerTuningState::requested, presenter.State());
     snapshot.config.gravityPd.bandwidth = 20.0f;
     presenter.Refresh(snapshot, {});
-    EXPECT_EQ(TuningState::applied, presenter.State());
+    EXPECT_EQ(ControllerTuningState::applied, presenter.State());
 }
 
 TEST_F(ArmControllerTuningPresenterTest, a_refusal_keeps_the_edit_and_shows_the_reason)
 {
-    view.TypeNumber(TuningField::dampingRatio, 1.2);
-    view.PressAction(TuningAction::apply);
+    view.TypeNumber(ControllerTuningField::dampingRatio, 1.2);
+    view.PressAction(ControllerTuningAction::apply);
 
     const std::vector<arm_host::ArmEvent> events{ { .kind = arm_host::ArmEventKind::refused, .commandName = "tune arm controller", .reason = "moving: wait or abort" } };
     presenter.Refresh(snapshot, events);
 
-    EXPECT_EQ(TuningState::refused, presenter.State());
+    EXPECT_EQ(ControllerTuningState::refused, presenter.State());
     EXPECT_EQ("Refused: moving: wait or abort", presenter.StateText());
     EXPECT_EQ(ui::theme::StatusLevel::Fault, presenter.StateLevel());
     EXPECT_FLOAT_EQ(1.2f, std::get<arm::BandwidthTuning>(presenter.FormTuning()).dampingRatio);
-    EXPECT_TRUE(ActionEnabled(TuningAction::revert));
+    EXPECT_TRUE(ActionEnabled(ControllerTuningAction::revert));
 }
 
 TEST_F(ArmControllerTuningPresenterTest, revert_puts_the_tuning_in_effect_back)
 {
-    view.TypeNumber(TuningField::bandwidth, 12.0);
-    view.PressAction(TuningAction::revert);
+    view.TypeNumber(ControllerTuningField::bandwidth, 12.0);
+    view.PressAction(ControllerTuningAction::revert);
 
-    EXPECT_EQ(TuningState::applied, presenter.State());
+    EXPECT_EQ(ControllerTuningState::applied, presenter.State());
     EXPECT_FLOAT_EQ(30.0f, std::get<arm::BandwidthTuning>(presenter.FormTuning()).bandwidth);
 }
 
 TEST_F(ArmControllerTuningPresenterTest, apply_is_disabled_with_the_reason_while_moving_disconnected_or_not_offered)
 {
-    view.TypeNumber(TuningField::bandwidth, 12.0);
+    view.TypeNumber(ControllerTuningField::bandwidth, 12.0);
     auto moving = snapshot;
     moving.moving = true;
     presenter.Refresh(moving, {});
-    EXPECT_FALSE(ActionEnabled(TuningAction::apply));
+    EXPECT_FALSE(ActionEnabled(ControllerTuningAction::apply));
     EXPECT_EQ("Apply: Moving: wait or abort", presenter.Hint());
 
     auto disconnected = snapshot;
@@ -121,10 +121,10 @@ TEST_F(ArmControllerTuningPresenterTest, apply_is_disabled_with_the_reason_while
     EXPECT_EQ("Apply: Not connected", presenter.Hint());
 
     presenter.Choose(arm::ArmControllerKind::slotineLi);
-    view.TypeNumber(TuningField::lambda, 12.0);
+    view.TypeNumber(ControllerTuningField::lambda, 12.0);
     presenter.Refresh(snapshot, {});
     EXPECT_EQ("Apply: The arm does not offer this controller", presenter.Hint());
-    view.PressAction(TuningAction::apply);
+    view.PressAction(ControllerTuningAction::apply);
     EXPECT_TRUE(posted.empty());
 }
 
@@ -133,27 +133,27 @@ TEST_F(ArmControllerTuningPresenterTest, each_controller_shows_and_sends_its_own
     snapshot.config.operationalSpace = { 25.0f, 0.8f, 0.02f };
     presenter.Refresh(snapshot, {});
     presenter.Choose(arm::ArmControllerKind::operationalSpace);
-    EXPECT_TRUE(view.IsControlVisible(TuningField::singularityDamping));
+    EXPECT_TRUE(view.IsControlVisible(ControllerTuningField::singularityDamping));
     EXPECT_EQ((arm::OperationalSpaceTuning{ 25.0f, 0.8f, 0.02f }), std::get<arm::OperationalSpaceTuning>(presenter.FormTuning()));
 
     presenter.Choose(arm::ArmControllerKind::cartesianImpedance);
-    EXPECT_TRUE(view.IsControlVisible(TuningField::translationalStiffness));
-    view.TypeNumber(TuningField::translationalStiffness, 80.0);
-    view.PressAction(TuningAction::apply);
+    EXPECT_TRUE(view.IsControlVisible(ControllerTuningField::translationalStiffness));
+    view.TypeNumber(ControllerTuningField::translationalStiffness, 80.0);
+    view.PressAction(ControllerTuningAction::apply);
     EXPECT_EQ(arm::ArmControllerKind::cartesianImpedance, Posted().kind);
     EXPECT_FLOAT_EQ(80.0f, std::get<arm::CartesianImpedanceTuning>(Posted().tuning).translationalStiffness);
 
     presenter.Choose(arm::ArmControllerKind::jointImpedance);
-    EXPECT_TRUE(view.IsControlVisible(TuningField::Stiffness(5)));
+    EXPECT_TRUE(view.IsControlVisible(ControllerTuningField::Stiffness(5)));
     EXPECT_FALSE(std::get<arm::JointImpedanceTuning>(presenter.FormTuning()).stiffness.has_value());
-    view.ToggleFlag(TuningField::fromInertia, false);
-    view.TypeNumber(TuningField::Stiffness(2), 150.0);
+    view.ToggleFlag(ControllerTuningField::fromInertia, false);
+    view.TypeNumber(ControllerTuningField::Stiffness(2), 150.0);
     const auto stiffness = std::get<arm::JointImpedanceTuning>(presenter.FormTuning()).stiffness;
     ASSERT_TRUE(stiffness.has_value());
     EXPECT_FLOAT_EQ(150.0f, (*stiffness)[2]);
 
     presenter.Choose(arm::ArmControllerKind::slotineLi);
-    EXPECT_TRUE(view.IsControlVisible(TuningField::adaptationGain));
+    EXPECT_TRUE(view.IsControlVisible(ControllerTuningField::adaptationGain));
     EXPECT_TRUE(std::holds_alternative<arm::SlotineLiTuning>(presenter.FormTuning()));
     presenter.Choose(arm::ArmControllerKind::free);
     EXPECT_EQ(arm::ArmControllerKind::slotineLi, presenter.Kind());

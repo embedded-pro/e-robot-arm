@@ -14,7 +14,7 @@
 
 namespace simulator
 {
-    struct TuningField
+    struct ControllerTuningField
     {
         static constexpr ui::model::FieldId controller{ 0 };
         static constexpr ui::model::FieldId bandwidth{ 1 };
@@ -33,13 +33,13 @@ namespace simulator
         }
     };
 
-    struct TuningAction
+    struct ControllerTuningAction
     {
         static constexpr ui::model::ActionId apply{ 0 };
         static constexpr ui::model::ActionId revert{ 1 };
     };
 
-    enum class TuningState : uint8_t
+    enum class ControllerTuningState : uint8_t
     {
         applied,
         edited,
@@ -51,7 +51,7 @@ namespace simulator
     {
     public:
         static constexpr std::size_t tunableCount{ 7 };
-        static constexpr std::size_t fieldCount{ TuningField::firstStiffness + arm::jointCount };
+        static constexpr std::size_t fieldCount{ ControllerTuningField::firstStiffness + arm::jointCount };
 
         ArmControllerTuningPresenter(ui::shell::FormView& view, const ui::Callback<void(const arm_host::ArmCommand& command)>& post);
         ArmControllerTuningPresenter(const ArmControllerTuningPresenter& other) = delete;
@@ -62,7 +62,7 @@ namespace simulator
 
         arm::ArmControllerKind Kind() const;
         arm::ArmControllerTuning FormTuning() const;
-        TuningState State() const;
+        ControllerTuningState State() const;
         const std::string& StateText() const;
         ui::theme::StatusLevel StateLevel() const;
         const std::string& Hint() const;
@@ -85,7 +85,7 @@ namespace simulator
         void Load(const arm::ArmControllerTuning& tuning);
         void LoadBandwidth(const arm::BandwidthTuning& tuning);
         void LoadImpedance(const arm::JointImpedanceTuning& tuning);
-        void SetState(TuningState newState, std::string reason = {});
+        void SetState(ControllerTuningState newState, std::string reason = {});
         bool Offered() const;
         std::string ApplyRefusal() const;
         void UpdateActions();
@@ -95,7 +95,7 @@ namespace simulator
         Form form;
         ui::Callback<void(ui::model::FieldId)> viewFieldChanged;
         arm_host::ArmSnapshot snapshot;
-        TuningState state{ TuningState::applied };
+        ControllerTuningState state{ ControllerTuningState::applied };
         std::string stateText{ "Applied" };
         ui::theme::StatusLevel stateLevel{ ui::theme::StatusLevel::Ok };
         std::string hint;
