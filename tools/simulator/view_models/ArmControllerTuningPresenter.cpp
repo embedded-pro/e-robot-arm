@@ -1,4 +1,5 @@
 #include "tools/simulator/view_models/ArmControllerTuningPresenter.hpp"
+#include <algorithm>
 #include <cmath>
 #include <optional>
 
@@ -39,7 +40,7 @@ namespace simulator
         constexpr uint32_t bandwidthUsers{ Bit(gravityPd) | Bit(computedTorque) | Bit(gravityPid) | Bit(operationalSpace) | Bit(slotineLi) };
         constexpr uint32_t dampingUsers{ Bit(gravityPd) | Bit(computedTorque) | Bit(gravityPid) | Bit(jointImpedance) | Bit(cartesianImpedance) | Bit(operationalSpace) };
 
-        FieldSpec Number(ui::model::FieldId id, std::string_view label, std::string_view suffix, NumberTraits traits, uint32_t users)
+        FieldSpec Number(ui::model::FieldId id, std::string_view label, std::string_view suffix, const NumberTraits& traits, uint32_t users)
         {
             return { id, tuningGroup, FieldKind::Number, label, suffix, traits, {}, { ControllerTuningField::controller, users }, {} };
         }
@@ -245,38 +246,22 @@ namespace simulator
     void ArmControllerTuningPresenter::Load(const arm::ArmControllerTuning& tuning)
     {
         loading = true;
-        if (const auto* bandwidth = std::get_if<arm::BandwidthTuning>(&tuning))
-            LoadBandwidth(*bandwidth);
-        else if (const auto* impedance = std::get_if<arm::JointImpedanceTuning>(&tuning))
-            LoadImpedance(*impedance);
-        else if (const auto* cartesian = std::get_if<arm::CartesianImpedanceTuning>(&tuning))
-        {
-            form.model.SetNumber(ControllerTuningField::translationalStiffness, cartesian->translationalStiffness);
-            form.model.SetNumber(ControllerTuningField::rotationalStiffness, cartesian->rotationalStiffness);
-            form.model.SetNumber(ControllerTuningField::dampingRatio, cartesian->dampingRatio);
-        }
-        else if (const auto* space = std::get_if<arm::OperationalSpaceTuning>(&tuning))
-        {
-            LoadBandwidth({ space->bandwidth, space->dampingRatio });
-            form.model.SetNumber(ControllerTuningField::singularityDamping, space->singularityDamping);
-        }
-        else if (const auto* adaptive = std::get_if<arm::SlotineLiTuning>(&tuning))
-        {
-            form.model.SetNumber(ControllerTuningField::lambda, adaptive->lambda);
-            form.model.SetNumber(ControllerTuningField::bandwidth, adaptive->bandwidth);
-            form.model.SetNumber(ControllerTuningField::adaptationGain, adaptive->adaptationGain);
-        }
+        std::visit([this](const auto& item)
+            {
+                LoadItem(item);
+            },
+            tuning);
         loading = false;
         view.Refresh();
     }
 
-    void ArmControllerTuningPresenter::LoadBandwidth(const arm::BandwidthTuning& tuning)
+    void ArmControllerTuningPresenter::LoadItem(const arm::BandwidthTuning& tuning)
     {
         form.model.SetNumber(ControllerTuningField::bandwidth, tuning.bandwidth);
         form.model.SetNumber(ControllerTuningField::dampingRatio, tuning.dampingRatio);
     }
 
-    void ArmControllerTuningPresenter::LoadImpedance(const arm::JointImpedanceTuning& tuning)
+    void ArmControllerTuningPresenter::LoadItem(const arm::JointImpedanceTuning& tuning)
     {
         form.model.SetNumber(ControllerTuningField::dampingRatio, tuning.dampingRatio);
         form.model.SetFlag(ControllerTuningField::fromInertia, !tuning.stiffness.has_value());
@@ -285,7 +270,27 @@ namespace simulator
                 form.model.SetNumber(ControllerTuningField::Stiffness(joint), (*tuning.stiffness)[joint]);
     }
 
-    void ArmControllerTuningPresenter::SetState(ControllerTuningState newState, std::string reason)
+    void ArmControllerTuningPresenter::LoadItem(const arm::CartesianImpedanceTuning& tuning)
+    {
+        form.model.SetNumber(ControllerTuningField::translationalStiffness, tuning.translationalStiffness);
+        form.model.SetNumber(ControllerTuningField::rotationalStiffness, tuning.rotationalStiffness);
+        form.model.SetNumber(ControllerTuningField::dampingRatio, tuning.dampingRatio);
+    }
+
+    void ArmControllerTuningPresenter::LoadItem(const arm::OperationalSpaceTuning& tuning)
+    {
+        LoadItem(arm::BandwidthTuning{ tuning.bandwidth, tuning.dampingRatio });
+        form.model.SetNumber(ControllerTuningField::singularityDamping, tuning.singularityDamping);
+    }
+
+    void ArmControllerTuningPresenter::LoadItem(const arm::SlotineLiTuning& tuning)
+    {
+        form.model.SetNumber(ControllerTuningField::lambda, tuning.lambda);
+        form.model.SetNumber(ControllerTuningField::bandwidth, tuning.bandwidth);
+        form.model.SetNumber(ControllerTuningField::adaptationGain, tuning.adaptationGain);
+    }
+
+    void ArmControllerTuningPresenter::SetState(ControllerTuningState newState, const std::string& reason)
     {
         state = newState;
         switch (state)
@@ -311,11 +316,11 @@ namespace simulator
 
     bool ArmControllerTuningPresenter::Offered() const
     {
-        const auto name = arm::ArmControllerName(Kind());
-        for (const auto& controller : snapshot.armControllers)
-            if (controller.name == name)
-                return true;
-        return false;
+        const std::string_view name{ arm::ArmControllerName(Kind()) };
+        return std::ranges::any_of(snapshot.armControllers, [name](const arm_host::ArmControllerStatus& controller)
+            {
+                return controller.name == name;
+            });
     }
 
     std::string ArmControllerTuningPresenter::ApplyRefusal() const

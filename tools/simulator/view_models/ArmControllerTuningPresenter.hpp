@@ -83,9 +83,12 @@ namespace simulator
         void OnFieldChanged(ui::model::FieldId field);
         void OnAction(ui::model::ActionId action);
         void Load(const arm::ArmControllerTuning& tuning);
-        void LoadBandwidth(const arm::BandwidthTuning& tuning);
-        void LoadImpedance(const arm::JointImpedanceTuning& tuning);
-        void SetState(ControllerTuningState newState, std::string reason = {});
+        void LoadItem(const arm::BandwidthTuning& tuning);
+        void LoadItem(const arm::JointImpedanceTuning& tuning);
+        void LoadItem(const arm::CartesianImpedanceTuning& tuning);
+        void LoadItem(const arm::OperationalSpaceTuning& tuning);
+        void LoadItem(const arm::SlotineLiTuning& tuning);
+        void SetState(ControllerTuningState newState, const std::string& reason = {});
         bool Offered() const;
         std::string ApplyRefusal() const;
         void UpdateActions();
