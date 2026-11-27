@@ -70,7 +70,7 @@ namespace arm_host
         {
             return std::holds_alternative<InjectFault>(command) || std::holds_alternative<SilenceJoint>(command) ||
                    std::holds_alternative<ResumeJoint>(command) || std::holds_alternative<CollideJoint>(command) || std::holds_alternative<GuideArm>(command) ||
-                   std::holds_alternative<TuneArmController>(command) ||
+                   std::holds_alternative<TuneArmController>(command) || std::holds_alternative<SaveArmControllerPreset>(command) ||
                    std::holds_alternative<PowerOffMotor>(command) || std::holds_alternative<RestartMotor>(command);
         }
 
@@ -492,6 +492,11 @@ namespace arm_host
             return session.Tune(tune);
         }
 
+        bool operator()(const SaveArmControllerPreset& save) const
+        {
+            return session.SavePreset(save);
+        }
+
         bool operator()(const ResetAdaptation&) const
         {
             return session.arm.ResetAdaptation();
@@ -564,6 +569,22 @@ namespace arm_host
                 return Refuse(TuningRangeText(*arm::CheckTuning(tune.tuning)));
             default:
                 return Refuse(arm::Tunable(tune.kind) ? "the arm offers no such controller" : "the controller has nothing to tune");
+        }
+    }
+
+    bool ArmSession::SavePreset(const SaveArmControllerPreset& save)
+    {
+        switch (arm::SavePreset(profile.config, save.kind, infra::BoundedConstString{ save.name.data(), save.name.size() }))
+        {
+            case arm::PresetResult::saved:
+            case arm::PresetResult::replaced:
+                return true;
+            case arm::PresetResult::badName:
+                return Refuse("a name of 1 to 16 characters");
+            case arm::PresetResult::full:
+                return Refuse("16 presets already: replace one");
+            default:
+                return Refuse("the controller has nothing to tune");
         }
     }
 

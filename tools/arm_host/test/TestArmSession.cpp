@@ -1116,3 +1116,23 @@ TEST_F(ArmSessionTest, refuses_a_tuning_out_of_range_for_a_passive_or_absent_con
     Execute(8, arm_host::TuneArmController{ arm::ArmControllerKind::gravityPd, arm::BandwidthTuning{ 20.0f, 0.7f } });
     EXPECT_EQ("moving: wait or abort", sink.Last()->reason);
 }
+
+TEST_F(ArmSessionTest, saves_a_controllers_tuning_as_a_preset_in_its_profile)
+{
+    Execute(1, arm_host::TuneArmController{ arm::ArmControllerKind::gravityPid, arm::BandwidthTuning{ 12.0f, 0.9f } });
+    Execute(2, arm_host::SaveArmControllerPreset{ arm::ArmControllerKind::gravityPid, "soft" });
+
+    EXPECT_EQ(ArmEventKind::accepted, sink.Last()->kind);
+    EXPECT_EQ("save arm controller preset", sink.Last()->commandName);
+    ASSERT_EQ(1u, sink.snapshot.config.presetCount);
+    EXPECT_EQ(arm::ArmControllerKind::gravityPid, sink.snapshot.config.presets[0].controller);
+    EXPECT_FLOAT_EQ(12.0f, std::get<arm::BandwidthTuning>(sink.snapshot.config.presets[0].tuning).bandwidth);
+
+    Execute(3, arm_host::SaveArmControllerPreset{ arm::ArmControllerKind::gravityPid, "" });
+    EXPECT_EQ("a name of 1 to 16 characters", sink.Last()->reason);
+    Execute(4, arm_host::SaveArmControllerPreset{ arm::ArmControllerKind::free, "soft" });
+    EXPECT_EQ("the controller has nothing to tune", sink.Last()->reason);
+    for (uint32_t preset = 0; preset != arm::maxArmControllerPresets; ++preset)
+        session.Execute(5 + preset, arm_host::SaveArmControllerPreset{ arm::ArmControllerKind::gravityPd, std::string(1, static_cast<char>('a' + preset)) });
+    EXPECT_EQ("16 presets already: replace one", sink.Last()->reason);
+}

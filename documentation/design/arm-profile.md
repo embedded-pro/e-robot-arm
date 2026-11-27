@@ -2,7 +2,7 @@
 title: "Arm Profile Design"
 type: design
 status: draft
-version: 0.26.0
+version: 0.26.1
 component: "arm_profile"
 date: 2026-11-27
 ---
@@ -12,7 +12,7 @@ date: 2026-11-27
 | Title     | Arm Profile Design |
 | Type      | design             |
 | Status    | draft              |
-| Version   | 0.26.0             |
+| Version   | 0.26.1             |
 | Component | arm_profile        |
 | Date      | 2026-11-27         |
 
@@ -293,7 +293,7 @@ writer. So the rules below hold for every tool:
 ```json
 {
   "format": "e-robot-arm profile",
-  "version": 11,
+  "version": 12,
   "name": "generic six-joint",
   "controlPeriodMs": 10,
   "missedRequestsBeforeSilent": 3,
