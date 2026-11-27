@@ -2,7 +2,7 @@
 title: "Simulator Screen Design"
 type: design
 status: draft
-version: 0.47.0
+version: 0.48.0
 component: "tool-simulator"
 date: 2026-11-27
 ---
@@ -977,6 +977,41 @@ holds or trips the collision rule ([safety.md](safety.md) Part F).
 | Control   | Enabled when                                     | Otherwise                                           |
 |-----------|--------------------------------------------------|-----------------------------------------------------|
 | Ctrl-drag | Connected to the simulated joints or virtual arm | The drag orbits; tooltip "Guiding: simulation only" |
+
+### Part V — Joint drag (phase 8e C1)
+
+The operator turns one joint by dragging its link in the 3-D view. A drag only sets a target; a move needs Enter.
+On a simulation, Shift-drag makes the arm follow the pointer while the button is held.
+
+```text
+     pointer ●
+            ╲
+   target ghost (accent, opacity 0.3)      J3 → 0.42 rad (from 0.10) · Enter: move · Esc: cancel
+   ┌────────────────┐
+   │ link 3 (J3)    │   drag on a link: target · Shift-drag: follow · Ctrl-drag: guide · elsewhere: orbit
+```
+
+- **Start.** Left button pressed on a link part, without Ctrl. The pick gives the joint that turns the link and the
+  hit point. The point is kept in the link's frame. A press without a move still selects the joint.
+- **Angle.** Each frame, the pointer's ray meets the plane through the grabbed point that faces the camera. The
+  joint angle is the one that brings the grabbed point closest to that meeting point. Eight Gauss–Newton steps on
+  the forward kinematics find it. Only the dragged joint changes. The angle is clamped to the joint's limits.
+- **Target.** The ghost arm shows the target pose: the measured pose with the dragged joint at the new angle.
+  The label reads `J3 → 0.42 rad (from 0.10)`. A target that reaches a limit adds `· at limit`.
+- **Move.** Enter moves the arm to the target, like **Move** in Part B. Esc or a click on empty space clears the
+  target. A new drag replaces it. Enter is enabled when Move is enabled; otherwise the label gives Move's reason.
+  The arm stack still checks the move (joint limits, workspace) and a refusal is logged.
+- **Follow (Shift-drag).** On a simulation only. At most 20 times a second, the target goes to the arm as a move.
+  Each move replaces the one before. Release, Shift released or the application losing focus abort the move. So the
+  arm stops when the hand stops holding. Elsewhere Shift-drag sets a target like a plain drag, with the label
+  `· follow: simulation only`.
+- **Orbit.** A press on the base, the floor or empty space orbits the camera, as before.
+
+| Control    | Enabled when                                             | Otherwise                                     |
+|------------|----------------------------------------------------------|-----------------------------------------------|
+| Drag       | Connected, a profile loaded                              | The drag orbits                               |
+| Enter      | A target and Move enabled (Part B)                       | The label gives Move's reason                 |
+| Shift-drag | Move enabled, on the simulated joints or the virtual arm | A target only; "follow: simulation only"      |
 
 ## Interfaces
 
