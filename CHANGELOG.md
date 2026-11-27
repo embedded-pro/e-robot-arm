@@ -1,5 +1,41 @@
 # Changelog
 
+## [1.2.0](https://github.com/embedded-pro/e-robot-arm/compare/v1.1.1...v1.2.0) (2026-11-27)
+
+
+### Features
+
+* **arm_controllers:** Retune every tracking controller in place (phase 8e B1) ([fc62991](https://github.com/embedded-pro/e-robot-arm/commit/fc629917726824850f6acb7597c29038dd1b83e1)), closes [#169](https://github.com/embedded-pro/e-robot-arm/issues/169)
+* **arm_host:** GuideArm command for hand guiding on a simulation (phase 8e C3) ([eee13e8](https://github.com/embedded-pro/e-robot-arm/commit/eee13e89cfa186ebf4b2951e43df97ca6c60bf9c)), closes [#169](https://github.com/embedded-pro/e-robot-arm/issues/169)
+* **arm_host:** Passive controllers on simulated targets, torque push on simulated joints (phase 8e A, 4/6) ([dca1e91](https://github.com/embedded-pro/e-robot-arm/commit/dca1e912f0616434f3529d41649a2402c704329f)), closes [#169](https://github.com/embedded-pro/e-robot-arm/issues/169)
+* **arm_host:** TuneArmController command with the profile write-back (phase 8e B2) ([c8a4f1d](https://github.com/embedded-pro/e-robot-arm/commit/c8a4f1d072e20e5fb37a2d2461388f9ee80caa73)), closes [#169](https://github.com/embedded-pro/e-robot-arm/issues/169)
+* **arm:** Free and gravity-float passive controllers on a simulation (phase 8e A, 3/6) ([f3aa0f9](https://github.com/embedded-pro/e-robot-arm/commit/f3aa0f93cf73263abf9168a774ab284890206f3a)), closes [#169](https://github.com/embedded-pro/e-robot-arm/issues/169)
+* **arm:** Named arm controller presets in the profile (phase 8e B4a) ([b2f1f50](https://github.com/embedded-pro/e-robot-arm/commit/b2f1f5029154a3fdf086c33306364c0d7637d875)), closes [#169](https://github.com/embedded-pro/e-robot-arm/issues/169)
+* **arm:** Retune a controller at run time within the profile's ranges (phase 8e B1) ([e99d39f](https://github.com/embedded-pro/e-robot-arm/commit/e99d39f0c51cd75865c546061c6c842a789dda21)), closes [#169](https://github.com/embedded-pro/e-robot-arm/issues/169)
+* **safety,lifecycle:** Passive supervision step and a motion permit (phase 8e A, 2/6) ([42210b2](https://github.com/embedded-pro/e-robot-arm/commit/42210b26b5518bc159a5de085361d4fda495417c)), closes [#169](https://github.com/embedded-pro/e-robot-arm/issues/169)
+* **simulator:** Benchmark dock (phase 8e B6b) ([e605265](https://github.com/embedded-pro/e-robot-arm/commit/e6052655b4567db030b8713b91a120fda891fc7b))
+* **simulator:** Benchmark presenter (phase 8e B6a) ([daf91b9](https://github.com/embedded-pro/e-robot-arm/commit/daf91b99c94d4d0e9afd49758264d8f1e3388bae))
+* **simulator:** Ctrl-drag hand guiding in the 3-D view (phase 8e C3) ([f81c701](https://github.com/embedded-pro/e-robot-arm/commit/f81c7014a75b2c9678a3962eaa8810b597d9473a)), closes [#169](https://github.com/embedded-pro/e-robot-arm/issues/169)
+* **simulator:** Free mode in the screen, simulation-only controller rows (phase 8e A, 5/6) ([f6fc0c0](https://github.com/embedded-pro/e-robot-arm/commit/f6fc0c0ab308809eee2274b64e2c242c5114b074)), closes [#169](https://github.com/embedded-pro/e-robot-arm/issues/169)
+* **simulator:** Hand guiding with the mouse on a simulation (phase 8e C3) ([7853b62](https://github.com/embedded-pro/e-robot-arm/commit/7853b62e8a1d0d8e4015bb1ba3119d5b29a62816))
+* **simulator:** Hand-guide view model, spring force to joint torques (phase 8e C3) ([7c2cb45](https://github.com/embedded-pro/e-robot-arm/commit/7c2cb4554dde63c01976bcd81ea5474699e9a374)), closes [#169](https://github.com/embedded-pro/e-robot-arm/issues/169)
+* **simulator:** Joint drag in the 3-D view (phase 8e C1b) ([194b9f9](https://github.com/embedded-pro/e-robot-arm/commit/194b9f9c6959792479f6e0b4a7f926e110f6de7a))
+* **simulator:** Joint drag view model (phase 8e C1a) ([da205c9](https://github.com/embedded-pro/e-robot-arm/commit/da205c96ead7f0dee7e675db005aec5156b0f08f))
+* **simulator:** Load and save arm controller presets in the tuning form (phase 8e B4b) ([47f248c](https://github.com/embedded-pro/e-robot-arm/commit/47f248ce0080a91bedcf8202e7d937a48b9b8f77)), closes [#169](https://github.com/embedded-pro/e-robot-arm/issues/169)
+* **simulator:** Tool gizmo in the 3-D view (phase 8e C2b) ([dcbff5b](https://github.com/embedded-pro/e-robot-arm/commit/dcbff5b7aebd19d615d76cf3acc5cb5415242aad))
+* **simulator:** Tool gizmo view model (phase 8e C2a) ([2f75562](https://github.com/embedded-pro/e-robot-arm/commit/2f7556251a71e44255b6d3d53c76d2983214aee2))
+* **simulator:** Tuning form in the Arm Controllers dock (phase 8e B3) ([0d46ef1](https://github.com/embedded-pro/e-robot-arm/commit/0d46ef1268c764f21950baab0764577a83031a64)), closes [#169](https://github.com/embedded-pro/e-robot-arm/issues/169)
+* **tuning:** Benchmark runner, the same path once per controller (phase 8e B5) ([8d1495f](https://github.com/embedded-pro/e-robot-arm/commit/8d1495f4a1240757ddfa0ecc16831f70cd7fea05)), closes [#169](https://github.com/embedded-pro/e-robot-arm/issues/169)
+
+
+### Bug Fixes
+
+* **arm:** A retune keeps the controller's state instead of resetting it ([1831156](https://github.com/embedded-pro/e-robot-arm/commit/1831156969ed582181f55ed31b05e9215a8f40dd))
+* Deliver a whole exchange in one step on the simulated bus ([2a30462](https://github.com/embedded-pro/e-robot-arm/commit/2a304626864176fda840bea86982655bb1aec59f)), closes [#207](https://github.com/embedded-pro/e-robot-arm/issues/207)
+* Shorten the bus delivery note and record its limit ([7757735](https://github.com/embedded-pro/e-robot-arm/commit/775773517eee19d869a0540e22a1577666716a97))
+* **simulator:** Rename the controller tuning form's types apart from the Tuning dock's ([936eb13](https://github.com/embedded-pro/e-robot-arm/commit/936eb13101a715ef89539c4265a6e8304ad570d5))
+* **tuning:** Benchmark review findings ([ab539e7](https://github.com/embedded-pro/e-robot-arm/commit/ab539e786d45059bd9b0a6ee92c65ba957d4d2fc))
+
 ## [1.1.1](https://github.com/embedded-pro/e-robot-arm/compare/v1.1.0...v1.1.1) (2026-11-25)
 
 
