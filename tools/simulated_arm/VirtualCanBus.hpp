@@ -50,11 +50,13 @@ namespace simulation
         };
 
         void Send(const Frame& frame);
+        void DeliverAll();
         void DeliverOldest();
         void Detach(const Port& port);
 
         std::vector<Port*> ports;
         std::deque<Frame> frames;
+        bool deliveryPending{ false };
         std::shared_ptr<VirtualCanBus*> self{ std::make_shared<VirtualCanBus*>(this) };
     };
 }
