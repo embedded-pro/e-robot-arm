@@ -288,9 +288,15 @@ namespace simulator
 
     const arm::ArmControllerPreset* ArmControllerTuningPresenter::Preset(std::size_t index) const
     {
+        std::size_t seen{ 0 };
         for (std::size_t slot = 0; slot != snapshot.config.presetCount; ++slot)
-            if (snapshot.config.presets[slot].controller == Kind() && index-- == 0)
+        {
+            if (snapshot.config.presets[slot].controller != Kind())
+                continue;
+            if (seen == index)
                 return &snapshot.config.presets[slot];
+            ++seen;
+        }
         return nullptr;
     }
 
